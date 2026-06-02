@@ -51,7 +51,7 @@ struct WizardAnatomieKarteView: View {
             if !koerperstelle.isEmpty {
                 Label(koerperstelle, systemImage: "mappin.circle.fill")
                     .font(.headline)
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
             } else {
                 Text("Tippe auf eine Körperstelle")
                     .font(.subheadline)
