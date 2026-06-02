@@ -1,0 +1,18 @@
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+.build/
+*.ipa
+
+# iCloud
+.iCloud
+*.icloud
+
+# macOS
+.DS_Store
+
+# API Keys – nie hochladen!
+Secrets.swift
+Config.plist
+GoogleService-Info.plist
