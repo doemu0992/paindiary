@@ -1,80 +1,45 @@
-//
-//  ContentView.swift
-//  PainDiary
-//
-//  Created by Dominik Gerber on 01.06.2026.
-//
-
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State private var ausgewaehlterTab = 0
+    @State private var neuerEintragAnzeigen = false
 
-    var body: some View {
-        NavigationViewWrapper {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
 #if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
-    }
-}
-
-fileprivate struct NavigationViewWrapper<Content: View>: View {
-    let content: () -> Content
-
     var body: some View {
-#if os(macOS)
         NavigationSplitView {
-            content()
+            PainEntryListView()
         } detail: {
-            Text("Select an item")
+            Text("Eintrag auswählen").foregroundStyle(.secondary)
         }
-#else
-        content()
-#endif
     }
-}
+#else
+    var body: some View {
+        TabView(selection: $ausgewaehlterTab) {
+            NavigationStack { DashboardView() }
+                .tabItem { Label("Übersicht", systemImage: "chart.line.uptrend.xyaxis") }
+                .tag(0)
 
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+            NavigationStack { PainEntryListView() }
+                .tabItem { Label("Tagebuch", systemImage: "book.pages") }
+                .tag(1)
+
+            Color.clear
+                .tabItem { Label("Neu", systemImage: "plus.circle.fill") }
+                .tag(2)
+
+            NavigationStack { ProfilView() }
+                .tabItem { Label("Profil", systemImage: "person.circle") }
+                .tag(3)
+        }
+        .onChange(of: ausgewaehlterTab) { _, neu in
+            if neu == 2 {
+                neuerEintragAnzeigen = true
+                ausgewaehlterTab = 1
+            }
+        }
+        .sheet(isPresented: $neuerEintragAnzeigen) {
+            AddEntryView()
+        }
+    }
+#endif
 }
