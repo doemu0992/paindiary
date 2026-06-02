@@ -4,7 +4,7 @@ import SwiftData
 struct PainEntryListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
-    @State private var formAnzeigen = false
+    @State private var wizardAnzeigen = false
 
     var body: some View {
         List {
@@ -30,12 +30,12 @@ struct PainEntryListView: View {
             ToolbarItem(placement: .navigationBarTrailing) { EditButton() }
 #endif
             ToolbarItem {
-                Button { formAnzeigen = true } label: {
+                Button { wizardAnzeigen = true } label: {
                     Label("Neuer Eintrag", systemImage: "plus")
                 }
             }
         }
-        .sheet(isPresented: $formAnzeigen) { PainEntryFormView() }
+        .sheet(isPresented: $wizardAnzeigen) { AddEntryView() }
     }
 
     private func loeschen(_ offsets: IndexSet) {

@@ -27,6 +27,7 @@ private struct ProfilInhaltView: View {
     @State private var allergieFormAnzeigen = false
     @State private var arztFormAnzeigen = false
     @State private var notfallFormAnzeigen = false
+    @State private var adressbuchAnzeigen = false
 
     var body: some View {
         persoenlicheDaten
@@ -235,6 +236,9 @@ private struct ProfilInhaltView: View {
                         if !kontakt.beziehung.isEmpty {
                             Text(kontakt.beziehung).font(.caption).foregroundStyle(.secondary)
                         }
+                        if !kontakt.phone.isEmpty {
+                            Text(kontakt.phone).font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                     if !kontakt.phone.isEmpty {
@@ -249,7 +253,14 @@ private struct ProfilInhaltView: View {
             .onDelete { indices in
                 indices.forEach { profil.notfallkontakte.remove(at: $0) }
             }
-            Button("Notfallkontakt hinzufügen") { notfallFormAnzeigen = true }
+#if os(iOS)
+            Button {
+                adressbuchAnzeigen = true
+            } label: {
+                Label("Aus Adressbuch wählen", systemImage: "person.crop.circle.badge.plus")
+            }
+#endif
+            Button("Manuell hinzufügen") { notfallFormAnzeigen = true }
         } header: {
             Text("Notfallkontakte")
         }
@@ -259,6 +270,16 @@ private struct ProfilInhaltView: View {
                 profil.notfallkontakte.append(neu)
             }
         }
+#if os(iOS)
+        .sheet(isPresented: $adressbuchAnzeigen) {
+            KontaktPickerView { daten in
+                for d in daten {
+                    let neu = NotfallKontakt(name: d.name, phone: d.phone, beziehung: "")
+                    profil.notfallkontakte.append(neu)
+                }
+            }
+        }
+#endif
     }
 
     private var einstellungen: some View {

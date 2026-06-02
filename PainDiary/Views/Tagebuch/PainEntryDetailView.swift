@@ -81,7 +81,7 @@ struct PainEntryDetailView: View {
             }
         }
         .sheet(isPresented: $bearbeiten) {
-            PainEntryFormView(eintrag: eintrag)
+            AddEntryView(eintrag: eintrag)
         }
     }
 

@@ -5,6 +5,8 @@ struct AddEntryView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    var eintrag: PainEntry? = nil
+
     @State private var schritt = 0
     @State private var koerperstelle = ""
     @State private var schmerzstaerke = 5
@@ -56,13 +58,14 @@ struct AddEntryView: View {
                 .padding()
                 .background(.bar)
             }
-            .navigationTitle(schrittTitel)
+            .navigationTitle(eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") { dismiss() }
                 }
             }
+            .onAppear { ladeVorhandeneWerte() }
         }
     }
 
@@ -102,25 +105,52 @@ struct AddEntryView: View {
         case 3: return "Auslöser"
         case 4: return "Begleiterscheinungen"
         case 5: return "Massnahmen"
-        default: return "Neuer Eintrag"
+        default: return eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten"
         }
     }
 
+    private func ladeVorhandeneWerte() {
+        guard let e = eintrag else { return }
+        koerperstelle = e.koerperstelle
+        schmerzstaerke = e.schmerzstaerke
+        schmerzart = e.schmerzart
+        dauerMinuten = e.dauerMinuten
+        ausloeser = e.ausloeser
+        begleiterscheinungen = e.begleiterscheinungen
+        massnahmen = e.massnahmen
+        stimmung = e.stimmung
+        schlafStunden = e.schlafStunden
+        notizen = e.notizen
+    }
+
     private func speichern() {
-        let eintrag = PainEntry(
-            datum: Date(),
-            schmerzstaerke: schmerzstaerke,
-            koerperstelle: koerperstelle,
-            schmerzart: schmerzart,
-            dauerMinuten: dauerMinuten,
-            ausloeser: ausloeser,
-            begleiterscheinungen: begleiterscheinungen,
-            massnahmen: massnahmen,
-            notizen: notizen,
-            stimmung: stimmung,
-            schlafStunden: schlafStunden
-        )
-        modelContext.insert(eintrag)
+        if let e = eintrag {
+            e.koerperstelle = koerperstelle
+            e.schmerzstaerke = schmerzstaerke
+            e.schmerzart = schmerzart
+            e.dauerMinuten = dauerMinuten
+            e.ausloeser = ausloeser
+            e.begleiterscheinungen = begleiterscheinungen
+            e.massnahmen = massnahmen
+            e.stimmung = stimmung
+            e.schlafStunden = schlafStunden
+            e.notizen = notizen
+        } else {
+            let neu = PainEntry(
+                datum: Date(),
+                schmerzstaerke: schmerzstaerke,
+                koerperstelle: koerperstelle,
+                schmerzart: schmerzart,
+                dauerMinuten: dauerMinuten,
+                ausloeser: ausloeser,
+                begleiterscheinungen: begleiterscheinungen,
+                massnahmen: massnahmen,
+                notizen: notizen,
+                stimmung: stimmung,
+                schlafStunden: schlafStunden
+            )
+            modelContext.insert(neu)
+        }
         dismiss()
     }
 }

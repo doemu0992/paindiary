@@ -4,9 +4,13 @@ struct AusloeserStepView: View {
     @Binding var ausloeser: String
     let koerperstelle: String
 
+    @State private var ausgewaehlt: Set<String> = []
+    @State private var eigenerText = ""
+
     private var vorschlaege: [String] {
         SchmerzLexikon.db[koerperstelle]?.ausloeser ?? [
-            "Stress", "Bewegung", "Wetter", "Schlafmangel", "Essen", "Unbekannt"
+            "Stress", "Bewegung", "Wetter", "Schlafmangel", "Essen",
+            "Alkohol", "Bildschirmarbeit", "Kälte", "Unbekannt"
         ]
     }
 
@@ -17,22 +21,29 @@ struct AusloeserStepView: View {
                 .multilineTextAlignment(.center)
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Häufige Auslöser")
+                Text("Häufige Auslöser (mehrere möglich)")
                     .font(.headline)
                 FlowLayout(vorschlaege) { vorschlag in
-                    ChipButton(label: vorschlag, ausgewaehlt: ausloeser == vorschlag) {
-                        ausloeser = (ausloeser == vorschlag) ? "" : vorschlag
+                    ChipButton(label: vorschlag, ausgewaehlt: ausgewaehlt.contains(vorschlag)) {
+                        if ausgewaehlt.contains(vorschlag) { ausgewaehlt.remove(vorschlag) }
+                        else { ausgewaehlt.insert(vorschlag) }
+                        aktualisiereBinding()
                     }
                 }
-            }
-            .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Eigene Angabe")
-                    .font(.headline)
-                TextField("z.B. Sport, Stress, Essen…", text: $ausloeser)
-                    .textFieldStyle(.roundedBorder)
+                HStack(spacing: 8) {
+                    TextField("Eigener Auslöser…", text: $eigenerText)
+                        .textFieldStyle(.roundedBorder)
+                    if !eigenerText.isEmpty {
+                        Button {
+                            ausgewaehlt.insert(eigenerText)
+                            eigenerText = ""
+                            aktualisiereBinding()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                }
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -43,5 +54,15 @@ struct AusloeserStepView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal)
+        .onAppear { ladeAuswahlAusBinding() }
+    }
+
+    private func aktualisiereBinding() {
+        ausloeser = ausgewaehlt.sorted().joined(separator: ", ")
+    }
+
+    private func ladeAuswahlAusBinding() {
+        let teile = ausloeser.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
+        ausgewaehlt = Set(teile.filter { !$0.isEmpty })
     }
 }

@@ -5,6 +5,9 @@ struct CharakterStepView: View {
     @Binding var dauerMinuten: Int
     let koerperstelle: String
 
+    @State private var ausgewaehlt: Set<String> = []
+    @State private var eigenerText = ""
+
     private var vorschlaege: [String] {
         SchmerzLexikon.db[koerperstelle]?.charakter ?? [
             "Stechend", "Ziehend", "Dumpf", "Brennend", "Krampfartig", "Pulsierend", "Drückend"
@@ -18,15 +21,29 @@ struct CharakterStepView: View {
                 .multilineTextAlignment(.center)
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Schmerzart")
+                Text("Schmerzart (mehrere möglich)")
                     .font(.headline)
                 FlowLayout(vorschlaege) { vorschlag in
-                    ChipButton(label: vorschlag, ausgewaehlt: schmerzart == vorschlag) {
-                        schmerzart = (schmerzart == vorschlag) ? "" : vorschlag
+                    ChipButton(label: vorschlag, ausgewaehlt: ausgewaehlt.contains(vorschlag)) {
+                        if ausgewaehlt.contains(vorschlag) { ausgewaehlt.remove(vorschlag) }
+                        else { ausgewaehlt.insert(vorschlag) }
+                        aktualisiereBinding()
                     }
                 }
-                TextField("Oder eigene Beschreibung…", text: $schmerzart)
-                    .textFieldStyle(.roundedBorder)
+                HStack(spacing: 8) {
+                    TextField("Eigene Beschreibung…", text: $eigenerText)
+                        .textFieldStyle(.roundedBorder)
+                    if !eigenerText.isEmpty {
+                        Button {
+                            ausgewaehlt.insert(eigenerText)
+                            eigenerText = ""
+                            aktualisiereBinding()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(.accentColor)
+                        }
+                    }
+                }
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -45,7 +62,7 @@ struct CharakterStepView: View {
                 ), in: 0...480, step: 15)
                 .tint(.blue)
                 HStack {
-                    Text("Kürzer").font(.caption).foregroundStyle(.secondary)
+                    Text("Keine Angabe").font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Text("8 Std.").font(.caption).foregroundStyle(.secondary)
                 }
@@ -54,6 +71,16 @@ struct CharakterStepView: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         }
         .padding(.horizontal)
+        .onAppear { ladeAuswahlAusBinding() }
+    }
+
+    private func aktualisiereBinding() {
+        schmerzart = ausgewaehlt.sorted().joined(separator: ", ")
+    }
+
+    private func ladeAuswahlAusBinding() {
+        let teile = schmerzart.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
+        ausgewaehlt = Set(teile.filter { !$0.isEmpty })
     }
 
     private func formatierteDauer(_ min: Int) -> String {
@@ -75,16 +102,7 @@ struct FlowLayout<Data: RandomAccessCollection, Content: View>: View where Data.
     }
 
     var body: some View {
-        _FlowLayout(data: data, content: content)
-    }
-}
-
-private struct _FlowLayout<Data: RandomAccessCollection, Content: View>: View where Data.Element: Hashable {
-    let data: Data
-    let content: (Data.Element) -> Content
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], alignment: .leading, spacing: 8) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110))], alignment: .leading, spacing: 8) {
             ForEach(Array(data), id: \.self) { item in
                 content(item)
             }
@@ -99,14 +117,21 @@ struct ChipButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text(label)
-                .font(.subheadline)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(ausgewaehlt ? Color.accentColor : Color.secondary.opacity(0.15))
-                .foregroundStyle(ausgewaehlt ? .white : .primary)
-                .clipShape(Capsule())
+            HStack(spacing: 4) {
+                if ausgewaehlt {
+                    Image(systemName: "checkmark")
+                        .font(.caption.bold())
+                }
+                Text(label)
+                    .font(.subheadline)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(ausgewaehlt ? Color.accentColor : Color.secondary.opacity(0.15))
+            .foregroundStyle(ausgewaehlt ? .white : .primary)
+            .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
     }
 }
