@@ -31,11 +31,22 @@ private struct ProfilInhaltView: View {
     var body: some View {
         persoenlicheDaten
         medizinischeDaten
+        medikamenteLink
         diagnoseSektion
         allergienSektion
         aerzte
         notfallkontakte
         einstellungen
+    }
+
+    private var medikamenteLink: some View {
+        Section {
+            NavigationLink(destination: MedikamenteView()) {
+                Label("Medikamente verwalten", systemImage: "pill.fill")
+            }
+        } header: {
+            Text("Dauermedikation")
+        }
     }
 
     private var persoenlicheDaten: some View {
