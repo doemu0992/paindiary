@@ -119,7 +119,7 @@ private struct KoerperKarteView: View {
     private func zeichneKoerper(ctx: GraphicsContext, size: CGSize) {
         let w = size.width
         let h = size.height
-        var c = ctx
+        let c = ctx
         let fill = GraphicsContext.Shading.color(Color(.systemGray5))
         let stroke = GraphicsContext.Shading.color(Color.secondary.opacity(0.22))
 

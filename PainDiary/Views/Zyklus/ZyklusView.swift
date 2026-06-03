@@ -469,7 +469,7 @@ struct ZyklusEintragSheet: View {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                         ForEach(symptomOptionen, id: \.self) { s in
                             Button {
-                                symptome.contains(s) ? symptome.remove(s) : symptome.insert(s)
+                                if symptome.contains(s) { symptome.remove(s) } else { symptome.insert(s) }
                             } label: {
                                 HStack {
                                     Image(systemName: symptome.contains(s) ? "checkmark.circle.fill" : "circle")
