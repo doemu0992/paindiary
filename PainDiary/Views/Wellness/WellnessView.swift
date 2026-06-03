@@ -27,7 +27,7 @@ struct WellnessView: View {
         }
         .onAppear {
             stelleHeuteEintragSicher()
-            ladeHealthDaten()
+            ladeHealthQueries()  // queries only — no auth request, safe without entitlement
         }
     }
 
@@ -130,7 +130,7 @@ struct WellnessView: View {
                     .foregroundStyle(.red)
                 Spacer()
                 Button(action: ladeHealthDaten) {
-                    Label("Aktualisieren", systemImage: "arrow.clockwise")
+                    Label("Verbinden", systemImage: "arrow.clockwise")
                         .font(.caption)
                 }
                 .buttonStyle(.borderless)
@@ -235,11 +235,23 @@ struct WellnessView: View {
         heuteEintrag?.wasserMl += ml
     }
 
+    // Called from button tap: requests authorization then fetches data.
+    // Only safe when the HealthKit entitlement is present in the Xcode project.
     private func ladeHealthDaten() {
         Task {
-            schlafStunden = await healthManager.schlafStundenLetztteNacht()
-            schritte = await healthManager.schritteDiesemTag()
+            await healthManager.berechtigungAnfordern()
+            await ladeHealthQueriesAsync()
         }
+    }
+
+    // Called on appear: runs queries only (returns nil when not authorized, no crash).
+    private func ladeHealthQueries() {
+        Task { await ladeHealthQueriesAsync() }
+    }
+
+    private func ladeHealthQueriesAsync() async {
+        schlafStunden = await healthManager.schlafStundenLetztteNacht()
+        schritte = await healthManager.schritteDiesemTag()
     }
 
     private func berechneStreak() -> Int {

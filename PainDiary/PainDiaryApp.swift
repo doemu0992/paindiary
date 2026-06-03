@@ -48,6 +48,8 @@ struct PainDiaryApp: App {
 
     private func berechtigungenAnfordern() async {
         _ = await NotificationManager.shared.berechtigungAnfordern()
-        await HealthKitManager.shared.berechtigungAnfordern()
+        // HealthKit authorization is requested only from WellnessView (user-initiated).
+        // Calling requestAuthorization without the HealthKit entitlement throws an
+        // NSException that bypasses Swift catch and crashes the app on launch.
     }
 }

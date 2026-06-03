@@ -17,6 +17,9 @@ class HealthKitManager {
         return types
     }
 
+    // Must be called explicitly (e.g. from a button tap).
+    // requestAuthorization throws NSException without the HealthKit entitlement —
+    // NSExceptions bypass Swift catch and crash the app. Never call this on launch.
     func berechtigungAnfordern() async {
         guard isVerfuegbar else { return }
         do {
@@ -27,14 +30,8 @@ class HealthKitManager {
         }
     }
 
-    // Ensures authorization is requested before any query runs.
-    private func sicherstellenUndHolen() async {
-        guard isVerfuegbar, !istAutorisiert else { return }
-        await berechtigungAnfordern()
-    }
-
+    // Queries return nil when not authorized — no crash, no auth request.
     func schlafStundenLetztteNacht() async -> Double? {
-        await sicherstellenUndHolen()
         guard isVerfuegbar,
               let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return nil }
 
@@ -69,7 +66,6 @@ class HealthKitManager {
     }
 
     func schritteDiesemTag() async -> Int? {
-        await sicherstellenUndHolen()
         guard isVerfuegbar,
               let stepsType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return nil }
 
