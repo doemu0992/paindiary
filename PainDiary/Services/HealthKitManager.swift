@@ -6,9 +6,15 @@ import Observation
 class HealthKitManager {
     static let shared = HealthKitManager()
 
-    private let store = HKHealthStore()
-    var isVerfuegbar: Bool { HKHealthStore.isHealthDataAvailable() }
+    // Persisted flag — only true after user explicitly tapped "Verbinden"
+    // and authorization succeeded WITH the HealthKit entitlement present.
+    // All HealthKit API calls are guarded by this flag, so no code path
+    // can crash the app by calling HealthKit without the entitlement.
+    private(set) var istAktiviert: Bool = UserDefaults.standard.bool(forKey: "healthKitAktiviert")
     private(set) var istAutorisiert = false
+
+    private lazy var store = HKHealthStore()
+    var isVerfuegbar: Bool { HKHealthStore.isHealthDataAvailable() }
 
     private var leseTypen: Set<HKObjectType> {
         var types = Set<HKObjectType>()
@@ -17,48 +23,39 @@ class HealthKitManager {
         return types
     }
 
-    // Must be called explicitly (e.g. from a button tap).
-    // requestAuthorization throws NSException without the HealthKit entitlement —
-    // NSExceptions bypass Swift catch and crash the app. Never call this on launch.
+    // Call only from an explicit user action (button tap).
+    // requestAuthorization throws NSException without the entitlement.
     func berechtigungAnfordern() async {
         guard isVerfuegbar else { return }
         do {
             try await store.requestAuthorization(toShare: [], read: leseTypen)
-            await MainActor.run { istAutorisiert = true }
+            await MainActor.run {
+                istAutorisiert = true
+                istAktiviert = true
+                UserDefaults.standard.set(true, forKey: "healthKitAktiviert")
+            }
         } catch {
             print("HealthKit Fehler: \(error)")
         }
     }
 
-    // Queries return nil when not authorized — no crash, no auth request.
     func schlafStundenLetztteNacht() async -> Double? {
-        guard isVerfuegbar,
+        guard istAktiviert, isVerfuegbar,
               let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return nil }
 
         let kal = Calendar.current
         let heuteStart = kal.startOfDay(for: Date())
         let gesternStart = kal.date(byAdding: .day, value: -1, to: heuteStart)!
-
-        let predicate = HKQuery.predicateForSamples(
-            withStart: gesternStart, end: Date(), options: .strictEndDate
-        )
+        let predicate = HKQuery.predicateForSamples(withStart: gesternStart, end: Date(), options: .strictEndDate)
 
         return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: sleepType,
-                predicate: predicate,
-                limit: HKObjectQueryNoLimit,
-                sortDescriptors: nil
-            ) { _, samples, _ in
+            let query = HKSampleQuery(sampleType: sleepType, predicate: predicate,
+                                      limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
                 guard let samples = samples as? [HKCategorySample] else {
-                    continuation.resume(returning: nil)
-                    return
+                    continuation.resume(returning: nil); return
                 }
-                let schlafen = samples.filter {
-                    $0.value != HKCategoryValueSleepAnalysis.inBed.rawValue
-                }
-                let sek = schlafen.reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
-                let std = sek / 3600
+                let schlafen = samples.filter { $0.value != HKCategoryValueSleepAnalysis.inBed.rawValue }
+                let std = schlafen.reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) } / 3600
                 continuation.resume(returning: std > 0.5 ? min(std, 14) : nil)
             }
             self.store.execute(query)
@@ -66,20 +63,16 @@ class HealthKitManager {
     }
 
     func schritteDiesemTag() async -> Int? {
-        guard isVerfuegbar,
+        guard istAktiviert, isVerfuegbar,
               let stepsType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return nil }
 
         let start = Calendar.current.startOfDay(for: Date())
-        let predicate = HKQuery.predicateForSamples(
-            withStart: start, end: Date(), options: .strictEndDate
-        )
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: Date(), options: .strictEndDate)
 
         return await withCheckedContinuation { continuation in
-            let query = HKStatisticsQuery(
-                quantityType: stepsType,
-                quantitySamplePredicate: predicate,
-                options: .cumulativeSum
-            ) { _, result, _ in
+            let query = HKStatisticsQuery(quantityType: stepsType,
+                                          quantitySamplePredicate: predicate,
+                                          options: .cumulativeSum) { _, result, _ in
                 let summe = result?.sumQuantity()?.doubleValue(for: .count())
                 continuation.resume(returning: summe.map { Int($0) })
             }
