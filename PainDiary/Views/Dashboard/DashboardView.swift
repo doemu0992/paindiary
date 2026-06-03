@@ -19,6 +19,7 @@ struct DashboardView: View {
         ScrollView {
             VStack(spacing: 20) {
                 statistikKarten
+                if !zyklusEintraege.isEmpty { zyklusKarte }
                 schnellLinks
                 schmerzVerlaufChart
                 letzteEintraege
@@ -80,6 +81,61 @@ struct DashboardView: View {
             }
         }
 #endif
+    }
+
+    private var zyklusKarte: some View {
+        let analyse = ZyklusRechner.analyse(eintraege: Array(zyklusEintraege))
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+
+        let tageZylus: String = {
+            if let t = analyse.aktuellerZyklustag { return "Tag \(t)" }
+            return "–"
+        }()
+
+        let tageZuPeriode: String = {
+            guard let np = analyse.naechstePeriodeStart else { return "–" }
+            let diff = kal.dateComponents([.day], from: heute, to: np).day ?? 0
+            return diff <= 0 ? "Heute" : "in \(diff) Tagen"
+        }()
+
+        let fruchtbarFenster: String = {
+            let sorted = analyse.fruchtbareTageSet.filter { $0 >= heute }.sorted()
+            guard let first = sorted.first else { return "–" }
+            var last = first
+            for tag in sorted.dropFirst() {
+                if (kal.dateComponents([.day], from: last, to: tag).day ?? 99) <= 1 { last = tag } else { break }
+            }
+            let fmt = DateFormatter()
+            fmt.dateFormat = "d. MMM"
+            if kal.isDate(first, inSameDayAs: last) { return fmt.string(from: first) }
+            return "\(fmt.string(from: first)) – \(fmt.string(from: last))"
+        }()
+
+        return NavigationLink(destination: ZyklusView()) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Zyklus-Tracker", systemImage: "drop.circle.fill")
+                        .font(.headline)
+                        .foregroundStyle(.pink)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+
+                HStack(spacing: 0) {
+                    ZyklusStatSpalte(titel: "Zyklustag", wert: tageZylus, farbe: .pink)
+                    Divider().frame(height: 36)
+                    ZyklusStatSpalte(titel: "Nächste Periode", wert: tageZuPeriode, farbe: .red)
+                    Divider().frame(height: 36)
+                    ZyklusStatSpalte(titel: "Fruchtbares Fenster", wert: fruchtbarFenster, farbe: .teal)
+                }
+            }
+            .padding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
     }
 
     private var schnellLinks: some View {
@@ -250,6 +306,27 @@ private struct ExportOptionsSheet: View {
     }
 }
 #endif
+
+private struct ZyklusStatSpalte: View {
+    let titel: String
+    let wert: String
+    let farbe: Color
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(wert)
+                .font(.subheadline.bold())
+                .foregroundStyle(farbe)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(titel)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
 
 private struct StatKarte: View {
     let titel: String

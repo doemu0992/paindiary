@@ -13,6 +13,7 @@ import SwiftData
     var versicherungsNummer: String
     var gewichtKg: Double?
     var groesseCm: Double?
+    var fotoData: Data?
     var blutgruppe: String
     var zyklusTrackingAktiv: Bool
     var biometrischesLockAktiv: Bool
