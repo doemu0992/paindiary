@@ -123,7 +123,7 @@ enum ExportZeitraum: String, CaseIterable {
 
 // MARK: - PDF service
 
-class PDFExportService {
+class PDFExportService: @unchecked Sendable {
     static let shared = PDFExportService()
 
     private let W: CGFloat = 595
@@ -134,8 +134,9 @@ class PDFExportService {
     private let blau     = UIColor(red: 0.13, green: 0.40, blue: 0.78, alpha: 1)
     private let hellBlau = UIColor(red: 0.88, green: 0.93, blue: 0.99, alpha: 1)
 
-    /// Call from main thread. All SwiftData objects are copied into plain structs here,
-    /// then PDF rendering runs on a background queue.
+    /// Must be called on the main thread. Copies all SwiftData objects into plain
+    /// structs here, then dispatches PDF rendering to a background queue.
+    @MainActor
     func erstellePDFAsync(
         eintraege: [PainEntry],
         medikamente: [Dauermedikation],
@@ -143,7 +144,7 @@ class PDFExportService {
         zyklusEintraege: [ZyklusEintrag],
         profil: Benutzerprofil?,
         optionen: ExportOptionen,
-        completion: @escaping (URL?) -> Void
+        completion: @escaping @Sendable (URL?) -> Void
     ) {
         // Copy all SwiftData objects into plain structs on main thread
         let patient  = PDFPatientenDaten.aus(profil: profil)
@@ -160,8 +161,7 @@ class PDFExportService {
         let analyse  = ZyklusRechner.analyse(eintraege: zyklusEintraege)
         let zyklus   = zyklusEintraege.sorted { $0.datum > $1.datum }.map(PDFZyklusEintrag.aus)
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self else { completion(nil); return }
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
             let url = self.renderPDF(patient: patient, eintraege: gefiltert,
                                      medikamente: meds, midas: midas,
                                      zyklus: zyklus, analyse: analyse, optionen: optionen)
