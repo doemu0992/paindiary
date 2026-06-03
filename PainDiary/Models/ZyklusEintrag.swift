@@ -3,12 +3,30 @@ import SwiftData
 
 @Model final class ZyklusEintrag {
     var datum: Date = Date()
-    var typ: String = "Periode"
+    // Legacy field — kept for backward compat
+    var typ: String = ""
     var notizen: String = ""
 
-    init(datum: Date = .now, typ: String = "Periode", notizen: String = "") {
+    // Period
+    var istPeriode: Bool = false
+    var blutungsfluss: String = "" // "schmierblutung" | "leicht" | "mittel" | "stark"
+
+    // Symptoms (comma-separated)
+    var symptome: String = ""
+
+    // Ovulation
+    var ovulationstest: String = ""  // "positiv" | "negativ" | "unklar"
+
+    // Cervical mucus
+    var zervixschleim: String = ""   // "trocken" | "klebrig" | "cremig" | "wässrig" | "eiweiss"
+
+    // Basal body temperature (0 = not set)
+    var basaltemperatur: Double = 0
+
+    // Sexual activity
+    var sexuelleAktivitaet: String = "" // "geschützt" | "ungeschützt"
+
+    init(datum: Date = .now) {
         self.datum = datum
-        self.typ = typ
-        self.notizen = notizen
     }
 }
