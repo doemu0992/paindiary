@@ -72,7 +72,7 @@ struct DashboardView: View {
             zyklusEintraege: Array(zyklusEintraege),
             profil: profile.first,
             optionen: exportOptionen
-        ) { url in
+        ) { @MainActor url in
             istAmExportieren = false
             if let url {
                 exportURL = url

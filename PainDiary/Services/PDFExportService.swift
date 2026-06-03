@@ -144,7 +144,7 @@ class PDFExportService: @unchecked Sendable {
         zyklusEintraege: [ZyklusEintrag],
         profil: Benutzerprofil?,
         optionen: ExportOptionen,
-        completion: @escaping @Sendable (URL?) -> Void
+        completion: @escaping @MainActor @Sendable (URL?) -> Void
     ) {
         // Copy all SwiftData objects into plain structs on main thread
         let patient  = PDFPatientenDaten.aus(profil: profil)
@@ -165,7 +165,7 @@ class PDFExportService: @unchecked Sendable {
             let url = self.renderPDF(patient: patient, eintraege: gefiltert,
                                      medikamente: meds, midas: midas,
                                      zyklus: zyklus, analyse: analyse, optionen: optionen)
-            DispatchQueue.main.async { completion(url) }
+            Task { @MainActor in completion(url) }
         }
     }
 
