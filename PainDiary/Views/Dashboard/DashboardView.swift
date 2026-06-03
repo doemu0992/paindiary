@@ -68,6 +68,18 @@ struct DashboardView: View {
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
+
+            NavigationLink(destination: KorrelationsView()) {
+                HStack {
+                    Image(systemName: "chart.xyaxis.line").foregroundStyle(.teal)
+                    Text("Korrelationen").font(.subheadline).fontWeight(.medium)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                }
+                .padding()
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
         }
     }
 

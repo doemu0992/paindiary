@@ -9,8 +9,11 @@ import SwiftData
     var startDatum: Date
     var aktiv: Bool
     var erinnerungAktiv: Bool = false
+    // Komma-getrennte Zeiten "HH:mm,HH:mm" — leer = Standard je nach Frequenz
+    var erinnerungsZeiten: String = ""
 
-    init(name: String = "", dosierung: String = "", frequenz: String = "", startDatum: Date = .now, aktiv: Bool = true) {
+    init(name: String = "", dosierung: String = "", frequenz: String = "",
+         startDatum: Date = .now, aktiv: Bool = true) {
         self.name = name
         self.dosierung = dosierung
         self.frequenz = frequenz

@@ -12,6 +12,7 @@ struct PainDiaryApp: App {
             ArztKontakt.self,
             NotfallKontakt.self,
             Dauermedikation.self,
+            EinnahmeLog.self,
             MIDASBewertung.self,
             ZyklusEintrag.self
         ])
