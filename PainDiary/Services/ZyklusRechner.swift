@@ -74,8 +74,21 @@ struct ZyklusRechner {
         }
         let avgPeriod = periodDauern.isEmpty ? 5.0 : periodDauern.reduce(0, +) / Double(periodDauern.count)
 
-        // Current cycle day
+        // Predicted ovulation: prefer next upcoming one (current cycle if not yet past, else next cycle)
         let heute = kal.startOfDay(for: Date())
+        let aktuellerZyklusOv: Date? = starts.last.map {
+            kal.date(byAdding: .day, value: Int(avgZyklus) - 14, to: $0)!
+        }
+        let naechsteOvulation: Date?
+        if let ov = aktuellerZyklusOv, kal.startOfDay(for: ov) >= heute {
+            naechsteOvulation = ov
+        } else if let np = naechstePeriode {
+            naechsteOvulation = kal.date(byAdding: .day, value: Int(avgZyklus) - 14, to: np)
+        } else {
+            naechsteOvulation = nil
+        }
+
+        // Current cycle day
         let aktuellerTag: Int? = starts.last.map {
             (kal.dateComponents([.day], from: $0, to: heute).day ?? 0) + 1
         }
@@ -110,9 +123,7 @@ struct ZyklusRechner {
             variation: variation,
             aktuellerZyklustag: aktuellerTag,
             naechstePeriodeStart: naechstePeriode,
-            vorhergesagteOvulation: starts.last.map {
-                Calendar.current.date(byAdding: .day, value: Int(avgZyklus) - 14, to: $0)!
-            } ?? naechstePeriode.map { Calendar.current.date(byAdding: .day, value: -14, to: $0)! },
+            vorhergesagteOvulation: naechsteOvulation,
             zyklusStarts: starts,
             periodeTageSet: periodeTageSet,
             fruchtbareTageSet: fruchtbarSet,

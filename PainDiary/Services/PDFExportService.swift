@@ -74,6 +74,26 @@ struct PDFMidas {
     }
 }
 
+struct PDFZyklusEintrag {
+    var datum: Date
+    var istPeriode: Bool
+    var blutungsfluss: String
+    var symptome: [String]
+    var ovulationstest: String
+    var basaltemperatur: Double
+
+    static func aus(e: ZyklusEintrag) -> PDFZyklusEintrag {
+        PDFZyklusEintrag(
+            datum: e.datum,
+            istPeriode: e.istPeriode || e.typ == "Periode",
+            blutungsfluss: e.blutungsfluss,
+            symptome: e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty },
+            ovulationstest: e.ovulationstest,
+            basaltemperatur: e.basaltemperatur
+        )
+    }
+}
+
 // MARK: - Export options
 
 struct ExportOptionen {
@@ -81,6 +101,7 @@ struct ExportOptionen {
     var mitZusammenfassung: Bool = true
     var mitMedikamente: Bool = true
     var mitEintraege: Bool = true
+    var mitZyklus: Bool = true
 }
 
 enum ExportZeitraum: String, CaseIterable {
@@ -119,6 +140,7 @@ class PDFExportService {
         eintraege: [PainEntry],
         medikamente: [Dauermedikation],
         midasBewertungen: [MIDASBewertung],
+        zyklusEintraege: [ZyklusEintrag],
         profil: Benutzerprofil?,
         optionen: ExportOptionen,
         completion: @escaping (URL?) -> Void
@@ -135,11 +157,14 @@ class PDFExportService {
         }
         let meds     = medikamente.map(PDFMedikament.aus)
         let midas    = midasBewertungen.sorted { $0.datum > $1.datum }.map(PDFMidas.aus)
+        let analyse  = ZyklusRechner.analyse(eintraege: zyklusEintraege)
+        let zyklus   = zyklusEintraege.sorted { $0.datum > $1.datum }.map(PDFZyklusEintrag.aus)
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { completion(nil); return }
             let url = self.renderPDF(patient: patient, eintraege: gefiltert,
-                                     medikamente: meds, midas: midas, optionen: optionen)
+                                     medikamente: meds, midas: midas,
+                                     zyklus: zyklus, analyse: analyse, optionen: optionen)
             DispatchQueue.main.async { completion(url) }
         }
     }
@@ -151,6 +176,8 @@ class PDFExportService {
         eintraege: [PDFEintrag],
         medikamente: [PDFMedikament],
         midas: [PDFMidas],
+        zyklus: [PDFZyklusEintrag],
+        analyse: ZyklusAnalyse,
         optionen: ExportOptionen
     ) -> URL? {
         let dateiname = "Schmerztagebuch_\(fmt(Date())).pdf"
@@ -159,21 +186,28 @@ class PDFExportService {
 
         do {
             try renderer.writePDF(to: url) { ctx in
+                var seite = 1
                 ctx.beginPage()
                 deckblatt(ctx: ctx.cgContext, patient: patient, optionen: optionen, anzahl: eintraege.count)
 
                 if optionen.mitZusammenfassung && !eintraege.isEmpty {
-                    ctx.beginPage()
-                    zusammenfassung(ctx: ctx.cgContext, eintraege: eintraege, midas: midas)
+                    seite += 1; ctx.beginPage()
+                    zusammenfassung(ctx: ctx.cgContext, eintraege: eintraege, midas: midas, seite: seite)
                 }
 
                 if optionen.mitMedikamente && !medikamente.isEmpty {
-                    ctx.beginPage()
-                    medikamenteSeite(ctx: ctx.cgContext, medikamente: medikamente)
+                    seite += 1; ctx.beginPage()
+                    medikamenteSeite(ctx: ctx.cgContext, medikamente: medikamente, seite: seite)
+                }
+
+                if optionen.mitZyklus && !zyklus.isEmpty {
+                    seite += 1; ctx.beginPage()
+                    zyklusSeite(ctx: ctx.cgContext, eintraege: zyklus, analyse: analyse, seite: seite)
                 }
 
                 if optionen.mitEintraege && !eintraege.isEmpty {
-                    eintraegeSeiten(ctx: ctx, eintraege: eintraege)
+                    seite += 1
+                    eintraegeSeiten(ctx: ctx, eintraege: eintraege, startSeite: seite)
                 }
             }
             return url
@@ -267,7 +301,7 @@ class PDFExportService {
 
     // MARK: - Page 2: Summary
 
-    private func zusammenfassung(ctx: CGContext, eintraege: [PDFEintrag], midas: [PDFMidas]) {
+    private func zusammenfassung(ctx: CGContext, eintraege: [PDFEintrag], midas: [PDFMidas], seite: Int) {
         seitenKopf(ctx: ctx, titel: "Zusammenfassung", seite: 2)
         var y: CGFloat = rand + 52
 
@@ -346,12 +380,12 @@ class PDFExportService {
             y += 18
         }
 
-        fusszeile(ctx: ctx, seite: 2)
+        fusszeile(ctx: ctx, seite: seite)
     }
 
     // MARK: - Page 3: Medications
 
-    private func medikamenteSeite(ctx: CGContext, medikamente: [PDFMedikament]) {
+    private func medikamenteSeite(ctx: CGContext, medikamente: [PDFMedikament], seite: Int) {
         seitenKopf(ctx: ctx, titel: "Medikamente", seite: 3)
         var y: CGFloat = rand + 52
 
@@ -396,13 +430,115 @@ class PDFExportService {
             }
         }
 
-        fusszeile(ctx: ctx, seite: 3)
+        fusszeile(ctx: ctx, seite: seite)
     }
 
-    // MARK: - Page 4+: Entries
+    // MARK: - Zyklus page
 
-    private func eintraegeSeiten(ctx: UIGraphicsPDFRendererContext, eintraege: [PDFEintrag]) {
-        var seite = 4
+    private func zyklusSeite(ctx: CGContext, eintraege: [PDFZyklusEintrag], analyse: ZyklusAnalyse, seite: Int) {
+        seitenKopf(ctx: ctx, titel: "Zyklusübersicht", seite: seite)
+        var y: CGFloat = rand + 52
+
+        // Stat boxes
+        let boxW = (iw - 8) / 4
+        statBox(ctx: ctx, x: rand,                 y: y, w: boxW, h: 72,
+                titel: "Ø Zykluslänge",   wert: String(format: "%.0f Tage", analyse.zykluslaenge),   farbe: .systemPink)
+        statBox(ctx: ctx, x: rand + boxW + 3,       y: y, w: boxW, h: 72,
+                titel: "Ø Periodendauer", wert: String(format: "%.0f Tage", analyse.periodendauer),  farbe: .systemRed)
+        statBox(ctx: ctx, x: rand + (boxW + 3) * 2, y: y, w: boxW, h: 72,
+                titel: "Variation",       wert: String(format: "±%.1f Tage", analyse.variation),     farbe: .systemOrange)
+        statBox(ctx: ctx, x: rand + (boxW + 3) * 3, y: y, w: boxW, h: 72,
+                titel: "Zyklen erfasst",  wert: "\(analyse.zyklusStarts.count)",                     farbe: .systemPurple)
+        y += 88
+
+        // Predictions box
+        let predRows: [(String, String)] = [
+            analyse.naechstePeriodeStart.map { ("Nächste Periode (erwartet)", fmt($0)) },
+            analyse.vorhergesagteOvulation.map { ("Nächster Eisprung (erwartet)", fmt($0)) },
+            analyse.vorhergesagteOvulation.flatMap { ov -> (String, String)? in
+                let kal = Calendar.current
+                guard let start = kal.date(byAdding: .day, value: -5, to: ov),
+                      let end   = kal.date(byAdding: .day, value: 1, to: ov) else { return nil }
+                return ("Fruchtbares Fenster", "\(fmt(start)) – \(fmt(end))")
+            }
+        ].compactMap { $0 }
+
+        if !predRows.isEmpty {
+            let ph = CGFloat(predRows.count) * 18 + 40
+            infoBox(ctx: ctx, x: rand, y: y, w: iw, h: ph, titel: "Aktuelle Vorhersagen", rows: predRows)
+            y += ph + 14
+        }
+
+        // Cycle starts table
+        trennlinie(ctx: ctx, y: y); y += 14
+        draw("Zyklushistorie", at: CGPoint(x: rand, y: y),
+             font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+        y += 20
+
+        let cols: [CGFloat] = [rand, rand + 140, rand + 240, rand + 340]
+        tabellenKopf(ctx: ctx, y: y, cols: cols, headers: ["Zyklusbeginn", "Länge", "Periodendauer", "Eis. Vorhersage"])
+        y += 26
+
+        let kal = Calendar.current
+        for (i, start) in analyse.zyklusStarts.reversed().enumerated() {
+            if y > H - rand - 30 { break }
+            let laenge: String
+            if i < analyse.zyklusStarts.count - 1 {
+                let next = analyse.zyklusStarts.reversed()[i + 1]
+                let d = kal.dateComponents([.day], from: start, to: next).day ?? 0
+                laenge = "\(d) Tage"
+            } else {
+                laenge = "laufend"
+            }
+            let periodDauer: Int = {
+                var n = 0; var check = start
+                while eintraege.contains(where: { $0.istPeriode && kal.isDate($0.datum, inSameDayAs: check) }) {
+                    n += 1
+                    check = kal.date(byAdding: .day, value: 1, to: check) ?? check
+                }
+                return n
+            }()
+            let eisprung = kal.date(byAdding: .day, value: Int(analyse.zykluslaenge) - 14, to: start)
+            tabellenZeile(ctx: ctx, y: y, cols: cols,
+                          werte: [fmt(start), laenge,
+                                  periodDauer > 0 ? "\(periodDauer) Tage" : "–",
+                                  eisprung.map { fmt($0) } ?? "–"],
+                          fett: [true, false, false, false])
+            y += 20
+            trennlinie(ctx: ctx, y: y - 1, alpha: 0.1)
+        }
+        y += 10
+
+        // Symptom frequency
+        trennlinie(ctx: ctx, y: y); y += 14
+        draw("Häufige Symptome", at: CGPoint(x: rand, y: y),
+             font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+        y += 20
+
+        let symptomMap = eintraege.flatMap(\.symptome)
+            .reduce(into: [:]) { $0[$1, default: 0] += 1 }
+        let sortiert = symptomMap.sorted { $0.value > $1.value }
+        let maxS = max(1, sortiert.first?.value ?? 1)
+
+        for (symptom, count) in sortiert.prefix(8) {
+            if y > H - rand - 30 { break }
+            let barW = CGFloat(count) / CGFloat(maxS) * (iw - 140)
+            draw(symptom, at: CGPoint(x: rand, y: y + 2),
+                 font: .systemFont(ofSize: 10), color: .label)
+            ctx.setFillColor(UIColor.systemPink.withAlphaComponent(0.5).cgColor)
+            ctx.fill(CGRect(x: rand + 130, y: y + 2, width: barW, height: 12))
+            draw("\(count)×", at: CGPoint(x: rand + 130 + barW + 4, y: y + 2),
+                 font: .systemFont(ofSize: 9), color: .secondaryLabel)
+            y += 18
+        }
+
+        fusszeile(ctx: ctx, seite: seite)
+    }
+
+    // MARK: - Entries pages
+
+    private func eintraegeSeiten(ctx: UIGraphicsPDFRendererContext, eintraege: [PDFEintrag], startSeite: Int) {
+        var seite = startSeite
         ctx.beginPage()
         seitenKopf(ctx: ctx.cgContext, titel: "Schmerzeinträge", seite: seite)
         var y: CGFloat = rand + 52

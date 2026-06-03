@@ -7,6 +7,7 @@ struct DashboardView: View {
     @Query private var profile: [Benutzerprofil]
     @Query private var medikamente: [Dauermedikation]
     @Query(sort: \MIDASBewertung.datum, order: .reverse) private var midasBewertungen: [MIDASBewertung]
+    @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @State private var viewModel = DashboardViewModel()
     @State private var exportURL: URL? = nil
     @State private var exportTeilen = false
@@ -45,7 +46,10 @@ struct DashboardView: View {
         }
 #if os(iOS)
         .sheet(isPresented: $exportOptionsAnzeigen) {
-            ExportOptionsSheet(optionen: $exportOptionen) {
+            ExportOptionsSheet(
+                optionen: $exportOptionen,
+                hatZyklusDaten: !zyklusEintraege.isEmpty
+            ) {
                 exportOptionsAnzeigen = false
                 exportierePDF()
             }
@@ -65,6 +69,7 @@ struct DashboardView: View {
             eintraege: Array(eintraege),
             medikamente: Array(medikamente),
             midasBewertungen: Array(midasBewertungen),
+            zyklusEintraege: Array(zyklusEintraege),
             profil: profile.first,
             optionen: exportOptionen
         ) { url in
@@ -206,6 +211,7 @@ struct DashboardView: View {
 private struct ExportOptionsSheet: View {
     @Binding var optionen: ExportOptionen
     @Environment(\.dismiss) private var dismiss
+    let hatZyklusDaten: Bool
     let onExport: () -> Void
 
     var body: some View {
@@ -223,6 +229,9 @@ private struct ExportOptionsSheet: View {
                 Section("Abschnitte") {
                     Toggle("Zusammenfassung", isOn: $optionen.mitZusammenfassung)
                     Toggle("Medikamente", isOn: $optionen.mitMedikamente)
+                    if hatZyklusDaten {
+                        Toggle("Zyklus", isOn: $optionen.mitZyklus)
+                    }
                     Toggle("Alle Einträge", isOn: $optionen.mitEintraege)
                 }
             }
