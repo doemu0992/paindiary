@@ -33,11 +33,33 @@ private struct ProfilInhaltView: View {
         persoenlicheDaten
         medizinischeDaten
         medikamenteLink
+        midasLink
+        zyklusLink
         diagnoseSektion
         allergienSektion
         aerzte
         notfallkontakte
         einstellungen
+    }
+
+    private var midasLink: some View {
+        Section {
+            NavigationLink(destination: MIDASView()) {
+                Label("MIDAS-Fragebogen", systemImage: "brain.head.profile")
+            }
+        } header: {
+            Text("Kopfschmerz-Assessment")
+        }
+    }
+
+    private var zyklusLink: some View {
+        Section {
+            NavigationLink(destination: ZyklusView()) {
+                Label("Zyklus-Tracking", systemImage: "drop.fill")
+            }
+        } header: {
+            Text("Zyklus")
+        }
     }
 
     private var medikamenteLink: some View {

@@ -8,6 +8,7 @@ struct AddEntryView: View {
     var eintrag: PainEntry? = nil
 
     @State private var schritt = 0
+    @State private var datum = Date()
     @State private var koerperstelle = ""
     @State private var schmerzstaerke = 5
     @State private var schmerzart = ""
@@ -32,9 +33,9 @@ struct AddEntryView: View {
                     .padding(.top, 8)
 
                 HStack {
-                    Text("Schritt \(schritt + 1) von \(gesamtSchritte)")
+                    DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
+                        .labelsHidden()
                         .font(.caption)
-                        .foregroundStyle(.secondary)
                     Spacer()
                     wetterBadge
                 }
@@ -131,6 +132,7 @@ struct AddEntryView: View {
 
     private func ladeVorhandeneWerte() {
         guard let e = eintrag else { return }
+        datum = e.datum
         koerperstelle = e.koerperstelle
         schmerzstaerke = e.schmerzstaerke
         schmerzart = e.schmerzart
@@ -158,7 +160,7 @@ struct AddEntryView: View {
             e.notizen = notizen
         } else {
             let neu = PainEntry(
-                datum: Date(),
+                datum: datum,
                 schmerzstaerke: schmerzstaerke,
                 koerperstelle: koerperstelle,
                 schmerzart: schmerzart,

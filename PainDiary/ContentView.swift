@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @AppStorage("onboardingAbgeschlossen") private var onboardingAbgeschlossen = false
     @State private var ausgewaehlterTab = 0
     @State private var neuerEintragAnzeigen = false
 
@@ -39,6 +40,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $neuerEintragAnzeigen) {
             AddEntryView()
+        }
+        .fullScreenCover(isPresented: .constant(!onboardingAbgeschlossen)) {
+            OnboardingView()
         }
     }
 #endif

@@ -11,7 +11,9 @@ struct PainDiaryApp: App {
             Allergie.self,
             ArztKontakt.self,
             NotfallKontakt.self,
-            Dauermedikation.self
+            Dauermedikation.self,
+            MIDASBewertung.self,
+            ZyklusEintrag.self
         ])
 
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .automatic)

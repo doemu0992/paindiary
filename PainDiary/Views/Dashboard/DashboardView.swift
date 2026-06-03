@@ -4,12 +4,21 @@ import Charts
 
 struct DashboardView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
+    @Query private var profile: [Benutzerprofil]
     @State private var viewModel = DashboardViewModel()
+    @State private var exportURL: URL? = nil
+    @State private var exportTeilen = false
+
+    private var patientenName: String {
+        guard let p = profile.first else { return "" }
+        return "\(p.vorname) \(p.nachname)".trimmingCharacters(in: .whitespaces)
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 statistikKarten
+                schnellLinks
                 schmerzVerlaufChart
                 letzteEintraege
             }
@@ -18,6 +27,48 @@ struct DashboardView: View {
         .navigationTitle("Übersicht")
         .onChange(of: eintraege) { _, neu in viewModel.eintraege = neu }
         .onAppear { viewModel.eintraege = eintraege }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    exportierePDF()
+                } label: {
+                    Label("Exportieren", systemImage: "square.and.arrow.up")
+                }
+                .disabled(eintraege.isEmpty)
+            }
+        }
+#if os(iOS)
+        .sheet(isPresented: $exportTeilen) {
+            if let url = exportURL {
+                ShareSheet(url: url)
+            }
+        }
+#endif
+    }
+
+    private func exportierePDF() {
+#if os(iOS)
+        if let url = PDFExportService.shared.erstellePDF(eintraege: Array(eintraege), patientenName: patientenName) {
+            exportURL = url
+            exportTeilen = true
+        }
+#endif
+    }
+
+    private var schnellLinks: some View {
+        HStack(spacing: 12) {
+            NavigationLink(destination: MIDASView()) {
+                HStack {
+                    Image(systemName: "brain.head.profile").foregroundStyle(.purple)
+                    Text("MIDAS-Score").font(.subheadline).fontWeight(.medium)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                }
+                .padding()
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private var statistikKarten: some View {
