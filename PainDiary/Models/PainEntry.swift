@@ -18,7 +18,6 @@ import SwiftData
     var wetterTemperatur: Double?
     var wetterCode: Int?
     var wetterWind: Double?
-    var luftdruckHpa: Double?
 
     init(
         datum: Date = .now,
@@ -34,8 +33,7 @@ import SwiftData
         schlafStunden: Double = 0,
         wetterTemperatur: Double? = nil,
         wetterCode: Int? = nil,
-        wetterWind: Double? = nil,
-        luftdruckHpa: Double? = nil
+        wetterWind: Double? = nil
     ) {
         self.datum = datum
         self.schmerzstaerke = schmerzstaerke
@@ -51,6 +49,5 @@ import SwiftData
         self.wetterTemperatur = wetterTemperatur
         self.wetterCode = wetterCode
         self.wetterWind = wetterWind
-        self.luftdruckHpa = luftdruckHpa
     }
 }

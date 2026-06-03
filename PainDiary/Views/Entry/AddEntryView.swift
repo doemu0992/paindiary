@@ -181,8 +181,7 @@ struct AddEntryView: View {
                 schlafStunden: schlafStunden,
                 wetterTemperatur: wetterSnap?.temperatur,
                 wetterCode: wetterSnap?.code,
-                wetterWind: wetterSnap?.windgeschwindigkeit,
-                luftdruckHpa: wetterSnap?.luftdruckHpa
+                wetterWind: wetterSnap?.windgeschwindigkeit
             )
             modelContext.insert(neu)
         }
