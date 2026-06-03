@@ -8,16 +8,12 @@ class HealthKitManager {
 
     private let store = HKHealthStore()
     var isVerfuegbar: Bool { HKHealthStore.isHealthDataAvailable() }
-    var istAutorisiert = false
+    private(set) var istAutorisiert = false
 
     private var leseTypen: Set<HKObjectType> {
         var types = Set<HKObjectType>()
-        if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
-            types.insert(sleep)
-        }
-        if let steps = HKObjectType.quantityType(forIdentifier: .stepCount) {
-            types.insert(steps)
-        }
+        if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { types.insert(sleep) }
+        if let steps = HKObjectType.quantityType(forIdentifier: .stepCount) { types.insert(steps) }
         return types
     }
 
@@ -31,7 +27,14 @@ class HealthKitManager {
         }
     }
 
+    // Ensures authorization is requested before any query runs.
+    private func sicherstellenUndHolen() async {
+        guard isVerfuegbar, !istAutorisiert else { return }
+        await berechtigungAnfordern()
+    }
+
     func schlafStundenLetztteNacht() async -> Double? {
+        await sicherstellenUndHolen()
         guard isVerfuegbar,
               let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return nil }
 
@@ -40,9 +43,7 @@ class HealthKitManager {
         let gesternStart = kal.date(byAdding: .day, value: -1, to: heuteStart)!
 
         let predicate = HKQuery.predicateForSamples(
-            withStart: gesternStart,
-            end: Date(),
-            options: .strictEndDate
+            withStart: gesternStart, end: Date(), options: .strictEndDate
         )
 
         return await withCheckedContinuation { continuation in
@@ -68,6 +69,7 @@ class HealthKitManager {
     }
 
     func schritteDiesemTag() async -> Int? {
+        await sicherstellenUndHolen()
         guard isVerfuegbar,
               let stepsType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return nil }
 
