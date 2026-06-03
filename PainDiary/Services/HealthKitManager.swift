@@ -13,7 +13,7 @@ class HealthKitManager {
     private(set) var istAktiviert: Bool = UserDefaults.standard.bool(forKey: "healthKitAktiviert")
     private(set) var istAutorisiert = false
 
-    private lazy var store = HKHealthStore()
+    private let store = HKHealthStore()
     var isVerfuegbar: Bool { HKHealthStore.isHealthDataAvailable() }
 
     private var leseTypen: Set<HKObjectType> {
