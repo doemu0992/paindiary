@@ -5,14 +5,13 @@ import Charts
 struct DashboardView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query private var profile: [Benutzerprofil]
+    @Query private var medikamente: [Dauermedikation]
+    @Query(sort: \MIDASBewertung.datum, order: .reverse) private var midasBewertungen: [MIDASBewertung]
     @State private var viewModel = DashboardViewModel()
     @State private var exportURL: URL? = nil
     @State private var exportTeilen = false
-
-    private var patientenName: String {
-        guard let p = profile.first else { return "" }
-        return "\(p.vorname) \(p.nachname)".trimmingCharacters(in: .whitespaces)
-    }
+    @State private var exportOptionsAnzeigen = false
+    @State private var exportOptionen = ExportOptionen()
 
     var body: some View {
         ScrollView {
@@ -30,7 +29,7 @@ struct DashboardView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    exportierePDF()
+                    exportOptionsAnzeigen = true
                 } label: {
                     Label("Exportieren", systemImage: "square.and.arrow.up")
                 }
@@ -38,6 +37,12 @@ struct DashboardView: View {
             }
         }
 #if os(iOS)
+        .sheet(isPresented: $exportOptionsAnzeigen) {
+            ExportOptionsSheet(optionen: $exportOptionen) {
+                exportOptionsAnzeigen = false
+                exportierePDF()
+            }
+        }
         .sheet(isPresented: $exportTeilen) {
             if let url = exportURL {
                 ShareSheet(url: url)
@@ -48,7 +53,13 @@ struct DashboardView: View {
 
     private func exportierePDF() {
 #if os(iOS)
-        if let url = PDFExportService.shared.erstellePDF(eintraege: Array(eintraege), patientenName: patientenName) {
+        if let url = PDFExportService.shared.erstellePDF(
+            eintraege: Array(eintraege),
+            medikamente: Array(medikamente),
+            midasBewertungen: Array(midasBewertungen),
+            profil: profile.first,
+            optionen: exportOptionen
+        ) {
             exportURL = url
             exportTeilen = true
         }
@@ -179,6 +190,46 @@ struct DashboardView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 }
+
+#if os(iOS)
+private struct ExportOptionsSheet: View {
+    @Binding var optionen: ExportOptionen
+    @Environment(\.dismiss) private var dismiss
+    let onExport: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Zeitraum") {
+                    Picker("Zeitraum", selection: $optionen.zeitraum) {
+                        ForEach(ExportZeitraum.allCases, id: \.self) { z in
+                            Text(z.rawValue).tag(z)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                }
+                Section("Abschnitte") {
+                    Toggle("Zusammenfassung", isOn: $optionen.mitZusammenfassung)
+                    Toggle("Medikamente", isOn: $optionen.mitMedikamente)
+                    Toggle("Alle Einträge", isOn: $optionen.mitEintraege)
+                }
+            }
+            .navigationTitle("PDF exportieren")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Exportieren", action: onExport)
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+}
+#endif
 
 private struct StatKarte: View {
     let titel: String
