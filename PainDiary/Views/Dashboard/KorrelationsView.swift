@@ -17,7 +17,6 @@ struct KorrelationsView: View {
                 } else {
                     wochentagChart
                     schlafSchmerzChart
-                    stressSchmerzChart
                     wetterSchmerzChart
                 }
             }
@@ -125,83 +124,6 @@ struct KorrelationsView: View {
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    // MARK: - Stress ↔ Schmerz
-
-    private var stressDaten: [(level: String, schmerz: Double, anzahl: Int)] {
-        let labels = ["", "Entspannt", "Leicht", "Mässig", "Hoch", "Extrem"]
-        return (1...5).compactMap { level in
-            let treffer = eintraege.filter { ($0.stressLevel ?? 0) == level }
-            guard !treffer.isEmpty else { return nil }
-            let avg = Double(treffer.map(\.schmerzstaerke).reduce(0, +)) / Double(treffer.count)
-            return (level: labels[level], schmerz: avg, anzahl: treffer.count)
-        }
-    }
-
-    private var stressSchmerzChart: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Stress ↔ Schmerz")
-                .font(.headline)
-            Text("Ø Schmerzstärke je Stresslevel")
-                .font(.caption).foregroundStyle(.secondary)
-
-            if stressDaten.count < 2 {
-                Text("Noch zu wenig Daten. Trage bei neuen Einträgen den Stresslevel ein.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                Chart(stressDaten, id: \.level) { punkt in
-                    BarMark(
-                        x: .value("Stress", punkt.level),
-                        y: .value("Schmerz", punkt.schmerz)
-                    )
-                    .foregroundStyle(stressFarbe(punkt.level).gradient)
-                    .cornerRadius(6)
-                    .annotation(position: .top) {
-                        Text(String(format: "%.1f", punkt.schmerz))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .chartYScale(domain: 0...10)
-                .chartYAxis { AxisMarks(values: [0, 2, 4, 6, 8, 10]) }
-                .frame(height: 180)
-
-                let korr = korrelation(
-                    eintraege.filter { ($0.stressLevel ?? 0) > 0 }.map { Double($0.stressLevel ?? 0) },
-                    eintraege.filter { ($0.stressLevel ?? 0) > 0 }.map { Double($0.schmerzstaerke) }
-                )
-                HStack {
-                    Image(systemName: korrelationsSymbol(korr))
-                        .foregroundStyle(korrelationsFarbe(korr))
-                    Text(stressKorrelationsText(korr))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private func stressFarbe(_ label: String) -> Color {
-        switch label {
-        case "Entspannt": return .green
-        case "Leicht":    return .mint
-        case "Mässig":    return .yellow
-        case "Hoch":      return .orange
-        case "Extrem":    return .red
-        default:          return .secondary
-        }
-    }
-
-    private func stressKorrelationsText(_ r: Double) -> String {
-        switch abs(r) {
-        case 0.7...: return r > 0 ? "Starker Zusammenhang: hoher Stress → mehr Schmerz" : "Starke negative Korrelation"
-        case 0.4...: return r > 0 ? "Mittlerer Zusammenhang: Stress beeinflusst Schmerz" : "Mittlere negative Korrelation"
-        case 0.2...: return "Schwacher Zusammenhang erkennbar"
-        default:     return "Kein klarer Zusammenhang zwischen Stress und Schmerz"
-        }
     }
 
     // MARK: - Wetter ↔ Schmerz

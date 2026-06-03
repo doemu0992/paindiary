@@ -1,11 +1,17 @@
 import SwiftUI
-import SwiftData
 
+// WellnessView nutzt UserDefaults statt SwiftData — kein @Model im Schema nötig.
 struct WellnessView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \TagesWohlbefinden.datum, order: .reverse) private var eintraege: [TagesWohlbefinden]
+    @State private var wasserMl: Int = 0
+    @State private var wasserZielMl: Int = 2000
 
-    @State private var heuteEintrag: TagesWohlbefinden? = nil
+    private static func datumKey(_ offset: Int = 0) -> String {
+        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+        let datum = Calendar.current.date(byAdding: .day, value: offset, to: Date()) ?? Date()
+        return df.string(from: datum)
+    }
+    private static let zielKey = "wasserZielMl"
+    private func wasserKey(_ offset: Int = 0) -> String { "wasserMl_\(Self.datumKey(offset))" }
 
     var body: some View {
         NavigationStack {
@@ -19,30 +25,22 @@ struct WellnessView: View {
             }
             .navigationTitle("Wohlbefinden")
         }
-        .onAppear {
-            stelleHeuteEintragSicher()
-        }
+        .onAppear { ladeWasserDaten() }
     }
 
     // MARK: - Wasser-Tracker
 
     private var wasserTrackerKarte: some View {
-        let eintrag = heuteEintrag
-        let wasserMl = eintrag?.wasserMl ?? 0
-        let wasserZiel = eintrag?.wasserZielMl ?? 2000
-        let fortschritt = min(Double(wasserMl) / Double(wasserZiel), 1.0)
-
+        let fortschritt = min(Double(wasserMl) / Double(wasserZielMl), 1.0)
         return VStack(spacing: 16) {
             HStack {
                 Label("Wasser-Tracker", systemImage: "drop.fill")
-                    .font(.headline)
-                    .foregroundStyle(.teal)
+                    .font(.headline).foregroundStyle(.teal)
                 Spacer()
             }
 
             ZStack {
-                Circle()
-                    .stroke(Color.teal.opacity(0.15), lineWidth: 14)
+                Circle().stroke(Color.teal.opacity(0.15), lineWidth: 14)
                 Circle()
                     .trim(from: 0, to: fortschritt)
                     .stroke(Color.teal, style: StrokeStyle(lineWidth: 14, lineCap: .round))
@@ -52,12 +50,9 @@ struct WellnessView: View {
                     Text("\(wasserMl)")
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundStyle(.teal)
-                    Text("von \(wasserZiel) ml")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text("von \(wasserZielMl) ml").font(.caption).foregroundStyle(.secondary)
                     Text(String(format: "%.0f%%", fortschritt * 100))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
             .frame(width: 160, height: 160)
@@ -67,9 +62,7 @@ struct WellnessView: View {
                 ForEach([150, 200, 330, 500], id: \.self) { menge in
                     Button { trinken(ml: menge) } label: {
                         VStack(spacing: 4) {
-                            Image(systemName: "drop.fill")
-                                .font(.caption)
-                                .foregroundStyle(.teal)
+                            Image(systemName: "drop.fill").font(.caption).foregroundStyle(.teal)
                             Text("+\(menge)").font(.caption.bold())
                             Text("ml").font(.caption2).foregroundStyle(.secondary)
                         }
@@ -83,11 +76,11 @@ struct WellnessView: View {
 
             if wasserMl > 0 {
                 Button {
-                    heuteEintrag?.wasserMl = max(0, wasserMl - 150)
+                    wasserMl = max(0, wasserMl - 150)
+                    UserDefaults.standard.set(wasserMl, forKey: wasserKey())
                 } label: {
                     Label("Rückgängig", systemImage: "arrow.uturn.backward")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -98,15 +91,15 @@ struct WellnessView: View {
                 Text("Tagesziel").font(.subheadline)
                 Spacer()
                 Stepper(
-                    "\(wasserZiel) ml",
-                    value: Binding(
-                        get: { wasserZiel },
-                        set: { heuteEintrag?.wasserZielMl = $0 }
-                    ),
+                    "\(wasserZielMl) ml",
+                    value: $wasserZielMl,
                     in: 1000...4000,
                     step: 100
                 )
                 .fixedSize()
+                .onChange(of: wasserZielMl) { _, neu in
+                    UserDefaults.standard.set(neu, forKey: Self.zielKey)
+                }
             }
         }
         .padding()
@@ -116,15 +109,13 @@ struct WellnessView: View {
     // MARK: - Streak
 
     private var streakKarte: some View {
-        VStack(spacing: 10) {
+        let streak = berechneStreak()
+        return VStack(spacing: 10) {
             HStack {
                 Label("Wasser-Streak", systemImage: "flame.fill")
-                    .font(.headline)
-                    .foregroundStyle(.orange)
+                    .font(.headline).foregroundStyle(.orange)
                 Spacer()
             }
-
-            let streak = berechneStreak()
 
             HStack(spacing: 16) {
                 VStack(spacing: 4) {
@@ -137,10 +128,8 @@ struct WellnessView: View {
                 .frame(maxWidth: .infinity)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    streakInfo(symbol: "drop.fill", farbe: .teal,
-                               text: "Getrunken: \(heuteEintrag?.wasserMl ?? 0) ml")
-                    streakInfo(symbol: "checkmark.circle.fill", farbe: .green,
-                               text: "Ziel: \(heuteEintrag?.wasserZielMl ?? 2000) ml")
+                    streakInfo(symbol: "drop.fill", farbe: .teal, text: "Getrunken: \(wasserMl) ml")
+                    streakInfo(symbol: "checkmark.circle.fill", farbe: .green, text: "Ziel: \(wasserZielMl) ml")
                     if streak >= 7 {
                         streakInfo(symbol: "star.fill", farbe: .yellow, text: "Wochenziel erreicht!")
                     } else if streak >= 3 {
@@ -165,36 +154,30 @@ struct WellnessView: View {
 
     // MARK: - Helpers
 
-    private func stelleHeuteEintragSicher() {
-        let start = Calendar.current.startOfDay(for: Date())
-        if let existing = eintraege.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: start) }) {
-            heuteEintrag = existing
-        } else {
-            let neu = TagesWohlbefinden(datum: start)
-            modelContext.insert(neu)
-            heuteEintrag = neu
-        }
+    private func ladeWasserDaten() {
+        let gespeichert = UserDefaults.standard.integer(forKey: wasserKey())
+        wasserMl = gespeichert
+        let ziel = UserDefaults.standard.integer(forKey: Self.zielKey)
+        wasserZielMl = ziel > 0 ? ziel : 2000
     }
 
     private func trinken(ml: Int) {
-        heuteEintrag?.wasserMl += ml
+        wasserMl += ml
+        UserDefaults.standard.set(wasserMl, forKey: wasserKey())
     }
 
     private func berechneStreak() -> Int {
-        let kal = Calendar.current
-        let sortiert = eintraege.sorted { $0.datum > $1.datum }
+        let ziel = UserDefaults.standard.integer(forKey: Self.zielKey)
+        let zielMl = ziel > 0 ? ziel : 2000
         var streak = 0
-        var erwartet = kal.startOfDay(for: Date())
-        for eintrag in sortiert {
-            let tag = kal.startOfDay(for: eintrag.datum)
-            guard kal.isDate(tag, inSameDayAs: erwartet) else { break }
-            if eintrag.wasserMl >= eintrag.wasserZielMl {
+        for offset in 0...29 {
+            let key = wasserKey(-offset)
+            let ml = UserDefaults.standard.integer(forKey: key)
+            if ml >= zielMl {
                 streak += 1
-            } else if !kal.isDateInToday(tag) {
+            } else if offset > 0 {
                 break
             }
-            guard let vorherig = kal.date(byAdding: .day, value: -1, to: erwartet) else { break }
-            erwartet = vorherig
         }
         return streak
     }

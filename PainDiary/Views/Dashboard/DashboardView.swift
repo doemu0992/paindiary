@@ -8,7 +8,6 @@ struct DashboardView: View {
     @Query private var medikamente: [Dauermedikation]
     @Query(sort: \MIDASBewertung.datum, order: .reverse) private var midasBewertungen: [MIDASBewertung]
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
-    @Query(sort: \TagesWohlbefinden.datum, order: .reverse) private var wohlbefindenEintraege: [TagesWohlbefinden]
     @State private var viewModel = DashboardViewModel()
     @State private var exportURL: URL? = nil
     @State private var exportTeilen = false
@@ -88,11 +87,9 @@ struct DashboardView: View {
     }
 
     private var wellnessKarte: some View {
-        let heute = wohlbefindenEintraege.first {
-            Calendar.current.isDateInToday($0.datum)
-        }
-        let wasserMl = heute?.wasserMl ?? 0
-        let wasserZiel = heute?.wasserZielMl ?? 2000
+        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+        let wasserMl = UserDefaults.standard.integer(forKey: "wasserMl_\(df.string(from: Date()))")
+        let wasserZiel = { let z = UserDefaults.standard.integer(forKey: "wasserZielMl"); return z > 0 ? z : 2000 }()
         let fortschritt = min(Double(wasserMl) / Double(wasserZiel), 1.0)
 
         return NavigationLink(destination: WellnessView()) {
