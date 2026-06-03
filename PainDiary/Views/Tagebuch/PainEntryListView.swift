@@ -87,7 +87,7 @@ struct PainEntryListView: View {
                     filterAnzeigen = true
                 } label: {
                     Label("Filter", systemImage: filterAktiv ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                        .foregroundStyle(filterAktiv ? .accentColor : .primary)
+                        .foregroundStyle(filterAktiv ? Color.accentColor : Color.primary)
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) { EditButton() }
