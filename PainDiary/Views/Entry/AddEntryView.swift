@@ -18,7 +18,10 @@ struct AddEntryView: View {
     @State private var stimmung = 3
     @State private var schlafStunden = 7.0
     @State private var notizen = ""
+    @State private var healthSchlaf: Double? = nil
 
+    private let wetter = WetterService.shared
+    private let health = HealthKitManager.shared
     private let gesamtSchritte = 6
 
     var body: some View {
@@ -28,10 +31,15 @@ struct AddEntryView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
 
-                Text("Schritt \(schritt + 1) von \(gesamtSchritte)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
+                HStack {
+                    Text("Schritt \(schritt + 1) von \(gesamtSchritte)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    wetterBadge
+                }
+                .padding(.horizontal)
+                .padding(.top, 4)
 
                 ScrollView {
                     schrittInhalt
@@ -65,7 +73,30 @@ struct AddEntryView: View {
                     Button("Abbrechen") { dismiss() }
                 }
             }
-            .onAppear { ladeVorhandeneWerte() }
+            .onAppear {
+                ladeVorhandeneWerte()
+                if eintrag == nil {
+                    wetter.laden()
+                    Task { healthSchlaf = await health.schlafStundenLetztteNacht() }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var wetterBadge: some View {
+        if wetter.isLoading {
+            ProgressView().scaleEffect(0.7)
+        } else if let w = wetter.aktuell {
+            HStack(spacing: 4) {
+                Image(systemName: w.symbol)
+                    .foregroundStyle(.yellow)
+                Text(String(format: "%.0f°C", w.temperatur))
+                    .font(.caption.bold())
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.regularMaterial, in: Capsule())
         }
     }
 
@@ -90,22 +121,11 @@ struct AddEntryView: View {
             MassnahmenStepView(
                 massnahmen: $massnahmen,
                 stimmung: $stimmung,
-                schlafStunden: $schlafStunden
+                schlafStunden: $schlafStunden,
+                healthSchlafVorschlag: healthSchlaf
             )
         default:
             EmptyView()
-        }
-    }
-
-    private var schrittTitel: String {
-        switch schritt {
-        case 0: return "Körperstelle"
-        case 1: return "Schmerzstärke"
-        case 2: return "Schmerzcharakter"
-        case 3: return "Auslöser"
-        case 4: return "Begleiterscheinungen"
-        case 5: return "Massnahmen"
-        default: return eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten"
         }
     }
 
@@ -124,6 +144,7 @@ struct AddEntryView: View {
     }
 
     private func speichern() {
+        let wetterSnap = wetter.aktuell
         if let e = eintrag {
             e.koerperstelle = koerperstelle
             e.schmerzstaerke = schmerzstaerke
@@ -147,7 +168,10 @@ struct AddEntryView: View {
                 massnahmen: massnahmen,
                 notizen: notizen,
                 stimmung: stimmung,
-                schlafStunden: schlafStunden
+                schlafStunden: schlafStunden,
+                wetterTemperatur: wetterSnap?.temperatur,
+                wetterCode: wetterSnap?.code,
+                wetterWind: wetterSnap?.windgeschwindigkeit
             )
             modelContext.insert(neu)
         }

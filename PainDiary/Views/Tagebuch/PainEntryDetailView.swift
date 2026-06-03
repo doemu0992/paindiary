@@ -69,6 +69,27 @@ struct PainEntryDetailView: View {
                 }
             }
 
+            if let code = eintrag.wetterCode, let temp = eintrag.wetterTemperatur {
+                Section("Wetter") {
+                    HStack {
+                        Image(systemName: WetterSnapshot.symbolFuerCode(code))
+                            .foregroundStyle(.yellow)
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(WetterSnapshot.beschreibungFuerCode(code))
+                                .font(.subheadline)
+                            Text(String(format: "%.0f°C", temp))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let wind = eintrag.wetterWind, wind > 0 {
+                            Spacer()
+                            Label(String(format: "%.0f km/h", wind), systemImage: "wind")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
             if !eintrag.notizen.isEmpty {
                 Section("Notizen") { Text(eintrag.notizen) }
             }
