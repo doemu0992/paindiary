@@ -8,8 +8,7 @@ struct ZyklusView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var anzeigeMonat = Date()
-    @State private var ausgewaehlterTag: Date? = nil
-    @State private var eintragSheetAnzeigen = false
+    @State private var ausgewaehlterTag: ZyklusTagAuswahl? = nil
 
     private var analyse: ZyklusAnalyse { ZyklusRechner.analyse(eintraege: Array(eintraege)) }
 
@@ -35,14 +34,18 @@ struct ZyklusView: View {
                 Button { wechselMonat(1) } label: { Image(systemName: "chevron.right") }
             }
         }
-        .sheet(isPresented: $eintragSheetAnzeigen) {
-            if let tag = ausgewaehlterTag {
-                ZyklusEintragSheet(
-                    datum: tag,
-                    bestehend: eintraege.first { Calendar.current.isDate($0.datum, inSameDayAs: tag) }
-                )
-            }
+        .sheet(item: $ausgewaehlterTag) { auswahl in
+            ZyklusEintragSheet(
+                datum: auswahl.datum,
+                bestehend: eintraege.first { Calendar.current.isDate($0.datum, inSameDayAs: auswahl.datum) }
+            )
         }
+        .onChange(of: eintraege) { _, _ in planeZyklusNotifs() }
+        .onAppear { planeZyklusNotifs() }
+    }
+
+    private func planeZyklusNotifs() {
+        NotificationManager.shared.planeZyklusErinnerungen(analyse: analyse)
     }
 
     private func wechselMonat(_ richtung: Int) {
@@ -137,8 +140,7 @@ struct ZyklusView: View {
             eintraege: Array(eintraege),
             analyse: analyse
         ) { tag in
-            ausgewaehlterTag = tag
-            eintragSheetAnzeigen = true
+            ausgewaehlterTag = ZyklusTagAuswahl(datum: tag)
         }
         .padding(.horizontal)
     }
@@ -190,15 +192,25 @@ struct ZyklusView: View {
     }
 
     private func oeffneHeuteSheet() {
-        ausgewaehlterTag = Calendar.current.startOfDay(for: Date())
-        eintragSheetAnzeigen = true
+        ausgewaehlterTag = ZyklusTagAuswahl(datum: Calendar.current.startOfDay(for: Date()))
     }
 
     // MARK: - Statistik
 
     private var statistik: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Statistik").font(.headline).padding(.horizontal)
+            HStack {
+                Text("Statistik").font(.headline)
+                Spacer()
+                if analyse.zyklusStarts.count >= 2 {
+                    Label("Basierend auf \(analyse.zyklusStarts.count) Zyklen", systemImage: "sparkles")
+                        .font(.caption2).foregroundStyle(.secondary)
+                } else if analyse.zyklusStarts.count == 1 {
+                    Text("Ab 2 Zyklen werden Vorhersagen präziser")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 statKarte("Ø Zyklus", String(format: "%.0f Tage", analyse.zykluslaenge), "arrow.clockwise", .pink)
                 statKarte("Ø Periode", String(format: "%.0f Tage", analyse.periodendauer), "drop.fill", .red)
@@ -280,6 +292,13 @@ struct ZyklusView: View {
         case .lutealphase: return .purple
         }
     }
+}
+
+// MARK: - Helpers
+
+private struct ZyklusTagAuswahl: Identifiable {
+    let id = UUID()
+    let datum: Date
 }
 
 // MARK: - Calendar

@@ -132,6 +132,72 @@ class NotificationManager {
         }
     }
 
+    // MARK: - Zyklus-Erinnerungen
+
+    func planeZyklusErinnerungen(analyse: ZyklusAnalyse) {
+        loescheZyklusErinnerungen()
+        guard status == .authorized, !analyse.zyklusStarts.isEmpty else { return }
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+
+        // Periode: 2 Tage vorher um 09:00
+        if let naechste = analyse.naechstePeriodeStart,
+           let zweiVorher = kal.date(byAdding: .day, value: -2, to: naechste),
+           zweiVorher >= heute {
+            var dc = kal.dateComponents([.year, .month, .day], from: zweiVorher)
+            dc.hour = 9; dc.minute = 0
+            scheduleEinmalig(
+                id: "zyklus-periode",
+                titel: "Periode erwartet",
+                body: "Deine Periode könnte in 2 Tagen beginnen.",
+                components: dc
+            )
+        }
+
+        // Fruchtbares Fenster: erster zukünftiger fruchtbarer Tag um 08:00
+        let naechsterFruchtbar = analyse.fruchtbareTageSet
+            .filter { $0 >= heute }
+            .sorted().first
+        if let fTag = naechsterFruchtbar {
+            var dc = kal.dateComponents([.year, .month, .day], from: fTag)
+            dc.hour = 8; dc.minute = 0
+            scheduleEinmalig(
+                id: "zyklus-fruchtbar",
+                titel: "Fruchtbare Tage beginnen",
+                body: "Dein fruchtbares Fenster startet heute.",
+                components: dc
+            )
+        }
+
+        // Eisprung: vorhergesagter Tag um 08:30
+        if let ov = analyse.vorhergesagteOvulation,
+           kal.startOfDay(for: ov) >= heute {
+            var dc = kal.dateComponents([.year, .month, .day], from: ov)
+            dc.hour = 8; dc.minute = 30
+            scheduleEinmalig(
+                id: "zyklus-eisprung",
+                titel: "Eisprung heute erwartet",
+                body: "Dein vorhergesagter Eisprung ist heute.",
+                components: dc
+            )
+        }
+    }
+
+    func loescheZyklusErinnerungen() {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: ["zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung"])
+    }
+
+    private func scheduleEinmalig(id: String, titel: String, body: String, components: DateComponents) {
+        let content = UNMutableNotificationContent()
+        content.title = titel
+        content.body = body
+        content.sound = .default
+        if #available(iOS 15.0, *) { content.interruptionLevel = .timeSensitive }
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+
     private func scheduleNotification(id: String, titel: String, body: String, stunde: Int, minute: Int) {
         let content = UNMutableNotificationContent()
         content.title = titel
