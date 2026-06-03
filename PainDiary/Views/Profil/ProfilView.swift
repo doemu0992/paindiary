@@ -11,10 +11,7 @@ struct ProfilView: View {
     var body: some View {
         Group {
             if let profil = profile.first {
-                List {
-                    ProfilInhaltView(profil: profil)
-                }
-                .navigationTitle("Profil")
+                ProfilInhaltView(profil: profil)
             } else {
                 ProgressView("Lade Profil…")
                     .navigationTitle("Profil")
@@ -53,18 +50,21 @@ private struct ProfilInhaltView: View {
 #endif
 
     var body: some View {
-        persoenlicheDaten
-        medizinischeDaten
-        medikamenteLink
-        midasLink
-        zyklusLink
-        diagnoseSektion
-        allergienSektion
-        aerzte
-        notfallkontakte
-        einstellungen
-        // Single sheet entry point — eliminates the open/close race condition
-        // caused by multiple .sheet modifiers on sibling Section views.
+        // Sheet must be on the List itself — not on a Section inside it.
+        // Placing .sheet on a Section sibling causes the dismiss-immediately bug.
+        List {
+            persoenlicheDaten
+            medizinischeDaten
+            medikamenteLink
+            midasLink
+            zyklusLink
+            diagnoseSektion
+            allergienSektion
+            aerzte
+            notfallkontakte
+            einstellungen
+        }
+        .navigationTitle("Profil")
         .sheet(item: $aktivesFormular) { formular in
             switch formular {
             case .diagnose:
@@ -161,6 +161,7 @@ private struct ProfilInhaltView: View {
 
     @ViewBuilder
     private var profilBild: some View {
+#if os(iOS)
         if let data = profil.fotoData, let uiImage = UIImage(data: data) {
             Image(uiImage: uiImage)
                 .resizable()
@@ -183,6 +184,11 @@ private struct ProfilInhaltView: View {
                     .offset(x: 28, y: 28)
             }
         }
+#else
+        Image(systemName: "person.circle.fill")
+            .font(.system(size: 80))
+            .foregroundStyle(.secondary)
+#endif
     }
 
     // MARK: - Medizinische Daten
