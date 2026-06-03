@@ -47,7 +47,8 @@ struct ZyklusRechner {
         let periodeTageSet = Set(periodeTage)
         let starts = findeZyklusStarts(aus: periodeTage)
 
-        // Average cycle length
+        // Per-cycle lengths: zyklusLaengen[i] = length of cycle starting at starts[i]
+        // (only available for completed cycles, i.e. i < starts.count - 1)
         var zyklusLaengen: [Double] = []
         for i in 1..<starts.count {
             let diff = kal.dateComponents([.day], from: starts[i-1], to: starts[i]).day ?? 28
@@ -64,8 +65,7 @@ struct ZyklusRechner {
         // Average period duration
         var periodDauern: [Double] = []
         for start in starts {
-            var len = 0
-            var check = start
+            var len = 0; var check = start
             while periodeTageSet.contains(check) {
                 len += 1
                 check = kal.date(byAdding: .day, value: 1, to: check) ?? check
@@ -74,8 +74,18 @@ struct ZyklusRechner {
         }
         let avgPeriod = periodDauern.isEmpty ? 5.0 : periodDauern.reduce(0, +) / Double(periodDauern.count)
 
-        // Predicted ovulation: prefer next upcoming one (current cycle if not yet past, else next cycle)
+        // Next period and current cycle day — defined before ovulation to allow referencing
         let heute = kal.startOfDay(for: Date())
+        let aktuellerTag: Int? = starts.last.map {
+            (kal.dateComponents([.day], from: $0, to: heute).day ?? 0) + 1
+        }
+        let naechstePeriode: Date? = starts.last.map {
+            kal.date(byAdding: .day, value: Int(avgZyklus), to: $0)
+        } ?? nil
+
+        // Next upcoming ovulation:
+        // If current cycle's predicted ovulation is still in the future → use it.
+        // If already past → use ovulation of the next predicted cycle.
         let aktuellerZyklusOv: Date? = starts.last.map {
             kal.date(byAdding: .day, value: Int(avgZyklus) - 14, to: $0)!
         }
@@ -88,32 +98,36 @@ struct ZyklusRechner {
             naechsteOvulation = nil
         }
 
-        // Current cycle day
-        let aktuellerTag: Int? = starts.last.map {
-            (kal.dateComponents([.day], from: $0, to: heute).day ?? 0) + 1
-        }
-
-        // Next period prediction
-        let naechstePeriode: Date? = starts.last.map {
-            kal.date(byAdding: .day, value: Int(avgZyklus), to: $0)
-        } ?? nil
-
-        // Build fertile window and ovulation sets for all historical + next 2 cycles
+        // Build fertile + ovulation sets.
+        // KEY FIX: for each completed historical cycle use its ACTUAL length,
+        // not the average. Only for the current (ongoing) and future cycles use avgZyklus.
         var fruchtbarSet: Set<Date> = []
         var ovulationsSet: Set<Date> = []
 
-        let alleCycleStarts = starts + [naechstePeriode, naechstePeriode.flatMap {
-            kal.date(byAdding: .day, value: Int(avgZyklus), to: $0)
-        }].compactMap { $0 }
-
-        for start in alleCycleStarts {
-            let ovTag = kal.date(byAdding: .day, value: Int(avgZyklus) - 14, to: start)!
-            let ovNorm = kal.startOfDay(for: ovTag)
+        func fuegeZyklusHinzu(start: Date, laenge: Int) {
+            let ovNorm = kal.startOfDay(for: kal.date(byAdding: .day, value: laenge - 14, to: start)!)
             ovulationsSet.insert(ovNorm)
             for d in -5...1 {
-                if let fTag = kal.date(byAdding: .day, value: d, to: ovNorm) {
-                    fruchtbarSet.insert(fTag)
+                if let ft = kal.date(byAdding: .day, value: d, to: ovNorm) {
+                    fruchtbarSet.insert(ft)
                 }
+            }
+        }
+
+        for i in 0..<starts.count {
+            if i < zyklusLaengen.count {
+                // Completed cycle with known actual length
+                fuegeZyklusHinzu(start: starts[i], laenge: Int(zyklusLaengen[i]))
+            } else {
+                // Current ongoing cycle — use average (length not known yet)
+                fuegeZyklusHinzu(start: starts[i], laenge: Int(avgZyklus))
+            }
+        }
+        // Next 2 predicted future cycles
+        if let np = naechstePeriode {
+            fuegeZyklusHinzu(start: np, laenge: Int(avgZyklus))
+            if let np2 = kal.date(byAdding: .day, value: Int(avgZyklus), to: np) {
+                fuegeZyklusHinzu(start: np2, laenge: Int(avgZyklus))
             }
         }
 
@@ -128,6 +142,7 @@ struct ZyklusRechner {
             periodeTageSet: periodeTageSet,
             fruchtbareTageSet: fruchtbarSet,
             ovulationsTageSet: ovulationsSet
+        )
         )
     }
 
