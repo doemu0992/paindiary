@@ -57,8 +57,9 @@ struct ZyklusView: View {
     // MARK: - Header
 
     private var zyklusHeader: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             if let tag = analyse.aktuellerZyklustag {
+                // Row 1: cycle day / next period / cycle length
                 HStack(spacing: 0) {
                     headerBadge(wert: "\(tag)", einheit: "Tag", label: "Zyklustag", farbe: .pink)
                     Divider().frame(height: 40)
@@ -72,12 +73,15 @@ struct ZyklusView: View {
                     headerBadge(
                         wert: String(format: "%.0f", analyse.zykluslaenge),
                         einheit: "d",
-                        label: "Ø Zyklus",
+                        label: "Ø Zyklus (\(analyse.zyklusStarts.count) Zyklen)",
                         farbe: .purple
                     )
                 }
                 .padding()
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+
+                // Row 2: fertile window + ovulation dates
+                fruchtbarkeitsCard
             } else {
                 Text("Erfasse deinen ersten Periodentag um zu beginnen.")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -91,11 +95,59 @@ struct ZyklusView: View {
         .padding(.horizontal)
     }
 
+    private var fruchtbarkeitsCard: some View {
+        let fenster = naechstesFruchtbaresF
+        let ov = analyse.vorhergesagteOvulation
+        return HStack(spacing: 0) {
+            VStack(spacing: 2) {
+                if let (start, end) = fenster {
+                    Text("\(kurzDatum(start)) – \(kurzDatum(end))")
+                        .font(.subheadline.bold()).foregroundStyle(.teal)
+                } else {
+                    Text("–").font(.subheadline.bold()).foregroundStyle(.teal)
+                }
+                Text("Fruchtbares Fenster").font(.caption2).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            Divider().frame(height: 36)
+
+            VStack(spacing: 2) {
+                if let ov {
+                    Text(kurzDatum(ov)).font(.subheadline.bold()).foregroundStyle(.orange)
+                } else {
+                    Text("–").font(.subheadline.bold()).foregroundStyle(.orange)
+                }
+                Text("Eisprung erwartet").font(.caption2).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.vertical, 10).padding(.horizontal, 12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
     private var naechstePeriodeBadge: String {
         guard let n = analyse.naechstePeriodeStart else { return "–" }
         let tage = Calendar.current.dateComponents([.day], from: Date(), to: n).day ?? 0
         if tage <= 0 { return "Heute" }
         return "in \(tage)d"
+    }
+
+    // Next contiguous block of fertile days from today onward
+    private var naechstesFruchtbaresF: (Date, Date)? {
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+        let sorted = analyse.fruchtbareTageSet.filter { $0 >= heute }.sorted()
+        guard let first = sorted.first else { return nil }
+        var end = first
+        for tag in sorted.dropFirst() {
+            if (kal.dateComponents([.day], from: end, to: tag).day ?? 99) <= 1 { end = tag } else { break }
+        }
+        return (first, end)
+    }
+
+    private func kurzDatum(_ d: Date) -> String {
+        d.formatted(.dateTime.day().month(.abbreviated))
     }
 
     private func headerBadge(wert: String, einheit: String, label: String, farbe: Color) -> some View {
