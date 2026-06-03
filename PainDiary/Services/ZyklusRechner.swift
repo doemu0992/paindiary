@@ -143,7 +143,6 @@ struct ZyklusRechner {
             fruchtbareTageSet: fruchtbarSet,
             ovulationsTageSet: ovulationsSet
         )
-        )
     }
 
     // MARK: - Tag state
