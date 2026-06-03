@@ -28,13 +28,17 @@ struct ProfilView: View {
 // MARK: - Sheet enum
 
 private enum ProfilFormular: Identifiable {
-    case diagnose, allergie, arzt, notfallKontakt
-    var id: Int {
+    case diagnose(Diagnose?)
+    case allergie(Allergie?)
+    case arzt(ArztKontakt?)
+    case notfallKontakt(NotfallKontakt?)
+
+    var id: String {
         switch self {
-        case .diagnose:       return 1
-        case .allergie:       return 2
-        case .arzt:           return 3
-        case .notfallKontakt: return 4
+        case .diagnose(let d):       return d.map { "d-\(ObjectIdentifier($0))" } ?? "d-new"
+        case .allergie(let a):       return a.map { "a-\(ObjectIdentifier($0))" } ?? "a-new"
+        case .arzt(let a):           return a.map { "arzt-\(ObjectIdentifier($0))" } ?? "arzt-new"
+        case .notfallKontakt(let k): return k.map { "nk-\(ObjectIdentifier($0))" } ?? "nk-new"
         }
     }
 }
@@ -50,8 +54,6 @@ private struct ProfilInhaltView: View {
 #endif
 
     var body: some View {
-        // Sheet must be on the List itself — not on a Section inside it.
-        // Placing .sheet on a Section sibling causes the dismiss-immediately bug.
         List {
             persoenlicheDaten
             medizinischeDaten
@@ -67,23 +69,40 @@ private struct ProfilInhaltView: View {
         .navigationTitle("Profil")
         .sheet(item: $aktivesFormular) { formular in
             switch formular {
-            case .diagnose:
-                DiagnoseFormView { bezeichnung, datum, notizen in
-                    profil.diagnosen.append(Diagnose(bezeichnung: bezeichnung, datum: datum, notizen: notizen))
+            case .diagnose(let existing):
+                DiagnoseFormView(existing: existing) { bezeichnung, datum, notizen in
+                    if let d = existing {
+                        d.bezeichnung = bezeichnung; d.datum = datum; d.notizen = notizen
+                    } else {
+                        profil.diagnosen.append(Diagnose(bezeichnung: bezeichnung, datum: datum, notizen: notizen))
+                    }
                 }
-            case .allergie:
-                AllergieFormView { substanz, typ, reaktion, schwere in
-                    profil.allergien.append(Allergie(substanz: substanz, typ: typ, reaktion: reaktion, schwere: schwere))
+            case .allergie(let existing):
+                AllergieFormView(existing: existing) { substanz, typ, reaktion, schwere in
+                    if let a = existing {
+                        a.substanz = substanz; a.typ = typ; a.reaktion = reaktion; a.schwere = schwere
+                    } else {
+                        profil.allergien.append(Allergie(substanz: substanz, typ: typ, reaktion: reaktion, schwere: schwere))
+                    }
                 }
-            case .arzt:
-                ArztFormView { name, fachgebiet, praxis, telefon, email, istHausarzt, notizen in
-                    profil.aerzte.append(ArztKontakt(name: name, fachgebiet: fachgebiet, praxis: praxis,
-                                                     telefon: telefon, email: email,
-                                                     istHausarzt: istHausarzt, notizen: notizen))
+            case .arzt(let existing):
+                ArztFormView(existing: existing) { name, fachgebiet, praxis, telefon, email, istHausarzt, notizen in
+                    if let a = existing {
+                        a.name = name; a.fachgebiet = fachgebiet; a.praxis = praxis
+                        a.telefon = telefon; a.email = email; a.istHausarzt = istHausarzt; a.notizen = notizen
+                    } else {
+                        profil.aerzte.append(ArztKontakt(name: name, fachgebiet: fachgebiet, praxis: praxis,
+                                                         telefon: telefon, email: email,
+                                                         istHausarzt: istHausarzt, notizen: notizen))
+                    }
                 }
-            case .notfallKontakt:
-                NotfallKontaktFormView { name, phone, beziehung in
-                    profil.notfallkontakte.append(NotfallKontakt(name: name, phone: phone, beziehung: beziehung))
+            case .notfallKontakt(let existing):
+                NotfallKontaktFormView(existing: existing) { name, phone, beziehung in
+                    if let k = existing {
+                        k.name = name; k.phone = phone; k.beziehung = beziehung
+                    } else {
+                        profil.notfallkontakte.append(NotfallKontakt(name: name, phone: phone, beziehung: beziehung))
+                    }
                 }
             }
         }
@@ -255,18 +274,25 @@ private struct ProfilInhaltView: View {
     private var diagnoseSektion: some View {
         Section {
             ForEach(profil.diagnosen as [Diagnose]) { d in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(d.bezeichnung).font(.headline)
-                    if let datum = d.datum {
-                        Text(datum, style: .date).font(.caption).foregroundStyle(.secondary)
-                    }
-                    if !d.notizen.isEmpty {
-                        Text(d.notizen).font(.caption).foregroundStyle(.secondary)
+                Button { aktivesFormular = .diagnose(d) } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(d.bezeichnung).font(.headline).foregroundStyle(.primary)
+                            if let datum = d.datum {
+                                Text(datum, style: .date).font(.caption).foregroundStyle(.secondary)
+                            }
+                            if !d.notizen.isEmpty {
+                                Text(d.notizen).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                     }
                 }
+                .buttonStyle(.plain)
             }
             .onDelete { profil.diagnosen.remove(atOffsets: $0) }
-            Button("Diagnose hinzufügen") { aktivesFormular = .diagnose }
+            Button("Diagnose hinzufügen") { aktivesFormular = .diagnose(nil) }
         } header: { Text("Diagnosen") }
     }
 
@@ -275,18 +301,24 @@ private struct ProfilInhaltView: View {
     private var allergienSektion: some View {
         Section {
             ForEach(profil.allergien as [Allergie]) { a in
-                VStack(alignment: .leading, spacing: 2) {
+                Button { aktivesFormular = .allergie(a) } label: {
                     HStack {
-                        Text(a.substanz).font(.headline)
-                        Spacer()
-                        AllergieSchwereBadge(schwere: a.schwere)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(a.substanz).font(.headline).foregroundStyle(.primary)
+                                Spacer()
+                                AllergieSchwereBadge(schwere: a.schwere)
+                            }
+                            if !a.typ.isEmpty      { Text(a.typ).font(.caption).foregroundStyle(.secondary) }
+                            if !a.reaktion.isEmpty { Text(a.reaktion).font(.caption).foregroundStyle(.secondary) }
+                        }
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                     }
-                    if !a.typ.isEmpty     { Text(a.typ).font(.caption).foregroundStyle(.secondary) }
-                    if !a.reaktion.isEmpty { Text(a.reaktion).font(.caption).foregroundStyle(.secondary) }
                 }
+                .buttonStyle(.plain)
             }
             .onDelete { profil.allergien.remove(atOffsets: $0) }
-            Button("Allergie hinzufügen") { aktivesFormular = .allergie }
+            Button("Allergie hinzufügen") { aktivesFormular = .allergie(nil) }
         } header: { Text("Allergien & Unverträglichkeiten") }
     }
 
@@ -295,21 +327,28 @@ private struct ProfilInhaltView: View {
     private var aerzte: some View {
         Section {
             ForEach(profil.aerzte as [ArztKontakt]) { a in
-                VStack(alignment: .leading, spacing: 2) {
+                Button { aktivesFormular = .arzt(a) } label: {
                     HStack {
-                        Text(a.name).font(.headline)
-                        if a.istHausarzt {
-                            Label("Hausarzt", systemImage: "staroflife.fill")
-                                .font(.caption).foregroundStyle(.blue)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(a.name).font(.headline).foregroundStyle(.primary)
+                                if a.istHausarzt {
+                                    Label("Hausarzt", systemImage: "staroflife.fill")
+                                        .font(.caption).foregroundStyle(.blue)
+                                }
+                            }
+                            if !a.fachgebiet.isEmpty { Text(a.fachgebiet).font(.subheadline).foregroundStyle(.secondary) }
+                            if !a.praxis.isEmpty     { Text(a.praxis).font(.caption).foregroundStyle(.secondary) }
+                            if !a.telefon.isEmpty    { Label(a.telefon, systemImage: "phone").font(.caption).foregroundStyle(.secondary) }
                         }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                     }
-                    if !a.fachgebiet.isEmpty { Text(a.fachgebiet).font(.subheadline).foregroundStyle(.secondary) }
-                    if !a.praxis.isEmpty     { Text(a.praxis).font(.caption).foregroundStyle(.secondary) }
-                    if !a.telefon.isEmpty    { Label(a.telefon, systemImage: "phone").font(.caption).foregroundStyle(.secondary) }
                 }
+                .buttonStyle(.plain)
             }
             .onDelete { profil.aerzte.remove(atOffsets: $0) }
-            Button("Arzt hinzufügen") { aktivesFormular = .arzt }
+            Button("Arzt hinzufügen") { aktivesFormular = .arzt(nil) }
         } header: { Text("Ärzte") }
     }
 
@@ -319,11 +358,14 @@ private struct ProfilInhaltView: View {
         Section {
             ForEach(profil.notfallkontakte as [NotfallKontakt]) { k in
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(k.name).font(.headline)
-                        if !k.beziehung.isEmpty { Text(k.beziehung).font(.caption).foregroundStyle(.secondary) }
-                        if !k.phone.isEmpty     { Text(k.phone).font(.caption).foregroundStyle(.secondary) }
+                    Button { aktivesFormular = .notfallKontakt(k) } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(k.name).font(.headline).foregroundStyle(.primary)
+                            if !k.beziehung.isEmpty { Text(k.beziehung).font(.caption).foregroundStyle(.secondary) }
+                            if !k.phone.isEmpty     { Text(k.phone).font(.caption).foregroundStyle(.secondary) }
+                        }
                     }
+                    .buttonStyle(.plain)
                     Spacer()
                     if !k.phone.isEmpty {
                         Link(destination: URL(string: "tel:\(k.phone.filter { $0.isNumber || $0 == "+" })")!) {
@@ -340,7 +382,7 @@ private struct ProfilInhaltView: View {
                 Label("Aus Adressbuch wählen", systemImage: "person.crop.circle.badge.plus")
             }
 #endif
-            Button("Manuell hinzufügen") { aktivesFormular = .notfallKontakt }
+            Button("Manuell hinzufügen") { aktivesFormular = .notfallKontakt(nil) }
         } header: { Text("Notfallkontakte") }
     }
 
@@ -361,11 +403,21 @@ private struct ProfilInhaltView: View {
 
 private struct DiagnoseFormView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var bezeichnung = ""
-    @State private var datum: Date? = nil
-    @State private var notizen = ""
-    @State private var datumAktiv = false
+    @State private var bezeichnung: String
+    @State private var datum: Date?
+    @State private var notizen: String
+    @State private var datumAktiv: Bool
+    private let isEdit: Bool
     let onSave: (String, Date?, String) -> Void
+
+    init(existing: Diagnose? = nil, onSave: @escaping (String, Date?, String) -> Void) {
+        self.isEdit = existing != nil
+        self.onSave = onSave
+        _bezeichnung = State(initialValue: existing?.bezeichnung ?? "")
+        _datum       = State(initialValue: existing?.datum)
+        _notizen     = State(initialValue: existing?.notizen ?? "")
+        _datumAktiv  = State(initialValue: existing?.datum != nil)
+    }
 
     var body: some View {
         NavigationStack {
@@ -379,7 +431,7 @@ private struct DiagnoseFormView: View {
                 }
                 Section("Notizen") { TextEditor(text: $notizen).frame(minHeight: 60) }
             }
-            .navigationTitle("Neue Diagnose")
+            .navigationTitle(isEdit ? "Diagnose bearbeiten" : "Neue Diagnose")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
@@ -394,13 +446,23 @@ private struct DiagnoseFormView: View {
 
 private struct AllergieFormView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var substanz = ""
-    @State private var typ = ""
-    @State private var reaktion = ""
-    @State private var schwere = "Mittel"
+    @State private var substanz: String
+    @State private var typ: String
+    @State private var reaktion: String
+    @State private var schwere: String
+    private let isEdit: Bool
     let onSave: (String, String, String, String) -> Void
     private let typen = ["Medikament", "Nahrungsmittel", "Umwelt", "Sonstiges"]
     private let schwereGrade = ["Leicht", "Mittel", "Schwer", "Lebensbedrohlich"]
+
+    init(existing: Allergie? = nil, onSave: @escaping (String, String, String, String) -> Void) {
+        self.isEdit = existing != nil
+        self.onSave = onSave
+        _substanz = State(initialValue: existing?.substanz ?? "")
+        _typ      = State(initialValue: existing?.typ ?? "")
+        _reaktion = State(initialValue: existing?.reaktion ?? "")
+        _schwere  = State(initialValue: existing?.schwere ?? "Mittel")
+    }
 
     var body: some View {
         NavigationStack {
@@ -415,7 +477,7 @@ private struct AllergieFormView: View {
                     ForEach(schwereGrade, id: \.self) { Text($0).tag($0) }
                 }
             }
-            .navigationTitle("Neue Allergie")
+            .navigationTitle(isEdit ? "Allergie bearbeiten" : "Neue Allergie")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
@@ -430,14 +492,27 @@ private struct AllergieFormView: View {
 
 private struct ArztFormView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var fachgebiet = ""
-    @State private var praxis = ""
-    @State private var telefon = ""
-    @State private var email = ""
-    @State private var istHausarzt = false
-    @State private var notizen = ""
+    @State private var name: String
+    @State private var fachgebiet: String
+    @State private var praxis: String
+    @State private var telefon: String
+    @State private var email: String
+    @State private var istHausarzt: Bool
+    @State private var notizen: String
+    private let isEdit: Bool
     let onSave: (String, String, String, String, String, Bool, String) -> Void
+
+    init(existing: ArztKontakt? = nil, onSave: @escaping (String, String, String, String, String, Bool, String) -> Void) {
+        self.isEdit = existing != nil
+        self.onSave = onSave
+        _name        = State(initialValue: existing?.name ?? "")
+        _fachgebiet  = State(initialValue: existing?.fachgebiet ?? "")
+        _praxis      = State(initialValue: existing?.praxis ?? "")
+        _telefon     = State(initialValue: existing?.telefon ?? "")
+        _email       = State(initialValue: existing?.email ?? "")
+        _istHausarzt = State(initialValue: existing?.istHausarzt ?? false)
+        _notizen     = State(initialValue: existing?.notizen ?? "")
+    }
 
     var body: some View {
         NavigationStack {
@@ -450,7 +525,7 @@ private struct ArztFormView: View {
                 Toggle("Hausarzt", isOn: $istHausarzt)
                 Section("Notizen") { TextEditor(text: $notizen).frame(minHeight: 60) }
             }
-            .navigationTitle("Neuer Arzt")
+            .navigationTitle(isEdit ? "Arzt bearbeiten" : "Neuer Arzt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
@@ -465,10 +540,19 @@ private struct ArztFormView: View {
 
 private struct NotfallKontaktFormView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var phone = ""
-    @State private var beziehung = ""
+    @State private var name: String
+    @State private var phone: String
+    @State private var beziehung: String
+    private let isEdit: Bool
     let onSave: (String, String, String) -> Void
+
+    init(existing: NotfallKontakt? = nil, onSave: @escaping (String, String, String) -> Void) {
+        self.isEdit = existing != nil
+        self.onSave = onSave
+        _name      = State(initialValue: existing?.name ?? "")
+        _phone     = State(initialValue: existing?.phone ?? "")
+        _beziehung = State(initialValue: existing?.beziehung ?? "")
+    }
 
     var body: some View {
         NavigationStack {
@@ -477,7 +561,7 @@ private struct NotfallKontaktFormView: View {
                 TextField("Telefon", text: $phone).keyboardType(.phonePad)
                 TextField("Beziehung (z.B. Partner)", text: $beziehung)
             }
-            .navigationTitle("Notfallkontakt")
+            .navigationTitle(isEdit ? "Kontakt bearbeiten" : "Notfallkontakt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
