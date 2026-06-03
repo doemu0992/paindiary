@@ -132,7 +132,7 @@ struct KorrelationsView: View {
     private var stressDaten: [(level: String, schmerz: Double, anzahl: Int)] {
         let labels = ["", "Entspannt", "Leicht", "Mässig", "Hoch", "Extrem"]
         return (1...5).compactMap { level in
-            let treffer = eintraege.filter { $0.stressLevel == level }
+            let treffer = eintraege.filter { ($0.stressLevel ?? 0) == level }
             guard !treffer.isEmpty else { return nil }
             let avg = Double(treffer.map(\.schmerzstaerke).reduce(0, +)) / Double(treffer.count)
             return (level: labels[level], schmerz: avg, anzahl: treffer.count)
@@ -168,8 +168,8 @@ struct KorrelationsView: View {
                 .frame(height: 180)
 
                 let korr = korrelation(
-                    eintraege.filter { $0.stressLevel > 0 }.map { Double($0.stressLevel) },
-                    eintraege.filter { $0.stressLevel > 0 }.map { Double($0.schmerzstaerke) }
+                    eintraege.filter { ($0.stressLevel ?? 0) > 0 }.map { Double($0.stressLevel ?? 0) },
+                    eintraege.filter { ($0.stressLevel ?? 0) > 0 }.map { Double($0.schmerzstaerke) }
                 )
                 HStack {
                     Image(systemName: korrelationsSymbol(korr))

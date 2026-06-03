@@ -10,7 +10,6 @@ struct DashboardView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @Query(sort: \TagesWohlbefinden.datum, order: .reverse) private var wohlbefindenEintraege: [TagesWohlbefinden]
     @State private var viewModel = DashboardViewModel()
-    @State private var schritte: Int? = nil
     @State private var exportURL: URL? = nil
     @State private var exportTeilen = false
     @State private var exportOptionsAnzeigen = false
@@ -33,7 +32,6 @@ struct DashboardView: View {
         .onChange(of: eintraege) { _, neu in viewModel.eintraege = neu }
         .onAppear {
             viewModel.eintraege = eintraege
-            Task { schritte = await HealthKitManager.shared.schritteDiesemTag() }
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -128,23 +126,6 @@ struct DashboardView: View {
                         Text("\(wasserMl) ml")
                             .font(.caption.bold())
                         Text("Wasser").font(.caption2).foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    Divider().frame(height: 56)
-
-                    // Schritte
-                    VStack(spacing: 6) {
-                        Image(systemName: "figure.walk")
-                            .font(.title2)
-                            .foregroundStyle(.green)
-                        if let s = schritte {
-                            Text(s >= 1000 ? String(format: "%.1fk", Double(s) / 1000) : "\(s)")
-                                .font(.caption.bold())
-                        } else {
-                            Text("–").font(.caption.bold()).foregroundStyle(.secondary)
-                        }
-                        Text("Schritte").font(.caption2).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
 

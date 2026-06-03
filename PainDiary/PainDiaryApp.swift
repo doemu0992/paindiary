@@ -18,18 +18,17 @@ struct PainDiaryApp: App {
             TagesWohlbefinden.self
         ])
 
-        // CloudKit removed: schema changes (stressLevel, TagesWohlbefinden) are
-        // incompatible with the existing CloudKit container and cause a fatalError
-        // on first launch. Local SwiftData handles lightweight migration automatically.
-        // "PainDiaryLocal" name avoids conflicts with the old default CloudKit store.
-        let config = ModelConfiguration("PainDiaryLocal", schema: schema, isStoredInMemoryOnly: false)
+        // iCloud-Sync reaktiviert. stressLevel ist jetzt Int? (optional) für CloudKit-Kompatibilität.
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
+                                        cloudKitDatabase: .automatic)
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            // Migration failed — delete the corrupt store and start fresh
+            // Schema-Migration fehlgeschlagen — lokalen Store löschen und neu starten.
+            // CloudKit-Daten bleiben erhalten und werden nach dem Neustart synchronisiert.
             let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            for name in ["PainDiaryLocal.store", "PainDiaryLocal.store-shm", "PainDiaryLocal.store-wal",
-                         "default.store", "default.store-shm", "default.store-wal"] {
+            for name in ["default.store", "default.store-shm", "default.store-wal",
+                         "PainDiaryLocal.store", "PainDiaryLocal.store-shm", "PainDiaryLocal.store-wal"] {
                 try? FileManager.default.removeItem(at: appSupport.appendingPathComponent(name))
             }
             do {

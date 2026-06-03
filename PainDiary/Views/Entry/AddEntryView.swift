@@ -148,7 +148,7 @@ struct AddEntryView: View {
         begleiterscheinungen = e.begleiterscheinungen
         massnahmen = e.massnahmen
         stimmung = e.stimmung
-        stressLevel = e.stressLevel
+        stressLevel = e.stressLevel ?? 3
         schlafStunden = e.schlafStunden
         notizen = e.notizen
     }

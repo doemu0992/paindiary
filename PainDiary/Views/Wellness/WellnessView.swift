@@ -5,11 +5,6 @@ struct WellnessView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TagesWohlbefinden.datum, order: .reverse) private var eintraege: [TagesWohlbefinden]
 
-    @State private var healthManager = HealthKitManager.shared
-    @State private var schlafStunden: Double? = nil
-    @State private var schritte: Int? = nil
-
-    // Resolved once per appear via onAppear — never insert inside a computed property
     @State private var heuteEintrag: TagesWohlbefinden? = nil
 
     var body: some View {
@@ -17,7 +12,6 @@ struct WellnessView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     wasserTrackerKarte
-                    healthKarte
                     streakKarte
                 }
                 .padding()
@@ -27,7 +21,6 @@ struct WellnessView: View {
         }
         .onAppear {
             stelleHeuteEintragSicher()
-            ladeHealthQueries()  // queries only — no auth request, safe without entitlement
         }
     }
 
@@ -120,54 +113,6 @@ struct WellnessView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Apple Health
-
-    private var healthKarte: some View {
-        VStack(spacing: 14) {
-            HStack {
-                Label("Apple Health", systemImage: "heart.fill")
-                    .font(.headline)
-                    .foregroundStyle(.red)
-                Spacer()
-                Button(action: ladeHealthDaten) {
-                    Label("Verbinden", systemImage: "arrow.clockwise")
-                        .font(.caption)
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 0) {
-                VStack(spacing: 6) {
-                    Image(systemName: "bed.double.fill").font(.title2).foregroundStyle(.indigo)
-                    if let std = schlafStunden {
-                        Text(String(format: "%.1f Std.", std)).font(.title3.bold())
-                    } else {
-                        Text("–").font(.title3.bold()).foregroundStyle(.secondary)
-                    }
-                    Text("Schlaf").font(.caption).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-
-                Divider().frame(height: 56)
-
-                VStack(spacing: 6) {
-                    Image(systemName: "figure.walk").font(.title2).foregroundStyle(.green)
-                    if let s = schritte {
-                        Text(schrittText(s)).font(.title3.bold())
-                    } else {
-                        Text("–").font(.title3.bold()).foregroundStyle(.secondary)
-                    }
-                    Text("Schritte").font(.caption).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .padding(.top, 4)
-        }
-        .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-    }
-
     // MARK: - Streak
 
     private var streakKarte: some View {
@@ -235,25 +180,6 @@ struct WellnessView: View {
         heuteEintrag?.wasserMl += ml
     }
 
-    // Called from button tap: requests authorization then fetches data.
-    // Only safe when the HealthKit entitlement is present in the Xcode project.
-    private func ladeHealthDaten() {
-        Task {
-            await healthManager.berechtigungAnfordern()
-            await ladeHealthQueriesAsync()
-        }
-    }
-
-    // Called on appear: runs queries only (returns nil when not authorized, no crash).
-    private func ladeHealthQueries() {
-        Task { await ladeHealthQueriesAsync() }
-    }
-
-    private func ladeHealthQueriesAsync() async {
-        schlafStunden = await healthManager.schlafStundenLetztteNacht()
-        schritte = await healthManager.schritteDiesemTag()
-    }
-
     private func berechneStreak() -> Int {
         let kal = Calendar.current
         let sortiert = eintraege.sorted { $0.datum > $1.datum }
@@ -271,9 +197,5 @@ struct WellnessView: View {
             erwartet = vorherig
         }
         return streak
-    }
-
-    private func schrittText(_ s: Int) -> String {
-        s >= 1000 ? String(format: "%.1f Tsd.", Double(s) / 1000) : "\(s)"
     }
 }
