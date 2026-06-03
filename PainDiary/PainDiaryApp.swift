@@ -18,6 +18,12 @@ struct PainDiaryApp: App {
             TagesWohlbefinden.self
         ])
 
+        // CloudKit ist hier bewusst NICHT aktiviert.
+        // cloudKitDatabase: .automatic wirft bei Schemainkompatibilität eine
+        // NSException (Objective-C), die Swift-try/catch nicht fängt → Crash.
+        // iCloud-Sync kann nach einem stabilen Release gezielt reaktiviert werden.
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
         let appSupport = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
 
@@ -28,23 +34,12 @@ struct PainDiaryApp: App {
             }
         }
 
-        let cloudConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
-                                             cloudKitDatabase: .automatic)
-        let lokalConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        // Versuch 1: Normaler Start
+        if let c = try? ModelContainer(for: schema, configurations: [config]) { return c }
 
-        // Versuch 1: Mit iCloud
-        if let c = try? ModelContainer(for: schema, configurations: [cloudConfig]) { return c }
-
-        // Versuch 2: Lokalen Store löschen, nochmals mit iCloud
+        // Versuch 2: Korrupten Store löschen und nochmals versuchen
         storeLoeschen()
-        if let c = try? ModelContainer(for: schema, configurations: [cloudConfig]) { return c }
-
-        // Versuch 3: Ohne iCloud (lokaler Store)
-        if let c = try? ModelContainer(for: schema, configurations: [lokalConfig]) { return c }
-
-        // Versuch 4: Lokalen Store löschen, ohne iCloud
-        storeLoeschen()
-        if let c = try? ModelContainer(for: schema, configurations: [lokalConfig]) { return c }
+        if let c = try? ModelContainer(for: schema, configurations: [config]) { return c }
 
         // Notfall: In-Memory — App startet immer, Daten werden nicht gespeichert
         return try! ModelContainer(for: schema,
