@@ -13,7 +13,7 @@ import SwiftData
     var notizen: String
     var stimmung: Int             // 1–5
     var schlafStunden: Double
-    var stressLevel: Int          // 1–5
+    var stressLevel: Int = 3      // 1–5
 
     // Wetter zum Zeitpunkt der Erfassung
     var wetterTemperatur: Double?

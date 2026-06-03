@@ -3,8 +3,8 @@ import SwiftData
 
 @Model final class TagesWohlbefinden {
     var datum: Date        // startOfDay
-    var wasserMl: Int      // ml water drunk today, default 0
-    var wasserZielMl: Int  // goal in ml, default 2000
+    var wasserMl: Int = 0
+    var wasserZielMl: Int = 2000
 
     var fortschritt: Double {
         guard wasserZielMl > 0 else { return 0 }
