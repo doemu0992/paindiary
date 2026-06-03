@@ -18,25 +18,37 @@ struct PainDiaryApp: App {
             TagesWohlbefinden.self
         ])
 
-        // iCloud-Sync reaktiviert. stressLevel ist jetzt Int? (optional) für CloudKit-Kompatibilität.
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
-                                        cloudKitDatabase: .automatic)
-        do {
-            return try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            // Schema-Migration fehlgeschlagen — lokalen Store löschen und neu starten.
-            // CloudKit-Daten bleiben erhalten und werden nach dem Neustart synchronisiert.
-            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+
+        func storeLoeschen() {
             for name in ["default.store", "default.store-shm", "default.store-wal",
                          "PainDiaryLocal.store", "PainDiaryLocal.store-shm", "PainDiaryLocal.store-wal"] {
                 try? FileManager.default.removeItem(at: appSupport.appendingPathComponent(name))
             }
-            do {
-                return try ModelContainer(for: schema, configurations: [config])
-            } catch {
-                fatalError("ModelContainer konnte nicht erstellt werden: \(error)")
-            }
         }
+
+        let cloudConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
+                                             cloudKitDatabase: .automatic)
+        let lokalConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
+        // Versuch 1: Mit iCloud
+        if let c = try? ModelContainer(for: schema, configurations: [cloudConfig]) { return c }
+
+        // Versuch 2: Lokalen Store löschen, nochmals mit iCloud
+        storeLoeschen()
+        if let c = try? ModelContainer(for: schema, configurations: [cloudConfig]) { return c }
+
+        // Versuch 3: Ohne iCloud (lokaler Store)
+        if let c = try? ModelContainer(for: schema, configurations: [lokalConfig]) { return c }
+
+        // Versuch 4: Lokalen Store löschen, ohne iCloud
+        storeLoeschen()
+        if let c = try? ModelContainer(for: schema, configurations: [lokalConfig]) { return c }
+
+        // Notfall: In-Memory — App startet immer, Daten werden nicht gespeichert
+        return try! ModelContainer(for: schema,
+                                   configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
     }()
 
     var body: some Scene {
@@ -49,8 +61,5 @@ struct PainDiaryApp: App {
 
     private func berechtigungenAnfordern() async {
         _ = await NotificationManager.shared.berechtigungAnfordern()
-        // HealthKit authorization is requested only from WellnessView (user-initiated).
-        // Calling requestAuthorization without the HealthKit entitlement throws an
-        // NSException that bypasses Swift catch and crashes the app on launch.
     }
 }
