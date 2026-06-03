@@ -9,6 +9,9 @@ struct WellnessView: View {
     @State private var schlafStunden: Double? = nil
     @State private var schritte: Int? = nil
 
+    // Resolved once per appear via onAppear — never insert inside a computed property
+    @State private var heuteEintrag: TagesWohlbefinden? = nil
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -22,14 +25,21 @@ struct WellnessView: View {
             }
             .navigationTitle("Wohlbefinden")
         }
-        .onAppear { ladeHealthDaten() }
+        .onAppear {
+            stelleHeuteEintragSicher()
+            ladeHealthDaten()
+        }
     }
 
     // MARK: - Wasser-Tracker
 
     private var wasserTrackerKarte: some View {
-        VStack(spacing: 16) {
-            // Section header
+        let eintrag = heuteEintrag
+        let wasserMl = eintrag?.wasserMl ?? 0
+        let wasserZiel = eintrag?.wasserZielMl ?? 2000
+        let fortschritt = min(Double(wasserMl) / Double(wasserZiel), 1.0)
+
+        return VStack(spacing: 16) {
             HStack {
                 Label("Wasser-Tracker", systemImage: "drop.fill")
                     .font(.headline)
@@ -37,31 +47,22 @@ struct WellnessView: View {
                 Spacer()
             }
 
-            // Circular progress ring
             ZStack {
-                // Track
                 Circle()
                     .stroke(Color.teal.opacity(0.15), lineWidth: 14)
-
-                // Progress ring
                 Circle()
-                    .trim(from: 0, to: heute.fortschritt)
-                    .stroke(
-                        Color.teal,
-                        style: StrokeStyle(lineWidth: 14, lineCap: .round)
-                    )
+                    .trim(from: 0, to: fortschritt)
+                    .stroke(Color.teal, style: StrokeStyle(lineWidth: 14, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                    .animation(.spring(response: 0.5), value: heute.wasserMl)
-
-                // Center text
+                    .animation(.spring(response: 0.5), value: wasserMl)
                 VStack(spacing: 4) {
-                    Text("\(heute.wasserMl)")
+                    Text("\(wasserMl)")
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundStyle(.teal)
-                    Text("von \(heute.wasserZielMl) ml")
+                    Text("von \(wasserZiel) ml")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(String(format: "%.0f%%", heute.fortschritt * 100))
+                    Text(String(format: "%.0f%%", fortschritt * 100))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -69,21 +70,15 @@ struct WellnessView: View {
             .frame(width: 160, height: 160)
             .padding(.vertical, 8)
 
-            // Quick-add buttons
             HStack(spacing: 10) {
                 ForEach([150, 200, 330, 500], id: \.self) { menge in
-                    Button {
-                        trinken(ml: menge)
-                    } label: {
+                    Button { trinken(ml: menge) } label: {
                         VStack(spacing: 4) {
                             Image(systemName: "drop.fill")
                                 .font(.caption)
                                 .foregroundStyle(.teal)
-                            Text("+\(menge)")
-                                .font(.caption.bold())
-                            Text("ml")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            Text("+\(menge)").font(.caption.bold())
+                            Text("ml").font(.caption2).foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -93,10 +88,9 @@ struct WellnessView: View {
                 }
             }
 
-            // Undo button
-            if heute.wasserMl > 0 {
+            if wasserMl > 0 {
                 Button {
-                    heute.wasserMl = max(0, heute.wasserMl - 150)
+                    heuteEintrag?.wasserMl = max(0, wasserMl - 150)
                 } label: {
                     Label("Rückgängig", systemImage: "arrow.uturn.backward")
                         .font(.caption)
@@ -107,16 +101,14 @@ struct WellnessView: View {
 
             Divider()
 
-            // Goal stepper
             HStack {
-                Text("Tagesziel")
-                    .font(.subheadline)
+                Text("Tagesziel").font(.subheadline)
                 Spacer()
                 Stepper(
-                    "\(heute.wasserZielMl) ml",
+                    "\(wasserZiel) ml",
                     value: Binding(
-                        get: { heute.wasserZielMl },
-                        set: { heute.wasserZielMl = $0 }
+                        get: { wasserZiel },
+                        set: { heuteEintrag?.wasserZielMl = $0 }
                     ),
                     in: 1000...4000,
                     step: 100
@@ -138,7 +130,7 @@ struct WellnessView: View {
                     .foregroundStyle(.red)
                 Spacer()
                 Button(action: ladeHealthDaten) {
-                    Label("Daten laden", systemImage: "arrow.clockwise")
+                    Label("Aktualisieren", systemImage: "arrow.clockwise")
                         .font(.caption)
                 }
                 .buttonStyle(.borderless)
@@ -146,43 +138,27 @@ struct WellnessView: View {
             }
 
             HStack(spacing: 0) {
-                // Sleep
                 VStack(spacing: 6) {
-                    Image(systemName: "bed.double.fill")
-                        .font(.title2)
-                        .foregroundStyle(.indigo)
+                    Image(systemName: "bed.double.fill").font(.title2).foregroundStyle(.indigo)
                     if let std = schlafStunden {
-                        Text(String(format: "%.1f Std.", std))
-                            .font(.title3.bold())
+                        Text(String(format: "%.1f Std.", std)).font(.title3.bold())
                     } else {
-                        Text("–")
-                            .font(.title3.bold())
-                            .foregroundStyle(.secondary)
+                        Text("–").font(.title3.bold()).foregroundStyle(.secondary)
                     }
-                    Text("Schlaf")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text("Schlaf").font(.caption).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
 
                 Divider().frame(height: 56)
 
-                // Steps
                 VStack(spacing: 6) {
-                    Image(systemName: "figure.walk")
-                        .font(.title2)
-                        .foregroundStyle(.green)
+                    Image(systemName: "figure.walk").font(.title2).foregroundStyle(.green)
                     if let s = schritte {
-                        Text(schrittText(s))
-                            .font(.title3.bold())
+                        Text(schrittText(s)).font(.title3.bold())
                     } else {
-                        Text("–")
-                            .font(.title3.bold())
-                            .foregroundStyle(.secondary)
+                        Text("–").font(.title3.bold()).foregroundStyle(.secondary)
                     }
-                    Text("Schritte")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text("Schritte").font(.caption).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -211,22 +187,21 @@ struct WellnessView: View {
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .foregroundStyle(streak > 0 ? .orange : .secondary)
                     Text(streak == 1 ? "Tag in Folge" : "Tage in Folge")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    streakInfo(symbol: "checkmark.circle.fill", farbe: .green,
-                               text: "Ziel heute: \(heute.wasserZielMl) ml")
                     streakInfo(symbol: "drop.fill", farbe: .teal,
-                               text: "Getrunken: \(heute.wasserMl) ml")
+                               text: "Getrunken: \(heuteEintrag?.wasserMl ?? 0) ml")
+                    streakInfo(symbol: "checkmark.circle.fill", farbe: .green,
+                               text: "Ziel: \(heuteEintrag?.wasserZielMl ?? 2000) ml")
                     if streak >= 7 {
                         streakInfo(symbol: "star.fill", farbe: .yellow, text: "Wochenziel erreicht!")
                     } else if streak >= 3 {
                         streakInfo(symbol: "bolt.fill", farbe: .orange, text: "Super, weiter so!")
                     } else {
-                        streakInfo(symbol: "drop.circle", farbe: .teal, text: "Trinke genug, um Streak zu starten")
+                        streakInfo(symbol: "drop.circle", farbe: .teal, text: "Trinke täglich genug")
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -243,20 +218,21 @@ struct WellnessView: View {
         }
     }
 
-    // MARK: - Helper functions
+    // MARK: - Helpers
 
-    private var heute: TagesWohlbefinden {
+    private func stelleHeuteEintragSicher() {
         let start = Calendar.current.startOfDay(for: Date())
         if let existing = eintraege.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: start) }) {
-            return existing
+            heuteEintrag = existing
+        } else {
+            let neu = TagesWohlbefinden(datum: start)
+            modelContext.insert(neu)
+            heuteEintrag = neu
         }
-        let neu = TagesWohlbefinden(datum: start)
-        modelContext.insert(neu)
-        return neu
     }
 
     private func trinken(ml: Int) {
-        heute.wasserMl += ml
+        heuteEintrag?.wasserMl += ml
     }
 
     private func ladeHealthDaten() {
@@ -271,15 +247,12 @@ struct WellnessView: View {
         let sortiert = eintraege.sorted { $0.datum > $1.datum }
         var streak = 0
         var erwartet = kal.startOfDay(for: Date())
-
         for eintrag in sortiert {
             let tag = kal.startOfDay(for: eintrag.datum)
             guard kal.isDate(tag, inSameDayAs: erwartet) else { break }
             if eintrag.wasserMl >= eintrag.wasserZielMl {
                 streak += 1
-            } else if kal.isDateInToday(tag) {
-                // heute noch nicht geschafft – kein Streak-Abbruch, nur nicht zählen
-            } else {
+            } else if !kal.isDateInToday(tag) {
                 break
             }
             guard let vorherig = kal.date(byAdding: .day, value: -1, to: erwartet) else { break }
@@ -288,11 +261,7 @@ struct WellnessView: View {
         return streak
     }
 
-    private func schrittText(_ schritte: Int) -> String {
-        if schritte >= 1000 {
-            let tausend = Double(schritte) / 1000.0
-            return String(format: "%.1f Tsd.", tausend)
-        }
-        return "\(schritte)"
+    private func schrittText(_ s: Int) -> String {
+        s >= 1000 ? String(format: "%.1f Tsd.", Double(s) / 1000) : "\(s)"
     }
 }

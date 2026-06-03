@@ -18,11 +18,23 @@ struct PainDiaryApp: App {
             TagesWohlbefinden.self
         ])
 
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .automatic)
+        // CloudKit removed: schema changes (stressLevel, TagesWohlbefinden) are
+        // incompatible with the existing CloudKit container and cause a fatalError
+        // on first launch. Local SwiftData handles lightweight migration automatically.
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            fatalError("ModelContainer konnte nicht erstellt werden: \(error)")
+            // Migration failed — delete the corrupt store and start fresh
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            for name in ["default.store", "default.store-shm", "default.store-wal"] {
+                try? FileManager.default.removeItem(at: appSupport.appendingPathComponent(name))
+            }
+            do {
+                return try ModelContainer(for: schema, configurations: [config])
+            } catch {
+                fatalError("ModelContainer konnte nicht erstellt werden: \(error)")
+            }
         }
     }()
 
@@ -36,7 +48,6 @@ struct PainDiaryApp: App {
 
     private func berechtigungenAnfordern() async {
         _ = await NotificationManager.shared.berechtigungAnfordern()
-
         await HealthKitManager.shared.berechtigungAnfordern()
     }
 }
