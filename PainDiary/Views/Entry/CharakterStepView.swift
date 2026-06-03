@@ -40,7 +40,7 @@ struct CharakterStepView: View {
                             aktualisiereBinding()
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                         }
                     }
                 }

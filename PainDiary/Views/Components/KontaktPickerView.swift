@@ -27,7 +27,7 @@ struct KontaktPickerView: UIViewControllerRepresentable {
             self.dismiss = dismiss
         }
 
-        func contactPicker(_ picker: CNContactPickerViewController, didSelectContacts contacts: [CNContact]) {
+        func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
             let daten = contacts.compactMap { kontakt -> (name: String, phone: String)? in
                 let name = [kontakt.givenName, kontakt.familyName]
                     .filter { !$0.isEmpty }.joined(separator: " ")
