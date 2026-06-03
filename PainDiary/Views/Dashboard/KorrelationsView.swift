@@ -102,8 +102,12 @@ struct KorrelationsView: View {
                 .chartXScale(domain: 0...12)
                 .chartYScale(domain: 0...10)
                 .chartXAxis {
-                    AxisMarks(values: [0, 2, 4, 6, 8, 10, 12]) {
-                        AxisValueLabel { Text("\($0.as(Double.self).map { "\(Int($0))h" } ?? "")") }
+                    AxisMarks(values: [0, 2, 4, 6, 8, 10, 12]) { value in
+                        AxisValueLabel {
+                            if let d = value.as(Double.self) {
+                                Text("\(Int(d))h")
+                            }
+                        }
                     }
                 }
                 .frame(height: 180)
