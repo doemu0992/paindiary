@@ -27,15 +27,49 @@ private struct ProfilInhaltView: View {
     @State private var allergieFormAnzeigen = false
     @State private var arztFormAnzeigen = false
     @State private var notfallFormAnzeigen = false
+    @State private var adressbuchAnzeigen = false
 
     var body: some View {
         persoenlicheDaten
         medizinischeDaten
+        medikamenteLink
+        midasLink
+        zyklusLink
         diagnoseSektion
         allergienSektion
         aerzte
         notfallkontakte
         einstellungen
+    }
+
+    private var midasLink: some View {
+        Section {
+            NavigationLink(destination: MIDASView()) {
+                Label("MIDAS-Fragebogen", systemImage: "brain.head.profile")
+            }
+        } header: {
+            Text("Kopfschmerz-Assessment")
+        }
+    }
+
+    private var zyklusLink: some View {
+        Section {
+            NavigationLink(destination: ZyklusView()) {
+                Label("Zyklus-Tracking", systemImage: "drop.fill")
+            }
+        } header: {
+            Text("Zyklus")
+        }
+    }
+
+    private var medikamenteLink: some View {
+        Section {
+            NavigationLink(destination: MedikamenteView()) {
+                Label("Medikamente verwalten", systemImage: "pill.fill")
+            }
+        } header: {
+            Text("Dauermedikation")
+        }
     }
 
     private var persoenlicheDaten: some View {
@@ -224,6 +258,9 @@ private struct ProfilInhaltView: View {
                         if !kontakt.beziehung.isEmpty {
                             Text(kontakt.beziehung).font(.caption).foregroundStyle(.secondary)
                         }
+                        if !kontakt.phone.isEmpty {
+                            Text(kontakt.phone).font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                     if !kontakt.phone.isEmpty {
@@ -238,7 +275,14 @@ private struct ProfilInhaltView: View {
             .onDelete { indices in
                 indices.forEach { profil.notfallkontakte.remove(at: $0) }
             }
-            Button("Notfallkontakt hinzufügen") { notfallFormAnzeigen = true }
+#if os(iOS)
+            Button {
+                adressbuchAnzeigen = true
+            } label: {
+                Label("Aus Adressbuch wählen", systemImage: "person.crop.circle.badge.plus")
+            }
+#endif
+            Button("Manuell hinzufügen") { notfallFormAnzeigen = true }
         } header: {
             Text("Notfallkontakte")
         }
@@ -248,12 +292,25 @@ private struct ProfilInhaltView: View {
                 profil.notfallkontakte.append(neu)
             }
         }
+#if os(iOS)
+        .sheet(isPresented: $adressbuchAnzeigen) {
+            KontaktPickerView { daten in
+                for d in daten {
+                    let neu = NotfallKontakt(name: d.name, phone: d.phone, beziehung: "")
+                    profil.notfallkontakte.append(neu)
+                }
+            }
+        }
+#endif
     }
 
     private var einstellungen: some View {
         Section("Einstellungen") {
             Toggle("Zyklus-Tracking", isOn: Bindable(profil).zyklusTrackingAktiv)
             Toggle("Biometrische Sperre", isOn: Bindable(profil).biometrischesLockAktiv)
+            NavigationLink(destination: EinstellungenView()) {
+                Label("App-Einstellungen", systemImage: "gearshape")
+            }
         }
     }
 }

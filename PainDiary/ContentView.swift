@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    @AppStorage("onboardingAbgeschlossen") private var onboardingAbgeschlossen = false
+    @AppStorage("akzentFarbe") private var akzentFarbe = "blau"
     @State private var ausgewaehlterTab = 0
     @State private var neuerEintragAnzeigen = false
 
@@ -39,6 +41,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $neuerEintragAnzeigen) {
             AddEntryView()
+        }
+        .tint(akzentFarbe.alsAkzentFarbe)
+        .fullScreenCover(isPresented: .constant(!onboardingAbgeschlossen)) {
+            OnboardingView()
         }
     }
 #endif

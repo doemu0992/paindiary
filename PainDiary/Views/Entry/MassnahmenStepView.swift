@@ -4,6 +4,7 @@ struct MassnahmenStepView: View {
     @Binding var massnahmen: String
     @Binding var stimmung: Int
     @Binding var schlafStunden: Double
+    var healthSchlafVorschlag: Double? = nil
 
     private let massnahmenVorschlaege = [
         "Schmerzmittel", "Wärme", "Kälte", "Ruhe", "Massage",
@@ -11,6 +12,7 @@ struct MassnahmenStepView: View {
     ]
 
     @State private var ausgewaehlt: Set<String> = []
+    @State private var eigenerText = ""
 
     var body: some View {
         VStack(spacing: 24) {
@@ -19,7 +21,7 @@ struct MassnahmenStepView: View {
                 .multilineTextAlignment(.center)
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Massnahmen")
+                Text("Massnahmen (mehrere möglich)")
                     .font(.headline)
                 FlowLayout(massnahmenVorschlaege) { m in
                     ChipButton(label: m, ausgewaehlt: ausgewaehlt.contains(m)) {
@@ -28,8 +30,20 @@ struct MassnahmenStepView: View {
                         aktualisiereBinding()
                     }
                 }
-                TextField("Weitere Massnahmen…", text: $massnahmen)
-                    .textFieldStyle(.roundedBorder)
+                HStack(spacing: 8) {
+                    TextField("Weitere Massnahme…", text: $eigenerText)
+                        .textFieldStyle(.roundedBorder)
+                    if !eigenerText.isEmpty {
+                        Button {
+                            ausgewaehlt.insert(eigenerText)
+                            eigenerText = ""
+                            aktualisiereBinding()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                }
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -57,6 +71,22 @@ struct MassnahmenStepView: View {
                         Spacer()
                         Text(String(format: "%.1f Std.", schlafStunden))
                             .foregroundStyle(.secondary)
+                        if let hs = healthSchlafVorschlag {
+                            Button {
+                                schlafStunden = min(hs, 12)
+                            } label: {
+                                Label(
+                                    String(format: "Health: %.1f Std.", hs),
+                                    systemImage: "heart.fill"
+                                )
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.red.opacity(0.1), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                     Slider(value: $schlafStunden, in: 0...12, step: 0.5)
                         .tint(.indigo)
@@ -70,14 +100,11 @@ struct MassnahmenStepView: View {
     }
 
     private func aktualisiereBinding() {
-        let chips = ausgewaehlt.sorted().joined(separator: ", ")
-        if massnahmen.isEmpty || massnahmenVorschlaege.contains(where: { massnahmen.contains($0) }) {
-            massnahmen = chips
-        }
+        massnahmen = ausgewaehlt.sorted().joined(separator: ", ")
     }
 
     private func ladeAuswahlAusBinding() {
-        let teile = massnahmen.components(separatedBy: ", ")
-        ausgewaehlt = Set(teile.filter { massnahmenVorschlaege.contains($0) })
+        let teile = massnahmen.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
+        ausgewaehlt = Set(teile.filter { !$0.isEmpty })
     }
 }

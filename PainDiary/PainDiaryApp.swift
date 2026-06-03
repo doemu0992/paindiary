@@ -11,9 +11,13 @@ struct PainDiaryApp: App {
             Allergie.self,
             ArztKontakt.self,
             NotfallKontakt.self,
-            Dauermedikation.self
+            Dauermedikation.self,
+            EinnahmeLog.self,
+            MIDASBewertung.self,
+            ZyklusEintrag.self
         ])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .automatic)
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
@@ -24,7 +28,14 @@ struct PainDiaryApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .task { await berechtigungenAnfordern() }
         }
         .modelContainer(sharedModelContainer)
+    }
+
+    private func berechtigungenAnfordern() async {
+        _ = await NotificationManager.shared.berechtigungAnfordern()
+
+        await HealthKitManager.shared.berechtigungAnfordern()
     }
 }

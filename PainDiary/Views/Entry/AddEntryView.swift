@@ -5,7 +5,10 @@ struct AddEntryView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    var eintrag: PainEntry? = nil
+
     @State private var schritt = 0
+    @State private var datum = Date()
     @State private var koerperstelle = ""
     @State private var schmerzstaerke = 5
     @State private var schmerzart = ""
@@ -16,7 +19,10 @@ struct AddEntryView: View {
     @State private var stimmung = 3
     @State private var schlafStunden = 7.0
     @State private var notizen = ""
+    @State private var healthSchlaf: Double? = nil
 
+    private let wetter = WetterService.shared
+    private let health = HealthKitManager.shared
     private let gesamtSchritte = 6
 
     var body: some View {
@@ -26,10 +32,15 @@ struct AddEntryView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
 
-                Text("Schritt \(schritt + 1) von \(gesamtSchritte)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
+                HStack {
+                    DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
+                        .labelsHidden()
+                        .font(.caption)
+                    Spacer()
+                    wetterBadge
+                }
+                .padding(.horizontal)
+                .padding(.top, 4)
 
                 ScrollView {
                     schrittInhalt
@@ -56,13 +67,37 @@ struct AddEntryView: View {
                 .padding()
                 .background(.bar)
             }
-            .navigationTitle(schrittTitel)
+            .navigationTitle(eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") { dismiss() }
                 }
             }
+            .onAppear {
+                ladeVorhandeneWerte()
+                if eintrag == nil {
+                    wetter.laden()
+                    Task { healthSchlaf = await health.schlafStundenLetztteNacht() }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var wetterBadge: some View {
+        if wetter.isLoading {
+            ProgressView().scaleEffect(0.7)
+        } else if let w = wetter.aktuell {
+            HStack(spacing: 4) {
+                Image(systemName: w.symbol)
+                    .foregroundStyle(.yellow)
+                Text(String(format: "%.0f°C", w.temperatur))
+                    .font(.caption.bold())
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.regularMaterial, in: Capsule())
         }
     }
 
@@ -87,40 +122,61 @@ struct AddEntryView: View {
             MassnahmenStepView(
                 massnahmen: $massnahmen,
                 stimmung: $stimmung,
-                schlafStunden: $schlafStunden
+                schlafStunden: $schlafStunden,
+                healthSchlafVorschlag: healthSchlaf
             )
         default:
             EmptyView()
         }
     }
 
-    private var schrittTitel: String {
-        switch schritt {
-        case 0: return "Körperstelle"
-        case 1: return "Schmerzstärke"
-        case 2: return "Schmerzcharakter"
-        case 3: return "Auslöser"
-        case 4: return "Begleiterscheinungen"
-        case 5: return "Massnahmen"
-        default: return "Neuer Eintrag"
-        }
+    private func ladeVorhandeneWerte() {
+        guard let e = eintrag else { return }
+        datum = e.datum
+        koerperstelle = e.koerperstelle
+        schmerzstaerke = e.schmerzstaerke
+        schmerzart = e.schmerzart
+        dauerMinuten = e.dauerMinuten
+        ausloeser = e.ausloeser
+        begleiterscheinungen = e.begleiterscheinungen
+        massnahmen = e.massnahmen
+        stimmung = e.stimmung
+        schlafStunden = e.schlafStunden
+        notizen = e.notizen
     }
 
     private func speichern() {
-        let eintrag = PainEntry(
-            datum: Date(),
-            schmerzstaerke: schmerzstaerke,
-            koerperstelle: koerperstelle,
-            schmerzart: schmerzart,
-            dauerMinuten: dauerMinuten,
-            ausloeser: ausloeser,
-            begleiterscheinungen: begleiterscheinungen,
-            massnahmen: massnahmen,
-            notizen: notizen,
-            stimmung: stimmung,
-            schlafStunden: schlafStunden
-        )
-        modelContext.insert(eintrag)
+        let wetterSnap = wetter.aktuell
+        if let e = eintrag {
+            e.koerperstelle = koerperstelle
+            e.schmerzstaerke = schmerzstaerke
+            e.schmerzart = schmerzart
+            e.dauerMinuten = dauerMinuten
+            e.ausloeser = ausloeser
+            e.begleiterscheinungen = begleiterscheinungen
+            e.massnahmen = massnahmen
+            e.stimmung = stimmung
+            e.schlafStunden = schlafStunden
+            e.notizen = notizen
+        } else {
+            let neu = PainEntry(
+                datum: datum,
+                schmerzstaerke: schmerzstaerke,
+                koerperstelle: koerperstelle,
+                schmerzart: schmerzart,
+                dauerMinuten: dauerMinuten,
+                ausloeser: ausloeser,
+                begleiterscheinungen: begleiterscheinungen,
+                massnahmen: massnahmen,
+                notizen: notizen,
+                stimmung: stimmung,
+                schlafStunden: schlafStunden,
+                wetterTemperatur: wetterSnap?.temperatur,
+                wetterCode: wetterSnap?.code,
+                wetterWind: wetterSnap?.windgeschwindigkeit
+            )
+            modelContext.insert(neu)
+        }
         dismiss()
     }
 }
