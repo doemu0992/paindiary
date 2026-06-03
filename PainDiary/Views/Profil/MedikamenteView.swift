@@ -22,6 +22,7 @@ struct MedikamenteView: View {
     var body: some View {
         List {
             berechtigungBanner
+            uebergebrauchWarnung
             heuteSektion
             if !aktive.isEmpty {
                 Section("Aktiv") {
@@ -64,6 +65,36 @@ struct MedikamenteView: View {
         }
         .sheet(isPresented: $formAnzeigen) { MedikamentFormView() }
         .sheet(item: $zuBearbeiten) { med in MedikamentFormView(medikament: med) }
+    }
+
+    // Warn if any med was logged > 10x in the last 30 days (medication overuse threshold)
+    @ViewBuilder
+    private var uebergebrauchWarnung: some View {
+        let grenze = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        let letzter30Tage = logs.filter { $0.datum >= grenze && $0.eingenommen }
+        let zaehlung = Dictionary(grouping: letzter30Tage, by: \.medikamentName).mapValues(\.count)
+        let probleme = zaehlung.filter { $0.value > 10 }.sorted { $0.value > $1.value }
+
+        if !probleme.isEmpty {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Möglicher Medikamenten-Übergebrauch", systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.orange)
+                    Text("Folgende Medikamente wurden in den letzten 30 Tagen mehr als 10-mal eingenommen. Häufiger Gebrauch von Schmerzmedikamenten kann Übergebrauchskopfschmerzen verursachen. Bitte sprich mit deinem Arzt.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(probleme, id: \.key) { name, anzahl in
+                        HStack {
+                            Text(name).font(.caption.bold())
+                            Spacer()
+                            Text("\(anzahl)× in 30 Tagen").font(.caption).foregroundStyle(.orange)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
     }
 
     @ViewBuilder

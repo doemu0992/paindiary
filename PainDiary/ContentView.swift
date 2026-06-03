@@ -29,9 +29,13 @@ struct ContentView: View {
                 .tabItem { Label("Neu", systemImage: "plus.circle.fill") }
                 .tag(2)
 
+            NavigationStack { WellnessView() }
+                .tabItem { Label("Wellness", systemImage: "heart.text.square.fill") }
+                .tag(3)
+
             NavigationStack { ProfilView() }
                 .tabItem { Label("Profil", systemImage: "person.circle") }
-                .tag(3)
+                .tag(4)
         }
         .onChange(of: ausgewaehlterTab) { _, neu in
             if neu == 2 {

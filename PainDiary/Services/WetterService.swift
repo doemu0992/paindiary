@@ -6,9 +6,15 @@ struct WetterSnapshot {
     let temperatur: Double
     let code: Int
     let windgeschwindigkeit: Double
+    var luftdruckHpa: Double?
 
     var beschreibung: String { Self.beschreibungFuerCode(code) }
     var symbol: String { Self.symbolFuerCode(code) }
+
+    var luftdruckText: String {
+        guard let druck = luftdruckHpa else { return "" }
+        return "\(Int(druck.rounded())) hPa"
+    }
 
     static func beschreibungFuerCode(_ code: Int) -> String {
         switch code {
@@ -84,16 +90,17 @@ class WetterService: NSObject, CLLocationManagerDelegate {
     private func fetchWetter(lat: Double, lon: Double) async {
         let urlStr = "https://api.open-meteo.com/v1/forecast"
             + "?latitude=\(lat)&longitude=\(lon)"
-            + "&current_weather=true"
+            + "&current=temperature_2m,weather_code,wind_speed_10m,surface_pressure"
         guard let url = URL(string: urlStr) else { return }
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             let r = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
             await MainActor.run {
                 self.aktuell = WetterSnapshot(
-                    temperatur: r.current_weather.temperature,
-                    code: r.current_weather.weathercode,
-                    windgeschwindigkeit: r.current_weather.windspeed
+                    temperatur: r.current.temperature_2m,
+                    code: r.current.weather_code,
+                    windgeschwindigkeit: r.current.wind_speed_10m,
+                    luftdruckHpa: r.current.surface_pressure
                 )
                 self.isLoading = false
             }
@@ -107,10 +114,11 @@ class WetterService: NSObject, CLLocationManagerDelegate {
 }
 
 private struct OpenMeteoResponse: Codable {
-    let current_weather: CurrentWeather
+    let current: CurrentWeather
     struct CurrentWeather: Codable {
-        let temperature: Double
-        let weathercode: Int
-        let windspeed: Double
+        let temperature_2m: Double
+        let weather_code: Int
+        let wind_speed_10m: Double
+        let surface_pressure: Double?
     }
 }

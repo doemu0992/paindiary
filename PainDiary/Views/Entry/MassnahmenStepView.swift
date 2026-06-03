@@ -4,6 +4,7 @@ struct MassnahmenStepView: View {
     @Binding var massnahmen: String
     @Binding var stimmung: Int
     @Binding var schlafStunden: Double
+    @Binding var stressLevel: Int
     var healthSchlafVorschlag: Double? = nil
 
     private let massnahmenVorschlaege = [
@@ -52,6 +53,7 @@ struct MassnahmenStepView: View {
                 Text("Wohlbefinden")
                     .font(.headline)
 
+                // Stimmung
                 HStack {
                     Text("Stimmung")
                     Spacer()
@@ -65,6 +67,32 @@ struct MassnahmenStepView: View {
                     }
                 }
 
+                // Stress
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Stresslevel")
+                        Spacer()
+                        Text(stressBezeichnung(stressLevel))
+                            .font(.subheadline.bold())
+                            .foregroundStyle(stressFarbe(stressLevel))
+                    }
+                    HStack(spacing: 4) {
+                        ForEach(1...5, id: \.self) { i in
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(i <= stressLevel ? stressFarbe(stressLevel) : Color.secondary.opacity(0.2))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 8)
+                                .onTapGesture { stressLevel = i }
+                        }
+                    }
+                    HStack {
+                        Text("Entspannt").font(.caption2).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("Extrem").font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+
+                // Schlaf
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text("Schlaf letzte Nacht")
@@ -97,6 +125,28 @@ struct MassnahmenStepView: View {
         }
         .padding(.horizontal)
         .onAppear { ladeAuswahlAusBinding() }
+    }
+
+    private func stressBezeichnung(_ level: Int) -> String {
+        switch level {
+        case 1: return "Entspannt"
+        case 2: return "Leicht"
+        case 3: return "Mässig"
+        case 4: return "Hoch"
+        case 5: return "Extrem"
+        default: return "Mässig"
+        }
+    }
+
+    private func stressFarbe(_ level: Int) -> Color {
+        switch level {
+        case 1: return .green
+        case 2: return .mint
+        case 3: return .yellow
+        case 4: return .orange
+        case 5: return .red
+        default: return .yellow
+        }
     }
 
     private func aktualisiereBinding() {

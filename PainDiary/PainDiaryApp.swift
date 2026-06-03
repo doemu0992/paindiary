@@ -14,7 +14,8 @@ struct PainDiaryApp: App {
             Dauermedikation.self,
             EinnahmeLog.self,
             MIDASBewertung.self,
-            ZyklusEintrag.self
+            ZyklusEintrag.self,
+            TagesWohlbefinden.self
         ])
 
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .automatic)

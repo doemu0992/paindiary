@@ -8,7 +8,9 @@ struct DashboardView: View {
     @Query private var medikamente: [Dauermedikation]
     @Query(sort: \MIDASBewertung.datum, order: .reverse) private var midasBewertungen: [MIDASBewertung]
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
+    @Query(sort: \TagesWohlbefinden.datum, order: .reverse) private var wohlbefindenEintraege: [TagesWohlbefinden]
     @State private var viewModel = DashboardViewModel()
+    @State private var schritte: Int? = nil
     @State private var exportURL: URL? = nil
     @State private var exportTeilen = false
     @State private var exportOptionsAnzeigen = false
@@ -20,6 +22,7 @@ struct DashboardView: View {
             VStack(spacing: 20) {
                 statistikKarten
                 if !zyklusEintraege.isEmpty { zyklusKarte }
+                wellnessKarte
                 schnellLinks
                 schmerzVerlaufChart
                 letzteEintraege
@@ -28,7 +31,10 @@ struct DashboardView: View {
         }
         .navigationTitle("Übersicht")
         .onChange(of: eintraege) { _, neu in viewModel.eintraege = neu }
-        .onAppear { viewModel.eintraege = eintraege }
+        .onAppear {
+            viewModel.eintraege = eintraege
+            Task { schritte = await HealthKitManager.shared.schritteDiesemTag() }
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Group {
@@ -81,6 +87,86 @@ struct DashboardView: View {
             }
         }
 #endif
+    }
+
+    private var wellnessKarte: some View {
+        let heute = wohlbefindenEintraege.first {
+            Calendar.current.isDateInToday($0.datum)
+        }
+        let wasserMl = heute?.wasserMl ?? 0
+        let wasserZiel = heute?.wasserZielMl ?? 2000
+        let fortschritt = min(Double(wasserMl) / Double(wasserZiel), 1.0)
+
+        return NavigationLink(destination: WellnessView()) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Wohlbefinden", systemImage: "heart.text.square.fill")
+                        .font(.headline)
+                        .foregroundStyle(.pink)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+
+                HStack(spacing: 0) {
+                    // Wasser
+                    VStack(spacing: 6) {
+                        ZStack {
+                            Circle()
+                                .stroke(Color.teal.opacity(0.2), lineWidth: 5)
+                                .frame(width: 44, height: 44)
+                            Circle()
+                                .trim(from: 0, to: fortschritt)
+                                .stroke(Color.teal, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "drop.fill")
+                                .font(.caption)
+                                .foregroundStyle(.teal)
+                        }
+                        Text("\(wasserMl) ml")
+                            .font(.caption.bold())
+                        Text("Wasser").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    Divider().frame(height: 56)
+
+                    // Schritte
+                    VStack(spacing: 6) {
+                        Image(systemName: "figure.walk")
+                            .font(.title2)
+                            .foregroundStyle(.green)
+                        if let s = schritte {
+                            Text(s >= 1000 ? String(format: "%.1fk", Double(s) / 1000) : "\(s)")
+                                .font(.caption.bold())
+                        } else {
+                            Text("–").font(.caption.bold()).foregroundStyle(.secondary)
+                        }
+                        Text("Schritte").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    Divider().frame(height: 56)
+
+                    // Wellness-Tab Shortcut
+                    VStack(spacing: 6) {
+                        Image(systemName: fortschritt >= 1 ? "checkmark.circle.fill" : "circle.dashed")
+                            .font(.title2)
+                            .foregroundStyle(fortschritt >= 1 ? .green : .secondary)
+                        Text(fortschritt >= 1 ? "Ziel erreicht" : String(format: "%.0f%%", fortschritt * 100))
+                            .font(.caption.bold())
+                            .foregroundStyle(fortschritt >= 1 ? .green : .secondary)
+                        Text("Tagesziel").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
     }
 
     private var zyklusKarte: some View {

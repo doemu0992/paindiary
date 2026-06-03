@@ -17,6 +17,7 @@ struct AddEntryView: View {
     @State private var begleiterscheinungen = ""
     @State private var massnahmen = ""
     @State private var stimmung = 3
+    @State private var stressLevel = 3
     @State private var schlafStunden = 7.0
     @State private var notizen = ""
     @State private var healthSchlaf: Double? = nil
@@ -94,6 +95,11 @@ struct AddEntryView: View {
                     .foregroundStyle(.yellow)
                 Text(String(format: "%.0f°C", w.temperatur))
                     .font(.caption.bold())
+                if !w.luftdruckText.isEmpty {
+                    Text(w.luftdruckText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
@@ -123,6 +129,7 @@ struct AddEntryView: View {
                 massnahmen: $massnahmen,
                 stimmung: $stimmung,
                 schlafStunden: $schlafStunden,
+                stressLevel: $stressLevel,
                 healthSchlafVorschlag: healthSchlaf
             )
         default:
@@ -141,6 +148,7 @@ struct AddEntryView: View {
         begleiterscheinungen = e.begleiterscheinungen
         massnahmen = e.massnahmen
         stimmung = e.stimmung
+        stressLevel = e.stressLevel
         schlafStunden = e.schlafStunden
         notizen = e.notizen
     }
@@ -156,6 +164,7 @@ struct AddEntryView: View {
             e.begleiterscheinungen = begleiterscheinungen
             e.massnahmen = massnahmen
             e.stimmung = stimmung
+            e.stressLevel = stressLevel
             e.schlafStunden = schlafStunden
             e.notizen = notizen
         } else {
@@ -171,9 +180,11 @@ struct AddEntryView: View {
                 notizen: notizen,
                 stimmung: stimmung,
                 schlafStunden: schlafStunden,
+                stressLevel: stressLevel,
                 wetterTemperatur: wetterSnap?.temperatur,
                 wetterCode: wetterSnap?.code,
-                wetterWind: wetterSnap?.windgeschwindigkeit
+                wetterWind: wetterSnap?.windgeschwindigkeit,
+                luftdruckHpa: wetterSnap?.luftdruckHpa
             )
             modelContext.insert(neu)
         }
