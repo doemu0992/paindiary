@@ -2,19 +2,92 @@ import Foundation
 #if os(iOS)
 import UIKit
 
+// MARK: - Plain data transfer objects (no SwiftData dependencies)
+
+struct PDFPatientenDaten {
+    var vorname: String = ""
+    var nachname: String = ""
+    var geburtsdatum: Date? = nil
+    var versicherung: String = ""
+    var versicherungsNummer: String = ""
+    var blutgruppe: String = ""
+    var diagnosen: [String] = []
+    var allergien: [String] = []
+    var aerzte: [PDFArzt] = []
+    var notfallkontakte: [PDFNotfallKontakt] = []
+
+    var vollerName: String { "\(vorname) \(nachname)".trimmingCharacters(in: .whitespaces) }
+
+    static func aus(profil: Benutzerprofil?) -> PDFPatientenDaten {
+        guard let p = profil else { return PDFPatientenDaten() }
+        return PDFPatientenDaten(
+            vorname: p.vorname,
+            nachname: p.nachname,
+            geburtsdatum: p.geburtsdatum,
+            versicherung: p.versicherung,
+            versicherungsNummer: p.versicherungsNummer,
+            blutgruppe: p.blutgruppe,
+            diagnosen: p.diagnosen.map { $0.bezeichnung }.filter { !$0.isEmpty },
+            allergien: p.allergien.map { $0.substanz }.filter { !$0.isEmpty },
+            aerzte: p.aerzte.map { PDFArzt(name: $0.name, fachgebiet: $0.fachgebiet, telefon: $0.telefon, istHausarzt: $0.istHausarzt) },
+            notfallkontakte: p.notfallkontakte.map { PDFNotfallKontakt(name: $0.name, phone: $0.phone, beziehung: $0.beziehung) }
+        )
+    }
+}
+
+struct PDFArzt {
+    var name: String; var fachgebiet: String; var telefon: String; var istHausarzt: Bool
+}
+
+struct PDFNotfallKontakt {
+    var name: String; var phone: String; var beziehung: String
+}
+
+struct PDFMedikament {
+    var name: String; var dosierung: String; var frequenz: String; var startDatum: Date; var aktiv: Bool
+
+    static func aus(med: Dauermedikation) -> PDFMedikament {
+        PDFMedikament(name: med.name, dosierung: med.dosierung, frequenz: med.frequenz,
+                      startDatum: med.startDatum, aktiv: med.aktiv)
+    }
+}
+
+struct PDFEintrag {
+    var datum: Date; var schmerzstaerke: Int; var koerperstelle: String
+    var schmerzart: String; var dauerMinuten: Int; var ausloeser: String
+    var massnahmen: String; var notizen: String; var begleiterscheinungen: String
+
+    static func aus(eintrag: PainEntry) -> PDFEintrag {
+        PDFEintrag(datum: eintrag.datum, schmerzstaerke: eintrag.schmerzstaerke,
+                   koerperstelle: eintrag.koerperstelle, schmerzart: eintrag.schmerzart,
+                   dauerMinuten: eintrag.dauerMinuten, ausloeser: eintrag.ausloeser,
+                   massnahmen: eintrag.massnahmen, notizen: eintrag.notizen,
+                   begleiterscheinungen: eintrag.begleiterscheinungen)
+    }
+}
+
+struct PDFMidas {
+    var datum: Date; var score: Int; var gradText: String
+
+    static func aus(m: MIDASBewertung) -> PDFMidas {
+        PDFMidas(datum: m.datum, score: m.score, gradText: m.gradText)
+    }
+}
+
+// MARK: - Export options
+
 struct ExportOptionen {
     var zeitraum: ExportZeitraum = .dreissigTage
     var mitZusammenfassung: Bool = true
     var mitMedikamente: Bool = true
     var mitEintraege: Bool = true
-    var mitMIDAS: Bool = true
 }
 
 enum ExportZeitraum: String, CaseIterable {
-    case dreissigTage  = "30 Tage"
-    case neunzigTage   = "90 Tage"
-    case halbJahr      = "180 Tage"
-    case alles         = "Alles"
+    case dreissigTage = "30 Tage"
+    case neunzigTage  = "90 Tage"
+    case halbJahr     = "180 Tage"
+    case alles        = "Alles"
 
     func startDatum() -> Date? {
         let cal = Calendar.current
@@ -27,6 +100,8 @@ enum ExportZeitraum: String, CaseIterable {
     }
 }
 
+// MARK: - PDF service
+
 class PDFExportService {
     static let shared = PDFExportService()
 
@@ -35,194 +110,221 @@ class PDFExportService {
     private let rand: CGFloat = 48
     private var iw: CGFloat { W - rand * 2 }
 
-    private let blau = UIColor(red: 0.13, green: 0.40, blue: 0.78, alpha: 1)
+    private let blau     = UIColor(red: 0.13, green: 0.40, blue: 0.78, alpha: 1)
     private let hellBlau = UIColor(red: 0.88, green: 0.93, blue: 0.99, alpha: 1)
 
-    func erstellePDF(
+    /// Call from main thread. All SwiftData objects are copied into plain structs here,
+    /// then PDF rendering runs on a background queue.
+    func erstellePDFAsync(
         eintraege: [PainEntry],
         medikamente: [Dauermedikation],
         midasBewertungen: [MIDASBewertung],
         profil: Benutzerprofil?,
-        optionen: ExportOptionen = ExportOptionen()
-    ) -> URL? {
-        let gefiltert: [PainEntry]
+        optionen: ExportOptionen,
+        completion: @escaping (URL?) -> Void
+    ) {
+        // Copy all SwiftData objects into plain structs on main thread
+        let patient  = PDFPatientenDaten.aus(profil: profil)
+        let gefiltert: [PDFEintrag]
         if let start = optionen.zeitraum.startDatum() {
-            gefiltert = eintraege.filter { $0.datum >= start }.sorted { $0.datum > $1.datum }
+            gefiltert = eintraege.filter { $0.datum >= start }
+                .sorted { $0.datum > $1.datum }
+                .map(PDFEintrag.aus)
         } else {
-            gefiltert = eintraege.sorted { $0.datum > $1.datum }
+            gefiltert = eintraege.sorted { $0.datum > $1.datum }.map(PDFEintrag.aus)
         }
+        let meds     = medikamente.map(PDFMedikament.aus)
+        let midas    = midasBewertungen.sorted { $0.datum > $1.datum }.map(PDFMidas.aus)
 
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { completion(nil); return }
+            let url = self.renderPDF(patient: patient, eintraege: gefiltert,
+                                     medikamente: meds, midas: midas, optionen: optionen)
+            DispatchQueue.main.async { completion(url) }
+        }
+    }
+
+    // MARK: - Render
+
+    private func renderPDF(
+        patient: PDFPatientenDaten,
+        eintraege: [PDFEintrag],
+        medikamente: [PDFMedikament],
+        midas: [PDFMidas],
+        optionen: ExportOptionen
+    ) -> URL? {
         let dateiname = "Schmerztagebuch_\(fmt(Date())).pdf"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(dateiname)
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: W, height: H))
 
         do {
             try renderer.writePDF(to: url) { ctx in
-                // Page 1: Cover
                 ctx.beginPage()
-                deckblatt(ctx: ctx.cgContext, profil: profil, optionen: optionen, anzahl: gefiltert.count)
+                deckblatt(ctx: ctx.cgContext, patient: patient, optionen: optionen, anzahl: eintraege.count)
 
-                // Page 2: Summary
-                if optionen.mitZusammenfassung && !gefiltert.isEmpty {
+                if optionen.mitZusammenfassung && !eintraege.isEmpty {
                     ctx.beginPage()
-                    zusammenfassung(ctx: ctx.cgContext, eintraege: gefiltert, midas: midasBewertungen, seite: 2)
+                    zusammenfassung(ctx: ctx.cgContext, eintraege: eintraege, midas: midas)
                 }
 
-                // Page 3: Medications
                 if optionen.mitMedikamente && !medikamente.isEmpty {
                     ctx.beginPage()
-                    medikamenteSeite(ctx: ctx.cgContext, medikamente: medikamente, seite: 3)
+                    medikamenteSeite(ctx: ctx.cgContext, medikamente: medikamente)
                 }
 
-                // Page 4+: Entries
-                if optionen.mitEintraege && !gefiltert.isEmpty {
-                    eintraegeSeiten(ctx: ctx, eintraege: gefiltert)
+                if optionen.mitEintraege && !eintraege.isEmpty {
+                    eintraegeSeiten(ctx: ctx, eintraege: eintraege)
                 }
             }
             return url
-        } catch {
-            return nil
-        }
+        } catch { return nil }
     }
 
     // MARK: - Page 1: Cover
 
-    private func deckblatt(ctx: CGContext, profil: Benutzerprofil?, optionen: ExportOptionen, anzahl: Int) {
-        // Blue header bar
+    private func deckblatt(ctx: CGContext, patient: PDFPatientenDaten, optionen: ExportOptionen, anzahl: Int) {
+        // Blue header
         ctx.setFillColor(blau.cgColor)
         ctx.fill(CGRect(x: 0, y: 0, width: W, height: 180))
-
-        // App name
         draw("PainDiary", at: CGPoint(x: rand, y: 52),
              font: .systemFont(ofSize: 28, weight: .bold), color: .white)
         draw("Medizinischer Bericht", at: CGPoint(x: rand, y: 88),
-             font: .systemFont(ofSize: 16, weight: .regular), color: UIColor.white.withAlphaComponent(0.85))
-
-        // Date on right
-        let datumStr = "Erstellt am \(fmtLang(Date()))"
-        drawRight(datumStr, rightX: W - rand, y: 88,
+             font: .systemFont(ofSize: 16), color: UIColor.white.withAlphaComponent(0.85))
+        drawRight("Erstellt am \(fmtLang(Date()))", rightX: W - rand, y: 88,
                   font: .systemFont(ofSize: 11), color: UIColor.white.withAlphaComponent(0.75))
 
+        var y: CGFloat = 210
+
         // Patient info box
-        let boxY: CGFloat = 210
-        roundedRect(ctx: ctx, rect: CGRect(x: rand, y: boxY, width: iw, height: 160),
-                    corner: 10, fill: hellBlau, stroke: UIColor(white: 0.8, alpha: 1))
+        let infoRows: [(String, String)] = [
+            patient.vollerName.isEmpty ? nil : ("Name", patient.vollerName),
+            patient.geburtsdatum.map { ("Geburtsdatum", fmt($0)) },
+            patient.versicherung.isEmpty ? nil : ("Krankenkasse", patient.versicherung),
+            patient.versicherungsNummer.isEmpty ? nil : ("Vers.-Nr.", patient.versicherungsNummer),
+            patient.blutgruppe == "Unbekannt" || patient.blutgruppe.isEmpty ? nil : ("Blutgruppe", patient.blutgruppe),
+        ].compactMap { $0 }
 
-        draw("Patienteninformationen", at: CGPoint(x: rand + 16, y: boxY + 14),
-             font: .systemFont(ofSize: 13, weight: .semibold), color: blau)
+        let boxH = max(70, CGFloat(infoRows.count) * 18 + 40)
+        infoBox(ctx: ctx, x: rand, y: y, w: iw, h: boxH, titel: "Patienteninformationen", rows: infoRows)
+        y += boxH + 12
 
-        var infoY = boxY + 38
-        let labelFont = UIFont.systemFont(ofSize: 11, weight: .medium)
-        let valueFont = UIFont.systemFont(ofSize: 11)
-        let grau = UIColor.secondaryLabel
-
-        if let p = profil {
-            let name = "\(p.vorname) \(p.nachname)".trimmingCharacters(in: .whitespaces)
-            if !name.isEmpty {
-                drawLabel("Name:", value: name, x: rand + 16, y: infoY, labelFont: labelFont, valueFont: valueFont, labelColor: grau)
-                infoY += 18
-            }
-            if let geb = p.geburtsdatum {
-                drawLabel("Geburtsdatum:", value: fmt(geb), x: rand + 16, y: infoY, labelFont: labelFont, valueFont: valueFont, labelColor: grau)
-                infoY += 18
-            }
-            if !p.versicherung.isEmpty {
-                drawLabel("Krankenkasse:", value: p.versicherung, x: rand + 16, y: infoY, labelFont: labelFont, valueFont: valueFont, labelColor: grau)
-                infoY += 18
-            }
-            if !p.versicherungsNummer.isEmpty {
-                drawLabel("Vers.-Nr.:", value: p.versicherungsNummer, x: rand + 16, y: infoY, labelFont: labelFont, valueFont: valueFont, labelColor: grau)
-                infoY += 18
-            }
-        } else {
-            draw("Kein Profil erfasst", at: CGPoint(x: rand + 16, y: infoY), font: valueFont, color: grau)
+        // Diagnoses
+        if !patient.diagnosen.isEmpty {
+            let dRows = patient.diagnosen.map { ("", $0) }
+            infoBox(ctx: ctx, x: rand, y: y, w: iw * 0.55 - 6, h: CGFloat(dRows.count) * 18 + 40,
+                    titel: "Diagnosen", rows: dRows, valueBold: false)
         }
 
-        // Timeframe info box
-        let tf = boxY + 185
-        roundedRect(ctx: ctx, rect: CGRect(x: rand, y: tf, width: iw, height: 80),
-                    corner: 10, fill: UIColor(white: 0.97, alpha: 1), stroke: UIColor(white: 0.85, alpha: 1))
-        draw("Berichtszeitraum", at: CGPoint(x: rand + 16, y: tf + 12),
-             font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
-        draw(optionen.zeitraum.rawValue, at: CGPoint(x: rand + 16, y: tf + 32),
-             font: .systemFont(ofSize: 22, weight: .bold), color: blau)
-        draw("\(anzahl) Einträge im gewählten Zeitraum", at: CGPoint(x: rand + 16, y: tf + 58),
-             font: .systemFont(ofSize: 11), color: grau)
+        // Allergies
+        if !patient.allergien.isEmpty {
+            let aRows = patient.allergien.map { ("", $0) }
+            infoBox(ctx: ctx, x: rand + iw * 0.55 + 6, y: y, w: iw * 0.45 - 6,
+                    h: CGFloat(aRows.count) * 18 + 40, titel: "Allergien / Unverträglichkeiten",
+                    rows: aRows, valueBold: false)
+        }
 
-        // Footer
+        if !patient.diagnosen.isEmpty || !patient.allergien.isEmpty {
+            y += max(CGFloat(patient.diagnosen.count), CGFloat(patient.allergien.count)) * 18 + 52
+        }
+
+        // Doctors
+        if !patient.aerzte.isEmpty {
+            let aRows: [(String, String)] = patient.aerzte.map {
+                let label = $0.istHausarzt ? "Hausarzt" : $0.fachgebiet
+                let value = $0.telefon.isEmpty ? $0.name : "\($0.name) · \($0.telefon)"
+                return (label, value)
+            }
+            let bH = CGFloat(aRows.count) * 18 + 40
+            infoBox(ctx: ctx, x: rand, y: y, w: iw * 0.55 - 6, h: bH, titel: "Behandelnde Ärzte", rows: aRows)
+            if !patient.notfallkontakte.isEmpty {
+                let nRows: [(String, String)] = patient.notfallkontakte.map {
+                    ($0.beziehung, "\($0.name) · \($0.phone)")
+                }
+                infoBox(ctx: ctx, x: rand + iw * 0.55 + 6, y: y, w: iw * 0.45 - 6,
+                        h: bH, titel: "Notfallkontakte", rows: nRows)
+            }
+            y += bH + 12
+        } else if !patient.notfallkontakte.isEmpty {
+            let nRows: [(String, String)] = patient.notfallkontakte.map {
+                ($0.beziehung, "\($0.name) · \($0.phone)")
+            }
+            let bH = CGFloat(nRows.count) * 18 + 40
+            infoBox(ctx: ctx, x: rand, y: y, w: iw, h: bH, titel: "Notfallkontakte", rows: nRows)
+            y += bH + 12
+        }
+
+        // Timeframe box
+        let tfH: CGFloat = 70
+        roundedRect(ctx: ctx, rect: CGRect(x: rand, y: y, width: iw, height: tfH),
+                    corner: 10, fill: UIColor(white: 0.97, alpha: 1), stroke: UIColor(white: 0.85, alpha: 1))
+        draw("Berichtszeitraum: \(optionen.zeitraum.rawValue)",
+             at: CGPoint(x: rand + 16, y: y + 12), font: .systemFont(ofSize: 12, weight: .semibold), color: .label)
+        draw("\(anzahl) Einträge im gewählten Zeitraum",
+             at: CGPoint(x: rand + 16, y: y + 34), font: .systemFont(ofSize: 11), color: .secondaryLabel)
+
         fusszeile(ctx: ctx, seite: 1)
     }
 
     // MARK: - Page 2: Summary
 
-    private func zusammenfassung(ctx: CGContext, eintraege: [PainEntry], midas: [MIDASBewertung], seite: Int) {
-        seitenKopf(ctx: ctx, titel: "Zusammenfassung", seite: seite)
+    private func zusammenfassung(ctx: CGContext, eintraege: [PDFEintrag], midas: [PDFMidas]) {
+        seitenKopf(ctx: ctx, titel: "Zusammenfassung", seite: 2)
         var y: CGFloat = rand + 52
 
-        // 4 stat boxes
         let avg = eintraege.map { Double($0.schmerzstaerke) }.reduce(0, +) / Double(eintraege.count)
         let maxVal = eintraege.map(\.schmerzstaerke).max() ?? 0
         let tage = Set(eintraege.map { Calendar.current.startOfDay(for: $0.datum) }).count
-        let letzterMidas = midas.sorted { $0.datum > $1.datum }.first
+        let letzterMidas = midas.first
 
         let boxW = (iw - 12) / 4
-        let boxY = y
-        statBox(ctx: ctx, x: rand, y: boxY, w: boxW, h: 72, titel: "Ø Schmerzstärke",
-                wert: String(format: "%.1f/10", avg), farbe: UIColor.systemOrange)
-        statBox(ctx: ctx, x: rand + boxW + 4, y: boxY, w: boxW, h: 72, titel: "Höchstwert",
-                wert: "\(maxVal)/10", farbe: UIColor.systemRed)
-        statBox(ctx: ctx, x: rand + (boxW + 4) * 2, y: boxY, w: boxW, h: 72, titel: "Tage mit Schmerz",
-                wert: "\(tage)", farbe: UIColor.systemBlue)
-        statBox(ctx: ctx, x: rand + (boxW + 4) * 3, y: boxY, w: boxW, h: 72, titel: "MIDAS Score",
-                wert: letzterMidas.map { "\($0.score)" } ?? "–", farbe: UIColor.systemPurple)
-        y = boxY + 88
+        statBox(ctx: ctx, x: rand,                       y: y, w: boxW, h: 72, titel: "Ø Schmerzstärke",
+                wert: String(format: "%.1f/10", avg), farbe: .systemOrange)
+        statBox(ctx: ctx, x: rand + boxW + 4,             y: y, w: boxW, h: 72, titel: "Höchstwert",
+                wert: "\(maxVal)/10", farbe: .systemRed)
+        statBox(ctx: ctx, x: rand + (boxW + 4) * 2,       y: y, w: boxW, h: 72, titel: "Tage mit Schmerz",
+                wert: "\(tage)", farbe: .systemBlue)
+        statBox(ctx: ctx, x: rand + (boxW + 4) * 3,       y: y, w: boxW, h: 72, titel: "MIDAS Score",
+                wert: letzterMidas.map { "\($0.score)" } ?? "–", farbe: .systemPurple)
+        y += 88
 
-        // MIDAS details
         if let m = letzterMidas {
-            draw("MIDAS: \(m.gradText)  (vom \(fmt(m.datum)))",
-                 at: CGPoint(x: rand, y: y),
-                 font: .systemFont(ofSize: 11), color: .secondaryLabel)
+            draw("MIDAS: \(m.gradText)  (Bewertung vom \(fmt(m.datum)))",
+                 at: CGPoint(x: rand, y: y), font: .systemFont(ofSize: 11), color: .secondaryLabel)
             y += 22
         }
 
-        // Pain distribution bar chart
-        trennlinie(ctx: ctx, y: y)
-        y += 14
+        trennlinie(ctx: ctx, y: y); y += 14
         draw("Schmerzverteilung", at: CGPoint(x: rand, y: y),
              font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
         y += 20
 
         let buckets = schmerzBuckets(eintraege: eintraege)
-        let maxCount = buckets.values.max() ?? 1
+        let maxCount = max(1, buckets.values.max() ?? 1)
         let barH: CGFloat = 16
-        let labelW: CGFloat = 50
-        let barMaxW = iw - labelW - 40
+        let labelW: CGFloat = 44
+        let barMaxW = iw - labelW - 44
 
-        for level in stride(from: 10, through: 0, by: -2) {
+        for level in stride(from: 10, through: 1, by: -1) {
             let count = buckets[level] ?? 0
             let barW = count > 0 ? max(4, CGFloat(count) / CGFloat(maxCount) * barMaxW) : 0
-            let farbe = schmerzFarbe(level)
-            draw("\(level)/10", at: CGPoint(x: rand, y: y + 1),
+            draw("\(level)/10", at: CGPoint(x: rand, y: y + 2),
                  font: .systemFont(ofSize: 9), color: .secondaryLabel)
             if barW > 0 {
-                ctx.setFillColor(farbe.withAlphaComponent(0.8).cgColor)
-                ctx.fill(CGRect(x: rand + labelW, y: y, width: barW, height: barH - 2))
+                ctx.setFillColor(schmerzFarbe(level).withAlphaComponent(0.75).cgColor)
+                ctx.fill(CGRect(x: rand + labelW, y: y + 1, width: barW, height: barH - 3))
             }
-            draw("\(count)", at: CGPoint(x: rand + labelW + barW + 4, y: y + 1),
+            draw("\(count)", at: CGPoint(x: rand + labelW + barW + 4, y: y + 2),
                  font: .systemFont(ofSize: 9), color: .secondaryLabel)
             y += barH
         }
         y += 10
 
-        // Top triggers
-        trennlinie(ctx: ctx, y: y)
-        y += 14
+        trennlinie(ctx: ctx, y: y); y += 14
         draw("Häufige Auslöser", at: CGPoint(x: rand, y: y),
              font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
         y += 20
 
-        let ausloeser = ausloeserHaeufigkeit(eintraege: eintraege)
-        for (i, (name, count)) in ausloeser.prefix(5).enumerated() {
+        for (i, (name, count)) in ausloeserHaeufigkeit(eintraege: eintraege).prefix(5).enumerated() {
             draw("\(i+1). \(name)", at: CGPoint(x: rand, y: y),
                  font: .systemFont(ofSize: 11), color: .label)
             drawRight("\(count)×", rightX: W - rand, y: y,
@@ -230,16 +332,13 @@ class PDFExportService {
             y += 18
         }
 
-        // Top body locations
         y += 8
-        trennlinie(ctx: ctx, y: y)
-        y += 14
+        trennlinie(ctx: ctx, y: y); y += 14
         draw("Häufigste Schmerzregionen", at: CGPoint(x: rand, y: y),
              font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
         y += 20
 
-        let regionen = regionenHaeufigkeit(eintraege: eintraege)
-        for (i, (name, count)) in regionen.prefix(5).enumerated() {
+        for (i, (name, count)) in regionenHaeufigkeit(eintraege: eintraege).prefix(5).enumerated() {
             draw("\(i+1). \(name)", at: CGPoint(x: rand, y: y),
                  font: .systemFont(ofSize: 11), color: .label)
             drawRight("\(count)×", rightX: W - rand, y: y,
@@ -247,16 +346,16 @@ class PDFExportService {
             y += 18
         }
 
-        fusszeile(ctx: ctx, seite: seite)
+        fusszeile(ctx: ctx, seite: 2)
     }
 
     // MARK: - Page 3: Medications
 
-    private func medikamenteSeite(ctx: CGContext, medikamente: [Dauermedikation], seite: Int) {
-        seitenKopf(ctx: ctx, titel: "Medikamente", seite: seite)
+    private func medikamenteSeite(ctx: CGContext, medikamente: [PDFMedikament]) {
+        seitenKopf(ctx: ctx, titel: "Medikamente", seite: 3)
         var y: CGFloat = rand + 52
 
-        let aktive = medikamente.filter { $0.aktiv }
+        let aktive  = medikamente.filter { $0.aktiv }
         let inaktive = medikamente.filter { !$0.aktiv }
 
         if !aktive.isEmpty {
@@ -264,8 +363,7 @@ class PDFExportService {
                  font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
             y += 20
 
-            // Table header
-            let cols: [CGFloat] = [rand, rand + 180, rand + 300, rand + 390]
+            let cols: [CGFloat] = [rand, rand + 180, rand + 300, rand + 400]
             tabellenKopf(ctx: ctx, y: y, cols: cols, headers: ["Medikament", "Dosierung", "Frequenz", "Seit"])
             y += 26
 
@@ -274,15 +372,14 @@ class PDFExportService {
                 tabellenZeile(ctx: ctx, y: y, cols: cols,
                               werte: [med.name, med.dosierung, med.frequenz, fmt(med.startDatum)],
                               fett: [true, false, false, false])
-                y += 22
-                trennlinie(ctx: ctx, y: y - 2, alpha: 0.15)
+                y += 20
+                trennlinie(ctx: ctx, y: y - 1, alpha: 0.12)
             }
-            y += 14
+            y += 16
         }
 
         if !inaktive.isEmpty {
-            trennlinie(ctx: ctx, y: y)
-            y += 16
+            trennlinie(ctx: ctx, y: y); y += 16
             draw("Frühere Medikation", at: CGPoint(x: rand, y: y),
                  font: .systemFont(ofSize: 13, weight: .semibold), color: .secondaryLabel)
             y += 20
@@ -292,35 +389,36 @@ class PDFExportService {
                 draw("• \(med.name)", at: CGPoint(x: rand + 8, y: y),
                      font: .systemFont(ofSize: 11), color: .secondaryLabel)
                 if !med.dosierung.isEmpty {
-                    draw(med.dosierung, at: CGPoint(x: rand + 190, y: y),
+                    draw(med.dosierung, at: CGPoint(x: rand + 200, y: y),
                          font: .systemFont(ofSize: 11), color: .secondaryLabel)
                 }
                 y += 18
             }
         }
 
-        fusszeile(ctx: ctx, seite: seite)
+        fusszeile(ctx: ctx, seite: 3)
     }
 
     // MARK: - Page 4+: Entries
 
-    private func eintraegeSeiten(ctx: UIGraphicsPDFRendererContext, eintraege: [PainEntry]) {
+    private func eintraegeSeiten(ctx: UIGraphicsPDFRendererContext, eintraege: [PDFEintrag]) {
         var seite = 4
         ctx.beginPage()
         seitenKopf(ctx: ctx.cgContext, titel: "Schmerzeinträge", seite: seite)
         var y: CGFloat = rand + 52
 
-        let cols: [CGFloat] = [rand, rand + 72, rand + 152, rand + 252, rand + 312, rand + 372]
+        let cols: [CGFloat] = [rand, rand + 72, rand + 162, rand + 262, rand + 322, rand + 378]
         tabellenKopf(ctx: ctx.cgContext, y: y, cols: cols,
                      headers: ["Datum", "Stärke", "Körperstelle", "Auslöser", "Dauer", "Art"])
         y += 26
 
         for eintrag in eintraege {
-            let zeilenH: CGFloat = 20
+            let hatSubzeile = !eintrag.massnahmen.isEmpty || !eintrag.notizen.isEmpty
+            let zeilenH: CGFloat = hatSubzeile ? 32 : 20
+
             if y + zeilenH > H - rand - 20 {
                 fusszeile(ctx: ctx.cgContext, seite: seite)
-                ctx.beginPage()
-                seite += 1
+                ctx.beginPage(); seite += 1
                 seitenKopf(ctx: ctx.cgContext, titel: "Schmerzeinträge (Forts.)", seite: seite)
                 y = rand + 52
                 tabellenKopf(ctx: ctx.cgContext, y: y, cols: cols,
@@ -330,28 +428,25 @@ class PDFExportService {
 
             let dauer = eintrag.dauerMinuten > 0 ? dauerText(eintrag.dauerMinuten) : "–"
             let koerper = eintrag.koerperstelle.components(separatedBy: ", ").first ?? eintrag.koerperstelle
-            let ausloeser = String(eintrag.ausloeser.prefix(20))
-            let art = String(eintrag.schmerzart.prefix(16))
-
             tabellenZeile(ctx: ctx.cgContext, y: y, cols: cols,
                           werte: [fmtKurz(eintrag.datum), "\(eintrag.schmerzstaerke)/10",
-                                  koerper, ausloeser, dauer, art],
+                                  koerper, String(eintrag.ausloeser.prefix(22)),
+                                  dauer, String(eintrag.schmerzart.prefix(16))],
                           fett: [false, true, false, false, false, false])
 
-            // Notizen as sub-row
-            if !eintrag.notizen.isEmpty || !eintrag.massnahmen.isEmpty {
-                y += zeilenH
-                let sub = [eintrag.massnahmen.isEmpty ? "" : "→ \(String(eintrag.massnahmen.prefix(40)))",
-                           eintrag.notizen.isEmpty ? "" : "Notiz: \(String(eintrag.notizen.prefix(60)))"]
-                    .filter { !$0.isEmpty }.joined(separator: "   ")
+            if hatSubzeile {
+                y += 14
+                let sub = [
+                    eintrag.massnahmen.isEmpty ? nil : "Massnahmen: \(String(eintrag.massnahmen.prefix(50)))",
+                    eintrag.notizen.isEmpty    ? nil : "Notiz: \(String(eintrag.notizen.prefix(60)))"
+                ].compactMap { $0 }.joined(separator: "   ")
                 draw(sub, at: CGPoint(x: cols[2], y: y),
                      font: .systemFont(ofSize: 8.5), color: .secondaryLabel)
-                y += 14
+                y += 18
             } else {
-                y += zeilenH
+                y += 20
             }
-
-            trennlinie(ctx: ctx.cgContext, y: y - 2, alpha: 0.12)
+            trennlinie(ctx: ctx.cgContext, y: y - 1, alpha: 0.1)
         }
 
         fusszeile(ctx: ctx.cgContext, seite: seite)
@@ -359,39 +454,60 @@ class PDFExportService {
 
     // MARK: - Drawing helpers
 
+    private func infoBox(ctx: CGContext, x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat,
+                         titel: String, rows: [(String, String)], valueBold: Bool = true) {
+        roundedRect(ctx: ctx, rect: CGRect(x: x, y: y, width: w, height: h),
+                    corner: 10, fill: hellBlau, stroke: blau.withAlphaComponent(0.25))
+        draw(titel, at: CGPoint(x: x + 12, y: y + 10),
+             font: .systemFont(ofSize: 10, weight: .semibold), color: blau)
+        var ry = y + 28
+        let lf = UIFont.systemFont(ofSize: 9.5, weight: .medium)
+        let vf = UIFont.systemFont(ofSize: 9.5, weight: valueBold ? .medium : .regular)
+        for (label, value) in rows {
+            if !label.isEmpty {
+                draw(label, at: CGPoint(x: x + 12, y: ry), font: lf, color: .secondaryLabel)
+                draw(value, at: CGPoint(x: x + 90, y: ry), font: vf, color: .label)
+            } else {
+                draw("•  \(value)", at: CGPoint(x: x + 12, y: ry), font: vf, color: .label)
+            }
+            ry += 18
+        }
+    }
+
     private func seitenKopf(ctx: CGContext, titel: String, seite: Int) {
         ctx.setFillColor(blau.cgColor)
         ctx.fill(CGRect(x: 0, y: 0, width: W, height: 40))
-        draw("PainDiary", at: CGPoint(x: rand, y: 11),
-             font: .systemFont(ofSize: 12, weight: .semibold), color: UIColor.white.withAlphaComponent(0.7))
-        draw(titel, at: CGPoint(x: rand + 70, y: 11),
+        draw("PainDiary  ·  ", at: CGPoint(x: rand, y: 11),
+             font: .systemFont(ofSize: 11, weight: .regular), color: UIColor.white.withAlphaComponent(0.65))
+        draw(titel, at: CGPoint(x: rand + 80, y: 11),
              font: .systemFont(ofSize: 12, weight: .bold), color: .white)
     }
 
     private func fusszeile(ctx: CGContext, seite: Int) {
-        trennlinie(ctx: ctx, y: H - 32, alpha: 0.2)
-        draw("PainDiary – Vertraulicher Patientenbericht", at: CGPoint(x: rand, y: H - 26),
-             font: .systemFont(ofSize: 8), color: .tertiaryLabel)
-        drawRight("Seite \(seite)", rightX: W - rand, y: H - 26,
+        trennlinie(ctx: ctx, y: H - 30, alpha: 0.2)
+        draw("PainDiary – Vertraulicher Patientenbericht",
+             at: CGPoint(x: rand, y: H - 24), font: .systemFont(ofSize: 8), color: .tertiaryLabel)
+        drawRight("Seite \(seite)", rightX: W - rand, y: H - 24,
                   font: .systemFont(ofSize: 8), color: .tertiaryLabel)
     }
 
     private func tabellenKopf(ctx: CGContext, y: CGFloat, cols: [CGFloat], headers: [String]) {
         ctx.setFillColor(hellBlau.cgColor)
         ctx.fill(CGRect(x: rand, y: y, width: iw, height: 20))
-        for (i, header) in headers.enumerated() {
-            let x = cols[i]
-            draw(header, at: CGPoint(x: x + 4, y: y + 4),
+        for (i, h) in headers.enumerated() {
+            draw(h, at: CGPoint(x: cols[i] + 4, y: y + 5),
                  font: .systemFont(ofSize: 9, weight: .semibold), color: blau)
         }
     }
 
-    private func tabellenZeile(ctx: CGContext, y: CGFloat, cols: [CGFloat], werte: [String], fett: [Bool]) {
-        for (i, wert) in werte.enumerated() {
+    private func tabellenZeile(ctx: CGContext, y: CGFloat, cols: [CGFloat],
+                                werte: [String], fett: [Bool]) {
+        for (i, w) in werte.enumerated() {
             let x = cols[i]
-            let maxW: CGFloat = i + 1 < cols.count ? cols[i + 1] - x - 6 : W - rand - x - 6
-            let font: UIFont = (i < fett.count && fett[i]) ? .systemFont(ofSize: 10, weight: .medium) : .systemFont(ofSize: 10)
-            drawClamped(wert, at: CGPoint(x: x + 4, y: y + 3), font: font, color: .label, maxW: maxW)
+            let maxW = i + 1 < cols.count ? cols[i+1] - x - 6 : W - rand - x - 4
+            let font: UIFont = (i < fett.count && fett[i]) ? .systemFont(ofSize: 10, weight: .semibold)
+                                                            : .systemFont(ofSize: 10)
+            drawClamped(w, at: CGPoint(x: x + 4, y: y + 4), font: font, color: .label, maxW: maxW)
         }
     }
 
@@ -399,26 +515,23 @@ class PDFExportService {
                          titel: String, wert: String, farbe: UIColor) {
         roundedRect(ctx: ctx, rect: CGRect(x: x, y: y, width: w, height: h),
                     corner: 8, fill: farbe.withAlphaComponent(0.1), stroke: farbe.withAlphaComponent(0.3))
-        draw(wert, at: CGPoint(x: x + 8, y: y + 10),
+        draw(wert, at: CGPoint(x: x + 8, y: y + 8),
              font: .systemFont(ofSize: 18, weight: .bold), color: farbe)
-        draw(titel, at: CGPoint(x: x + 8, y: y + 36),
+        draw(titel, at: CGPoint(x: x + 8, y: y + 34),
              font: .systemFont(ofSize: 8), color: .secondaryLabel)
     }
 
-    private func roundedRect(ctx: CGContext, rect: CGRect, corner: CGFloat, fill: UIColor, stroke: UIColor) {
+    private func roundedRect(ctx: CGContext, rect: CGRect, corner: CGFloat,
+                              fill: UIColor, stroke: UIColor) {
         let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
         ctx.saveGState()
-        ctx.addPath(path.cgPath)
-        ctx.setFillColor(fill.cgColor)
-        ctx.fillPath()
-        ctx.addPath(path.cgPath)
-        ctx.setStrokeColor(stroke.cgColor)
-        ctx.setLineWidth(0.5)
-        ctx.strokePath()
+        ctx.addPath(path.cgPath); ctx.setFillColor(fill.cgColor); ctx.fillPath()
+        ctx.addPath(path.cgPath); ctx.setStrokeColor(stroke.cgColor)
+        ctx.setLineWidth(0.5); ctx.strokePath()
         ctx.restoreGState()
     }
 
-    private func trennlinie(ctx: CGContext, y: CGFloat, alpha: CGFloat = 0.35) {
+    private func trennlinie(ctx: CGContext, y: CGFloat, alpha: CGFloat = 0.3) {
         ctx.setStrokeColor(UIColor.separator.withAlphaComponent(alpha).cgColor)
         ctx.setLineWidth(0.5)
         ctx.move(to: CGPoint(x: rand, y: y))
@@ -427,92 +540,73 @@ class PDFExportService {
     }
 
     private func draw(_ text: String, at point: CGPoint, font: UIFont, color: UIColor) {
-        let attr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
-        text.draw(at: point, withAttributes: attr)
+        (text as NSString).draw(at: point, withAttributes: [.font: font, .foregroundColor: color])
     }
 
     private func drawRight(_ text: String, rightX: CGFloat, y: CGFloat, font: UIFont, color: UIColor) {
         let attr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
-        let size = (text as NSString).size(withAttributes: attr)
-        text.draw(at: CGPoint(x: rightX - size.width, y: y), withAttributes: attr)
+        let sz = (text as NSString).size(withAttributes: attr)
+        (text as NSString).draw(at: CGPoint(x: rightX - sz.width, y: y), withAttributes: attr)
     }
 
-    private func drawClamped(_ text: String, at point: CGPoint, font: UIFont, color: UIColor, maxW: CGFloat) {
-        let attr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
-        let rect = CGRect(x: point.x, y: point.y, width: maxW, height: 14)
-        (text as NSString).drawWithEllipsis(in: rect, attrs: attr)
-    }
-
-    private func drawLabel(_ label: String, value: String, x: CGFloat, y: CGFloat,
-                           labelFont: UIFont, valueFont: UIFont, labelColor: UIColor) {
-        let la: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: labelColor]
-        label.draw(at: CGPoint(x: x, y: y), withAttributes: la)
-        let lw = (label as NSString).size(withAttributes: la).width
-        let va: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: UIColor.label]
-        value.draw(at: CGPoint(x: x + lw + 6, y: y), withAttributes: va)
+    private func drawClamped(_ text: String, at p: CGPoint, font: UIFont, color: UIColor, maxW: CGFloat) {
+        let style = NSMutableParagraphStyle()
+        style.lineBreakMode = .byTruncatingTail
+        (text as NSString).draw(in: CGRect(x: p.x, y: p.y, width: maxW, height: 14),
+                                withAttributes: [.font: font, .foregroundColor: color, .paragraphStyle: style])
     }
 
     // MARK: - Data helpers
 
-    private func schmerzBuckets(eintraege: [PainEntry]) -> [Int: Int] {
-        var result: [Int: Int] = [:]
-        for e in eintraege { result[e.schmerzstaerke, default: 0] += 1 }
-        return result
+    private func schmerzBuckets(eintraege: [PDFEintrag]) -> [Int: Int] {
+        eintraege.reduce(into: [:]) { $0[$1.schmerzstaerke, default: 0] += 1 }
     }
 
-    private func ausloeserHaeufigkeit(eintraege: [PainEntry]) -> [(String, Int)] {
+    private func ausloeserHaeufigkeit(eintraege: [PDFEintrag]) -> [(String, Int)] {
         var map: [String: Int] = [:]
         for e in eintraege where !e.ausloeser.isEmpty {
-            e.ausloeser.components(separatedBy: ", ").forEach { map[$0.trimmingCharacters(in: .whitespaces), default: 0] += 1 }
+            e.ausloeser.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { map[$0, default: 0] += 1 }
         }
         return map.sorted { $0.value > $1.value }
     }
 
-    private func regionenHaeufigkeit(eintraege: [PainEntry]) -> [(String, Int)] {
+    private func regionenHaeufigkeit(eintraege: [PDFEintrag]) -> [(String, Int)] {
         var map: [String: Int] = [:]
         for e in eintraege where !e.koerperstelle.isEmpty {
-            e.koerperstelle.components(separatedBy: ", ").forEach { map[$0.trimmingCharacters(in: .whitespaces), default: 0] += 1 }
+            e.koerperstelle.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { map[$0, default: 0] += 1 }
         }
         return map.sorted { $0.value > $1.value }
     }
 
     private func schmerzFarbe(_ level: Int) -> UIColor {
         switch level {
-        case 0...2: return UIColor.systemGreen
-        case 3...4: return UIColor.systemYellow
-        case 5...6: return UIColor.systemOrange
-        case 7...8: return UIColor.systemRed
+        case 1...3: return .systemGreen
+        case 4...5: return .systemYellow
+        case 6...7: return .systemOrange
+        case 8...9: return .systemRed
         default:    return UIColor(red: 0.6, green: 0, blue: 0, alpha: 1)
         }
     }
 
-    private func dauerText(_ minuten: Int) -> String {
-        if minuten < 60 { return "\(minuten) min" }
-        let h = minuten / 60; let m = minuten % 60
-        return m == 0 ? "\(h) h" : "\(h)h \(m)m"
+    private func dauerText(_ min: Int) -> String {
+        min < 60 ? "\(min) min" : "\(min/60)h\(min%60 == 0 ? "" : " \(min%60)m")"
     }
 
-    private func fmt(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "dd.MM.yyyy"; return f.string(from: date)
+    private func fmt(_ d: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "dd.MM.yyyy"; return f.string(from: d)
     }
-
-    private func fmtKurz(_ date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "dd.MM.yy"; return f.string(from: date)
+    private func fmtKurz(_ d: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "dd.MM.yy"; return f.string(from: d)
     }
-
-    private func fmtLang(_ date: Date) -> String {
+    private func fmtLang(_ d: Date) -> String {
         let f = DateFormatter(); f.locale = Locale(identifier: "de_CH")
-        f.dateStyle = .long; return f.string(from: date)
-    }
-}
-
-private extension NSString {
-    func drawWithEllipsis(in rect: CGRect, attrs: [NSAttributedString.Key: Any]) {
-        let paraStyle = NSMutableParagraphStyle()
-        paraStyle.lineBreakMode = .byTruncatingTail
-        var a = attrs
-        a[.paragraphStyle] = paraStyle
-        draw(in: rect, withAttributes: a)
+        f.dateStyle = .long; return f.string(from: d)
     }
 }
 #endif

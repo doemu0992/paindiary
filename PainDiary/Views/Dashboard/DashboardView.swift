@@ -12,6 +12,7 @@ struct DashboardView: View {
     @State private var exportTeilen = false
     @State private var exportOptionsAnzeigen = false
     @State private var exportOptionen = ExportOptionen()
+    @State private var istAmExportieren = false
 
     var body: some View {
         ScrollView {
@@ -28,12 +29,18 @@ struct DashboardView: View {
         .onAppear { viewModel.eintraege = eintraege }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    exportOptionsAnzeigen = true
-                } label: {
-                    Label("Exportieren", systemImage: "square.and.arrow.up")
+                Group {
+                    if istAmExportieren {
+                        ProgressView().progressViewStyle(.circular)
+                    } else {
+                        Button {
+                            exportOptionsAnzeigen = true
+                        } label: {
+                            Label("Exportieren", systemImage: "square.and.arrow.up")
+                        }
+                        .disabled(eintraege.isEmpty)
+                    }
                 }
-                .disabled(eintraege.isEmpty)
             }
         }
 #if os(iOS)
@@ -53,15 +60,19 @@ struct DashboardView: View {
 
     private func exportierePDF() {
 #if os(iOS)
-        if let url = PDFExportService.shared.erstellePDF(
+        istAmExportieren = true
+        PDFExportService.shared.erstellePDFAsync(
             eintraege: Array(eintraege),
             medikamente: Array(medikamente),
             midasBewertungen: Array(midasBewertungen),
             profil: profile.first,
             optionen: exportOptionen
-        ) {
-            exportURL = url
-            exportTeilen = true
+        ) { url in
+            istAmExportieren = false
+            if let url {
+                exportURL = url
+                exportTeilen = true
+            }
         }
 #endif
     }
