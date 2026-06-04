@@ -41,7 +41,6 @@ private func makeContainer() -> ModelContainer {
             "hauptdaten",
             schema: schema,
             url: appSupport.appendingPathComponent("default.store"),
-            isStoredInMemoryOnly: false,
             cloudKitDatabase: cloudKit ? .automatic : .none
         )
     }
