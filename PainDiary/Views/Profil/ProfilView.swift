@@ -396,6 +396,9 @@ private struct ProfilInhaltView: View {
         Section("Einstellungen") {
             Toggle("Zyklus-Tracking", isOn: Bindable(profil).zyklusTrackingAktiv)
             Toggle("Biometrische Sperre", isOn: Bindable(profil).biometrischesLockAktiv)
+                .onChange(of: profil.biometrischesLockAktiv) { _, neu in
+                    UserDefaults.standard.set(neu, forKey: "biometrischesLockAktiv")
+                }
             NavigationLink(destination: EinstellungenView()) {
                 Label("App-Einstellungen", systemImage: "gearshape")
             }

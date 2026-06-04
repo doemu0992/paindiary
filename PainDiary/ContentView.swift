@@ -5,13 +5,13 @@ import LocalAuthentication
 struct ContentView: View {
     @AppStorage("onboardingAbgeschlossen") private var onboardingAbgeschlossen = false
     @AppStorage("akzentFarbe") private var akzentFarbe = "blau"
-    @Query private var profile: [Benutzerprofil]
+    @AppStorage("biometrischesLockAktiv") private var biometriAktivCache = false
     @State private var ausgewaehlterTab = 0
     @State private var neuerEintragAnzeigen = false
     @State private var entsperrt = false
     @Environment(\.scenePhase) private var scenePhase
 
-    private var biometriAktiv: Bool { profile.first?.biometrischesLockAktiv ?? false }
+    private var biometriAktiv: Bool { biometriAktivCache }
 
 #if os(macOS)
     var body: some View {
@@ -30,8 +30,10 @@ struct ContentView: View {
                 hauptApp
             }
         }
-        .onAppear {
-            // Cold launch: scenePhase starts as .active and onChange won't fire
+        .task {
+            // Cold launch: give the window time to fully initialize before requesting biometrics
+            guard biometriAktiv && !entsperrt else { return }
+            try? await Task.sleep(for: .milliseconds(200))
             if biometriAktiv && !entsperrt { authentifizieren() }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -41,8 +43,8 @@ struct ContentView: View {
                 authentifizieren()
             }
         }
-        .onChange(of: biometriAktiv) { old, neu in
-            // Toggle just enabled: user is already in the app, don't lock immediately
+        .onChange(of: biometriAktivCache) { old, neu in
+            // @AppStorage only changes when the user explicitly toggles — never on async load
             if neu && !old { entsperrt = true }
         }
         .tint(akzentFarbe.alsAkzentFarbe)
@@ -113,7 +115,7 @@ struct ContentView: View {
         let context = LAContext()
         var fehler: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &fehler) else {
-            entsperrt = true  // Biometrie nicht verfügbar → direkt entsperren
+            entsperrt = true
             return
         }
         context.evaluatePolicy(
