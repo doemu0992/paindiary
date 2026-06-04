@@ -113,23 +113,50 @@ struct MedikamenteView: View {
                             }
                         }
                         Spacer()
-                        Button {
-                            let log = EinnahmeLog(
-                                medikamentName: med.name,
-                                dosierung: med.dosierung,
-                                eingenommen: true
-                            )
-                            modelContext.insert(log)
-                        } label: {
-                            let bereitsHeute = heutigeLogsHeute.contains { $0.medikamentName == med.name }
-                            Label(bereitsHeute ? "Eingenommen" : "Eingenommen?",
-                                  systemImage: bereitsHeute ? "checkmark.circle.fill" : "circle")
-                                .font(.caption)
-                                .foregroundStyle(bereitsHeute ? .green : .secondary)
-                        }
-                        .buttonStyle(.plain)
+                        einnahmeKontrolle(med: med)
                     }
                     .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func einnahmeKontrolle(med: Dauermedikation) -> some View {
+        let anzahlErwartet = notif.anzahlDosen(med.frequenz)
+        let anzahlHeute = heutigeLogsHeute.filter { $0.medikamentName == med.name }.count
+
+        if anzahlErwartet == 0 {
+            // Bei Bedarf: Freitext-Zähler + Plus-Button
+            HStack(spacing: 8) {
+                if anzahlHeute > 0 {
+                    Text("\(anzahlHeute)× heute")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Button {
+                    modelContext.insert(EinnahmeLog(
+                        medikamentName: med.name, dosierung: med.dosierung, eingenommen: true))
+                } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.title3).foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+            }
+        } else {
+            // Reguläre Dosen: ein Kreis pro erwarteter Dosis
+            HStack(spacing: 6) {
+                ForEach(0..<anzahlErwartet, id: \.self) { i in
+                    let bestaetigt = i < anzahlHeute
+                    Button {
+                        guard !bestaetigt else { return }
+                        modelContext.insert(EinnahmeLog(
+                            medikamentName: med.name, dosierung: med.dosierung, eingenommen: true))
+                    } label: {
+                        Image(systemName: bestaetigt ? "checkmark.circle.fill" : "circle")
+                            .font(.title3)
+                            .foregroundStyle(bestaetigt ? .green : .secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -249,7 +276,9 @@ struct MedikamentFormView: View {
                         Text("Bitte wählen").tag("")
                         ForEach(frequenzOptionen, id: \.self) { Text($0).tag($0) }
                     }
-                    .onChange(of: frequenz) { _, neue in
+                    .onChange(of: frequenz) { old, neue in
+                        // old is "" during initial load from ladeWerte() — skip to preserve saved times
+                        guard medikament == nil || !old.isEmpty else { return }
                         aktualisiereStandardZeiten(neue)
                     }
                     DatePicker("Seit", selection: $startDatum, displayedComponents: .date)
