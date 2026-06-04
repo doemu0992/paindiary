@@ -30,6 +30,10 @@ struct ContentView: View {
                 hauptApp
             }
         }
+        .onAppear {
+            // Cold launch: scenePhase starts as .active and onChange won't fire
+            if biometriAktiv && !entsperrt { authentifizieren() }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && biometriAktiv {
                 entsperrt = false
@@ -38,7 +42,7 @@ struct ContentView: View {
             }
         }
         .onChange(of: biometriAktiv) { old, neu in
-            // Lock was just enabled: user is already in the app, don't require immediate auth
+            // Toggle just enabled: user is already in the app, don't lock immediately
             if neu && !old { entsperrt = true }
         }
         .tint(akzentFarbe.alsAkzentFarbe)
@@ -103,7 +107,6 @@ struct ContentView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear { authentifizieren() }
     }
 
     private func authentifizieren() {
