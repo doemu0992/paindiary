@@ -2,21 +2,23 @@ import Foundation
 import SwiftData
 
 @Model final class Benutzerprofil {
-    @Attribute(.unique) var identifier: String = "hauptprofil"
+    // @Attribute(.unique) removed — CloudKit does not support unique constraints.
+    // Single-profile invariant is enforced in ProfilView.onAppear instead.
+    var identifier: String = "hauptprofil"
 
-    var vorname: String
-    var nachname: String
+    var vorname: String = ""
+    var nachname: String = ""
     var geburtsdatum: Date?
-    var geschlecht: String
-    var wohnort: String
-    var versicherung: String
-    var versicherungsNummer: String
+    var geschlecht: String = ""
+    var wohnort: String = ""
+    var versicherung: String = ""
+    var versicherungsNummer: String = ""
     var gewichtKg: Double?
     var groesseCm: Double?
     var fotoData: Data?
-    var blutgruppe: String
-    var zyklusTrackingAktiv: Bool
-    var biometrischesLockAktiv: Bool
+    var blutgruppe: String = ""
+    var zyklusTrackingAktiv: Bool = false
+    var biometrischesLockAktiv: Bool = false
 
     @Relationship(deleteRule: .cascade) var diagnosen: [Diagnose] = []
     @Relationship(deleteRule: .cascade) var allergien: [Allergie] = []

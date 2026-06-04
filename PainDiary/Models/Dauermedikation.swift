@@ -3,11 +3,11 @@ import SwiftData
 
 @Model final class Dauermedikation {
     var notifID: String = UUID().uuidString
-    var name: String
-    var dosierung: String
-    var frequenz: String
-    var startDatum: Date
-    var aktiv: Bool
+    var name: String = ""
+    var dosierung: String = ""
+    var frequenz: String = ""
+    var startDatum: Date = Date()
+    var aktiv: Bool = true
     var erinnerungAktiv: Bool = false
     // Komma-getrennte Zeiten "HH:mm,HH:mm" — leer = Standard je nach Frequenz
     var erinnerungsZeiten: String = ""

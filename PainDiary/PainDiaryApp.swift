@@ -32,8 +32,9 @@ private func makeContainer() -> ModelContainer {
         ZyklusEintrag.self
     ])
 
-    // Wraps ModelContainer init so both Swift errors (try?) and ObjC
-    // NSExceptions (catchObjCException) are caught safely.
+    // ModelConfiguration() defaults to cloudKitDatabase: .automatic, so
+    // every fallback stage must specify .none explicitly to avoid CloudKit
+    // schema validation on local/in-memory stores.
     func tryMake(_ config: ModelConfiguration) -> ModelContainer? {
         var container: ModelContainer?
         let exception = catchObjCException {
@@ -44,7 +45,8 @@ private func makeContainer() -> ModelContainer {
 
     let withCloud = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
                                        cloudKitDatabase: .automatic)
-    let localOnly = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+    let localOnly = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
+                                       cloudKitDatabase: .none)
 
     // Stufe 1: Mit iCloud — normaler Betrieb, Daten bleiben erhalten
     if let c = tryMake(withCloud) { return c }
@@ -64,6 +66,7 @@ private func makeContainer() -> ModelContainer {
     if let c = tryMake(localOnly) { return c }
 
     // Stufe 5: In-Memory — App startet immer
-    return try! ModelContainer(for: schema,
-                               configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
+    return try! ModelContainer(for: schema, configurations: [
+        ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+    ])
 }

@@ -2,17 +2,17 @@ import Foundation
 import SwiftData
 
 @Model final class PainEntry {
-    var datum: Date
-    var schmerzstaerke: Int       // 0–10
-    var koerperstelle: String
-    var schmerzart: String
-    var dauerMinuten: Int
-    var ausloeser: String
-    var begleiterscheinungen: String
-    var massnahmen: String
-    var notizen: String
-    var stimmung: Int             // 1–5
-    var schlafStunden: Double
+    var datum: Date = Date()
+    var schmerzstaerke: Int = 5       // 0–10
+    var koerperstelle: String = ""
+    var schmerzart: String = ""
+    var dauerMinuten: Int = 0
+    var ausloeser: String = ""
+    var begleiterscheinungen: String = ""
+    var massnahmen: String = ""
+    var notizen: String = ""
+    var stimmung: Int = 3             // 1–5
+    var schlafStunden: Double = 0
 
     // Wetter zum Zeitpunkt der Erfassung
     var wetterTemperatur: Double?

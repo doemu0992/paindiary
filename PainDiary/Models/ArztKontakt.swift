@@ -2,13 +2,14 @@ import Foundation
 import SwiftData
 
 @Model final class ArztKontakt {
-    var name: String
-    var fachgebiet: String
-    var praxis: String
-    var telefon: String
-    var email: String
-    var istHausarzt: Bool
-    var notizen: String
+    var name: String = ""
+    var fachgebiet: String = ""
+    var praxis: String = ""
+    var telefon: String = ""
+    var email: String = ""
+    var istHausarzt: Bool = false
+    var notizen: String = ""
+    var benutzerprofil: Benutzerprofil?
 
     init(
         name: String = "",
