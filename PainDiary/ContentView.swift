@@ -37,6 +37,10 @@ struct ContentView: View {
                 authentifizieren()
             }
         }
+        .onChange(of: biometriAktiv) { old, neu in
+            // Lock was just enabled: user is already in the app, don't require immediate auth
+            if neu && !old { entsperrt = true }
+        }
         .tint(akzentFarbe.alsAkzentFarbe)
         .fullScreenCover(isPresented: .constant(!onboardingAbgeschlossen)) {
             OnboardingView()

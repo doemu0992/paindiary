@@ -64,6 +64,17 @@ struct PainEntryDetailView: View {
                         }
                     }
                 }
+                HStack {
+                    Text("Stresslevel")
+                    Spacer()
+                    HStack(spacing: 3) {
+                        ForEach(1...5, id: \.self) { i in
+                            Image(systemName: i <= eintrag.stressLevel ? "bolt.fill" : "bolt")
+                                .font(.system(size: 14))
+                                .foregroundStyle(i <= eintrag.stressLevel ? .orange : .secondary.opacity(0.3))
+                        }
+                    }
+                }
                 if eintrag.schlafStunden > 0 {
                     LabeledContent("Schlaf", value: String(format: "%.1f Stunden", eintrag.schlafStunden))
                 }
