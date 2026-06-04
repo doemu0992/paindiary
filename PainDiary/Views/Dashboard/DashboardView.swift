@@ -10,7 +10,7 @@ struct DashboardView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @State private var viewModel = DashboardViewModel()
     @State private var exportURL: URL? = nil
-    @State private var exportTeilen = false
+    @State private var pdfVorschauAnzeigen = false
     @State private var exportOptionsAnzeigen = false
     @State private var exportOptionen = ExportOptionen()
     @State private var istAmExportieren = false
@@ -58,9 +58,9 @@ struct DashboardView: View {
                 exportierePDF()
             }
         }
-        .sheet(isPresented: $exportTeilen) {
+        .sheet(isPresented: $pdfVorschauAnzeigen) {
             if let url = exportURL {
-                ShareSheet(url: url)
+                PDFPreviewView(url: url)
             }
         }
 #endif
@@ -80,7 +80,7 @@ struct DashboardView: View {
             istAmExportieren = false
             if let url {
                 exportURL = url
-                exportTeilen = true
+                pdfVorschauAnzeigen = true
             }
         }
 #endif

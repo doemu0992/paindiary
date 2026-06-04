@@ -56,13 +56,16 @@ struct PDFEintrag {
     var datum: Date; var schmerzstaerke: Int; var koerperstelle: String
     var schmerzart: String; var dauerMinuten: Int; var ausloeser: String
     var massnahmen: String; var notizen: String; var begleiterscheinungen: String
+    var stimmung: Int; var stressLevel: Int; var schlafStunden: Double
 
     static func aus(eintrag: PainEntry) -> PDFEintrag {
         PDFEintrag(datum: eintrag.datum, schmerzstaerke: eintrag.schmerzstaerke,
                    koerperstelle: eintrag.koerperstelle, schmerzart: eintrag.schmerzart,
                    dauerMinuten: eintrag.dauerMinuten, ausloeser: eintrag.ausloeser,
                    massnahmen: eintrag.massnahmen, notizen: eintrag.notizen,
-                   begleiterscheinungen: eintrag.begleiterscheinungen)
+                   begleiterscheinungen: eintrag.begleiterscheinungen,
+                   stimmung: eintrag.stimmung, stressLevel: eintrag.stressLevel,
+                   schlafStunden: eintrag.schlafStunden)
     }
 }
 
@@ -184,34 +187,40 @@ class PDFExportService: @unchecked Sendable {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(dateiname)
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: W, height: H))
 
-        do {
-            try renderer.writePDF(to: url) { ctx in
-                var seite = 1
-                ctx.beginPage()
-                deckblatt(ctx: ctx.cgContext, patient: patient, optionen: optionen, anzahl: eintraege.count)
+        var renderFehler: Error? = nil
+        UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
+            do {
+                try renderer.writePDF(to: url) { ctx in
+                    var seite = 1
+                    ctx.beginPage()
+                    deckblatt(ctx: ctx.cgContext, patient: patient, optionen: optionen, anzahl: eintraege.count)
 
-                if optionen.mitZusammenfassung && !eintraege.isEmpty {
-                    seite += 1; ctx.beginPage()
-                    zusammenfassung(ctx: ctx.cgContext, eintraege: eintraege, midas: midas, seite: seite)
-                }
+                    if optionen.mitZusammenfassung && !eintraege.isEmpty {
+                        seite += 1; ctx.beginPage()
+                        zusammenfassung(ctx: ctx.cgContext, eintraege: eintraege, midas: midas, seite: seite)
+                    }
 
-                if optionen.mitMedikamente && !medikamente.isEmpty {
-                    seite += 1; ctx.beginPage()
-                    medikamenteSeite(ctx: ctx.cgContext, medikamente: medikamente, seite: seite)
-                }
+                    if optionen.mitMedikamente && !medikamente.isEmpty {
+                        seite += 1; ctx.beginPage()
+                        medikamenteSeite(ctx: ctx.cgContext, medikamente: medikamente, seite: seite)
+                    }
 
-                if optionen.mitZyklus && !zyklus.isEmpty {
-                    seite += 1; ctx.beginPage()
-                    zyklusSeite(ctx: ctx.cgContext, eintraege: zyklus, analyse: analyse, seite: seite)
-                }
+                    if optionen.mitZyklus && !zyklus.isEmpty {
+                        seite += 1; ctx.beginPage()
+                        zyklusSeite(ctx: ctx.cgContext, zyklusEintraege: zyklus,
+                                    schmerzEintraege: eintraege, analyse: analyse, seite: seite)
+                    }
 
-                if optionen.mitEintraege && !eintraege.isEmpty {
-                    seite += 1
-                    eintraegeSeiten(ctx: ctx, eintraege: eintraege, startSeite: seite)
+                    if optionen.mitEintraege && !eintraege.isEmpty {
+                        seite += 1
+                        eintraegeSeiten(ctx: ctx, eintraege: eintraege, startSeite: seite)
+                    }
                 }
+            } catch {
+                renderFehler = error
             }
-            return url
-        } catch { return nil }
+        }
+        return renderFehler == nil ? url : nil
     }
 
     // MARK: - Page 1: Cover
@@ -435,7 +444,8 @@ class PDFExportService: @unchecked Sendable {
 
     // MARK: - Zyklus page
 
-    private func zyklusSeite(ctx: CGContext, eintraege: [PDFZyklusEintrag], analyse: ZyklusAnalyse, seite: Int) {
+    private func zyklusSeite(ctx: CGContext, zyklusEintraege: [PDFZyklusEintrag],
+                              schmerzEintraege: [PDFEintrag], analyse: ZyklusAnalyse, seite: Int) {
         seitenKopf(ctx: ctx, titel: "Zyklusübersicht", seite: seite)
         var y: CGFloat = rand + 52
 
@@ -492,7 +502,7 @@ class PDFExportService: @unchecked Sendable {
             }
             let periodDauer: Int = {
                 var n = 0; var check = start
-                while eintraege.contains(where: { $0.istPeriode && kal.isDate($0.datum, inSameDayAs: check) }) {
+                while zyklusEintraege.contains(where: { $0.istPeriode && kal.isDate($0.datum, inSameDayAs: check) }) {
                     n += 1
                     check = kal.date(byAdding: .day, value: 1, to: check) ?? check
                 }
@@ -515,7 +525,7 @@ class PDFExportService: @unchecked Sendable {
              font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
         y += 20
 
-        let symptomMap = eintraege.flatMap(\.symptome)
+        let symptomMap = zyklusEintraege.flatMap(\.symptome)
             .reduce(into: [:]) { $0[$1, default: 0] += 1 }
         let sortiert = symptomMap.sorted { $0.value > $1.value }
         let maxS = max(1, sortiert.first?.value ?? 1)
@@ -530,6 +540,50 @@ class PDFExportService: @unchecked Sendable {
             draw("\(count)×", at: CGPoint(x: rand + 130 + barW + 4, y: y + 2),
                  font: .systemFont(ofSize: 9), color: .secondaryLabel)
             y += 18
+        }
+
+        // Schmerz-Zyklus-Korrelation
+        if !schmerzEintraege.isEmpty && !analyse.zyklusStarts.isEmpty {
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Schmerz nach Zyklusphase", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+
+            let phasen: [(String, UIColor)] = [
+                ("Menstruation", .systemRed),
+                ("Follikulär", .systemGreen),
+                ("Eisprung", .systemTeal),
+                ("Lutealphase", .systemPurple)
+            ]
+
+            var phaseScores: [String: [Int]] = [:]
+            for eintrag in schmerzEintraege {
+                if let phase = zyklusphase(fuer: eintrag.datum, analyse: analyse) {
+                    phaseScores[phase, default: []].append(eintrag.schmerzstaerke)
+                }
+            }
+
+            let maxAvg: Double = phaseScores.values.compactMap { vals -> Double? in
+                guard !vals.isEmpty else { return nil }
+                return Double(vals.reduce(0, +)) / Double(vals.count)
+            }.max() ?? 10.0
+            let barMaxW: CGFloat = iw - 180
+
+            for (name, farbe) in phasen {
+                guard let vals = phaseScores[name], !vals.isEmpty else { continue }
+                if y > H - rand - 40 { break }
+                let avg = Double(vals.reduce(0, +)) / Double(vals.count)
+                let barW = CGFloat(avg / 10.0) * barMaxW
+                draw(name, at: CGPoint(x: rand, y: y + 2),
+                     font: .systemFont(ofSize: 10), color: .label)
+                ctx.setFillColor(farbe.withAlphaComponent(0.6).cgColor)
+                ctx.fill(CGRect(x: rand + 120, y: y + 2, width: barW, height: 13))
+                draw(String(format: "Ø %.1f/10  (%d Eintr.)", avg, vals.count),
+                     at: CGPoint(x: rand + 120 + barW + 6, y: y + 2),
+                     font: .systemFont(ofSize: 9), color: .secondaryLabel)
+                y += 19
+            }
+            y += 4
         }
 
         fusszeile(ctx: ctx, seite: seite)
@@ -743,6 +797,24 @@ class PDFExportService: @unchecked Sendable {
     private func fmtLang(_ d: Date) -> String {
         let f = DateFormatter(); f.locale = Locale(identifier: "de_CH")
         f.dateStyle = .long; return f.string(from: d)
+    }
+
+    private func zyklusphase(fuer datum: Date, analyse: ZyklusAnalyse) -> String? {
+        let kal = Calendar.current
+        let tag = kal.startOfDay(for: datum)
+        guard let start = analyse.zyklusStarts
+            .map({ kal.startOfDay(for: $0) })
+            .filter({ $0 <= tag })
+            .max() else { return nil }
+
+        let zyklusTag = (kal.dateComponents([.day], from: start, to: tag).day ?? 0) + 1
+        let periodTage = max(1, Int(analyse.periodendauer))
+        let ovTag = max(periodTage + 4, Int(analyse.zykluslaenge) - 14)
+
+        if zyklusTag <= periodTage { return "Menstruation" }
+        if zyklusTag >= ovTag - 2 && zyklusTag <= ovTag + 1 { return "Eisprung" }
+        if zyklusTag > periodTage && zyklusTag < ovTag - 2 { return "Follikulär" }
+        return "Lutealphase"
     }
 }
 #endif
