@@ -19,7 +19,7 @@ struct DashboardView: View {
         ScrollView {
             VStack(spacing: 20) {
                 statistikKarten
-                if !zyklusEintraege.isEmpty { zyklusKarte }
+                if profile.first?.zyklusTrackingAktiv == true { zyklusKarte }
                 wellnessKarte
                 schnellLinks
                 schmerzVerlaufChart

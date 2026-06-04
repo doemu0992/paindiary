@@ -148,7 +148,7 @@ struct AddEntryView: View {
         begleiterscheinungen = e.begleiterscheinungen
         massnahmen = e.massnahmen
         stimmung = e.stimmung
-        stressLevel = 3
+        stressLevel = e.stressLevel
         schlafStunden = e.schlafStunden
         notizen = e.notizen
     }
@@ -165,6 +165,7 @@ struct AddEntryView: View {
             e.massnahmen = massnahmen
             e.stimmung = stimmung
             e.schlafStunden = schlafStunden
+            e.stressLevel = stressLevel
             e.notizen = notizen
         } else {
             let neu = PainEntry(
@@ -179,6 +180,7 @@ struct AddEntryView: View {
                 notizen: notizen,
                 stimmung: stimmung,
                 schlafStunden: schlafStunden,
+                stressLevel: stressLevel,
                 wetterTemperatur: wetterSnap?.temperatur,
                 wetterCode: wetterSnap?.code,
                 wetterWind: wetterSnap?.windgeschwindigkeit

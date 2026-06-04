@@ -4,6 +4,17 @@ import SwiftUI
 struct WellnessView: View {
     @State private var wasserMl: Int = 0
     @State private var wasserZielMl: Int = 2000
+    @AppStorage("wasserErinnerungAktiv") private var wasserErinnerungAktiv = false
+    @AppStorage("wasserErinnerungZeit") private var wasserErinnerungZeitSek = 54000.0 // 15:00
+
+    private let notif = NotificationManager.shared
+
+    private var wasserErinnerungZeit: Binding<Date> {
+        Binding(
+            get: { Date(timeIntervalSinceReferenceDate: wasserErinnerungZeitSek) },
+            set: { wasserErinnerungZeitSek = $0.timeIntervalSinceReferenceDate }
+        )
+    }
 
     private static func datumKey(_ offset: Int = 0) -> String {
         let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
@@ -100,6 +111,35 @@ struct WellnessView: View {
                 .onChange(of: wasserZielMl) { _, neu in
                     UserDefaults.standard.set(neu, forKey: Self.zielKey)
                 }
+            }
+
+            Divider()
+
+            Toggle(isOn: $wasserErinnerungAktiv) {
+                Label("Wasser-Erinnerung", systemImage: "bell.badge")
+            }
+            .onChange(of: wasserErinnerungAktiv) { _, aktiv in
+                if aktiv {
+                    Task {
+                        let granted = await notif.berechtigungAnfordern()
+                        if granted {
+                            let dc = Calendar.current.dateComponents([.hour, .minute], from: wasserErinnerungZeit.wrappedValue)
+                            notif.planeWasserErinnerung(stunde: dc.hour ?? 15, minute: dc.minute ?? 0)
+                        } else {
+                            wasserErinnerungAktiv = false
+                        }
+                    }
+                } else {
+                    notif.loescheWasserErinnerung()
+                }
+            }
+
+            if wasserErinnerungAktiv {
+                DatePicker("Uhrzeit", selection: wasserErinnerungZeit, displayedComponents: .hourAndMinute)
+                    .onChange(of: wasserErinnerungZeit.wrappedValue) { _, neue in
+                        let dc = Calendar.current.dateComponents([.hour, .minute], from: neue)
+                        notif.planeWasserErinnerung(stunde: dc.hour ?? 15, minute: dc.minute ?? 0)
+                    }
             }
         }
         .padding()

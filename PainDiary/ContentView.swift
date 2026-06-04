@@ -1,10 +1,16 @@
 import SwiftUI
+import LocalAuthentication
 
 struct ContentView: View {
     @AppStorage("onboardingAbgeschlossen") private var onboardingAbgeschlossen = false
     @AppStorage("akzentFarbe") private var akzentFarbe = "blau"
+    @Query private var profile: [Benutzerprofil]
     @State private var ausgewaehlterTab = 0
     @State private var neuerEintragAnzeigen = false
+    @State private var entsperrt = false
+    @Environment(\.scenePhase) private var scenePhase
+
+    private var biometriAktiv: Bool { profile.first?.biometrischesLockAktiv ?? false }
 
 #if os(macOS)
     var body: some View {
@@ -16,6 +22,27 @@ struct ContentView: View {
     }
 #else
     var body: some View {
+        Group {
+            if biometriAktiv && !entsperrt {
+                sperrBildschirm
+            } else {
+                hauptApp
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background && biometriAktiv {
+                entsperrt = false
+            } else if phase == .active && biometriAktiv && !entsperrt {
+                authentifizieren()
+            }
+        }
+        .tint(akzentFarbe.alsAkzentFarbe)
+        .fullScreenCover(isPresented: .constant(!onboardingAbgeschlossen)) {
+            OnboardingView()
+        }
+    }
+
+    private var hauptApp: some View {
         TabView(selection: $ausgewaehlterTab) {
             NavigationStack { DashboardView() }
                 .tabItem { Label("Übersicht", systemImage: "chart.line.uptrend.xyaxis") }
@@ -46,9 +73,46 @@ struct ContentView: View {
         .sheet(isPresented: $neuerEintragAnzeigen) {
             AddEntryView()
         }
-        .tint(akzentFarbe.alsAkzentFarbe)
-        .fullScreenCover(isPresented: .constant(!onboardingAbgeschlossen)) {
-            OnboardingView()
+    }
+
+    private var sperrBildschirm: some View {
+        VStack(spacing: 28) {
+            Spacer()
+            Image(systemName: "lock.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(.secondary)
+            Text("PainDiary")
+                .font(.largeTitle.bold())
+            Text("Entsperre die App um fortzufahren.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button {
+                authentifizieren()
+            } label: {
+                Label("Entsperren", systemImage: "faceid")
+                    .font(.headline)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.borderedProminent)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { authentifizieren() }
+    }
+
+    private func authentifizieren() {
+        let context = LAContext()
+        var fehler: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &fehler) else {
+            entsperrt = true  // Biometrie nicht verfügbar → direkt entsperren
+            return
+        }
+        context.evaluatePolicy(
+            .deviceOwnerAuthenticationWithBiometrics,
+            localizedReason: "PainDiary entsperren"
+        ) { erfolg, _ in
+            DispatchQueue.main.async { entsperrt = erfolg }
         }
     }
 #endif

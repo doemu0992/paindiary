@@ -58,6 +58,25 @@ class NotificationManager {
         return standardZeiten(med.frequenz)
     }
 
+    // MARK: - Wasser-Erinnerung
+
+    func planeWasserErinnerung(stunde: Int, minute: Int) {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: ["wasser-erinnerung"])
+        scheduleNotification(
+            id: "wasser-erinnerung",
+            titel: "💧 Genug getrunken heute?",
+            body: "Überprüfe dein Wasser-Tagesziel und bleib hydratisiert!",
+            stunde: stunde,
+            minute: minute
+        )
+    }
+
+    func loescheWasserErinnerung() {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: ["wasser-erinnerung"])
+    }
+
     // MARK: - Tages-Erinnerung
 
     func planeTagesErinnerung(stunde: Int, minute: Int) {

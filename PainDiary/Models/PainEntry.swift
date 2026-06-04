@@ -13,6 +13,7 @@ import SwiftData
     var notizen: String = ""
     var stimmung: Int = 3             // 1–5
     var schlafStunden: Double = 0
+    var stressLevel: Int = 3          // 1–5
 
     // Wetter zum Zeitpunkt der Erfassung
     var wetterTemperatur: Double?
@@ -31,6 +32,7 @@ import SwiftData
         notizen: String = "",
         stimmung: Int = 3,
         schlafStunden: Double = 0,
+        stressLevel: Int = 3,
         wetterTemperatur: Double? = nil,
         wetterCode: Int? = nil,
         wetterWind: Double? = nil
@@ -46,6 +48,7 @@ import SwiftData
         self.notizen = notizen
         self.stimmung = stimmung
         self.schlafStunden = schlafStunden
+        self.stressLevel = stressLevel
         self.wetterTemperatur = wetterTemperatur
         self.wetterCode = wetterCode
         self.wetterWind = wetterWind

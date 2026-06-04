@@ -195,6 +195,11 @@ private struct PainEntryZeile: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                if !eintrag.ausloeser.isEmpty {
+                    Text(eintrag.ausloeser)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
             Spacer()
             HStack(spacing: 1) {
