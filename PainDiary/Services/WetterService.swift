@@ -72,7 +72,25 @@ class WetterService: NSObject, CLLocationManagerDelegate {
         fehler = nil
         isLoading = true
         locationManager.requestWhenInUseAuthorization()
-        locationManager.requestLocation()
+        // Only request location immediately if permission is already granted.
+        // If status is .notDetermined the dialog appears asynchronously;
+        // locationManagerDidChangeAuthorization will trigger the actual request.
+        let status = locationManager.authorizationStatus
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            locationManager.requestLocation()
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            if isLoading { manager.requestLocation() }
+        case .denied, .restricted:
+            self.fehler = "Standortzugriff nicht erlaubt"
+            self.isLoading = false
+        default:
+            break
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -81,10 +99,8 @@ class WetterService: NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in
-            self.fehler = "Standort nicht verfügbar"
-            self.isLoading = false
-        }
+        self.fehler = "Standort nicht verfügbar"
+        self.isLoading = false
     }
 
     private func fetchWetter(lat: Double, lon: Double) async {
