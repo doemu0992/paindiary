@@ -1,1 +1,1 @@
-#import "ExceptionCatcher.h"
+#import "PainDiary/ObjCBridge/ExceptionCatcher.h"
