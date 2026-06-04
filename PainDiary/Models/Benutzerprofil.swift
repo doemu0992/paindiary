@@ -42,11 +42,11 @@ import SwiftData
     init(
         vorname: String = "",
         nachname: String = "",
-        geschlecht: String = "Nicht angegeben",
+        geschlecht: String = "",
         wohnort: String = "",
         versicherung: String = "",
         versicherungsNummer: String = "",
-        blutgruppe: String = "Unbekannt",
+        blutgruppe: String = "",
         zyklusTrackingAktiv: Bool = false,
         biometrischesLockAktiv: Bool = false
     ) {

@@ -122,6 +122,10 @@ private struct ProfilInhaltView: View {
             }
         }
 #endif
+        .onAppear {
+            if profil.geschlecht == "Nicht angegeben" { profil.geschlecht = "" }
+            if profil.blutgruppe == "Unbekannt" { profil.blutgruppe = "" }
+        }
     }
 
     // MARK: - Persönliche Daten
