@@ -26,14 +26,6 @@ struct ZyklusView: View {
             .padding(.bottom, 30)
         }
         .navigationTitle("Zyklus")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button { wechselMonat(-1) } label: { Image(systemName: "chevron.left") }
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button { wechselMonat(1) } label: { Image(systemName: "chevron.right") }
-            }
-        }
         .sheet(item: $ausgewaehlterTag) { auswahl in
             ZyklusEintragSheet(
                 datum: auswahl.datum,
@@ -164,11 +156,22 @@ struct ZyklusView: View {
     }
 
     private var legende: some View {
-        HStack(spacing: 14) {
-            legendeItem(farbe: .red, gefuellt: true, text: "Periode")
-            legendeItem(farbe: .red, gefuellt: false, text: "Vorhergesagt")
-            legendeItem(farbe: .teal, gefuellt: true, text: "Fruchtbar")
-            legendeItem(farbe: .orange, gefuellt: true, text: "Eisprung")
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                HStack(spacing: 3) {
+                    ForEach([0.2, 0.45, 0.75, 1.0] as [Double], id: \.self) { op in
+                        Circle().fill(Color.red.opacity(op)).frame(width: 8, height: 8)
+                    }
+                    Text("Periode").font(.caption2).foregroundStyle(.secondary)
+                }
+                legendeItem(farbe: .red, gefuellt: false, text: "Vorhergesagt")
+                legendeItem(farbe: .teal, gefuellt: true, text: "Fruchtbar")
+                legendeItem(farbe: .orange, gefuellt: true, text: "Eisprung")
+                HStack(spacing: 4) {
+                    Circle().fill(Color.purple.opacity(0.6)).frame(width: 8, height: 8)
+                    Text("Symptome").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
@@ -190,7 +193,9 @@ struct ZyklusView: View {
         ZyklusKalender(
             monat: anzeigeMonat,
             eintraege: Array(eintraege),
-            analyse: analyse
+            analyse: analyse,
+            onVorheriger: { wechselMonat(-1) },
+            onNaechster: { wechselMonat(1) }
         ) { tag in
             ausgewaehlterTag = ZyklusTagAuswahl(datum: tag)
         }
@@ -359,6 +364,8 @@ private struct ZyklusKalender: View {
     let monat: Date
     let eintraege: [ZyklusEintrag]
     let analyse: ZyklusAnalyse
+    var onVorheriger: () -> Void
+    var onNaechster: () -> Void
     let onTap: (Date) -> Void
 
     private let wochentage = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
@@ -382,7 +389,21 @@ private struct ZyklusKalender: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text(monatsTitel).font(.title3.bold())
+            HStack {
+                Button(action: onVorheriger) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 36, height: 36)
+                }
+                Spacer()
+                Text(monatsTitel).font(.title3.bold())
+                Spacer()
+                Button(action: onNaechster) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 36, height: 36)
+                }
+            }
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
                 ForEach(wochentage, id: \.self) { tag in
@@ -396,8 +417,10 @@ private struct ZyklusKalender: View {
                 ForEach(Array(tageImMonat.enumerated()), id: \.offset) { _, datum in
                     if let datum {
                         let zustand = ZyklusRechner.tagZustand(datum: datum, analyse: analyse)
-                        let hatEintrag = eintraege.contains { kal.isDate($0.datum, inSameDayAs: datum) }
-                        TagZelle(datum: datum, zustand: zustand, hatEintrag: hatEintrag) {
+                        let eintrag = eintraege.first { kal.isDate($0.datum, inSameDayAs: datum) }
+                        let hatSymptome = eintrag.map { !$0.symptome.isEmpty } ?? false
+                        let fluss = eintrag?.blutungsfluss ?? ""
+                        TagZelle(datum: datum, zustand: zustand, hatSymptome: hatSymptome, blutungsfluss: fluss) {
                             onTap(datum)
                         }
                     } else {
@@ -416,11 +439,30 @@ private struct ZyklusKalender: View {
 private struct TagZelle: View {
     let datum: Date
     let zustand: ZyklusTagZustand
-    let hatEintrag: Bool
+    let hatSymptome: Bool
+    let blutungsfluss: String
     let action: () -> Void
 
     private var istHeute: Bool { Calendar.current.isDateInToday(datum) }
     private var tagNummer: String { "\(Calendar.current.component(.day, from: datum))" }
+
+    private var periodeHintergrund: Color {
+        switch blutungsfluss {
+        case "schmierblutung": return Color.red.opacity(0.2)
+        case "leicht":         return Color.red.opacity(0.45)
+        case "stark":          return Color.red
+        default:               return Color.red.opacity(0.75)
+        }
+    }
+
+    private var streakOpacity: Double {
+        switch blutungsfluss {
+        case "schmierblutung": return 0.08
+        case "leicht":         return 0.14
+        case "stark":          return 0.30
+        default:               return 0.22
+        }
+    }
 
     var body: some View {
         Button(action: action) {
@@ -430,10 +472,10 @@ private struct TagZelle: View {
                     if zustand.periode {
                         HStack(spacing: 0) {
                             Rectangle()
-                                .fill(Color.red.opacity(zustand.verbundenLinks ? 0.22 : 0))
+                                .fill(Color.red.opacity(zustand.verbundenLinks ? streakOpacity : 0))
                                 .frame(width: geo.size.width / 2)
                             Rectangle()
-                                .fill(Color.red.opacity(zustand.verbundenRechts ? 0.22 : 0))
+                                .fill(Color.red.opacity(zustand.verbundenRechts ? streakOpacity : 0))
                                 .frame(width: geo.size.width / 2)
                         }
                         .frame(height: 32)
@@ -449,7 +491,7 @@ private struct TagZelle: View {
                     ZStack {
                         // Background circle
                         if zustand.periode {
-                            Circle().fill(Color.red)
+                            Circle().fill(periodeHintergrund)
                         } else if zustand.ovulation {
                             Circle().fill(Color.orange)
                         } else if zustand.vorhergesagtePeriode {
@@ -473,7 +515,7 @@ private struct TagZelle: View {
 
                     // Symptom dot
                     Circle()
-                        .fill(hatEintrag && !zustand.periode ? Color.purple.opacity(0.6) : Color.clear)
+                        .fill(hatSymptome ? Color.purple.opacity(0.6) : Color.clear)
                         .frame(width: 4, height: 4)
                 }
             }
@@ -484,7 +526,13 @@ private struct TagZelle: View {
     }
 
     private var tagTextFarbe: Color {
-        if zustand.periode || zustand.ovulation { return .white }
+        if zustand.ovulation { return .white }
+        if zustand.periode {
+            switch blutungsfluss {
+            case "schmierblutung", "leicht": return .red.opacity(0.85)
+            default: return .white
+            }
+        }
         if zustand.vorhergesagtePeriode { return .red.opacity(0.7) }
         if zustand.fruchtbar { return .teal }
         if istHeute { return .primary }
@@ -501,6 +549,9 @@ struct ZyklusEintragSheet: View {
     let datum: Date
     let bestehend: ZyklusEintrag?
 
+    @AppStorage("zusatzSymptome") private var zusatzSymptomeRaw: String = ""
+    @State private var neuesSymptom = ""
+
     @State private var istPeriode = false
     @State private var blutungsfluss = "mittel"
     @State private var symptome: Set<String> = []
@@ -511,12 +562,18 @@ struct ZyklusEintragSheet: View {
     @State private var notizen = ""
 
     private let flussOptionen = ["schmierblutung", "leicht", "mittel", "stark"]
-    private let symptomOptionen = [
+    private let basisSymptome = [
         "Krämpfe", "Kopfschmerzen", "Rückenschmerzen", "Brustspannen",
-        "Blähungen", "Übelkeit", "Müdigkeit", "Stimmungsschwankungen",
-        "Akne", "Schlafprobleme", "Hitzewallungen", "Appetitsteigerung"
+        "Völlegefühl", "Blähungen", "Übelkeit", "Müdigkeit",
+        "Reizbarkeit", "Stimmungsschwankungen", "Akne", "Schlafprobleme",
+        "Hitzewallungen", "Appetitsteigerung"
     ]
     private let schleimOptionen = ["trocken", "klebrig", "cremig", "wässrig", "Eiweiss"]
+
+    private var alleSymptome: [String] {
+        let custom = zusatzSymptomeRaw.isEmpty ? [] : zusatzSymptomeRaw.components(separatedBy: "|")
+        return basisSymptome + custom.filter { !basisSymptome.contains($0) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -538,7 +595,7 @@ struct ZyklusEintragSheet: View {
 
                 Section("Symptome") {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                        ForEach(symptomOptionen, id: \.self) { s in
+                        ForEach(alleSymptome, id: \.self) { s in
                             Button {
                                 if symptome.contains(s) { symptome.remove(s) } else { symptome.insert(s) }
                             } label: {
@@ -553,6 +610,19 @@ struct ZyklusEintragSheet: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    HStack(spacing: 8) {
+                        TextField("Eigenes Symptom hinzufügen", text: $neuesSymptom)
+                            .font(.caption)
+                            .submitLabel(.done)
+                            .onSubmit { symptomHinzufuegen() }
+                        Button(action: symptomHinzufuegen) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(.pink)
+                                .font(.title3)
+                        }
+                        .disabled(neuesSymptom.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .padding(.top, 4)
                 }
 
                 Section("Eisprung") {
@@ -611,6 +681,16 @@ struct ZyklusEintragSheet: View {
         basaltemperatur = e.basaltemperatur > 0 ? String(format: "%.1f", e.basaltemperatur) : ""
         sexuelleAktivitaet = e.sexuelleAktivitaet
         notizen = e.notizen
+    }
+
+    private func symptomHinzufuegen() {
+        let s = neuesSymptom.trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty, !alleSymptome.contains(s) else { neuesSymptom = ""; return }
+        var custom = zusatzSymptomeRaw.isEmpty ? [] : zusatzSymptomeRaw.components(separatedBy: "|")
+        custom.append(s)
+        zusatzSymptomeRaw = custom.joined(separator: "|")
+        symptome.insert(s)
+        neuesSymptom = ""
     }
 
     private func speichern() {
