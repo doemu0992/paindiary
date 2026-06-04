@@ -20,10 +20,10 @@ import SwiftData
     var zyklusTrackingAktiv: Bool = false
     var biometrischesLockAktiv: Bool = false
 
-    @Relationship(deleteRule: .cascade) var diagnosen: [Diagnose] = []
-    @Relationship(deleteRule: .cascade) var allergien: [Allergie] = []
-    @Relationship(deleteRule: .cascade) var aerzte: [ArztKontakt] = []
-    @Relationship(deleteRule: .cascade) var notfallkontakte: [NotfallKontakt] = []
+    @Relationship(deleteRule: .cascade) var diagnosen: [Diagnose]?
+    @Relationship(deleteRule: .cascade) var allergien: [Allergie]?
+    @Relationship(deleteRule: .cascade) var aerzte: [ArztKontakt]?
+    @Relationship(deleteRule: .cascade) var notfallkontakte: [NotfallKontakt]?
 
     var bmi: Double? {
         guard let kg = gewichtKg, let cm = groesseCm, cm > 0 else { return nil }

@@ -27,10 +27,10 @@ struct PDFPatientenDaten {
             versicherung: p.versicherung,
             versicherungsNummer: p.versicherungsNummer,
             blutgruppe: p.blutgruppe,
-            diagnosen: p.diagnosen.map { $0.bezeichnung }.filter { !$0.isEmpty },
-            allergien: p.allergien.map { $0.substanz }.filter { !$0.isEmpty },
-            aerzte: p.aerzte.map { PDFArzt(name: $0.name, fachgebiet: $0.fachgebiet, telefon: $0.telefon, istHausarzt: $0.istHausarzt) },
-            notfallkontakte: p.notfallkontakte.map { PDFNotfallKontakt(name: $0.name, phone: $0.phone, beziehung: $0.beziehung) }
+            diagnosen: (p.diagnosen ?? []).map { $0.bezeichnung }.filter { !$0.isEmpty },
+            allergien: (p.allergien ?? []).map { $0.substanz }.filter { !$0.isEmpty },
+            aerzte: (p.aerzte ?? []).map { PDFArzt(name: $0.name, fachgebiet: $0.fachgebiet, telefon: $0.telefon, istHausarzt: $0.istHausarzt) },
+            notfallkontakte: (p.notfallkontakte ?? []).map { PDFNotfallKontakt(name: $0.name, phone: $0.phone, beziehung: $0.beziehung) }
         )
     }
 }

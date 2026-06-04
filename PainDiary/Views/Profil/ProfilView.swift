@@ -74,7 +74,7 @@ private struct ProfilInhaltView: View {
                     if let d = existing {
                         d.bezeichnung = bezeichnung; d.datum = datum; d.notizen = notizen
                     } else {
-                        profil.diagnosen.append(Diagnose(bezeichnung: bezeichnung, datum: datum, notizen: notizen))
+                        profil.diagnosen = (profil.diagnosen ?? []) + [Diagnose(bezeichnung: bezeichnung, datum: datum, notizen: notizen)]
                     }
                 }
             case .allergie(let existing):
@@ -82,7 +82,7 @@ private struct ProfilInhaltView: View {
                     if let a = existing {
                         a.substanz = substanz; a.typ = typ; a.reaktion = reaktion; a.schwere = schwere
                     } else {
-                        profil.allergien.append(Allergie(substanz: substanz, typ: typ, reaktion: reaktion, schwere: schwere))
+                        profil.allergien = (profil.allergien ?? []) + [Allergie(substanz: substanz, typ: typ, reaktion: reaktion, schwere: schwere)]
                     }
                 }
             case .arzt(let existing):
@@ -91,9 +91,9 @@ private struct ProfilInhaltView: View {
                         a.name = name; a.fachgebiet = fachgebiet; a.praxis = praxis
                         a.telefon = telefon; a.email = email; a.istHausarzt = istHausarzt; a.notizen = notizen
                     } else {
-                        profil.aerzte.append(ArztKontakt(name: name, fachgebiet: fachgebiet, praxis: praxis,
+                        profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: name, fachgebiet: fachgebiet, praxis: praxis,
                                                          telefon: telefon, email: email,
-                                                         istHausarzt: istHausarzt, notizen: notizen))
+                                                         istHausarzt: istHausarzt, notizen: notizen)]
                     }
                 }
             case .notfallKontakt(let existing):
@@ -101,7 +101,7 @@ private struct ProfilInhaltView: View {
                     if let k = existing {
                         k.name = name; k.phone = phone; k.beziehung = beziehung
                     } else {
-                        profil.notfallkontakte.append(NotfallKontakt(name: name, phone: phone, beziehung: beziehung))
+                        profil.notfallkontakte = (profil.notfallkontakte ?? []) + [NotfallKontakt(name: name, phone: phone, beziehung: beziehung)]
                     }
                 }
             }
@@ -110,7 +110,7 @@ private struct ProfilInhaltView: View {
         .sheet(isPresented: $adressbuchAnzeigen) {
             KontaktPickerView { daten in
                 for d in daten {
-                    profil.notfallkontakte.append(NotfallKontakt(name: d.name, phone: d.phone, beziehung: ""))
+                    profil.notfallkontakte = (profil.notfallkontakte ?? []) + [NotfallKontakt(name: d.name, phone: d.phone, beziehung: "")]
                 }
             }
         }
@@ -277,7 +277,7 @@ private struct ProfilInhaltView: View {
 
     private var diagnoseSektion: some View {
         Section {
-            ForEach(profil.diagnosen as [Diagnose]) { d in
+            ForEach(profil.diagnosen ?? []) { d in
                 Button { aktivesFormular = .diagnose(d) } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -295,7 +295,7 @@ private struct ProfilInhaltView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .onDelete { profil.diagnosen.remove(atOffsets: $0) }
+            .onDelete { var a = profil.diagnosen ?? []; a.remove(atOffsets: $0); profil.diagnosen = a }
             Button("Diagnose hinzufügen") { aktivesFormular = .diagnose(nil) }
         } header: { Text("Diagnosen") }
     }
@@ -304,7 +304,7 @@ private struct ProfilInhaltView: View {
 
     private var allergienSektion: some View {
         Section {
-            ForEach(profil.allergien as [Allergie]) { a in
+            ForEach(profil.allergien ?? []) { a in
                 Button { aktivesFormular = .allergie(a) } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -321,7 +321,7 @@ private struct ProfilInhaltView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .onDelete { profil.allergien.remove(atOffsets: $0) }
+            .onDelete { var a = profil.allergien ?? []; a.remove(atOffsets: $0); profil.allergien = a }
             Button("Allergie hinzufügen") { aktivesFormular = .allergie(nil) }
         } header: { Text("Allergien & Unverträglichkeiten") }
     }
@@ -330,7 +330,7 @@ private struct ProfilInhaltView: View {
 
     private var aerzte: some View {
         Section {
-            ForEach(profil.aerzte as [ArztKontakt]) { a in
+            ForEach(profil.aerzte ?? []) { a in
                 Button { aktivesFormular = .arzt(a) } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -351,7 +351,7 @@ private struct ProfilInhaltView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .onDelete { profil.aerzte.remove(atOffsets: $0) }
+            .onDelete { var a = profil.aerzte ?? []; a.remove(atOffsets: $0); profil.aerzte = a }
             Button("Arzt hinzufügen") { aktivesFormular = .arzt(nil) }
         } header: { Text("Ärzte") }
     }
@@ -360,7 +360,7 @@ private struct ProfilInhaltView: View {
 
     private var notfallkontakte: some View {
         Section {
-            ForEach(profil.notfallkontakte as [NotfallKontakt]) { k in
+            ForEach(profil.notfallkontakte ?? []) { k in
                 HStack {
                     Button { aktivesFormular = .notfallKontakt(k) } label: {
                         VStack(alignment: .leading, spacing: 2) {
@@ -378,7 +378,7 @@ private struct ProfilInhaltView: View {
                     }
                 }
             }
-            .onDelete { profil.notfallkontakte.remove(atOffsets: $0) }
+            .onDelete { var a = profil.notfallkontakte ?? []; a.remove(atOffsets: $0); profil.notfallkontakte = a }
 #if os(iOS)
             Button {
                 adressbuchAnzeigen = true
