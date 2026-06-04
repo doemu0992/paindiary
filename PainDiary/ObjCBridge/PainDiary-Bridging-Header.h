@@ -1,3 +1,3 @@
-#if __has_include("PainDiary/ObjCBridge/ExceptionCatcher.h")
-#import "PainDiary/ObjCBridge/ExceptionCatcher.h"
+#if __has_include("ExceptionCatcher.h")
+#import "ExceptionCatcher.h"
 #endif
