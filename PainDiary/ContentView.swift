@@ -43,10 +43,6 @@ struct ContentView: View {
                 authentifizieren()
             }
         }
-        .onChange(of: biometriAktivCache) { old, neu in
-            // @AppStorage only changes when the user explicitly toggles — never on async load
-            if neu && !old { entsperrt = true }
-        }
         .tint(akzentFarbe.alsAkzentFarbe)
         .fullScreenCover(isPresented: .constant(!onboardingAbgeschlossen)) {
             OnboardingView()
