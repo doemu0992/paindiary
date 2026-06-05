@@ -68,6 +68,8 @@ struct ZyklusAnalyseView: View {
             HStack(spacing: 8) {
                 Image(systemName: "brain.head.profile").foregroundStyle(.teal).font(.title3)
                 Text("Adaptive Vorhersage").font(.subheadline.bold())
+                InfoButton(titel: "Adaptive Vorhersage",
+                           text: "Die App gewichtet die letzten 3 Zyklen stärker als ältere (50 % / 30 % / 20 %). So werden aktuelle Veränderungen deines Rhythmus schneller erkannt als bei einem einfachen Durchschnitt.")
                 Spacer()
                 if hatLerndaten {
                     Label("Aktiv", systemImage: "checkmark.circle.fill")
@@ -152,7 +154,11 @@ struct ZyklusAnalyseView: View {
             karte {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Vorhersagegenauigkeit").font(.headline)
+                        HStack(spacing: 6) {
+                            Text("Vorhersagegenauigkeit").font(.headline)
+                            InfoButton(titel: "Vorhersagegenauigkeit",
+                                       text: "Differenz in Tagen zwischen vorhergesagtem und tatsächlichem Periodenbeginn. 0 = perfekte Vorhersage. Orange = zu spät vorhergesagt, Blau = zu früh. Je mehr Zyklen erfasst, desto kleiner die Abweichung.")
+                        }
                         Text("Abweichung: Vorhersage vs. tatsächlicher Start")
                             .font(.caption).foregroundStyle(.secondary)
                     }
@@ -313,10 +319,14 @@ struct ZyklusAnalyseView: View {
                     }
                 }
                 if hatFruchtbar {
-                    Label("Wässrig & Eiweiss werden als fruchtbar gewertet (Symptothermalmethode).",
-                          systemImage: "info.circle")
-                        .font(.caption2).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "info.circle").font(.caption2).foregroundStyle(.secondary)
+                        Text("Wässrig & Eiweiss werden als fruchtbar gewertet (Symptothermalmethode).")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        InfoButton(titel: "Symptothermalmethode",
+                                   text: "Methode zur Bestimmung der fruchtbaren Tage anhand von Basaltemperatur und Zervixschleim. Wässriger und Eiweiss-Schleim gilt als Zeichen der Fruchtbarkeit und beeinflusst die Eisprungvorhersage der App direkt.")
+                    }
                 }
             }
         }

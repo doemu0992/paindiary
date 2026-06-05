@@ -160,7 +160,11 @@ struct ZyklusView: View {
                 } else {
                     Text("–").font(.subheadline.bold()).foregroundStyle(.teal)
                 }
-                Text("Fruchtbares Fenster").font(.caption2).foregroundStyle(.secondary)
+                HStack(spacing: 3) {
+                    Text("Fruchtbares Fenster").font(.caption2).foregroundStyle(.secondary)
+                    InfoButton(titel: "Fruchtbares Fenster",
+                               text: "Das nächste vorhergesagte Zeitfenster maximaler Fruchtbarkeit. Basiert auf dem erwarteten Eisprung ±5 Tage. Wässriger oder Eiweiss-Zervixschleim verschiebt das Fenster automatisch.")
+                }
             }
             .frame(maxWidth: .infinity)
 
@@ -172,7 +176,11 @@ struct ZyklusView: View {
                 } else {
                     Text("–").font(.subheadline.bold()).foregroundStyle(.orange)
                 }
-                Text("Eisprung erwartet").font(.caption2).foregroundStyle(.secondary)
+                HStack(spacing: 3) {
+                    Text("Eisprung erwartet").font(.caption2).foregroundStyle(.secondary)
+                    InfoButton(titel: "Eisprung erwartet",
+                               text: "Vorhergesagtes Datum des Eisprungs. Die App lernt aus deinen Zervixschleim-Einträgen und passt den Zeitpunkt anhand des persönlichen Musters an.")
+                }
             }
             .frame(maxWidth: .infinity)
         }
@@ -226,9 +234,15 @@ struct ZyklusView: View {
                     }
                     Text("Periode").font(.caption2).foregroundStyle(.secondary)
                 }
-                legendeItem(farbe: .red, gefuellt: false, text: "Vorhergesagt")
-                legendeItem(farbe: .teal, gefuellt: true, text: "Fruchtbar")
-                legendeItem(farbe: .orange, gefuellt: true, text: "Eisprung")
+                legendeItem(farbe: .red, gefuellt: false, text: "Vorhergesagt",
+                            info: ("Vorhergesagte Periode",
+                                   "Geschätzter Periodenbeginn basierend auf deinen bisherigen Zyklen. Wird mit jedem erfassten Zyklus genauer."))
+                legendeItem(farbe: .teal, gefuellt: true, text: "Fruchtbar",
+                            info: ("Fruchtbare Tage",
+                                   "Die 5 Tage vor und 1 Tag nach dem Eisprung. In dieser Zeit ist eine Befruchtung möglich, da Spermien bis zu 5 Tage überleben können."))
+                legendeItem(farbe: .orange, gefuellt: true, text: "Eisprung",
+                            info: ("Eisprung (Ovulation)",
+                                   "Der Moment, in dem ein Ei aus dem Eierstock freigesetzt wird. Tritt meist 12–16 Tage vor der nächsten Periode auf und ist der fruchtbarste Punkt im Zyklus."))
                 HStack(spacing: 4) {
                     Circle().fill(Color.purple.opacity(0.6)).frame(width: 8, height: 8)
                     Text("Symptome").font(.caption2).foregroundStyle(.secondary)
@@ -236,6 +250,8 @@ struct ZyklusView: View {
                 HStack(spacing: 4) {
                     Circle().fill(Color.blue.opacity(0.7)).frame(width: 8, height: 8)
                     Text("Zervixschleim").font(.caption2).foregroundStyle(.secondary)
+                    InfoButton(titel: "Zervixschleim",
+                               text: "Blauer Punkt = Zervixschleim erfasst. Wässrige oder Eiweiss-Konsistenz gilt als Zeichen der Fruchtbarkeit (Symptothermalmethode) und beeinflusst die Eisprungvorhersage.")
                 }
                 HStack(spacing: 4) {
                     Circle().fill(Color.pink.opacity(0.8)).frame(width: 8, height: 8)
@@ -251,13 +267,16 @@ struct ZyklusView: View {
         .foregroundStyle(.secondary)
     }
 
-    private func legendeItem(farbe: Color, gefuellt: Bool, text: String) -> some View {
+    private func legendeItem(farbe: Color, gefuellt: Bool, text: String, info: (String, String)? = nil) -> some View {
         HStack(spacing: 4) {
             Circle()
                 .fill(gefuellt ? farbe : farbe.opacity(0.15))
                 .overlay(gefuellt ? nil : Circle().stroke(farbe, style: StrokeStyle(lineWidth: 1, dash: [2])))
                 .frame(width: 9, height: 9)
             Text(text)
+            if let (titel, erklärung) = info {
+                InfoButton(titel: titel, text: erklärung)
+            }
         }
     }
 
@@ -732,19 +751,31 @@ struct ZyklusEintragSheet: View {
                     .padding(.top, 4)
                 }
 
-                Section("Eisprung") {
+                Section {
                     Picker("Ovulationstest", selection: $ovulationstest) {
                         Text("Kein Test").tag("")
                         Text("Positiv").tag("positiv")
                         Text("Negativ").tag("negativ")
                         Text("Unklar").tag("unklar")
                     }
+                } header: {
+                    HStack(spacing: 4) {
+                        Text("Eisprung")
+                        InfoButton(titel: "Ovulationstest (LH-Test)",
+                                   text: "Ein LH-Test aus der Apotheke zeigt den Anstieg des luteinisierenden Hormons, der 24–36 Stunden vor dem Eisprung auftritt. Positiv = Eisprung steht bevor.")
+                    }
                 }
 
-                Section("Zervixschleim") {
+                Section {
                     Picker("Art", selection: $zervixschleim) {
                         Text("Nicht erfasst").tag("")
                         ForEach(schleimOptionen, id: \.self) { Text($0.capitalized).tag($0) }
+                    }
+                } header: {
+                    HStack(spacing: 4) {
+                        Text("Zervixschleim")
+                        InfoButton(titel: "Zervixschleim-Typen",
+                                   text: "Trocken: kein Schleim, eher unfruchtbar.\nKlebrig: zäh, trüb.\nCremig: weiß, cremig – Übergang.\nWässrig: klar, fließend – fruchtbar.\nEiweiss: dehnbar wie rohes Ei – höchste Fruchtbarkeit, typisch beim Eisprung.")
                     }
                 }
 
@@ -753,7 +784,13 @@ struct ZyklusEintragSheet: View {
                         TextField("z.B. 36.4", text: $basaltemperatur).keyboardType(.decimalPad)
                         Text("°C").foregroundStyle(.secondary)
                     }
-                } header: { Text("Basaltemperatur") }
+                } header: {
+                    HStack(spacing: 4) {
+                        Text("Basaltemperatur")
+                        InfoButton(titel: "Basaltemperatur",
+                                   text: "Morgentemperatur direkt nach dem Aufwachen, vor jeder Aktivität. Nach dem Eisprung steigt sie um ca. 0,2–0,5 °C an und bleibt bis zur nächsten Periode erhöht.")
+                    }
+                }
 
                 Section("Sexuelle Aktivität") {
                     Picker("", selection: $sexuelleAktivitaet) {
