@@ -12,17 +12,30 @@ struct InfoButton: View {
                 .foregroundStyle(.teal.opacity(0.8))
         }
         .buttonStyle(.plain)
-        .popover(isPresented: $zeige) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(titel).font(.headline)
+        .sheet(isPresented: $zeige) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top) {
+                    Text(titel).font(.headline)
+                    Spacer()
+                    Button { zeige = false } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Divider()
                 Text(text)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.body)
+                    .foregroundStyle(.primary.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
             }
-            .padding()
-            .frame(minWidth: 220, maxWidth: 300)
-            .presentationCompactAdaptation(.popover)
+            .padding(20)
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(20)
         }
     }
 }
+
