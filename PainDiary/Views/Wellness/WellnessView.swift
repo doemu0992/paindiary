@@ -20,6 +20,8 @@ struct WellnessView: View {
     // MARK: - Pain entries für Stimmung/Stress/Schlaf-Analyse
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
 
+    @State private var trendTage: Int = 7
+
     private let notif = NotificationManager.shared
 
     // MARK: - Bindings & Keys
@@ -53,10 +55,10 @@ struct WellnessView: View {
         let schlaf: Double
     }
 
-    private var letzten7Tage: [TagesWerte] {
+    private var trendDaten: [TagesWerte] {
         let kal = Calendar.current
         let heute = kal.startOfDay(for: Date())
-        return (0..<7).reversed().compactMap { offset -> TagesWerte? in
+        return (0..<trendTage).reversed().compactMap { offset -> TagesWerte? in
             guard let tag = kal.date(byAdding: .day, value: -offset, to: heute) else { return nil }
             let tage = eintraege.filter { kal.isDate($0.datum, inSameDayAs: tag) }
             guard !tage.isEmpty else { return nil }
@@ -68,12 +70,20 @@ struct WellnessView: View {
     }
 
     private var wochenAvg: (stimmung: Double, stress: Double, schlaf: Double) {
-        let tage = letzten7Tage
+        let tage = trendDaten
         guard !tage.isEmpty else { return (0, 0, 0) }
         let s   = tage.map(\.stimmung).reduce(0,+) / Double(tage.count)
         let st  = tage.map(\.stress).reduce(0,+) / Double(tage.count)
         let sch = tage.filter { $0.schlaf > 0 }.map(\.schlaf)
         return (s, st, sch.isEmpty ? 0 : sch.reduce(0,+) / Double(sch.count))
+    }
+
+    private var trendLabel: String {
+        switch trendTage {
+        case 30: return "30 Tage"
+        case 90: return "90 Tage"
+        default: return "7 Tage"
+        }
     }
 
     // MARK: - Body
@@ -84,7 +94,7 @@ struct WellnessView: View {
                 wochenZusammenfassung
                 wasserTrackerKarte
                 ernaehrungKarte
-                if !letzten7Tage.isEmpty {
+                if !trendDaten.isEmpty {
                     stimmungStressKarte
                     schlafKarte
                 }
@@ -326,6 +336,18 @@ struct WellnessView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Trend-Picker
+
+    private var trendPicker: some View {
+        Picker("Zeitraum", selection: $trendTage) {
+            Text("7T").tag(7)
+            Text("30T").tag(30)
+            Text("90T").tag(90)
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+    }
+
     // MARK: - Stimmung & Stress
 
     private var stimmungStressKarte: some View {
@@ -334,11 +356,11 @@ struct WellnessView: View {
                 Label("Stimmung & Stress", systemImage: "waveform.path.ecg.rectangle")
                     .font(.headline).foregroundStyle(.pink)
                 Spacer()
-                Text("7 Tage").font(.caption).foregroundStyle(.secondary)
+                trendPicker
             }
 
             Chart {
-                ForEach(letzten7Tage) { tag in
+                ForEach(trendDaten) { tag in
                     LineMark(
                         x: .value("Tag", tag.datum, unit: .day),
                         y: .value("Wert", tag.stimmung)
@@ -359,14 +381,14 @@ struct WellnessView: View {
             .chartForegroundStyleScale(["Stimmung": Color.red, "Stress": Color.orange])
             .chartYScale(domain: 1...5)
             .chartXAxis {
-                AxisMarks(values: .stride(by: .day)) {
-                    AxisValueLabel(format: .dateTime.weekday(.narrow))
+                AxisMarks(values: .stride(by: trendTage <= 7 ? .day : .weekOfYear)) {
+                    AxisValueLabel(format: trendTage <= 7 ? .dateTime.weekday(.narrow) : .dateTime.day().month(.abbreviated))
                 }
             }
             .chartLegend(position: .bottom, alignment: .leading)
             .frame(height: 130)
 
-            if letzten7Tage.count < 3 {
+            if trendDaten.count < 3 {
                 Text("Mehr Schmerzeinträge erfassen für aussagekräftige Trends")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -378,7 +400,7 @@ struct WellnessView: View {
     // MARK: - Schlaf
 
     private var schlafKarte: some View {
-        let tagenMitSchlaf = letzten7Tage.filter { $0.schlaf > 0 }
+        let tagenMitSchlaf = trendDaten.filter { $0.schlaf > 0 }
         let avg = tagenMitSchlaf.isEmpty ? 0.0
             : tagenMitSchlaf.map(\.schlaf).reduce(0,+) / Double(tagenMitSchlaf.count)
 
@@ -387,7 +409,7 @@ struct WellnessView: View {
                 Label("Schlaf", systemImage: "moon.zzz.fill")
                     .font(.headline).foregroundStyle(.indigo)
                 Spacer()
-                Text("aus Schmerzeinträgen").font(.caption).foregroundStyle(.secondary)
+                Text(trendLabel).font(.caption).foregroundStyle(.secondary)
             }
 
             HStack(spacing: 20) {
@@ -415,8 +437,8 @@ struct WellnessView: View {
                     }
                     .chartYScale(domain: 0...10)
                     .chartXAxis {
-                        AxisMarks(values: .stride(by: .day)) {
-                            AxisValueLabel(format: .dateTime.weekday(.narrow))
+                        AxisMarks(values: .stride(by: trendTage <= 7 ? .day : .weekOfYear)) {
+                            AxisValueLabel(format: trendTage <= 7 ? .dateTime.weekday(.narrow) : .dateTime.day().month(.abbreviated))
                         }
                     }
                     .frame(height: 80)

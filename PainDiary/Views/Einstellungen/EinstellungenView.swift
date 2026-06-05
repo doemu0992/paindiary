@@ -92,6 +92,10 @@ struct EinstellungenView: View {
             }
 
             Section("App") {
+                NavigationLink(destination: DatenschutzView()) {
+                    Label("Datenschutz", systemImage: "lock.shield")
+                }
+
                 Button("Onboarding erneut anzeigen") {
                     UserDefaults.standard.set(false, forKey: "onboardingAbgeschlossen")
                 }
