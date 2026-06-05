@@ -131,6 +131,14 @@ struct ZyklusRechner {
             }
         }
 
+        // Symptothermalmethode: wässrig/Eiweiss mucus = confirmed fertile day
+        for eintrag in eintraege {
+            let schleim = eintrag.zervixschleim.lowercased()
+            if schleim == "wässrig" || schleim == "eiweiss" {
+                fruchtbarSet.insert(kal.startOfDay(for: eintrag.datum))
+            }
+        }
+
         return ZyklusAnalyse(
             zykluslaenge: avgZyklus,
             periodendauer: avgPeriod,

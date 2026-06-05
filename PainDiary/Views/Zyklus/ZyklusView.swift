@@ -234,8 +234,16 @@ struct ZyklusView: View {
                     Text("Symptome").font(.caption2).foregroundStyle(.secondary)
                 }
                 HStack(spacing: 4) {
+                    Circle().fill(Color.blue.opacity(0.7)).frame(width: 8, height: 8)
+                    Text("Zervixschleim").font(.caption2).foregroundStyle(.secondary)
+                }
+                HStack(spacing: 4) {
                     Circle().fill(Color.pink.opacity(0.8)).frame(width: 8, height: 8)
                     Text("Sex. Aktivität").font(.caption2).foregroundStyle(.secondary)
+                }
+                HStack(spacing: 4) {
+                    Circle().fill(Color.gray.opacity(0.5)).frame(width: 8, height: 8)
+                    Text("Andere Daten").font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }
@@ -344,6 +352,19 @@ struct ZyklusView: View {
                     statKarte("Nächste Periode", n.formatted(.dateTime.day().month()), "calendar", .purple)
                 }
             }
+            .padding(.horizontal)
+
+            NavigationLink(destination: ZyklusAnalyseView()) {
+                HStack {
+                    Image(systemName: "chart.xyaxis.line").foregroundStyle(.pink)
+                    Text("Detaillierte Analyse").font(.subheadline).fontWeight(.medium)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                }
+                .padding()
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
             .padding(.horizontal)
         }
     }
@@ -487,7 +508,11 @@ private struct ZyklusKalender: View {
                         let hatSymptome = eintrag.map { !$0.symptome.isEmpty } ?? false
                         let fluss = eintrag?.blutungsfluss ?? ""
                         let sexAktiv = eintrag?.sexuelleAktivitaet ?? ""
-                        TagZelle(datum: datum, zustand: zustand, hatSymptome: hatSymptome, blutungsfluss: fluss, sexuelleAktivitaet: sexAktiv) {
+                        let schleim = eintrag?.zervixschleim ?? ""
+                        let hatSonstigeDaten = !(eintrag?.ovulationstest ?? "").isEmpty ||
+                                               (eintrag?.basaltemperatur ?? 0) > 0 ||
+                                               !(eintrag?.notizen ?? "").isEmpty
+                        TagZelle(datum: datum, zustand: zustand, hatSymptome: hatSymptome, blutungsfluss: fluss, sexuelleAktivitaet: sexAktiv, zervixschleim: schleim, hatSonstigeDaten: hatSonstigeDaten) {
                             onTap(datum)
                         }
                     } else {
@@ -509,6 +534,8 @@ private struct TagZelle: View {
     let hatSymptome: Bool
     let blutungsfluss: String
     let sexuelleAktivitaet: String
+    let zervixschleim: String
+    let hatSonstigeDaten: Bool
     let action: () -> Void
 
     private var istHeute: Bool { Calendar.current.isDateInToday(datum) }
@@ -581,18 +608,22 @@ private struct TagZelle: View {
                     }
                     .frame(width: 30, height: 30)
 
-                    // Status dots — only rendered when data exists
+                    // Status dots — fixed height, no placeholder artifacts
                     HStack(spacing: 2) {
                         if hatSymptome {
                             Circle().fill(Color.purple.opacity(0.6)).frame(width: 4, height: 4)
                         }
+                        if !zervixschleim.isEmpty {
+                            Circle().fill(Color.blue.opacity(0.7)).frame(width: 4, height: 4)
+                        }
                         if !sexuelleAktivitaet.isEmpty {
                             Circle().fill(Color.pink.opacity(0.8)).frame(width: 4, height: 4)
                         }
-                        if !hatSymptome && sexuelleAktivitaet.isEmpty {
-                            Color.clear.frame(width: 4, height: 4)
+                        if hatSonstigeDaten {
+                            Circle().fill(Color.gray.opacity(0.5)).frame(width: 4, height: 4)
                         }
                     }
+                    .frame(height: 6)
                 }
             }
             .frame(height: 38)
