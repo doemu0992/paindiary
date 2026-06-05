@@ -22,6 +22,7 @@ struct ZyklusAnalyseView: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         statistikKarten
+                        genauigkeitsKarte
                         zykluslaengenChart
                         schleimMuster
                         symptomHaeufigkeit
@@ -133,6 +134,105 @@ struct ZyklusAnalyseView: View {
         .padding(12)
         .background(hatLerndaten ? Color.teal.opacity(0.08) : Color.secondary.opacity(0.05),
                     in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: - Vorhersagegenauigkeit
+
+    @ViewBuilder
+    private var genauigkeitsKarte: some View {
+        let fehler = vorhersageFehler()
+        if fehler.count >= 2 {
+            let absWerte = fehler.map { abs($0.fehler) }
+            let aktuellFehler = absWerte.suffix(3).reduce(0, +) / Double(absWerte.suffix(3).count)
+            let fruehFehler   = absWerte.prefix(max(absWerte.count - 3, 1)).reduce(0, +) /
+                                Double(max(absWerte.count - 3, 1))
+            let verbessert = aktuellFehler < fruehFehler - 0.3
+            let verschlechtert = aktuellFehler > fruehFehler + 0.3
+
+            karte {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Vorhersagegenauigkeit").font(.headline)
+                        Text("Abweichung: Vorhersage vs. tatsächlicher Start")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("±\(String(format: "%.1f", aktuellFehler)) Tage")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(aktuellFehler <= 1 ? .green : aktuellFehler <= 2 ? .orange : .red)
+                        HStack(spacing: 3) {
+                            Image(systemName: verbessert ? "arrow.down.circle.fill" :
+                                              verschlechtert ? "arrow.up.circle.fill" : "minus.circle.fill")
+                                .foregroundStyle(verbessert ? .green : verschlechtert ? .red : .secondary)
+                                .font(.caption2)
+                            Text(verbessert ? "Wird besser" : verschlechtert ? "Schwankend" : "Stabil")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Chart(fehler, id: \.zyklusNr) { p in
+                    BarMark(
+                        x: .value("Zyklus", p.zyklusNr),
+                        y: .value("Tage", p.fehler)
+                    )
+                    .foregroundStyle(p.fehler >= 0 ? Color.orange.gradient : Color.blue.gradient)
+                    .cornerRadius(3)
+                }
+                .chartYAxis {
+                    AxisMarks(values: .automatic) {
+                        AxisGridLine()
+                        AxisValueLabel()
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks(values: .automatic) { v in
+                        AxisValueLabel { Text("Z\(v.as(Int.self) ?? 0)") }
+                    }
+                }
+                .frame(height: max(CGFloat(fehler.count) * 18, 100))
+
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 2).fill(Color.orange).frame(width: 10, height: 8)
+                        Text("Zu spät").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 2).fill(Color.blue).frame(width: 10, height: 8)
+                        Text("Zu früh").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text("0 = perfekte Vorhersage").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private struct FehlerPunkt {
+        let zyklusNr: Int
+        let fehler: Double // actual − predicted (positive = period came late, negative = early)
+    }
+
+    private func vorhersageFehler() -> [FehlerPunkt] {
+        let laengen = berechneLaengen()
+        guard laengen.count >= 2 else { return [] }
+        var result: [FehlerPunkt] = []
+        for i in 1..<laengen.count {
+            let vorherige = Array(laengen[0..<i])
+            let vorhersage = rollingAdaptiv(vorherige)
+            result.append(FehlerPunkt(zyklusNr: i + 1, fehler: laengen[i] - vorhersage))
+        }
+        return result
+    }
+
+    private func rollingAdaptiv(_ laengen: [Double]) -> Double {
+        let r = Array(laengen.suffix(3))
+        switch r.count {
+        case 1:    return r[0]
+        case 2:    return r[0] * 0.4 + r[1] * 0.6
+        default:   return r[0] * 0.2 + r[1] * 0.3 + r[2] * 0.5
+        }
     }
 
     // MARK: - Zykluslängen Chart
