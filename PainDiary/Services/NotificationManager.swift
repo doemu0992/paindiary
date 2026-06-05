@@ -3,13 +3,24 @@ import UserNotifications
 import Observation
 
 @Observable
-class NotificationManager {
+class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
 
     var status: UNAuthorizationStatus = .notDetermined
 
-    init() {
+    override init() {
+        super.init()
+        UNUserNotificationCenter.current().delegate = self
         Task { await aktualisiereStatus() }
+    }
+
+    // Show notifications (banner + sound) even when app is in foreground
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .badge])
     }
 
     func berechtigungAnfordern() async -> Bool {
