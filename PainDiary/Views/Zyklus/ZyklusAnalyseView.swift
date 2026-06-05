@@ -47,41 +47,92 @@ struct ZyklusAnalyseView: View {
                 statCard("Zyklen erfasst", "\(max(analyse.zyklusStarts.count - 1, 0))", "list.number", .purple)
             }
 
-            // Show learned ovulation offset when available
-            if let offset = analyse.gelernterOvulationsOffset {
-                let standard = Int(analyse.zykluslaenge) - 14
-                let diff = offset - standard
-                let diffText = diff == 0 ? "entspricht dem Standardwert" :
-                               diff < 0 ? "\(abs(diff)) Tag\(abs(diff) == 1 ? "" : "e") früher als Ø" :
-                                          "\(diff) Tag\(diff == 1 ? "" : "e") später als Ø"
-                HStack(spacing: 10) {
-                    Image(systemName: "brain.head.profile").foregroundStyle(.teal).font(.title3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("App hat gelernt: Eisprung typisch an Tag \(offset)")
-                            .font(.subheadline.bold())
-                        Text(diffText)
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
-                .padding(12)
-                .background(Color.teal.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-            } else {
-                HStack(spacing: 10) {
-                    Image(systemName: "brain.head.profile").foregroundStyle(.secondary).font(.title3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Noch nicht genug Daten zum Lernen")
-                            .font(.subheadline)
-                        Text("Erfasse Zervixschleim in mind. 2 abgeschlossenen Zyklen.")
-                            .font(.caption).foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer()
-                }
-                .padding(12)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-            }
+            lernKarte
         }
+    }
+
+    @ViewBuilder
+    private var lernKarte: some View {
+        let adaptZyklus = Int(round(analyse.adaptierteZykluslaenge))
+        let adaptPeriod = Int(round(analyse.adaptiertePeriodendauer))
+        let avgZyklus   = Int(round(analyse.zykluslaenge))
+        let avgPeriod   = Int(round(analyse.periodendauer))
+        let zyklusDiff  = adaptZyklus - avgZyklus
+        let periodDiff  = adaptPeriod - avgPeriod
+        let hatLerndaten = analyse.zyklusStarts.count >= 3 // enough for weighted avg to differ
+
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "brain.head.profile").foregroundStyle(.teal).font(.title3)
+                Text("Adaptive Vorhersage").font(.subheadline.bold())
+                Spacer()
+                if hatLerndaten {
+                    Label("Aktiv", systemImage: "checkmark.circle.fill")
+                        .font(.caption2).foregroundStyle(.teal)
+                } else {
+                    Text("Ab 3 Zyklen aktiv").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+
+            Divider()
+
+            HStack(spacing: 0) {
+                VStack(spacing: 4) {
+                    Text("\(adaptZyklus) Tage")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(zyklusDiff != 0 ? .pink : .primary)
+                    Text("Vorhersage Zyklus")
+                        .font(.caption2).foregroundStyle(.secondary)
+                    if zyklusDiff != 0 {
+                        Text(zyklusDiff > 0 ? "+\(zyklusDiff)d" : "\(zyklusDiff)d")
+                            .font(.caption2.bold())
+                            .foregroundStyle(zyklusDiff > 0 ? .orange : .blue)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+
+                Divider().frame(height: 44)
+
+                VStack(spacing: 4) {
+                    Text("\(adaptPeriod) Tage")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(periodDiff != 0 ? .red : .primary)
+                    Text("Vorhersage Periode")
+                        .font(.caption2).foregroundStyle(.secondary)
+                    if periodDiff != 0 {
+                        Text(periodDiff > 0 ? "+\(periodDiff)d" : "\(periodDiff)d")
+                            .font(.caption2.bold())
+                            .foregroundStyle(periodDiff > 0 ? .orange : .blue)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+
+                if let offset = analyse.gelernterOvulationsOffset {
+                    Divider().frame(height: 44)
+                    VStack(spacing: 4) {
+                        Text("Tag \(offset)")
+                            .font(.subheadline.bold()).foregroundStyle(.teal)
+                        Text("Eisprung (gelernt)")
+                            .font(.caption2).foregroundStyle(.secondary)
+                        let std = avgZyklus - 14
+                        let diff = offset - std
+                        if diff != 0 {
+                            Text(diff > 0 ? "+\(diff)d" : "\(diff)d")
+                                .font(.caption2.bold())
+                                .foregroundStyle(diff > 0 ? .orange : .blue)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+
+            Text("Letzte 3 Zyklen gewichtet (50/30/20 %). Ø-Werte bleiben für Statistik unverändert.")
+                .font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .background(hatLerndaten ? Color.teal.opacity(0.08) : Color.secondary.opacity(0.05),
+                    in: RoundedRectangle(cornerRadius: 12))
     }
 
     // MARK: - Zykluslängen Chart
