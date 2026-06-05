@@ -581,16 +581,17 @@ private struct TagZelle: View {
                     }
                     .frame(width: 30, height: 30)
 
-                    // Status dots
+                    // Status dots — only rendered when data exists
                     HStack(spacing: 2) {
-                        Circle()
-                            .fill(Color.purple.opacity(0.6))
-                            .frame(width: 4, height: 4)
-                            .opacity(hatSymptome ? 1 : 0)
-                        Circle()
-                            .fill(Color.pink.opacity(0.8))
-                            .frame(width: 4, height: 4)
-                            .opacity(!sexuelleAktivitaet.isEmpty ? 1 : 0)
+                        if hatSymptome {
+                            Circle().fill(Color.purple.opacity(0.6)).frame(width: 4, height: 4)
+                        }
+                        if !sexuelleAktivitaet.isEmpty {
+                            Circle().fill(Color.pink.opacity(0.8)).frame(width: 4, height: 4)
+                        }
+                        if !hatSymptome && sexuelleAktivitaet.isEmpty {
+                            Color.clear.frame(width: 4, height: 4)
+                        }
                     }
                 }
             }

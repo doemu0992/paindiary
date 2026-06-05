@@ -132,6 +132,41 @@ struct PDFZyklusEintrag {
     }
 }
 
+struct PDFErnaehrungsTag {
+    let datum: Date
+    let koffeinTassen: Int
+    let alkoholGlaeser: Int
+    let wasserMl: Int
+    let hatFruehstueck: Bool
+    let hatMittag: Bool
+    let hatAbend: Bool
+
+    static func lesen(start: Date?) -> [PDFErnaehrungsTag] {
+        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+        let ud = UserDefaults.standard
+        let kal = Calendar.current
+        let ende = kal.startOfDay(for: Date())
+        var von = start.map { kal.startOfDay(for: $0) } ?? kal.date(byAdding: .year, value: -1, to: ende)!
+        var ergebnis: [PDFErnaehrungsTag] = []
+        while von <= ende {
+            let k = df.string(from: von)
+            let koffein = ud.integer(forKey: "koffeinTassen_\(k)")
+            let alkohol = ud.integer(forKey: "alkoholGlaeser_\(k)")
+            let wasser  = ud.integer(forKey: "wasserMl_\(k)")
+            let frueh   = ud.bool(forKey: "mahlzeitFruehstueck_\(k)")
+            let mittag  = ud.bool(forKey: "mahlzeitMittag_\(k)")
+            let abend   = ud.bool(forKey: "mahlzeitAbend_\(k)")
+            if koffein > 0 || alkohol > 0 || wasser > 0 || frueh || mittag || abend {
+                ergebnis.append(PDFErnaehrungsTag(datum: von, koffeinTassen: koffein,
+                    alkoholGlaeser: alkohol, wasserMl: wasser,
+                    hatFruehstueck: frueh, hatMittag: mittag, hatAbend: abend))
+            }
+            von = kal.date(byAdding: .day, value: 1, to: von)!
+        }
+        return ergebnis
+    }
+}
+
 // MARK: - Export options
 
 struct ExportOptionen {
@@ -140,6 +175,7 @@ struct ExportOptionen {
     var mitMedikamente: Bool = true
     var mitEintraege: Bool = true
     var mitZyklus: Bool = true
+    var mitErnaehrung: Bool = true
 }
 
 enum ExportZeitraum: String, CaseIterable {
@@ -194,15 +230,17 @@ class PDFExportService: @unchecked Sendable {
         } else {
             gefiltert = eintraege.sorted { $0.datum > $1.datum }.map(PDFEintrag.aus)
         }
-        let meds     = medikamente.map(PDFMedikament.aus)
-        let midas    = midasBewertungen.sorted { $0.datum > $1.datum }.map(PDFMidas.aus)
-        let analyse  = ZyklusRechner.analyse(eintraege: zyklusEintraege)
-        let zyklus   = zyklusEintraege.sorted { $0.datum > $1.datum }.map(PDFZyklusEintrag.aus)
+        let meds      = medikamente.map(PDFMedikament.aus)
+        let midas     = midasBewertungen.sorted { $0.datum > $1.datum }.map(PDFMidas.aus)
+        let analyse   = ZyklusRechner.analyse(eintraege: zyklusEintraege)
+        let zyklus    = zyklusEintraege.sorted { $0.datum > $1.datum }.map(PDFZyklusEintrag.aus)
+        let ernaehrung = PDFErnaehrungsTag.lesen(start: optionen.zeitraum.startDatum())
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let url = self.renderPDF(patient: patient, eintraege: gefiltert,
                                      medikamente: meds, midas: midas,
-                                     zyklus: zyklus, analyse: analyse, optionen: optionen)
+                                     zyklus: zyklus, analyse: analyse,
+                                     ernaehrung: ernaehrung, optionen: optionen)
             Task { @MainActor in completion(url) }
         }
     }
@@ -216,6 +254,7 @@ class PDFExportService: @unchecked Sendable {
         midas: [PDFMidas],
         zyklus: [PDFZyklusEintrag],
         analyse: ZyklusAnalyse,
+        ernaehrung: [PDFErnaehrungsTag],
         optionen: ExportOptionen
     ) -> URL? {
         let dateiname = "Schmerztagebuch_\(fmt(Date())).pdf"
@@ -244,6 +283,11 @@ class PDFExportService: @unchecked Sendable {
                         seite += 1; ctx.beginPage()
                         zyklusSeite(ctx: ctx.cgContext, zyklusEintraege: zyklus,
                                     schmerzEintraege: eintraege, analyse: analyse, seite: seite)
+                    }
+
+                    if optionen.mitErnaehrung && !ernaehrung.isEmpty {
+                        seite += 1; ctx.beginPage()
+                        ernaehrungSeite(ctx: ctx.cgContext, daten: ernaehrung, seite: seite)
                     }
 
                     if optionen.mitEintraege && !eintraege.isEmpty {
@@ -691,6 +735,80 @@ class PDFExportService: @unchecked Sendable {
                 y += 19
             }
             y += 4
+        }
+
+        fusszeile(ctx: ctx, seite: seite)
+    }
+
+    // MARK: - Ernährung page
+
+    private func ernaehrungSeite(ctx: CGContext, daten: [PDFErnaehrungsTag], seite: Int) {
+        seitenKopf(ctx: ctx, titel: "Ernährung & Hydration", seite: seite)
+        var y: CGFloat = rand + 52
+
+        let tage = daten.count
+        let avgKoffein = tage > 0 ? Double(daten.map(\.koffeinTassen).reduce(0,+)) / Double(tage) : 0.0
+        let avgAlkohol = tage > 0 ? Double(daten.map(\.alkoholGlaeser).reduce(0,+)) / Double(tage) : 0.0
+        let avgWasser  = tage > 0 ? Double(daten.map(\.wasserMl).reduce(0,+)) / Double(tage) : 0.0
+
+        let boxW = (iw - 12) / 4
+        statBox(ctx: ctx, x: rand,                  y: y, w: boxW, h: 72, titel: "Ø Koffein/Tag",
+                wert: String(format: "%.1f Tassen", avgKoffein), farbe: UIColor(red: 0.4, green: 0.25, blue: 0.1, alpha: 1))
+        statBox(ctx: ctx, x: rand + boxW + 4,        y: y, w: boxW, h: 72, titel: "Ø Alkohol/Tag",
+                wert: String(format: "%.1f Gläser", avgAlkohol), farbe: .systemPurple)
+        statBox(ctx: ctx, x: rand + (boxW + 4) * 2,  y: y, w: boxW, h: 72, titel: "Ø Wasser/Tag",
+                wert: String(format: "%.0f ml", avgWasser), farbe: .systemTeal)
+        statBox(ctx: ctx, x: rand + (boxW + 4) * 3,  y: y, w: boxW, h: 72, titel: "Tage erfasst",
+                wert: "\(tage)", farbe: .systemGreen)
+        y += 88
+
+        // Mahlzeiten adherence
+        trennlinie(ctx: ctx, y: y); y += 14
+        draw("Mahlzeiten-Regelmässigkeit", at: CGPoint(x: rand, y: y),
+             font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+        y += 20
+        let labelW: CGFloat = 96
+        let barMaxW = iw - labelW - 44
+        for (name, count) in [("Frühstück", daten.filter(\.hatFruehstueck).count),
+                               ("Mittagessen", daten.filter(\.hatMittag).count),
+                               ("Abendessen", daten.filter(\.hatAbend).count)] {
+            let pct = tage > 0 ? Int(Double(count) / Double(tage) * 100) : 0
+            draw(name, at: CGPoint(x: rand, y: y), font: .systemFont(ofSize: 11), color: .label)
+            let bw = CGFloat(pct) / 100.0 * barMaxW
+            ctx.setFillColor(blau.withAlphaComponent(0.55).cgColor)
+            ctx.fill(CGRect(x: rand + labelW, y: y + 3, width: max(0, bw), height: 11))
+            draw("\(pct)% (\(count) Tage)", at: CGPoint(x: rand + labelW + max(0, bw) + 6, y: y),
+                 font: .systemFont(ofSize: 9), color: .secondaryLabel)
+            y += 22
+        }
+        y += 10
+
+        // Daily table
+        trennlinie(ctx: ctx, y: y); y += 14
+        draw("Tagesübersicht (neueste zuerst)", at: CGPoint(x: rand, y: y),
+             font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+        y += 20
+
+        let cols: [CGFloat] = [rand, rand + 70, rand + 155, rand + 240, rand + 330]
+        tabellenKopf(ctx: ctx, y: y, cols: cols,
+                     headers: ["Datum", "Koffein", "Alkohol", "Wasser", "Mahlzeiten"])
+        y += 22
+
+        for tag in daten.reversed().prefix(30) {
+            if y > H - rand - 30 { break }
+            let mahlz = [tag.hatFruehstueck ? "Früh" : nil,
+                         tag.hatMittag ? "Mittag" : nil,
+                         tag.hatAbend ? "Abend" : nil].compactMap { $0 }.joined(separator: ", ")
+            tabellenZeile(ctx: ctx, y: y, cols: cols, werte: [
+                fmtKurz(tag.datum),
+                tag.koffeinTassen > 0 ? "\(tag.koffeinTassen) Tassen" : "–",
+                tag.alkoholGlaeser > 0 ? "\(tag.alkoholGlaeser) Gläser" : "–",
+                tag.wasserMl > 0 ? "\(tag.wasserMl) ml" : "–",
+                mahlz.isEmpty ? "–" : mahlz
+            ], fett: [false, false, false, false, false])
+            y += 16
+            trennlinie(ctx: ctx, y: y, alpha: 0.08)
+            y += 3
         }
 
         fusszeile(ctx: ctx, seite: seite)
