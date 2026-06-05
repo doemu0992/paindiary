@@ -100,14 +100,19 @@ struct ZyklusRechner {
         }()
 
         // Personalized ovulation offset from mucus peak days.
+        // Requires mucus at least 4 days after period end to exclude post-period discharge.
         let mucusOffsets: [Int] = (0..<starts.count).compactMap { i in
             guard i + 1 < starts.count else { return nil }
             let zyklusStart = starts[i]; let zyklusEnde = starts[i + 1]
+            let zyklusPeriodEnd = periodeTage.last(where: { $0 >= zyklusStart && $0 < zyklusEnde })
+            let fruehesteMucus: Date = zyklusPeriodEnd.map {
+                kal.date(byAdding: .day, value: 4, to: $0)!
+            } ?? zyklusStart
             let spitzenTage = eintraege
                 .filter {
                     let tag = kal.startOfDay(for: $0.datum)
                     let s = $0.zervixschleim.lowercased()
-                    return (s == "wässrig" || s == "eiweiss") && tag >= zyklusStart && tag < zyklusEnde
+                    return (s == "wässrig" || s == "eiweiss") && tag >= fruehesteMucus && tag < zyklusEnde
                 }
                 .map { kal.startOfDay(for: $0.datum) }.sorted()
             guard let peak = spitzenTage.last else { return nil }
@@ -118,14 +123,18 @@ struct ZyklusRechner {
             : Int(round(adaptZyklus)) - 14
 
         // Current cycle: use this cycle's own observed mucus peak to position ovulation.
-        // If fertile mucus appears earlier than the learned offset, ovulation moves earlier.
+        // Only counts mucus at least 4 days after the period ends to exclude post-period discharge.
         let aktuellerZyklusOvOffset: Int = {
             guard let currentStart = starts.last else { return persOvulationsOffset }
+            let currentPeriodEnd = periodeTage.last(where: { $0 >= currentStart })
+            let fruehesteMucusTag: Date = currentPeriodEnd.map {
+                kal.date(byAdding: .day, value: 4, to: $0)!
+            } ?? currentStart
             let peakTage = eintraege
                 .filter {
                     let tag = kal.startOfDay(for: $0.datum)
                     let s = $0.zervixschleim.lowercased()
-                    return (s == "wässrig" || s == "eiweiss") && tag >= currentStart
+                    return (s == "wässrig" || s == "eiweiss") && tag >= fruehesteMucusTag
                 }
                 .map { kal.startOfDay(for: $0.datum) }
                 .sorted()
@@ -183,11 +192,20 @@ struct ZyklusRechner {
             }
         }
 
-        // Symptothermalmethode: every wässrig/Eiweiss day is a confirmed fertile day.
+        // Symptothermalmethode: wässrig/Eiweiss confirms fertile day.
+        // Exclude post-period discharge: skip days within 3 days of the last period day.
         for eintrag in eintraege {
             let s = eintrag.zervixschleim.lowercased()
             if s == "wässrig" || s == "eiweiss" {
-                fruchtbarSet.insert(kal.startOfDay(for: eintrag.datum))
+                let tag = kal.startOfDay(for: eintrag.datum)
+                let d1 = kal.date(byAdding: .day, value: -1, to: tag)!
+                let d2 = kal.date(byAdding: .day, value: -2, to: tag)!
+                let d3 = kal.date(byAdding: .day, value: -3, to: tag)!
+                let naheAnPeriode = periodeTageSet.contains(tag) ||
+                                   periodeTageSet.contains(d1) ||
+                                   periodeTageSet.contains(d2) ||
+                                   periodeTageSet.contains(d3)
+                if !naheAnPeriode { fruchtbarSet.insert(tag) }
             }
         }
 
