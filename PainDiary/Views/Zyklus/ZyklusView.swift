@@ -769,17 +769,21 @@ struct ZyklusEintragSheet: View {
     }
 
     private func speichern() {
-        if let alt = bestehend { modelContext.delete(alt) }
-        let neu = ZyklusEintrag(datum: Calendar.current.startOfDay(for: datum))
-        neu.istPeriode = istPeriode
-        neu.blutungsfluss = istPeriode ? blutungsfluss : ""
-        neu.symptome = symptome.sorted().joined(separator: ", ")
-        neu.ovulationstest = ovulationstest
-        neu.zervixschleim = zervixschleim
-        neu.basaltemperatur = Double(basaltemperatur.replacingOccurrences(of: ",", with: ".")) ?? 0
-        neu.sexuelleAktivitaet = sexuelleAktivitaet
-        neu.notizen = notizen
-        modelContext.insert(neu)
+        let eintrag: ZyklusEintrag
+        if let alt = bestehend {
+            eintrag = alt
+        } else {
+            eintrag = ZyklusEintrag(datum: Calendar.current.startOfDay(for: datum))
+            modelContext.insert(eintrag)
+        }
+        eintrag.istPeriode = istPeriode
+        eintrag.blutungsfluss = istPeriode ? blutungsfluss : ""
+        eintrag.symptome = symptome.sorted().joined(separator: ", ")
+        eintrag.ovulationstest = ovulationstest
+        eintrag.zervixschleim = zervixschleim
+        eintrag.basaltemperatur = Double(basaltemperatur.replacingOccurrences(of: ",", with: ".")) ?? 0
+        eintrag.sexuelleAktivitaet = sexuelleAktivitaet
+        eintrag.notizen = notizen
         dismiss()
     }
 }
