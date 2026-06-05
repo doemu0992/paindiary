@@ -3,14 +3,23 @@ import SwiftData
 
 @main
 struct PainDiaryApp: App {
-    var sharedModelContainer: ModelContainer = makeContainer()
+    @State private var container: ModelContainer?
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .task { await berechtigungenAnfordern() }
+            if let container {
+                ContentView()
+                    .task { await berechtigungenAnfordern() }
+                    .modelContainer(container)
+            } else {
+                ProgressView()
+                    .task {
+                        container = await Task.detached(priority: .userInitiated) {
+                            makeContainer()
+                        }.value
+                    }
+            }
         }
-        .modelContainer(sharedModelContainer)
     }
 
     private func berechtigungenAnfordern() async {
