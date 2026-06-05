@@ -584,11 +584,13 @@ private struct TagZelle: View {
                     // Status dots
                     HStack(spacing: 2) {
                         Circle()
-                            .fill(hatSymptome ? Color.purple.opacity(0.6) : Color.clear)
+                            .fill(Color.purple.opacity(0.6))
                             .frame(width: 4, height: 4)
+                            .opacity(hatSymptome ? 1 : 0)
                         Circle()
-                            .fill(!sexuelleAktivitaet.isEmpty ? Color.pink.opacity(0.8) : Color.clear)
+                            .fill(Color.pink.opacity(0.8))
                             .frame(width: 4, height: 4)
+                            .opacity(!sexuelleAktivitaet.isEmpty ? 1 : 0)
                     }
                 }
             }
