@@ -9,6 +9,7 @@ struct ZyklusView: View {
 
     @State private var anzeigeMonat = Date()
     @State private var ausgewaehlterTag: ZyklusTagAuswahl? = nil
+    @State private var notifManager = NotificationManager.shared
 
     private var analyse: ZyklusAnalyse { ZyklusRechner.analyse(eintraege: Array(eintraege)) }
 
@@ -18,6 +19,7 @@ struct ZyklusView: View {
                 zyklusHeader
                 kalender
                 quickLog
+                zyklusNotifBanner
                 statistik
                 if !painEntries.isEmpty && !analyse.zyklusStarts.isEmpty {
                     schmerzKorrelation
@@ -38,6 +40,66 @@ struct ZyklusView: View {
 
     private func planeZyklusNotifs() {
         NotificationManager.shared.planeZyklusErinnerungen(analyse: analyse)
+    }
+
+    @ViewBuilder
+    private var zyklusNotifBanner: some View {
+        if !analyse.zyklusStarts.isEmpty {
+            if notifManager.status == .notDetermined {
+                HStack(spacing: 12) {
+                    Image(systemName: "bell.badge.fill")
+                        .font(.title3)
+                        .foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Zyklus-Erinnerungen")
+                            .font(.subheadline.bold())
+                        Text("Erhalte Benachrichtigungen für Periode, fruchtbare Tage und Eisprung.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Button("Aktivieren") {
+                        Task {
+                            let granted = await notifManager.berechtigungAnfordern()
+                            if granted { planeZyklusNotifs() }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+                .padding()
+                .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+            } else if notifManager.status == .denied {
+                HStack(spacing: 12) {
+                    Image(systemName: "bell.slash.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Erinnerungen deaktiviert")
+                            .font(.subheadline.bold())
+                        Text("Aktiviere Benachrichtigungen in den iOS-Einstellungen.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+#if os(iOS)
+                    Button("Einstellungen") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+#endif
+                }
+                .padding()
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+            }
+        }
     }
 
     private func wechselMonat(_ richtung: Int) {
@@ -170,6 +232,10 @@ struct ZyklusView: View {
                 HStack(spacing: 4) {
                     Circle().fill(Color.purple.opacity(0.6)).frame(width: 8, height: 8)
                     Text("Symptome").font(.caption2).foregroundStyle(.secondary)
+                }
+                HStack(spacing: 4) {
+                    Circle().fill(Color.pink.opacity(0.8)).frame(width: 8, height: 8)
+                    Text("Sex. Aktivität").font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }
@@ -420,7 +486,8 @@ private struct ZyklusKalender: View {
                         let eintrag = eintraege.first { kal.isDate($0.datum, inSameDayAs: datum) }
                         let hatSymptome = eintrag.map { !$0.symptome.isEmpty } ?? false
                         let fluss = eintrag?.blutungsfluss ?? ""
-                        TagZelle(datum: datum, zustand: zustand, hatSymptome: hatSymptome, blutungsfluss: fluss) {
+                        let sexAktiv = eintrag?.sexuelleAktivitaet ?? ""
+                        TagZelle(datum: datum, zustand: zustand, hatSymptome: hatSymptome, blutungsfluss: fluss, sexuelleAktivitaet: sexAktiv) {
                             onTap(datum)
                         }
                     } else {
@@ -441,6 +508,7 @@ private struct TagZelle: View {
     let zustand: ZyklusTagZustand
     let hatSymptome: Bool
     let blutungsfluss: String
+    let sexuelleAktivitaet: String
     let action: () -> Void
 
     private var istHeute: Bool { Calendar.current.isDateInToday(datum) }
@@ -513,10 +581,15 @@ private struct TagZelle: View {
                     }
                     .frame(width: 30, height: 30)
 
-                    // Symptom dot
-                    Circle()
-                        .fill(hatSymptome ? Color.purple.opacity(0.6) : Color.clear)
-                        .frame(width: 4, height: 4)
+                    // Status dots
+                    HStack(spacing: 2) {
+                        Circle()
+                            .fill(hatSymptome ? Color.purple.opacity(0.6) : Color.clear)
+                            .frame(width: 4, height: 4)
+                        Circle()
+                            .fill(!sexuelleAktivitaet.isEmpty ? Color.pink.opacity(0.8) : Color.clear)
+                            .frame(width: 4, height: 4)
+                    }
                 }
             }
             .frame(height: 38)
