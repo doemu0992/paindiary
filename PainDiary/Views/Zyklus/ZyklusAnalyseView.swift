@@ -39,11 +39,48 @@ struct ZyklusAnalyseView: View {
     // MARK: - Statistik Karten
 
     private var statistikKarten: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            statCard("Ø Zykluslänge", String(format: "%.0f Tage", analyse.zykluslaenge), "arrow.clockwise", .pink)
-            statCard("Ø Periode", String(format: "%.0f Tage", analyse.periodendauer), "drop.fill", .red)
-            statCard("Variation", String(format: "±%.1f Tage", analyse.variation), "chart.bar.xaxis", .orange)
-            statCard("Zyklen erfasst", "\(max(analyse.zyklusStarts.count - 1, 0))", "list.number", .purple)
+        VStack(spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                statCard("Ø Zykluslänge", String(format: "%.0f Tage", analyse.zykluslaenge), "arrow.clockwise", .pink)
+                statCard("Ø Periode", String(format: "%.0f Tage", analyse.periodendauer), "drop.fill", .red)
+                statCard("Variation", String(format: "±%.1f Tage", analyse.variation), "chart.bar.xaxis", .orange)
+                statCard("Zyklen erfasst", "\(max(analyse.zyklusStarts.count - 1, 0))", "list.number", .purple)
+            }
+
+            // Show learned ovulation offset when available
+            if let offset = analyse.gelernterOvulationsOffset {
+                let standard = Int(analyse.zykluslaenge) - 14
+                let diff = offset - standard
+                let diffText = diff == 0 ? "entspricht dem Standardwert" :
+                               diff < 0 ? "\(abs(diff)) Tag\(abs(diff) == 1 ? "" : "e") früher als Ø" :
+                                          "\(diff) Tag\(diff == 1 ? "" : "e") später als Ø"
+                HStack(spacing: 10) {
+                    Image(systemName: "brain.head.profile").foregroundStyle(.teal).font(.title3)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("App hat gelernt: Eisprung typisch an Tag \(offset)")
+                            .font(.subheadline.bold())
+                        Text(diffText)
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(12)
+                .background(Color.teal.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+            } else {
+                HStack(spacing: 10) {
+                    Image(systemName: "brain.head.profile").foregroundStyle(.secondary).font(.title3)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Noch nicht genug Daten zum Lernen")
+                            .font(.subheadline)
+                        Text("Erfasse Zervixschleim in mind. 2 abgeschlossenen Zyklen.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                }
+                .padding(12)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            }
         }
     }
 

@@ -11,12 +11,16 @@ struct ZyklusAnalyse {
     let periodeTageSet: Set<Date>
     let fruchtbareTageSet: Set<Date>
     let ovulationsTageSet: Set<Date>
+    // Personalized ovulation offset (days from cycle start) learned from mucus data.
+    // nil = not enough cycles with mucus tracking to learn (<2)
+    let gelernterOvulationsOffset: Int?
 
     static let leer = ZyklusAnalyse(
         zykluslaenge: 28, periodendauer: 5, variation: 0,
         aktuellerZyklustag: nil, naechstePeriodeStart: nil,
         vorhergesagteOvulation: nil, zyklusStarts: [],
-        periodeTageSet: [], fruchtbareTageSet: [], ovulationsTageSet: []
+        periodeTageSet: [], fruchtbareTageSet: [], ovulationsTageSet: [],
+        gelernterOvulationsOffset: nil
     )
 }
 
@@ -74,7 +78,30 @@ struct ZyklusRechner {
         }
         let avgPeriod = periodDauern.isEmpty ? 5.0 : periodDauern.reduce(0, +) / Double(periodDauern.count)
 
-        // Next period and current cycle day — defined before ovulation to allow referencing
+        // Learn personalized ovulation offset from mucus peak days across completed cycles.
+        // Peak day = last Eiweiss/wässrig day in a cycle; ovulation = peak + 1.
+        // Only uses completed cycles (those with a known end = next period start).
+        let mucusOffsets: [Int] = (0..<starts.count).compactMap { i in
+            guard i + 1 < starts.count else { return nil } // skip current incomplete cycle
+            let zyklusStart = starts[i]
+            let zyklusEnde = starts[i + 1]
+            let spitzenTage = eintraege
+                .filter {
+                    let tag = kal.startOfDay(for: $0.datum)
+                    let s = $0.zervixschleim.lowercased()
+                    return (s == "wässrig" || s == "eiweiss") && tag >= zyklusStart && tag < zyklusEnde
+                }
+                .map { kal.startOfDay(for: $0.datum) }
+                .sorted()
+            guard let peak = spitzenTage.last else { return nil }
+            return (kal.dateComponents([.day], from: zyklusStart, to: peak).day ?? 0) + 1
+        }
+        // Require at least 2 cycles with mucus data before trusting the learned offset.
+        let persOvulationsOffset: Int = mucusOffsets.count >= 2
+            ? mucusOffsets.reduce(0, +) / mucusOffsets.count
+            : Int(avgZyklus) - 14
+
+        // Next period and current cycle day
         let heute = kal.startOfDay(for: Date())
         let aktuellerTag: Int? = starts.last.map {
             (kal.dateComponents([.day], from: $0, to: heute).day ?? 0) + 1
@@ -83,29 +110,28 @@ struct ZyklusRechner {
             kal.date(byAdding: .day, value: Int(avgZyklus), to: $0)
         } ?? nil
 
-        // Next upcoming ovulation:
-        // If current cycle's predicted ovulation is still in the future → use it.
-        // If already past → use ovulation of the next predicted cycle.
+        // Next upcoming ovulation using personalized offset.
         let aktuellerZyklusOv: Date? = starts.last.map {
-            kal.date(byAdding: .day, value: Int(avgZyklus) - 14, to: $0)!
+            kal.date(byAdding: .day, value: persOvulationsOffset, to: $0)!
         }
         let naechsteOvulation: Date?
         if let ov = aktuellerZyklusOv, kal.startOfDay(for: ov) >= heute {
             naechsteOvulation = ov
         } else if let np = naechstePeriode {
-            naechsteOvulation = kal.date(byAdding: .day, value: Int(avgZyklus) - 14, to: np)
+            naechsteOvulation = kal.date(byAdding: .day, value: persOvulationsOffset, to: np)
         } else {
             naechsteOvulation = nil
         }
 
         // Build fertile + ovulation sets.
-        // KEY FIX: for each completed historical cycle use its ACTUAL length,
-        // not the average. Only for the current (ongoing) and future cycles use avgZyklus.
+        // Historical completed cycles use their actual length with the standard offset
+        // (we already have real mucus data for those days added below).
+        // Current and future cycles use the personalized offset.
         var fruchtbarSet: Set<Date> = []
         var ovulationsSet: Set<Date> = []
 
-        func fuegeZyklusHinzu(start: Date, laenge: Int) {
-            let ovNorm = kal.startOfDay(for: kal.date(byAdding: .day, value: laenge - 14, to: start)!)
+        func fuegeZyklusHinzu(start: Date, ovulationsOffset: Int) {
+            let ovNorm = kal.startOfDay(for: kal.date(byAdding: .day, value: ovulationsOffset, to: start)!)
             ovulationsSet.insert(ovNorm)
             for d in -5...1 {
                 if let ft = kal.date(byAdding: .day, value: d, to: ovNorm) {
@@ -116,22 +142,22 @@ struct ZyklusRechner {
 
         for i in 0..<starts.count {
             if i < zyklusLaengen.count {
-                // Completed cycle with known actual length
-                fuegeZyklusHinzu(start: starts[i], laenge: Int(zyklusLaengen[i]))
+                // Completed cycle — calendar prediction with actual cycle length
+                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: Int(zyklusLaengen[i]) - 14)
             } else {
-                // Current ongoing cycle — use average (length not known yet)
-                fuegeZyklusHinzu(start: starts[i], laenge: Int(avgZyklus))
+                // Current ongoing cycle — use personalized (or default) offset
+                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: persOvulationsOffset)
             }
         }
         // Next 2 predicted future cycles
         if let np = naechstePeriode {
-            fuegeZyklusHinzu(start: np, laenge: Int(avgZyklus))
+            fuegeZyklusHinzu(start: np, ovulationsOffset: persOvulationsOffset)
             if let np2 = kal.date(byAdding: .day, value: Int(avgZyklus), to: np) {
-                fuegeZyklusHinzu(start: np2, laenge: Int(avgZyklus))
+                fuegeZyklusHinzu(start: np2, ovulationsOffset: persOvulationsOffset)
             }
         }
 
-        // Symptothermalmethode: wässrig/Eiweiss mucus = confirmed fertile day
+        // Symptothermalmethode: each wässrig/Eiweiss day is confirmed fertile
         for eintrag in eintraege {
             let schleim = eintrag.zervixschleim.lowercased()
             if schleim == "wässrig" || schleim == "eiweiss" {
@@ -149,7 +175,8 @@ struct ZyklusRechner {
             zyklusStarts: starts,
             periodeTageSet: periodeTageSet,
             fruchtbareTageSet: fruchtbarSet,
-            ovulationsTageSet: ovulationsSet
+            ovulationsTageSet: ovulationsSet,
+            gelernterOvulationsOffset: mucusOffsets.count >= 2 ? persOvulationsOffset : nil
         )
     }
 
@@ -217,22 +244,21 @@ struct ZyklusRechner {
     ) -> [(phase: Zyklusphase, avgSchmerz: Double, anzahl: Int)] {
         guard !analyse.zyklusStarts.isEmpty else { return [] }
         let kal = Calendar.current
+        let ovuOffset = analyse.gelernterOvulationsOffset ?? (Int(analyse.zykluslaenge) - 14)
         var map: [Zyklusphase: [Int]] = Dictionary(uniqueKeysWithValues: Zyklusphase.allCases.map { ($0, []) })
 
         for entry in painEntries {
             let entryTag = kal.startOfDay(for: entry.datum)
             guard let zyklusStart = analyse.zyklusStarts.last(where: { $0 <= entryTag }) else { continue }
             let zyklustag = (kal.dateComponents([.day], from: zyklusStart, to: entryTag).day ?? 0) + 1
-            let len = Int(analyse.zykluslaenge)
-            let ovuTag = len - 14
             let periodLen = Int(analyse.periodendauer)
 
             let phase: Zyklusphase
             if zyklustag <= periodLen {
                 phase = .menstruation
-            } else if zyklustag < ovuTag - 2 {
+            } else if zyklustag < ovuOffset - 2 {
                 phase = .follikelphase
-            } else if zyklustag <= ovuTag + 2 {
+            } else if zyklustag <= ovuOffset + 2 {
                 phase = .ovulation
             } else {
                 phase = .lutealphase
