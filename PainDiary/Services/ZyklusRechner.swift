@@ -117,6 +117,22 @@ struct ZyklusRechner {
             ? mucusOffsets.reduce(0, +) / mucusOffsets.count
             : Int(round(adaptZyklus)) - 14
 
+        // Current cycle: use this cycle's own observed mucus peak to position ovulation.
+        // If fertile mucus appears earlier than the learned offset, ovulation moves earlier.
+        let aktuellerZyklusOvOffset: Int = {
+            guard let currentStart = starts.last else { return persOvulationsOffset }
+            let peakTage = eintraege
+                .filter {
+                    let tag = kal.startOfDay(for: $0.datum)
+                    let s = $0.zervixschleim.lowercased()
+                    return (s == "wässrig" || s == "eiweiss") && tag >= currentStart
+                }
+                .map { kal.startOfDay(for: $0.datum) }
+                .sorted()
+            guard let peak = peakTage.last else { return persOvulationsOffset }
+            return (kal.dateComponents([.day], from: currentStart, to: peak).day ?? 0) + 1
+        }()
+
         // Predictions use adaptive cycle length and personalized ovulation offset.
         let heute = kal.startOfDay(for: Date())
         let aktuellerTag: Int? = starts.last.map {
@@ -127,7 +143,7 @@ struct ZyklusRechner {
         } ?? nil
 
         let aktuellerZyklusOv: Date? = starts.last.map {
-            kal.date(byAdding: .day, value: persOvulationsOffset, to: $0)!
+            kal.date(byAdding: .day, value: aktuellerZyklusOvOffset, to: $0)!
         }
         let naechsteOvulation: Date?
         if let ov = aktuellerZyklusOv, kal.startOfDay(for: ov) >= heute {
@@ -153,9 +169,11 @@ struct ZyklusRechner {
 
         for i in 0..<starts.count {
             if i < zyklusLaengen.count {
+                // Completed cycle: use actual cycle length to back-calculate ovulation
                 fuegeZyklusHinzu(start: starts[i], ovulationsOffset: Int(zyklusLaengen[i]) - 14)
             } else {
-                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: persOvulationsOffset)
+                // Current (incomplete) cycle: use this cycle's own mucus peak if available
+                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: aktuellerZyklusOvOffset)
             }
         }
         if let np = naechstePeriode {
