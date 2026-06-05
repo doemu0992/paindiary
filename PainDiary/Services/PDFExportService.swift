@@ -674,10 +674,6 @@ class PDFExportService: @unchecked Sendable {
                 }
             }
 
-            let maxAvg: Double = phaseScores.values.compactMap { vals -> Double? in
-                guard !vals.isEmpty else { return nil }
-                return Double(vals.reduce(0, +)) / Double(vals.count)
-            }.max() ?? 10.0
             let barMaxW: CGFloat = iw - 180
 
             for (name, farbe) in phasen {
