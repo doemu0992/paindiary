@@ -24,6 +24,10 @@ struct WellnessView: View {
 
     private let notif = NotificationManager.shared
 
+    // MARK: - HealthKit
+    @State private var hkSchlaf: Double? = nil
+    @State private var hkSchritte: Int? = nil
+
     // MARK: - Bindings & Keys
 
     private var wasserErinnerungZeit: Binding<Date> {
@@ -92,6 +96,7 @@ struct WellnessView: View {
         ScrollView {
             VStack(spacing: 20) {
                 wochenZusammenfassung
+                if HealthKitManager.shared.istVerfuegbar { healthKitKarte }
                 wasserTrackerKarte
                 ernaehrungKarte
                 if !trendDaten.isEmpty {
@@ -104,7 +109,73 @@ struct WellnessView: View {
             .padding(.bottom, 30)
         }
         .navigationTitle("Wohlbefinden")
-        .onAppear { ladeDaten() }
+        .onAppear {
+            ladeDaten()
+            Task {
+                await HealthKitManager.shared.berechtigungAnfordern()
+                hkSchlaf   = await HealthKitManager.shared.schlafStundenLetztteNacht()
+                hkSchritte = await HealthKitManager.shared.schritteDiesemTag()
+            }
+        }
+    }
+
+    // MARK: - HealthKit Karte
+
+    private var healthKitKarte: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Label("Gesundheit (HealthKit)", systemImage: "heart.text.square.fill")
+                    .font(.headline).foregroundStyle(.red)
+                Spacer()
+                Button {
+                    Task {
+                        hkSchlaf   = await HealthKitManager.shared.schlafStundenLetztteNacht()
+                        hkSchritte = await HealthKitManager.shared.schritteDiesemTag()
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise").font(.caption).foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(spacing: 0) {
+                VStack(spacing: 6) {
+                    Image(systemName: "moon.zzz.fill").font(.title2).foregroundStyle(.indigo)
+                    if let schlaf = hkSchlaf {
+                        Text(String(format: "%.1fh", schlaf))
+                            .font(.title3.bold()).foregroundStyle(.indigo)
+                        Text(schlaf >= 7 ? "Gut" : schlaf >= 6 ? "Okay" : "Zu wenig")
+                            .font(.caption2.bold())
+                            .foregroundStyle(schlaf >= 7 ? .green : schlaf >= 6 ? .orange : .red)
+                    } else {
+                        Text("–").font(.title3.bold()).foregroundStyle(.secondary)
+                        Text("Keine Daten").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Text("Schlaf letzte Nacht").font(.caption2).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+
+                Divider().frame(height: 64)
+
+                VStack(spacing: 6) {
+                    Image(systemName: "figure.walk").font(.title2).foregroundStyle(.green)
+                    if let schritte = hkSchritte {
+                        Text("\(schritte)")
+                            .font(.title3.bold()).foregroundStyle(.green)
+                        Text(schritte >= 10000 ? "Tagesziel erreicht!" : "von 10'000")
+                            .font(.caption2.bold())
+                            .foregroundStyle(schritte >= 10000 ? .green : .secondary)
+                    } else {
+                        Text("–").font(.title3.bold()).foregroundStyle(.secondary)
+                        Text("Keine Daten").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Text("Schritte heute").font(.caption2).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Wochen-Zusammenfassung
