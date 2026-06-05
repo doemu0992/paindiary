@@ -113,7 +113,7 @@ struct KorrelationsView: View {
            let top = Dictionary(ausloeserListe.map { ($0, 1) }, uniquingKeysWith: +).max(by: { $0.value < $1.value }) {
             let pct = Int(round(Double(top.value) / Double(eintraege.count) * 100))
             liste.append(Erkenntnis(
-                text: "„\(top.key)" ist dein häufigster Auslöser – tritt in \(pct)% der Einträge auf",
+                text: "\"\(top.key)\" ist dein häufigster Auslöser - tritt in \(pct)% der Einträge auf",
                 symbol: "exclamationmark.triangle.fill", farbe: .orange))
         }
 
