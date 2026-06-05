@@ -15,6 +15,22 @@ struct PDFPatientenDaten {
     var allergien: [String] = []
     var aerzte: [PDFArzt] = []
     var notfallkontakte: [PDFNotfallKontakt] = []
+    var geschlecht: String = ""
+    var wohnort: String = ""
+    var gewichtKg: Double? = nil
+    var groesseCm: Double? = nil
+    var bmiText: String {
+        guard let kg = gewichtKg, let cm = groesseCm, cm > 0, kg > 0 else { return "" }
+        let bmi = kg / ((cm / 100) * (cm / 100))
+        let kat: String
+        switch bmi {
+        case ..<18.5: kat = "Untergewicht"
+        case 18.5..<25: kat = "Normalgewicht"
+        case 25..<30: kat = "Übergewicht"
+        default: kat = "Adipositas"
+        }
+        return String(format: "%.1f (%@)", bmi, kat)
+    }
 
     var vollerName: String { "\(vorname) \(nachname)".trimmingCharacters(in: .whitespaces) }
 
@@ -30,7 +46,11 @@ struct PDFPatientenDaten {
             diagnosen: (p.diagnosen ?? []).map { $0.bezeichnung }.filter { !$0.isEmpty },
             allergien: (p.allergien ?? []).map { $0.substanz }.filter { !$0.isEmpty },
             aerzte: (p.aerzte ?? []).map { PDFArzt(name: $0.name, fachgebiet: $0.fachgebiet, telefon: $0.telefon, istHausarzt: $0.istHausarzt) },
-            notfallkontakte: (p.notfallkontakte ?? []).map { PDFNotfallKontakt(name: $0.name, phone: $0.phone, beziehung: $0.beziehung) }
+            notfallkontakte: (p.notfallkontakte ?? []).map { PDFNotfallKontakt(name: $0.name, phone: $0.phone, beziehung: $0.beziehung) },
+            geschlecht: p.geschlecht,
+            wohnort: p.wohnort,
+            gewichtKg: p.gewichtKg,
+            groesseCm: p.groesseCm
         )
     }
 }
@@ -71,9 +91,18 @@ struct PDFEintrag {
 
 struct PDFMidas {
     var datum: Date; var score: Int; var gradText: String
+    var tageArbeitEingeschraenkt: Int; var tageArbeitGefehlt: Int
+    var tageHaushaltEingeschraenkt: Int; var tageHaushaltGefehlt: Int
+    var tageFreizeit: Int; var notizen: String
 
     static func aus(m: MIDASBewertung) -> PDFMidas {
-        PDFMidas(datum: m.datum, score: m.score, gradText: m.gradText)
+        PDFMidas(datum: m.datum, score: m.score, gradText: m.gradText,
+                 tageArbeitEingeschraenkt: m.tageArbeitEingeschraenkt,
+                 tageArbeitGefehlt: m.tageArbeitGefehlt,
+                 tageHaushaltEingeschraenkt: m.tageHaushaltEingeschraenkt,
+                 tageHaushaltGefehlt: m.tageHaushaltGefehlt,
+                 tageFreizeit: m.tageFreizeit,
+                 notizen: m.notizen)
     }
 }
 
@@ -84,6 +113,9 @@ struct PDFZyklusEintrag {
     var symptome: [String]
     var ovulationstest: String
     var basaltemperatur: Double
+    var zervixschleim: String
+    var notizen: String
+    var sexuelleAktivitaet: String
 
     static func aus(e: ZyklusEintrag) -> PDFZyklusEintrag {
         PDFZyklusEintrag(
@@ -92,7 +124,10 @@ struct PDFZyklusEintrag {
             blutungsfluss: e.blutungsfluss,
             symptome: e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty },
             ovulationstest: e.ovulationstest,
-            basaltemperatur: e.basaltemperatur
+            basaltemperatur: e.basaltemperatur,
+            zervixschleim: e.zervixschleim,
+            notizen: e.notizen,
+            sexuelleAktivitaet: e.sexuelleAktivitaet
         )
     }
 }
@@ -242,9 +277,13 @@ class PDFExportService: @unchecked Sendable {
         let infoRows: [(String, String)] = [
             patient.vollerName.isEmpty ? nil : ("Name", patient.vollerName),
             patient.geburtsdatum.map { ("Geburtsdatum", fmt($0)) },
+            patient.geschlecht.isEmpty || patient.geschlecht == "Nicht angegeben" ? nil : ("Geschlecht", patient.geschlecht),
+            patient.wohnort.isEmpty ? nil : ("Wohnort", patient.wohnort),
             patient.versicherung.isEmpty ? nil : ("Krankenkasse", patient.versicherung),
             patient.versicherungsNummer.isEmpty ? nil : ("Vers.-Nr.", patient.versicherungsNummer),
             patient.blutgruppe == "Unbekannt" || patient.blutgruppe.isEmpty ? nil : ("Blutgruppe", patient.blutgruppe),
+            patient.bmiText.isEmpty ? nil : ("BMI", patient.bmiText),
+            (patient.gewichtKg != nil && patient.groesseCm != nil) ? ("Körpermasse", String(format: "%.0f kg, %.0f cm", patient.gewichtKg!, patient.groesseCm!)) : nil,
         ].compactMap { $0 }
 
         let boxH = max(70, CGFloat(infoRows.count) * 18 + 40)
@@ -331,9 +370,34 @@ class PDFExportService: @unchecked Sendable {
         y += 88
 
         if let m = letzterMidas {
-            draw("MIDAS: \(m.gradText)  (Bewertung vom \(fmt(m.datum)))",
-                 at: CGPoint(x: rand, y: y), font: .systemFont(ofSize: 11), color: .secondaryLabel)
-            y += 22
+            trennlinie(ctx: ctx, y: y); y += 12
+            draw("MIDAS-Bewertung", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            draw("vom \(fmt(m.datum))", at: CGPoint(x: rand + 140, y: y + 2),
+                 font: .systemFont(ofSize: 10), color: .secondaryLabel)
+            drawRight("Score: \(m.score) – \(m.gradText)", rightX: W - rand, y: y,
+                      font: .systemFont(ofSize: 11, weight: .medium), color: .systemPurple)
+            y += 20
+            let midasZeilen: [(String, Int)] = [
+                ("Tage Arbeit/Schule eingeschränkt", m.tageArbeitEingeschraenkt),
+                ("Tage Arbeit/Schule gefehlt", m.tageArbeitGefehlt),
+                ("Tage Haushalt eingeschränkt", m.tageHaushaltEingeschraenkt),
+                ("Tage Haushalt gefehlt", m.tageHaushaltGefehlt),
+                ("Tage Freizeit beeinträchtigt", m.tageFreizeit),
+            ]
+            for (label, tage) in midasZeilen {
+                draw("• \(label):", at: CGPoint(x: rand + 8, y: y),
+                     font: .systemFont(ofSize: 10), color: .secondaryLabel)
+                drawRight("\(tage) Tage", rightX: W - rand, y: y,
+                          font: .systemFont(ofSize: 10, weight: .medium), color: .label)
+                y += 16
+            }
+            if !m.notizen.isEmpty {
+                draw("Notiz: \(m.notizen)", at: CGPoint(x: rand + 8, y: y),
+                     font: .systemFont(ofSize: 9), color: .secondaryLabel)
+                y += 16
+            }
+            y += 6
         }
 
         trennlinie(ctx: ctx, y: y); y += 14
@@ -387,6 +451,36 @@ class PDFExportService: @unchecked Sendable {
             drawRight("\(count)×", rightX: W - rand, y: y,
                       font: .systemFont(ofSize: 11), color: .secondaryLabel)
             y += 18
+        }
+
+        // Wohlbefinden-Durchschnitte
+        let mitStimmung = eintraege.filter { $0.stimmung > 0 }
+        let mitStress = eintraege.filter { $0.stressLevel > 0 }
+        let mitSchlaf = eintraege.filter { $0.schlafStunden > 0 }
+        if !mitStimmung.isEmpty || !mitStress.isEmpty || !mitSchlaf.isEmpty {
+            y += 8
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Wohlbefinden (Durchschnitte)", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+            let wbCols: [CGFloat] = [rand, rand + 180, rand + 320]
+            if !mitStimmung.isEmpty {
+                let avgS = Double(mitStimmung.map(\.stimmung).reduce(0,+)) / Double(mitStimmung.count)
+                draw("Stimmung:", at: CGPoint(x: wbCols[0], y: y), font: .systemFont(ofSize: 10), color: .secondaryLabel)
+                draw(String(format: "Ø %.1f / 5", avgS), at: CGPoint(x: wbCols[1], y: y), font: .systemFont(ofSize: 10, weight: .medium), color: .label)
+            }
+            if !mitStress.isEmpty {
+                let avgStr = Double(mitStress.map(\.stressLevel).reduce(0,+)) / Double(mitStress.count)
+                draw("Stresslevel:", at: CGPoint(x: wbCols[0] + (mitStimmung.isEmpty ? 0 : 220), y: y), font: .systemFont(ofSize: 10), color: .secondaryLabel)
+                draw(String(format: "Ø %.1f / 5", avgStr), at: CGPoint(x: wbCols[0] + (mitStimmung.isEmpty ? 0 : 220) + 80, y: y), font: .systemFont(ofSize: 10, weight: .medium), color: .label)
+            }
+            y += 16
+            if !mitSchlaf.isEmpty {
+                let avgSch = mitSchlaf.map(\.schlafStunden).reduce(0,+) / Double(mitSchlaf.count)
+                draw("Schlaf:", at: CGPoint(x: wbCols[0], y: y), font: .systemFont(ofSize: 10), color: .secondaryLabel)
+                draw(String(format: "Ø %.1f Stunden", avgSch), at: CGPoint(x: wbCols[1], y: y), font: .systemFont(ofSize: 10, weight: .medium), color: .label)
+                y += 16
+            }
         }
 
         fusszeile(ctx: ctx, seite: seite)
@@ -542,6 +636,23 @@ class PDFExportService: @unchecked Sendable {
             y += 18
         }
 
+        // Zervixschleim-Häufigkeit
+        let zervixMap = zyklusEintraege.map(\.zervixschleim)
+            .filter { !$0.isEmpty && $0 != "Nicht erfasst" && $0 != "Keine Angabe" }
+            .reduce(into: [:]) { $0[$1, default: 0] += 1 }
+        if !zervixMap.isEmpty {
+            y += 8
+            draw("Zervixschleim", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 11, weight: .semibold), color: .secondaryLabel)
+            y += 16
+            for (typ, count) in zervixMap.sorted(by: { $0.value > $1.value }) {
+                if y > H - rand - 40 { break }
+                draw("• \(typ): \(count)×", at: CGPoint(x: rand + 12, y: y),
+                     font: .systemFont(ofSize: 10), color: .label)
+                y += 15
+            }
+        }
+
         // Schmerz-Zyklus-Korrelation
         if !schmerzEintraege.isEmpty && !analyse.zyklusStarts.isEmpty {
             trennlinie(ctx: ctx, y: y); y += 14
@@ -603,8 +714,21 @@ class PDFExportService: @unchecked Sendable {
         y += 26
 
         for eintrag in eintraege {
-            let hatSubzeile = !eintrag.massnahmen.isEmpty || !eintrag.notizen.isEmpty
-            let zeilenH: CGFloat = hatSubzeile ? 32 : 20
+            // Always show sub-rows with all additional fields
+            let subTeile1: [String] = [
+                eintrag.begleiterscheinungen.isEmpty ? nil : "Begleit.: \(String(eintrag.begleiterscheinungen.prefix(40)))",
+                eintrag.massnahmen.isEmpty ? nil : "Massnahmen: \(String(eintrag.massnahmen.prefix(40)))",
+            ].compactMap { $0 }
+            let subTeile2: [String] = [
+                eintrag.stimmung > 0 ? "Stimmung: \(eintrag.stimmung)/5" : nil,
+                eintrag.stressLevel > 0 ? "Stress: \(eintrag.stressLevel)/5" : nil,
+                eintrag.schlafStunden > 0 ? String(format: "Schlaf: %.1fh", eintrag.schlafStunden) : nil,
+                eintrag.notizen.isEmpty ? nil : "Notiz: \(String(eintrag.notizen.prefix(40)))",
+            ].compactMap { $0 }
+
+            let hatSubzeile1 = !subTeile1.isEmpty
+            let hatSubzeile2 = !subTeile2.isEmpty
+            let zeilenH: CGFloat = 20 + (hatSubzeile1 ? 14 : 0) + (hatSubzeile2 ? 14 : 0)
 
             if y + zeilenH > H - rand - 20 {
                 fusszeile(ctx: ctx.cgContext, seite: seite)
@@ -623,20 +747,19 @@ class PDFExportService: @unchecked Sendable {
                                   koerper, String(eintrag.ausloeser.prefix(22)),
                                   dauer, String(eintrag.schmerzart.prefix(16))],
                           fett: [false, true, false, false, false, false])
-
-            if hatSubzeile {
-                y += 14
-                let sub = [
-                    eintrag.massnahmen.isEmpty ? nil : "Massnahmen: \(String(eintrag.massnahmen.prefix(50)))",
-                    eintrag.notizen.isEmpty    ? nil : "Notiz: \(String(eintrag.notizen.prefix(60)))"
-                ].compactMap { $0 }.joined(separator: "   ")
-                draw(sub, at: CGPoint(x: cols[2], y: y),
+            y += 14
+            if hatSubzeile1 {
+                draw(subTeile1.joined(separator: "   "), at: CGPoint(x: cols[2], y: y),
                      font: .systemFont(ofSize: 8.5), color: .secondaryLabel)
-                y += 18
-            } else {
-                y += 20
+                y += 13
             }
-            trennlinie(ctx: ctx.cgContext, y: y - 1, alpha: 0.1)
+            if hatSubzeile2 {
+                draw(subTeile2.joined(separator: "   "), at: CGPoint(x: cols[2], y: y),
+                     font: .systemFont(ofSize: 8.5), color: UIColor.systemBlue.withAlphaComponent(0.7))
+                y += 13
+            }
+            trennlinie(ctx: ctx.cgContext, y: y, alpha: 0.1)
+            y += 4
         }
 
         fusszeile(ctx: ctx.cgContext, seite: seite)
