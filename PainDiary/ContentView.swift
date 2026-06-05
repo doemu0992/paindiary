@@ -64,7 +64,7 @@ struct ContentView: View {
                 .tag(2)
 
             NavigationStack { WellnessView() }
-                .tabItem { Label("Wellness", systemImage: "heart.text.square.fill") }
+                .tabItem { Label("Wohlbefinden", systemImage: "heart.text.square.fill") }
                 .tag(3)
 
             NavigationStack { ProfilView() }
