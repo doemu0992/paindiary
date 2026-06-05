@@ -226,60 +226,48 @@ struct ZyklusView: View {
     }
 
     private var legende: some View {
-        VStack(spacing: 6) {
-            // Zeile 1: Zyklusphasen
-            HStack(spacing: 0) {
-                HStack(spacing: 3) {
-                    ForEach([0.2, 0.45, 0.75, 1.0] as [Double], id: \.self) { op in
-                        Circle().fill(Color.red.opacity(op)).frame(width: 7, height: 7)
-                    }
-                    Text("Periode").font(.caption2).foregroundStyle(.secondary)
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
+                  alignment: .leading, spacing: 8) {
+            // Spalte links / rechts im 2er-Raster
+            HStack(spacing: 4) {
+                ForEach([0.25, 0.5, 0.8, 1.0] as [Double], id: \.self) { op in
+                    Circle().fill(Color.red.opacity(op)).frame(width: 7, height: 7)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                legendeItem(farbe: .red, gefuellt: false, text: "Vorhergesagt",
-                            info: ("Vorhergesagte Periode",
-                                   "Geschätzter Periodenbeginn basierend auf deinen bisherigen Zyklen. Wird mit jedem erfassten Zyklus genauer."))
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                legendeItem(farbe: .teal, gefuellt: true, text: "Fruchtbar",
-                            info: ("Fruchtbare Tage",
-                                   "Die 5 Tage vor und 1 Tag nach dem Eisprung. In dieser Zeit ist eine Befruchtung möglich, da Spermien bis zu 5 Tage überleben können."))
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                legendeItem(farbe: .orange, gefuellt: true, text: "Eisprung",
-                            info: ("Eisprung (Ovulation)",
-                                   "Der Moment, in dem ein Ei aus dem Eierstock freigesetzt wird. Tritt meist 12–16 Tage vor der nächsten Periode auf und ist der fruchtbarste Punkt im Zyklus."))
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Periode").font(.caption2).foregroundStyle(.secondary)
             }
 
-            // Zeile 2: Datenpunkte
-            HStack(spacing: 0) {
-                HStack(spacing: 4) {
-                    Circle().fill(Color.purple.opacity(0.6)).frame(width: 7, height: 7)
-                    Text("Symptome").font(.caption2).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            legendeItem(farbe: .red, gefuellt: false, text: "Vorhergesagt",
+                        info: ("Vorhergesagte Periode",
+                               "Geschätzter Periodenbeginn basierend auf deinen bisherigen Zyklen. Wird mit jedem erfassten Zyklus genauer."))
 
-                HStack(spacing: 4) {
-                    Circle().fill(Color.blue.opacity(0.7)).frame(width: 7, height: 7)
-                    Text("Schleim").font(.caption2).foregroundStyle(.secondary)
-                    InfoButton(titel: "Zervixschleim",
-                               text: "Blauer Punkt = Zervixschleim erfasst. Wässrige oder Eiweiss-Konsistenz gilt als Zeichen der Fruchtbarkeit (Symptothermalmethode) und beeinflusst die Eisprungvorhersage.")
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            legendeItem(farbe: .teal, gefuellt: true, text: "Fruchtbar",
+                        info: ("Fruchtbare Tage",
+                               "Die 5 Tage vor und 1 Tag nach dem Eisprung. In dieser Zeit ist eine Befruchtung möglich, da Spermien bis zu 5 Tage überleben können."))
 
-                HStack(spacing: 4) {
-                    Circle().fill(Color.pink.opacity(0.8)).frame(width: 7, height: 7)
-                    Text("Sex. Aktivität").font(.caption2).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            legendeItem(farbe: .orange, gefuellt: true, text: "Eisprung",
+                        info: ("Eisprung (Ovulation)",
+                               "Der Moment, in dem ein Ei aus dem Eierstock freigesetzt wird. Tritt meist 12–16 Tage vor der nächsten Periode auf und ist der fruchtbarste Punkt im Zyklus."))
 
-                HStack(spacing: 4) {
-                    Circle().fill(Color.gray.opacity(0.5)).frame(width: 7, height: 7)
-                    Text("Andere Daten").font(.caption2).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 4) {
+                Circle().fill(Color.purple.opacity(0.6)).frame(width: 7, height: 7)
+                Text("Symptome").font(.caption2).foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 4) {
+                Circle().fill(Color.blue.opacity(0.7)).frame(width: 7, height: 7)
+                Text("Zervixschleim").font(.caption2).foregroundStyle(.secondary)
+                InfoButton(titel: "Zervixschleim",
+                           text: "Blauer Punkt = Zervixschleim erfasst. Wässrige oder Eiweiss-Konsistenz gilt als Zeichen der Fruchtbarkeit (Symptothermalmethode) und beeinflusst die Eisprungvorhersage.")
+            }
+
+            HStack(spacing: 4) {
+                Circle().fill(Color.pink.opacity(0.8)).frame(width: 7, height: 7)
+                Text("Sex. Aktivität").font(.caption2).foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 4) {
+                Circle().fill(Color.gray.opacity(0.5)).frame(width: 7, height: 7)
+                Text("Andere Daten").font(.caption2).foregroundStyle(.secondary)
             }
         }
     }
