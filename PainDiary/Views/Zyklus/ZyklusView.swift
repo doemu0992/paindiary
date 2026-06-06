@@ -233,7 +233,7 @@ struct ZyklusView: View {
                 ForEach([0.25, 0.5, 0.8, 1.0] as [Double], id: \.self) { op in
                     Circle().fill(Color.red.opacity(op)).frame(width: 7, height: 7)
                 }
-                Text("Periode").font(.caption2).foregroundStyle(.secondary)
+                Text("Periode")
             }
 
             legendeItem(farbe: .red, gefuellt: false, text: "Vorhergesagt",
@@ -250,26 +250,28 @@ struct ZyklusView: View {
 
             HStack(spacing: 4) {
                 Circle().fill(Color.purple.opacity(0.6)).frame(width: 7, height: 7)
-                Text("Symptome").font(.caption2).foregroundStyle(.secondary)
+                Text("Symptome")
             }
 
             HStack(spacing: 4) {
                 Circle().fill(Color.blue.opacity(0.7)).frame(width: 7, height: 7)
-                Text("Zervixschleim").font(.caption2).foregroundStyle(.secondary)
+                Text("Zervixschleim")
                 InfoButton(titel: "Zervixschleim",
                            text: "Blauer Punkt = Zervixschleim erfasst. Wässrige oder Eiweiss-Konsistenz gilt als Zeichen der Fruchtbarkeit (Symptothermalmethode) und beeinflusst die Eisprungvorhersage.")
             }
 
             HStack(spacing: 4) {
                 Circle().fill(Color.pink.opacity(0.8)).frame(width: 7, height: 7)
-                Text("Sex. Aktivität").font(.caption2).foregroundStyle(.secondary)
+                Text("Sex. Aktivität")
             }
 
             HStack(spacing: 4) {
                 Circle().fill(Color.gray.opacity(0.5)).frame(width: 7, height: 7)
-                Text("Andere Daten").font(.caption2).foregroundStyle(.secondary)
+                Text("Andere Daten")
             }
         }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
     }
 
     private func legendeItem(farbe: Color, gefuellt: Bool, text: String, info: (String, String)? = nil) -> some View {
