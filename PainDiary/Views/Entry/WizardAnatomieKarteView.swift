@@ -138,29 +138,37 @@ private struct RegionDef: Identifiable {
     let name: String
     let buildPath: (CGFloat, CGFloat) -> Path
 
-    // Scale from SVG coords (200×520) to actual view size
+    // Maps SVG coords (200×520) to view coords, accounting for scaledToFit letterboxing
+    static func svgScale(w: CGFloat, h: CGFloat) -> (scale: CGFloat, dx: CGFloat, dy: CGFloat) {
+        let s = min(w / 200.0, h / 520.0)
+        return (s, (w - 200.0 * s) / 2, (h - 520.0 * s) / 2)
+    }
+
     static func p(_ x: Double, _ y: Double, w: CGFloat, h: CGFloat) -> CGPoint {
-        CGPoint(x: CGFloat(x / 200.0) * w, y: CGFloat(y / 520.0) * h)
+        let (s, dx, dy) = svgScale(w: w, h: h)
+        return CGPoint(x: dx + CGFloat(x) * s, y: dy + CGFloat(y) * s)
     }
 
     static func ellipseRegion(name: String, cx: Double, cy: Double, rx: Double, ry: Double) -> RegionDef {
         RegionDef(name: name) { w, h in
-            Path(ellipseIn: CGRect(
-                x: CGFloat((cx - rx) / 200.0) * w,
-                y: CGFloat((cy - ry) / 520.0) * h,
-                width: CGFloat(rx * 2 / 200.0) * w,
-                height: CGFloat(ry * 2 / 520.0) * h
+            let (s, dx, dy) = svgScale(w: w, h: h)
+            return Path(ellipseIn: CGRect(
+                x: dx + CGFloat(cx - rx) * s,
+                y: dy + CGFloat(cy - ry) * s,
+                width: CGFloat(rx * 2) * s,
+                height: CGFloat(ry * 2) * s
             ))
         }
     }
 
     static func capsuleRegion(name: String, cx: Double, cy: Double, rw: Double, rh: Double) -> RegionDef {
         RegionDef(name: name) { w, h in
-            let sw = CGFloat(rw * 2 / 200.0) * w
-            let sh = CGFloat(rh * 2 / 520.0) * h
+            let (s, dx, dy) = svgScale(w: w, h: h)
+            let sw = CGFloat(rw * 2) * s
+            let sh = CGFloat(rh * 2) * s
             return Path(roundedRect: CGRect(
-                x: CGFloat((cx - rw) / 200.0) * w,
-                y: CGFloat((cy - rh) / 520.0) * h,
+                x: dx + CGFloat(cx - rw) * s,
+                y: dy + CGFloat(cy - rh) * s,
                 width: sw, height: sh
             ), cornerRadius: min(sw, sh) / 2)
         }
@@ -169,10 +177,10 @@ private struct RegionDef: Identifiable {
     // MARK: Vorne
 
     static let vorne: [RegionDef] = [
-        // Head
-        ellipseRegion(name: "Kopf", cx: 100, cy: 32, rx: 30, ry: 34),
-        // Neck
-        capsuleRegion(name: "Nacken", cx: 100, cy: 72, rw: 12, rh: 10),
+        // Head — matches SVG ellipse exactly
+        ellipseRegion(name: "Kopf", cx: 100, cy: 32, rx: 26, ry: 30),
+        // Throat (front neck) — SVG path y=60–76, x=88–112
+        capsuleRegion(name: "Hals", cx: 100, cy: 68, rw: 11, rh: 8),
         // Left shoulder
         RegionDef(name: "Schulter links") { w, h in
             var p = Path()
@@ -288,13 +296,13 @@ private struct RegionDef: Identifiable {
             p.closeSubpath()
             return p
         },
-        // Left forearm
-        capsuleRegion(name: "Unterarm links", cx: 50, cy: 252, rw: 14, rh: 44),
+        // Left forearm — SVG x=36–62, y=210–294
+        capsuleRegion(name: "Unterarm links", cx: 49, cy: 252, rw: 12, rh: 40),
         // Right forearm
-        capsuleRegion(name: "Unterarm rechts", cx: 150, cy: 252, rw: 14, rh: 44),
-        // Hands
-        ellipseRegion(name: "Hand links", cx: 46, cy: 308, rx: 14, ry: 20),
-        ellipseRegion(name: "Hand rechts", cx: 154, cy: 308, rx: 14, ry: 20),
+        capsuleRegion(name: "Unterarm rechts", cx: 151, cy: 252, rw: 12, rh: 40),
+        // Hands — SVG ellipse cx=46/154, cy=308, rx=12, ry=18
+        ellipseRegion(name: "Hand links", cx: 46, cy: 308, rx: 12, ry: 18),
+        ellipseRegion(name: "Hand rechts", cx: 154, cy: 308, rx: 12, ry: 18),
         // Left thigh
         RegionDef(name: "Oberschenkel links") { w, h in
             var p = Path()
@@ -359,16 +367,16 @@ private struct RegionDef: Identifiable {
             p.closeSubpath()
             return p
         },
-        // Feet
-        ellipseRegion(name: "Fuss links", cx: 75, cy: 462, rx: 20, ry: 12),
-        ellipseRegion(name: "Fuss rechts", cx: 125, cy: 462, rx: 20, ry: 12),
+        // Feet — SVG path x=56–92/108–144, y=448–474
+        ellipseRegion(name: "Fuss links", cx: 74, cy: 461, rx: 18, ry: 13),
+        ellipseRegion(name: "Fuss rechts", cx: 126, cy: 461, rx: 18, ry: 13),
     ]
 
     // MARK: Hinten (same structure, different region names for torso)
 
     static let hinten: [RegionDef] = [
-        ellipseRegion(name: "Kopf", cx: 100, cy: 32, rx: 30, ry: 34),
-        capsuleRegion(name: "Nacken", cx: 100, cy: 72, rw: 12, rh: 10),
+        ellipseRegion(name: "Kopf", cx: 100, cy: 32, rx: 26, ry: 30),
+        capsuleRegion(name: "Nacken", cx: 100, cy: 68, rw: 11, rh: 8),
         RegionDef(name: "Schulter links") { w, h in
             var p = Path()
             p.move(to:    Self.p(90, 76, w: w, h: h))
@@ -472,10 +480,10 @@ private struct RegionDef: Identifiable {
             p.closeSubpath()
             return p
         },
-        capsuleRegion(name: "Unterarm links", cx: 50, cy: 252, rw: 14, rh: 44),
-        capsuleRegion(name: "Unterarm rechts", cx: 150, cy: 252, rw: 14, rh: 44),
-        ellipseRegion(name: "Hand links", cx: 46, cy: 308, rx: 14, ry: 20),
-        ellipseRegion(name: "Hand rechts", cx: 154, cy: 308, rx: 14, ry: 20),
+        capsuleRegion(name: "Unterarm links", cx: 49, cy: 252, rw: 12, rh: 40),
+        capsuleRegion(name: "Unterarm rechts", cx: 151, cy: 252, rw: 12, rh: 40),
+        ellipseRegion(name: "Hand links", cx: 46, cy: 308, rx: 12, ry: 18),
+        ellipseRegion(name: "Hand rechts", cx: 154, cy: 308, rx: 12, ry: 18),
         RegionDef(name: "Oberschenkel links") { w, h in
             var p = Path()
             p.move(to:    Self.p(64, 262, w: w, h: h))
@@ -536,7 +544,7 @@ private struct RegionDef: Identifiable {
             p.closeSubpath()
             return p
         },
-        ellipseRegion(name: "Fuss links", cx: 75, cy: 462, rx: 20, ry: 12),
-        ellipseRegion(name: "Fuss rechts", cx: 125, cy: 462, rx: 20, ry: 12),
+        ellipseRegion(name: "Fuss links", cx: 74, cy: 461, rx: 18, ry: 13),
+        ellipseRegion(name: "Fuss rechts", cx: 126, cy: 461, rx: 18, ry: 13),
     ]
 }

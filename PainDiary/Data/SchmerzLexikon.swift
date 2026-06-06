@@ -18,6 +18,11 @@ class SchmerzLexikon {
             symptome: ["Strahlt in den Arm aus", "Kopfschmerzen", "Eingeschränkte Drehung"],
             ausloeser: ["Bildschirmarbeit", "Zugluft", "Falsche Schlafposition", "Stress"]
         ),
+        "Hals": RegionData(
+            charakter: ["Schluckschmerz", "Drückend", "Kratzig", "Brennend", "Verspannt"],
+            symptome: ["Schluckbeschwerden", "Heiserkeit", "Drüsenschwellung", "Husten"],
+            ausloeser: ["Infekt", "Zugluft", "Stress", "Trockene Luft", "Vireninfektion"]
+        ),
         "Rücken": RegionData(
             charakter: ["Ziehend", "Dumpf", "Stechend", "Krampfartig", "Brennend"],
             symptome: ["Strahlt ins Bein aus", "Taubheitsgefühl", "Schlimmer bei Bewegung"],
