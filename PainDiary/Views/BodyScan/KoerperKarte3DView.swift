@@ -156,7 +156,6 @@ enum BodySceneBuilder {
 
         let armX   = p.schulterBreite / 2 + 0.04   // arm column X
         let beinX  = p.huefteBreite   * 0.28        // leg column X
-        let dh     = p.torsoTiefe / 2               // torso depth half
 
         // ── Head ──────────────────────────────────────────────────────
         body.addChildNode(n("Kopf",
