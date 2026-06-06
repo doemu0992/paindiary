@@ -527,6 +527,57 @@ class PDFExportService: @unchecked Sendable {
             }
         }
 
+        // Häufige Schmerzarten
+        let schmerzartListe = schmerzartHaeufigkeit(eintraege: eintraege)
+        if !schmerzartListe.isEmpty {
+            y += 8
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Häufige Schmerzarten", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+            for (i, (name, count)) in schmerzartListe.prefix(5).enumerated() {
+                draw("\(i+1). \(name)", at: CGPoint(x: rand, y: y),
+                     font: .systemFont(ofSize: 11), color: .label)
+                drawRight("\(count)×", rightX: W - rand, y: y,
+                          font: .systemFont(ofSize: 11), color: .secondaryLabel)
+                y += 18
+            }
+        }
+
+        // Häufige Begleiterscheinungen
+        let begleitListe = begleitHaeufigkeit(eintraege: eintraege)
+        if !begleitListe.isEmpty {
+            y += 8
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Häufige Begleiterscheinungen", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+            for (i, (name, count)) in begleitListe.prefix(5).enumerated() {
+                draw("\(i+1). \(name)", at: CGPoint(x: rand, y: y),
+                     font: .systemFont(ofSize: 11), color: .label)
+                drawRight("\(count)×", rightX: W - rand, y: y,
+                          font: .systemFont(ofSize: 11), color: .secondaryLabel)
+                y += 18
+            }
+        }
+
+        // Häufige Massnahmen
+        let massnahmenListe = massnahmenHaeufigkeit(eintraege: eintraege)
+        if !massnahmenListe.isEmpty {
+            y += 8
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Angewandte Massnahmen", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+            for (i, (name, count)) in massnahmenListe.prefix(5).enumerated() {
+                draw("\(i+1). \(name)", at: CGPoint(x: rand, y: y),
+                     font: .systemFont(ofSize: 11), color: .label)
+                drawRight("\(count)×", rightX: W - rand, y: y,
+                          font: .systemFont(ofSize: 11), color: .secondaryLabel)
+                y += 18
+            }
+        }
+
         fusszeile(ctx: ctx, seite: seite)
     }
 
@@ -993,6 +1044,39 @@ class PDFExportService: @unchecked Sendable {
         var map: [String: Int] = [:]
         for e in eintraege where !e.ausloeser.isEmpty {
             e.ausloeser.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { map[$0, default: 0] += 1 }
+        }
+        return map.sorted { $0.value > $1.value }
+    }
+
+    private func schmerzartHaeufigkeit(eintraege: [PDFEintrag]) -> [(String, Int)] {
+        var map: [String: Int] = [:]
+        for e in eintraege where !e.schmerzart.isEmpty {
+            e.schmerzart.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { map[$0, default: 0] += 1 }
+        }
+        return map.sorted { $0.value > $1.value }
+    }
+
+    private func begleitHaeufigkeit(eintraege: [PDFEintrag]) -> [(String, Int)] {
+        var map: [String: Int] = [:]
+        for e in eintraege where !e.begleiterscheinungen.isEmpty {
+            e.begleiterscheinungen.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { map[$0, default: 0] += 1 }
+        }
+        return map.sorted { $0.value > $1.value }
+    }
+
+    private func massnahmenHaeufigkeit(eintraege: [PDFEintrag]) -> [(String, Int)] {
+        var map: [String: Int] = [:]
+        for e in eintraege where !e.massnahmen.isEmpty {
+            e.massnahmen.components(separatedBy: ", ")
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
                 .forEach { map[$0, default: 0] += 1 }

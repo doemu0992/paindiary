@@ -22,11 +22,15 @@ struct KorrelationsView: View {
                     abschnittTitel("Schmerzmuster")
                     wochentagChart
                     ausloeserChart
+                    koerperstellenChart
+                    schmerzartChart
 
                     abschnittTitel("Körper & Geist")
                     schlafSchmerzChart
                     stressSchmerzChart
                     stimmungSchmerzChart
+                    begleiterscheinungenChart
+                    massnahmenChart
 
                     abschnittTitel("Ernährung & Wetter")
                     koffeinSchmerzChart
@@ -129,6 +133,22 @@ struct KorrelationsView: View {
                     text: "Nach 3+ Tassen Koffein ist der Folgetag-Schmerz Ø \(fmt(abs(diff))) Punkte \(diff > 0 ? "höher" : "niedriger")",
                     symbol: "cup.and.saucer.fill", farbe: Color(red: 0.55, green: 0.35, blue: 0.15)))
             }
+        }
+
+        // Häufigste Körperstelle
+        if let topOrt = koerperstellenDaten.first, topOrt.anzahl >= 3 {
+            let pct = Int(round(Double(topOrt.anzahl) / Double(eintraege.count) * 100))
+            liste.append(Erkenntnis(
+                text: "\"\(topOrt.ort)\" ist deine häufigste Schmerzregion – \(pct)% der Einträge (Ø \(fmt(topOrt.avgSchmerz))/10)",
+                symbol: "figure.body", farbe: .blue))
+        }
+
+        // Häufigste Begleiterscheinung
+        if let topBeg = begleitDaten.first, topBeg.anzahl >= 3 {
+            let pct = Int(round(Double(topBeg.anzahl) / Double(eintraege.count) * 100))
+            liste.append(Erkenntnis(
+                text: "\"\(topBeg.symptom)\" kommt in \(pct)% der Einträge als Begleiterscheinung vor",
+                symbol: "stethoscope", farbe: .teal))
         }
 
         // Zyklus
@@ -549,6 +569,153 @@ struct KorrelationsView: View {
                 .frame(height: 160)
                 Text("Hinweis: Medikamente werden oft bei starkem Schmerz eingenommen — kein Beweis für Unwirksamkeit.")
                     .font(.caption2).foregroundStyle(.secondary).italic()
+            }
+        }
+    }
+
+    // MARK: - Körperstellen
+
+    private var koerperstellenDaten: [(ort: String, anzahl: Int, avgSchmerz: Double)] {
+        var dict: [String: [Int]] = [:]
+        for e in eintraege where !e.koerperstelle.isEmpty {
+            e.koerperstelle.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { dict[$0, default: []].append(e.schmerzstaerke) }
+        }
+        return dict
+            .map { ort, w in (ort: ort, anzahl: w.count, avgSchmerz: Double(w.reduce(0,+)) / Double(w.count)) }
+            .sorted { $0.anzahl > $1.anzahl }
+            .prefix(7).map { $0 }
+    }
+
+    private var koerperstellenChart: some View {
+        karte {
+            Text("Häufigste Schmerzorte").font(.headline)
+            Text("Anzahl Einträge je Körperregion, Farbe = Ø Schmerzstärke")
+                .font(.caption).foregroundStyle(.secondary)
+            if koerperstellenDaten.isEmpty {
+                Text("Keine Körperstellen erfasst.").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(koerperstellenDaten, id: \.ort) { item in
+                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Ort", item.ort))
+                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(item.avgSchmerz)).gradient)
+                        .cornerRadius(6)
+                        .annotation(position: .trailing) {
+                            Text("×\(item.anzahl)  Ø\(fmt(item.avgSchmerz))")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
+                .frame(height: CGFloat(koerperstellenDaten.count * 42 + 20))
+            }
+        }
+    }
+
+    // MARK: - Schmerzarten
+
+    private var schmerzartDaten: [(art: String, anzahl: Int, avgSchmerz: Double)] {
+        var dict: [String: [Int]] = [:]
+        for e in eintraege where !e.schmerzart.isEmpty {
+            e.schmerzart.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { dict[$0, default: []].append(e.schmerzstaerke) }
+        }
+        return dict
+            .map { art, w in (art: art, anzahl: w.count, avgSchmerz: Double(w.reduce(0,+)) / Double(w.count)) }
+            .sorted { $0.anzahl > $1.anzahl }
+            .prefix(8).map { $0 }
+    }
+
+    private var schmerzartChart: some View {
+        karte {
+            Text("Häufige Schmerzarten").font(.headline)
+            Text("Wie sich der Schmerz typischerweise anfühlt").font(.caption).foregroundStyle(.secondary)
+            if schmerzartDaten.isEmpty {
+                Text("Keine Schmerzarten erfasst. Wähle im Wizard unter «Charakter» die Schmerzart.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(schmerzartDaten, id: \.art) { item in
+                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Art", item.art))
+                        .foregroundStyle(Color.purple.gradient)
+                        .cornerRadius(6)
+                        .annotation(position: .trailing) {
+                            Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
+                .frame(height: CGFloat(schmerzartDaten.count * 42 + 20))
+            }
+        }
+    }
+
+    // MARK: - Begleiterscheinungen
+
+    private var begleitDaten: [(symptom: String, anzahl: Int)] {
+        var dict: [String: Int] = [:]
+        for e in eintraege where !e.begleiterscheinungen.isEmpty {
+            e.begleiterscheinungen.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { dict[$0, default: 0] += 1 }
+        }
+        return dict.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }.prefix(8).map { $0 }
+    }
+
+    private var begleiterscheinungenChart: some View {
+        karte {
+            Text("Häufige Begleiterscheinungen").font(.headline)
+            Text("Welche Begleitsymptome am häufigsten auftreten").font(.caption).foregroundStyle(.secondary)
+            if begleitDaten.isEmpty {
+                Text("Keine Begleiterscheinungen erfasst.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(begleitDaten, id: \.symptom) { item in
+                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Symptom", item.symptom))
+                        .foregroundStyle(Color.teal.gradient)
+                        .cornerRadius(6)
+                        .annotation(position: .trailing) {
+                            Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
+                .frame(height: CGFloat(begleitDaten.count * 42 + 20))
+            }
+        }
+    }
+
+    // MARK: - Massnahmen
+
+    private var massnahmenDaten: [(massnahme: String, anzahl: Int)] {
+        var dict: [String: Int] = [:]
+        for e in eintraege where !e.massnahmen.isEmpty {
+            e.massnahmen.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { dict[$0, default: 0] += 1 }
+        }
+        return dict.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }.prefix(8).map { $0 }
+    }
+
+    private var massnahmenChart: some View {
+        karte {
+            Text("Angewandte Massnahmen").font(.headline)
+            Text("Was du am häufigsten gegen den Schmerz unternimmst").font(.caption).foregroundStyle(.secondary)
+            if massnahmenDaten.isEmpty {
+                Text("Keine Massnahmen erfasst.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(massnahmenDaten, id: \.massnahme) { item in
+                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Massnahme", item.massnahme))
+                        .foregroundStyle(Color.green.gradient)
+                        .cornerRadius(6)
+                        .annotation(position: .trailing) {
+                            Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
+                .frame(height: CGFloat(massnahmenDaten.count * 42 + 20))
             }
         }
     }

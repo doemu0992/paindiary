@@ -56,22 +56,26 @@ struct PainEntryDetailView: View {
                 HStack {
                     Text("Stimmung")
                     Spacer()
+                    Text(stimmungLabel(eintrag.stimmung))
+                        .font(.subheadline).foregroundStyle(stimmungFarbe(eintrag.stimmung))
                     HStack(spacing: 3) {
                         ForEach(1...5, id: \.self) { i in
                             Image(systemName: i <= eintrag.stimmung ? "heart.fill" : "heart")
-                                .font(.system(size: 14))
-                                .foregroundStyle(i <= eintrag.stimmung ? .red : .secondary.opacity(0.3))
+                                .font(.system(size: 13))
+                                .foregroundStyle(i <= eintrag.stimmung ? stimmungFarbe(eintrag.stimmung) : .secondary.opacity(0.3))
                         }
                     }
                 }
                 HStack {
                     Text("Stresslevel")
                     Spacer()
+                    Text(stressLabel(eintrag.stressLevel))
+                        .font(.subheadline).foregroundStyle(stressFarbe(eintrag.stressLevel))
                     HStack(spacing: 3) {
                         ForEach(1...5, id: \.self) { i in
-                            Image(systemName: i <= eintrag.stressLevel ? "bolt.fill" : "bolt")
-                                .font(.system(size: 14))
-                                .foregroundStyle(i <= eintrag.stressLevel ? .orange : .secondary.opacity(0.3))
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(i <= eintrag.stressLevel ? stressFarbe(eintrag.stressLevel) : Color.secondary.opacity(0.2))
+                                .frame(width: 10, height: 14)
                         }
                     }
                 }
@@ -122,5 +126,49 @@ struct PainEntryDetailView: View {
         if h == 0 { return "\(m) Min." }
         if m == 0 { return "\(h) Std." }
         return "\(h) Std. \(m) Min."
+    }
+
+    private func stimmungLabel(_ s: Int) -> String {
+        switch s {
+        case 1: return "Schlecht"
+        case 2: return "Mässig"
+        case 3: return "Okay"
+        case 4: return "Gut"
+        case 5: return "Super"
+        default: return ""
+        }
+    }
+
+    private func stimmungFarbe(_ s: Int) -> Color {
+        switch s {
+        case 1: return .red
+        case 2: return .orange
+        case 3: return .yellow
+        case 4: return .mint
+        case 5: return .green
+        default: return .secondary
+        }
+    }
+
+    private func stressLabel(_ s: Int) -> String {
+        switch s {
+        case 1: return "Entspannt"
+        case 2: return "Leicht"
+        case 3: return "Mässig"
+        case 4: return "Hoch"
+        case 5: return "Extrem"
+        default: return ""
+        }
+    }
+
+    private func stressFarbe(_ s: Int) -> Color {
+        switch s {
+        case 1: return .green
+        case 2: return .mint
+        case 3: return .yellow
+        case 4: return .orange
+        case 5: return .red
+        default: return .secondary
+        }
     }
 }
