@@ -5,6 +5,7 @@ struct BegleitschmerzStepView: View {
     let koerperstelle: String
 
     @State private var ausgewaehlt: Set<String> = []
+    @State private var freitext = ""
 
     private var vorschlaege: [String] {
         SchmerzLexikon.db[koerperstelle]?.symptome ?? [
@@ -20,7 +21,7 @@ struct BegleitschmerzStepView: View {
                 .multilineTextAlignment(.center)
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Begleiterscheinungen")
+                Text("Begleiterscheinungen (mehrere möglich)")
                     .font(.headline)
                 FlowLayout(vorschlaege) { vorschlag in
                     ChipButton(label: vorschlag, ausgewaehlt: ausgewaehlt.contains(vorschlag)) {
@@ -32,15 +33,11 @@ struct BegleitschmerzStepView: View {
                         aktualisiereBinding()
                     }
                 }
-            }
-            .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Weitere Symptome")
-                    .font(.headline)
-                TextField("Eigene Angaben…", text: $begleiterscheinungen)
-                    .textFieldStyle(.roundedBorder)
+                HStack(spacing: 8) {
+                    TextField("Eigene Angaben…", text: $freitext)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: freitext) { _, _ in aktualisiereBinding() }
+                }
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -55,14 +52,19 @@ struct BegleitschmerzStepView: View {
     }
 
     private func aktualisiereBinding() {
-        let chips = ausgewaehlt.sorted().joined(separator: ", ")
-        if begleiterscheinungen.isEmpty || vorschlaege.contains(where: { begleiterscheinungen.contains($0) }) {
-            begleiterscheinungen = chips
-        }
+        var teile = ausgewaehlt.sorted()
+        let trimmed = freitext.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty { teile.append(trimmed) }
+        begleiterscheinungen = teile.joined(separator: ", ")
     }
 
     private func ladeAuswahlAusBinding() {
-        let teile = begleiterscheinungen.components(separatedBy: ", ")
+        let teile = begleiterscheinungen
+            .components(separatedBy: ", ")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
         ausgewaehlt = Set(teile.filter { vorschlaege.contains($0) })
+        let custom = teile.filter { !vorschlaege.contains($0) }
+        freitext = custom.joined(separator: ", ")
     }
 }

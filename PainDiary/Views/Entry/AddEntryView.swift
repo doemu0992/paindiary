@@ -8,6 +8,7 @@ struct AddEntryView: View {
     var eintrag: PainEntry? = nil
 
     @State private var schritt = 0
+    @State private var vorwaerts = true
     @State private var datum = Date()
     @State private var koerperstelle = ""
     @State private var schmerzstaerke = 5
@@ -24,14 +25,21 @@ struct AddEntryView: View {
 
     private let wetter = WetterService.shared
     private let health = HealthKitManager.shared
-    private let gesamtSchritte = 6
+    private let gesamtSchritte = 7
+
+    private let schrittNamen = [
+        "Ort", "Intensität", "Charakter", "Auslöser",
+        "Begleitsymptome", "Massnahmen", "Wohlbefinden"
+    ]
+    // Steps 0 (Ort) and 1 (Intensität) are required; all others are skippable
+    private let pflichtSchritte: Set<Int> = [0, 1]
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ProgressView(value: Double(schritt + 1), total: Double(gesamtSchritte))
+                schrittIndikator
                     .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.top, 10)
 
                 HStack {
                     DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
@@ -41,32 +49,19 @@ struct AddEntryView: View {
                     wetterBadge
                 }
                 .padding(.horizontal)
-                .padding(.top, 4)
+                .padding(.top, 8)
 
                 ScrollView {
                     schrittInhalt
                         .padding(.vertical, 24)
                 }
+                .id(schritt)
+                .transition(.asymmetric(
+                    insertion: .move(edge: vorwaerts ? .trailing : .leading).combined(with: .opacity),
+                    removal: .move(edge: vorwaerts ? .leading : .trailing).combined(with: .opacity)
+                ))
 
-                Spacer(minLength: 0)
-
-                HStack(spacing: 16) {
-                    if schritt > 0 {
-                        Button("Zurück") { withAnimation { schritt -= 1 } }
-                            .buttonStyle(.bordered)
-                    }
-                    Spacer()
-                    if schritt < gesamtSchritte - 1 {
-                        Button("Weiter") { withAnimation { schritt += 1 } }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(schritt == 0 && koerperstelle.isEmpty)
-                    } else {
-                        Button("Speichern") { speichern() }
-                            .buttonStyle(.borderedProminent)
-                    }
-                }
-                .padding()
-                .background(.bar)
+                navigationsLeiste
             }
             .navigationTitle(eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
@@ -84,6 +79,54 @@ struct AddEntryView: View {
             }
         }
     }
+
+    // MARK: - Step indicator
+
+    private var schrittIndikator: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 0) {
+                ForEach(0..<gesamtSchritte, id: \.self) { i in
+                    ZStack {
+                        if i < schritt {
+                            Circle()
+                                .fill(Color.accentColor)
+                                .frame(width: 8, height: 8)
+                        } else if i == schritt {
+                            Circle()
+                                .fill(Color.accentColor)
+                                .frame(width: 14, height: 14)
+                                .shadow(color: Color.accentColor.opacity(0.5), radius: 4)
+                        } else {
+                            Circle()
+                                .fill(Color.secondary.opacity(0.25))
+                                .frame(width: 8, height: 8)
+                        }
+                    }
+                    .frame(width: 14, height: 14)
+                    .animation(.spring(response: 0.3), value: schritt)
+
+                    if i < gesamtSchritte - 1 {
+                        Rectangle()
+                            .fill(i < schritt ? Color.accentColor : Color.secondary.opacity(0.2))
+                            .frame(maxWidth: .infinity, maxHeight: 1.5)
+                            .animation(.easeInOut(duration: 0.3), value: schritt)
+                    }
+                }
+            }
+
+            HStack {
+                Text("Schritt \(schritt + 1) von \(gesamtSchritte)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(schrittNamen[schritt])
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Weather badge
 
     @ViewBuilder
     private var wetterBadge: some View {
@@ -107,6 +150,8 @@ struct AddEntryView: View {
         }
     }
 
+    // MARK: - Step content
+
     @ViewBuilder
     private var schrittInhalt: some View {
         switch schritt {
@@ -125,8 +170,9 @@ struct AddEntryView: View {
         case 4:
             BegleitschmerzStepView(begleiterscheinungen: $begleiterscheinungen, koerperstelle: koerperstelle)
         case 5:
-            MassnahmenStepView(
-                massnahmen: $massnahmen,
+            MassnahmenStepView(massnahmen: $massnahmen)
+        case 6:
+            WohlbefindenStepView(
                 stimmung: $stimmung,
                 schlafStunden: $schlafStunden,
                 stressLevel: $stressLevel,
@@ -136,6 +182,86 @@ struct AddEntryView: View {
             EmptyView()
         }
     }
+
+    // MARK: - Navigation bar
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            // Back button
+            if schritt > 0 {
+                Button {
+                    vorwaerts = false
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 46, height: 46)
+                        .background(.regularMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Spacer().frame(width: 46)
+            }
+
+            Spacer()
+
+            // Skip button for optional steps (not last step)
+            if !pflichtSchritte.contains(schritt) && schritt < gesamtSchritte - 1 {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    Text("Überspringen")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Forward / Save
+            if schritt < gesamtSchritte - 1 {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Weiter")
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.subheadline.bold())
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 13)
+                    .background(
+                        (schritt == 0 && koerperstelle.isEmpty) ? Color.secondary.opacity(0.3) : Color.accentColor,
+                        in: Capsule()
+                    )
+                    .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .disabled(schritt == 0 && koerperstelle.isEmpty)
+            } else {
+                Button {
+                    speichern()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark")
+                        Text("Speichern")
+                    }
+                    .font(.subheadline.bold())
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 13)
+                    .background(Color.green, in: Capsule())
+                    .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.bar)
+    }
+
+    // MARK: - Data
 
     private func ladeVorhandeneWerte() {
         guard let e = eintrag else { return }
