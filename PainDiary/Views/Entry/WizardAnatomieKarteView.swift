@@ -127,7 +127,7 @@ private struct RegionShape: Shape {
     let h: CGFloat
 
     func path(in rect: CGRect) -> Path {
-        region.buildPath(w: w, h: h)
+        region.buildPath(w, h)
     }
 }
 
