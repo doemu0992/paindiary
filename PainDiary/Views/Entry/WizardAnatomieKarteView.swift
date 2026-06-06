@@ -2,8 +2,10 @@ import SwiftUI
 
 struct WizardAnatomieKarteView: View {
     @Binding var koerperstelle: String
+    @StateObject private var scanService = BodyScanService.shared
     @State private var vorne = true
     @State private var drehwinkel: Double = 0
+    @State private var scanSetupAnzeigen = false
 
     private var ausgewaehlt: Set<String> {
         Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
@@ -11,8 +13,23 @@ struct WizardAnatomieKarteView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Text("Wo hast du Schmerzen?")
-                .font(.title2.bold())
+            HStack {
+                Text("Wo hast du Schmerzen?")
+                    .font(.title2.bold())
+                Spacer()
+                Button {
+                    scanSetupAnzeigen = true
+                } label: {
+                    Label(scanService.hatScan ? "Neu scannen" : "Körper scannen",
+                          systemImage: scanService.hatScan ? "arrow.triangle.2.circlepath" : "camera.viewfinder")
+                        .font(.caption)
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(Color.accentColor.opacity(0.12))
+                        .foregroundStyle(Color.accentColor)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
 
             Picker("", selection: $vorne) {
                 Text("Vorne").tag(true)
@@ -21,16 +38,21 @@ struct WizardAnatomieKarteView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal, 50)
 
-            KoerperKarteView(vorne: vorne, ausgewaehlt: ausgewaehlt, onTap: toggle)
-                .frame(height: 420)
-                .rotation3DEffect(.degrees(drehwinkel), axis: (0, 1, 0))
-                .gesture(
-                    DragGesture(minimumDistance: 40)
-                        .onEnded { v in
-                            guard abs(v.translation.width) > abs(v.translation.height) else { return }
-                            flipAnimation(nachLinks: v.translation.width < 0)
-                        }
-                )
+            KoerperKarteView(
+                vorne: vorne,
+                ausgewaehlt: ausgewaehlt,
+                onTap: toggle,
+                scanBild: vorne ? scanService.vorneBild : scanService.hintenBild
+            )
+            .frame(height: 420)
+            .rotation3DEffect(.degrees(drehwinkel), axis: (0, 1, 0))
+            .gesture(
+                DragGesture(minimumDistance: 40)
+                    .onEnded { v in
+                        guard abs(v.translation.width) > abs(v.translation.height) else { return }
+                        flipAnimation(nachLinks: v.translation.width < 0)
+                    }
+            )
 
             if ausgewaehlt.isEmpty {
                 Text("Tippe auf eine Körperstelle")
@@ -61,6 +83,9 @@ struct WizardAnatomieKarteView: View {
             Label("Wischen zum Umdrehen", systemImage: "arrow.left.and.right")
                 .font(.caption2).foregroundStyle(.tertiary)
         }
+        .sheet(isPresented: $scanSetupAnzeigen) {
+            BodyScanSetupView()
+        }
     }
 
     private func flipAnimation(nachLinks: Bool) {
@@ -79,24 +104,32 @@ struct WizardAnatomieKarteView: View {
     }
 }
 
-// MARK: - Body Map with SVG background
+// MARK: - Body Map with SVG background or personal scan
 
 private struct KoerperKarteView: View {
     let vorne: Bool
     let ausgewaehlt: Set<String>
     let onTap: (String) -> Void
+    let scanBild: UIImage?
 
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
             let h = geo.size.height
             ZStack {
-                // SVG body image background
-                Image(vorne ? "body_vorne" : "body_hinten")
-                    .resizable()
-                    .renderingMode(.original)
-                    .scaledToFit()
-                    .frame(width: w, height: h)
+                if let bild = scanBild {
+                    Image(uiImage: bild)
+                        .resizable()
+                        .renderingMode(.original)
+                        .scaledToFit()
+                        .frame(width: w, height: h)
+                } else {
+                    Image(vorne ? "body_vorne" : "body_hinten")
+                        .resizable()
+                        .renderingMode(.original)
+                        .scaledToFit()
+                        .frame(width: w, height: h)
+                }
 
                 // Clickable region overlays
                 ForEach(vorne ? RegionDef.vorne : RegionDef.hinten) { region in
