@@ -3,20 +3,21 @@ import SwiftData
 
 struct MedikamenteView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \Dauermedikation.name) private var medikamente: [Dauermedikation]
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var logs: [EinnahmeLog]
 
     @State private var formAnzeigen = false
     @State private var zuBearbeiten: Dauermedikation? = nil
     @State private var logAnzeigen = false
+    @State private var tagesstart = Calendar.current.startOfDay(for: Date())
 
     private let notif = NotificationManager.shared
     private var aktive: [Dauermedikation] { medikamente.filter(\.aktiv) }
     private var inaktive: [Dauermedikation] { medikamente.filter { !$0.aktiv } }
 
     private var heutigeLogsHeute: [EinnahmeLog] {
-        let start = Calendar.current.startOfDay(for: Date())
-        return logs.filter { $0.datum >= start }
+        logs.filter { $0.datum >= tagesstart }
     }
 
     var body: some View {
@@ -65,6 +66,11 @@ struct MedikamenteView: View {
         }
         .sheet(isPresented: $formAnzeigen) { MedikamentFormView() }
         .sheet(item: $zuBearbeiten) { med in MedikamentFormView(medikament: med) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                tagesstart = Calendar.current.startOfDay(for: Date())
+            }
+        }
     }
 
     // Warn if any med was logged > 10x in the last 30 days (medication overuse threshold)
