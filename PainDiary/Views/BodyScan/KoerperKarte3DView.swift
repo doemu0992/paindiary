@@ -64,14 +64,24 @@ struct KoerperKarte3DView: UIViewRepresentable {
 
         @objc func handleTap(_ g: UITapGestureRecognizer) {
             guard let v = scnView else { return }
+            // firstFoundOnly:false ensures hits are sorted nearest-first
             let hits = v.hitTest(g.location(in: v), options: [
-                SCNHitTestOption.firstFoundOnly: true,
+                SCNHitTestOption.firstFoundOnly: false,
                 SCNHitTestOption.backFaceCulling: false
             ])
-            guard let hit = hits.first, let name = hit.node.name else { return }
-            // Use local Z to distinguish front from back on torso segments
-            let resolved = hit.localCoordinates.z < 0 ? (backMap[name] ?? name) : name
+            guard let name = hits.first?.node.name else { return }
+            let resolved = isFrontView ? name : (backMap[name] ?? name)
             onTap(resolved)
+        }
+
+        // Returns true when the body faces the camera (within ±90°).
+        private var isFrontView: Bool {
+            guard let body = scnView?.scene?.rootNode
+                    .childNode(withName: "body", recursively: false) else { return true }
+            var a = body.eulerAngles.y.truncatingRemainder(dividingBy: 2 * .pi)
+            if a >  .pi { a -= 2 * .pi }
+            if a < -.pi { a += 2 * .pi }
+            return abs(a) < .pi / 2
         }
 
         private let backMap: [String: String] = [
