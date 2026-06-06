@@ -99,8 +99,11 @@ struct BodyScanSetupView: View {
     @ViewBuilder
     private func scanView(vorne: Bool) -> some View {
         ZStack {
-            ARScanCameraView(phase: $phase) { silhouette in
+            ARScanCameraView(phase: $phase) { silhouette, proportionen in
                 service.speichern(bild: silhouette, vorne: vorne)
+                if let p = proportionen {
+                    service.speichernProportionen(p)
+                }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     phase = .suchend
                     schritt = vorne ? .hinten : .fertig
