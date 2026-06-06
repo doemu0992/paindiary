@@ -21,7 +21,7 @@ struct WizardAnatomieKarteView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal, 50)
 
-            AnatomieKoerperView(vorne: vorne, ausgewaehlt: ausgewaehlt, onTap: toggle)
+            KoerperKarteView(vorne: vorne, ausgewaehlt: ausgewaehlt, onTap: toggle)
                 .frame(height: 420)
                 .rotation3DEffect(.degrees(drehwinkel), axis: (0, 1, 0))
                 .gesture(
@@ -79,239 +79,464 @@ struct WizardAnatomieKarteView: View {
     }
 }
 
-// MARK: - Anatomical Body Map
+// MARK: - Body Map with SVG background
 
-private struct AnatomieKoerperView: View {
+private struct KoerperKarteView: View {
     let vorne: Bool
     let ausgewaehlt: Set<String>
     let onTap: (String) -> Void
 
     var body: some View {
         GeometryReader { geo in
-            let size = geo.size
-            let regions = vorne ? BodyRegion.vorne : BodyRegion.hinten
+            let w = geo.size.width
+            let h = geo.size.height
             ZStack {
-                ForEach(regions) { region in
+                // SVG body image background
+                Image(vorne ? "body_vorne" : "body_hinten")
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+                    .frame(width: w, height: h)
+
+                // Clickable region overlays
+                ForEach(vorne ? RegionDef.vorne : RegionDef.hinten) { region in
                     let sel = ausgewaehlt.contains(region.name)
-                    BodyRegionView(region: region, size: size, selected: sel) {
-                        onTap(region.name)
-                    }
+                    let shape = RegionShape(region: region, w: w, h: h)
+                    shape
+                        .fill(sel ? Color.red.opacity(0.40) : Color.clear)
+                        .overlay(
+                            shape.stroke(
+                                sel ? Color.red.opacity(0.65) : Color.clear,
+                                lineWidth: 1.5
+                            )
+                        )
+                        .contentShape(shape)
+                        .onTapGesture { onTap(region.name) }
+                        .animation(.spring(response: 0.2), value: sel)
                 }
             }
         }
     }
 }
 
-private struct BodyRegionView: View {
-    let region: BodyRegion
-    let size: CGSize
-    let selected: Bool
-    let onTap: () -> Void
+// MARK: - Region shape (Bezier paths matching SVG layout)
 
-    var body: some View {
-        let shape = BodyRegionShape(fn: region.fn, size: size)
-        shape
-            .fill(selected ? Color.red.opacity(0.38) : Color(.systemGray5))
-            .overlay(
-                shape.stroke(
-                    selected ? Color.red.opacity(0.60) : Color.secondary.opacity(0.22),
-                    lineWidth: 1.3
-                )
-            )
-            .contentShape(shape)
-            .onTapGesture(perform: onTap)
-            .animation(.spring(response: 0.2), value: selected)
+private struct RegionShape: Shape {
+    let region: RegionDef
+    let w: CGFloat
+    let h: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        region.buildPath(w: w, h: h)
     }
 }
 
-private struct BodyRegionShape: Shape {
-    let fn: (CGSize) -> Path
-    let size: CGSize
-    func path(in rect: CGRect) -> Path { fn(size) }
-}
+// MARK: - Region definitions (proportional to SVG 200×520 viewBox)
 
-// MARK: - Body Region Definitions
-
-private struct BodyRegion: Identifiable {
+private struct RegionDef: Identifiable {
     var id: String { name }
     let name: String
-    let fn: (CGSize) -> Path
+    let buildPath: (CGFloat, CGFloat) -> Path
 
-    // Horizontally mirrors a path (left ↔ right)
-    static func mirrored(_ f: @escaping (CGSize) -> Path) -> (CGSize) -> Path {
-        { size in
-            let t = CGAffineTransform(translationX: size.width, y: 0).scaledBy(x: -1, y: 1)
-            return f(size).applying(t)
+    // Scale from SVG coords (200×520) to actual view size
+    static func p(_ x: Double, _ y: Double, w: CGFloat, h: CGFloat) -> CGPoint {
+        CGPoint(x: CGFloat(x / 200.0) * w, y: CGFloat(y / 520.0) * h)
+    }
+
+    static func ellipseRegion(name: String, cx: Double, cy: Double, rx: Double, ry: Double) -> RegionDef {
+        RegionDef(name: name) { w, h in
+            Path(ellipseIn: CGRect(
+                x: CGFloat((cx - rx) / 200.0) * w,
+                y: CGFloat((cy - ry) / 520.0) * h,
+                width: CGFloat(rx * 2 / 200.0) * w,
+                height: CGFloat(ry * 2 / 520.0) * h
+            ))
         }
     }
 
-    // MARK: – Head & neck
-
-    static func kopf(_ s: CGSize) -> Path {
-        Path(ellipseIn: CGRect(x: s.width*0.372, y: s.height*0.004,
-                               width: s.width*0.256, height: s.height*0.114))
+    static func capsuleRegion(name: String, cx: Double, cy: Double, rw: Double, rh: Double) -> RegionDef {
+        RegionDef(name: name) { w, h in
+            let sw = CGFloat(rw * 2 / 200.0) * w
+            let sh = CGFloat(rh * 2 / 520.0) * h
+            return Path(roundedRect: CGRect(
+                x: CGFloat((cx - rw) / 200.0) * w,
+                y: CGFloat((cy - rh) / 520.0) * h,
+                width: sw, height: sh
+            ), cornerRadius: min(sw, sh) / 2)
+        }
     }
 
-    static func nacken(_ s: CGSize) -> Path {
-        let w = s.width * 0.108, h = s.height * 0.044
-        return Path(roundedRect: CGRect(x: (s.width - w) / 2, y: s.height * 0.115,
-                                        width: w, height: h), cornerRadius: w / 2)
-    }
+    // MARK: Vorne
 
-    // MARK: – Shoulders (left; mirrored for right)
-
-    static func schulterLinks(_ s: CGSize) -> Path {
-        let (sw, sh) = (s.width, s.height)
-        var p = Path()
-        p.move(to:    CGPoint(x: sw*0.296, y: sh*0.154))
-        p.addCurve(to: CGPoint(x: sw*0.138, y: sh*0.175),
-                   control1: CGPoint(x: sw*0.243, y: sh*0.148),
-                   control2: CGPoint(x: sw*0.176, y: sh*0.154))
-        p.addCurve(to: CGPoint(x: sw*0.142, y: sh*0.226),
-                   control1: CGPoint(x: sw*0.098, y: sh*0.182),
-                   control2: CGPoint(x: sw*0.098, y: sh*0.220))
-        p.addCurve(to: CGPoint(x: sw*0.296, y: sh*0.228),
-                   control1: CGPoint(x: sw*0.180, y: sh*0.240),
-                   control2: CGPoint(x: sw*0.248, y: sh*0.234))
-        p.closeSubpath()
-        return p
-    }
-
-    // MARK: – Torso
-
-    static func brust(_ s: CGSize) -> Path {
-        let (sw, sh) = (s.width, s.height)
-        var p = Path()
-        p.move(to:    CGPoint(x: sw*0.296, y: sh*0.154))
-        p.addLine(to: CGPoint(x: sw*0.704, y: sh*0.154))
-        p.addCurve(to: CGPoint(x: sw*0.692, y: sh*0.298),
-                   control1: CGPoint(x: sw*0.724, y: sh*0.198),
-                   control2: CGPoint(x: sw*0.708, y: sh*0.272))
-        p.addLine(to: CGPoint(x: sw*0.308, y: sh*0.298))
-        p.addCurve(to: CGPoint(x: sw*0.296, y: sh*0.154),
-                   control1: CGPoint(x: sw*0.292, y: sh*0.272),
-                   control2: CGPoint(x: sw*0.276, y: sh*0.198))
-        p.closeSubpath()
-        return p
-    }
-
-    static func bauch(_ s: CGSize) -> Path {
-        let (sw, sh) = (s.width, s.height)
-        var p = Path()
-        p.move(to:    CGPoint(x: sw*0.308, y: sh*0.298))
-        p.addLine(to: CGPoint(x: sw*0.692, y: sh*0.298))
-        p.addCurve(to: CGPoint(x: sw*0.714, y: sh*0.440),
-                   control1: CGPoint(x: sw*0.708, y: sh*0.340),
-                   control2: CGPoint(x: sw*0.724, y: sh*0.412))
-        p.addLine(to: CGPoint(x: sw*0.286, y: sh*0.440))
-        p.addCurve(to: CGPoint(x: sw*0.308, y: sh*0.298),
-                   control1: CGPoint(x: sw*0.276, y: sh*0.412),
-                   control2: CGPoint(x: sw*0.292, y: sh*0.340))
-        p.closeSubpath()
-        return p
-    }
-
-    static func huefte(_ s: CGSize) -> Path {
-        let (sw, sh) = (s.width, s.height)
-        var p = Path()
-        p.move(to:    CGPoint(x: sw*0.286, y: sh*0.440))
-        p.addLine(to: CGPoint(x: sw*0.714, y: sh*0.440))
-        p.addCurve(to: CGPoint(x: sw*0.738, y: sh*0.538),
-                   control1: CGPoint(x: sw*0.734, y: sh*0.462),
-                   control2: CGPoint(x: sw*0.750, y: sh*0.510))
-        p.addLine(to: CGPoint(x: sw*0.262, y: sh*0.538))
-        p.addCurve(to: CGPoint(x: sw*0.286, y: sh*0.440),
-                   control1: CGPoint(x: sw*0.250, y: sh*0.510),
-                   control2: CGPoint(x: sw*0.266, y: sh*0.462))
-        p.closeSubpath()
-        return p
-    }
-
-    // MARK: – Arms (left; mirrored for right)
-
-    static func oberarmLinks(_ s: CGSize) -> Path {
-        let (sw, sh) = (s.width, s.height)
-        let rw = sw * 0.044, rh = sh * 0.092
-        return Path(roundedRect: CGRect(x: sw*0.168 - rw, y: sh*0.222, width: rw*2, height: rh*2),
-                    cornerRadius: rw)
-    }
-
-    static func unterarmLinks(_ s: CGSize) -> Path {
-        let (sw, sh) = (s.width, s.height)
-        let rw = sw * 0.037, rh = sh * 0.078
-        return Path(roundedRect: CGRect(x: sw*0.140 - rw, y: sh*0.400, width: rw*2, height: rh*2),
-                    cornerRadius: rw)
-    }
-
-    static func handLinks(_ s: CGSize) -> Path {
-        Path(ellipseIn: CGRect(x: s.width*0.082, y: s.height*0.549,
-                               width: s.width*0.116, height: s.height*0.068))
-    }
-
-    // MARK: – Legs (left; mirrored for right)
-
-    static func oberschenkelLinks(_ s: CGSize) -> Path {
-        let (sw, sh) = (s.width, s.height)
-        let rw = sw * 0.078, rh = sh * 0.096
-        return Path(roundedRect: CGRect(x: sw*0.374 - rw, y: sh*0.540, width: rw*2, height: rh*2),
-                    cornerRadius: rw)
-    }
-
-    static func unterschenkelLinks(_ s: CGSize) -> Path {
-        let (sw, sh) = (s.width, s.height)
-        let rw = sw * 0.063, rh = sh * 0.088
-        return Path(roundedRect: CGRect(x: sw*0.366 - rw, y: sh*0.738, width: rw*2, height: rh*2),
-                    cornerRadius: rw)
-    }
-
-    static func fussLinks(_ s: CGSize) -> Path {
-        Path(ellipseIn: CGRect(x: s.width*0.264, y: s.height*0.914,
-                               width: s.width*0.194, height: s.height*0.068))
-    }
-
-    // MARK: – Region arrays
-
-    static let vorne: [BodyRegion] = [
-        BodyRegion(name: "Kopf",                 fn: kopf),
-        BodyRegion(name: "Nacken",               fn: nacken),
-        BodyRegion(name: "Brust",                fn: brust),
-        BodyRegion(name: "Bauch",                fn: bauch),
-        BodyRegion(name: "Hüfte",                fn: huefte),
-        BodyRegion(name: "Schulter links",       fn: schulterLinks),
-        BodyRegion(name: "Schulter rechts",      fn: mirrored(schulterLinks)),
-        BodyRegion(name: "Oberarm links",        fn: oberarmLinks),
-        BodyRegion(name: "Oberarm rechts",       fn: mirrored(oberarmLinks)),
-        BodyRegion(name: "Unterarm links",       fn: unterarmLinks),
-        BodyRegion(name: "Unterarm rechts",      fn: mirrored(unterarmLinks)),
-        BodyRegion(name: "Hand links",           fn: handLinks),
-        BodyRegion(name: "Hand rechts",          fn: mirrored(handLinks)),
-        BodyRegion(name: "Oberschenkel links",   fn: oberschenkelLinks),
-        BodyRegion(name: "Oberschenkel rechts",  fn: mirrored(oberschenkelLinks)),
-        BodyRegion(name: "Unterschenkel links",  fn: unterschenkelLinks),
-        BodyRegion(name: "Unterschenkel rechts", fn: mirrored(unterschenkelLinks)),
-        BodyRegion(name: "Fuss links",           fn: fussLinks),
-        BodyRegion(name: "Fuss rechts",          fn: mirrored(fussLinks)),
+    static let vorne: [RegionDef] = [
+        // Head
+        ellipseRegion(name: "Kopf", cx: 100, cy: 32, rx: 30, ry: 34),
+        // Neck
+        capsuleRegion(name: "Nacken", cx: 100, cy: 72, rw: 12, rh: 10),
+        // Left shoulder
+        RegionDef(name: "Schulter links") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(90, 76, w: w, h: h))
+            p.addCurve(to: Self.p(50, 118, w: w, h: h),
+                       control1: Self.p(68, 76, w: w, h: h),
+                       control2: Self.p(50, 95, w: w, h: h))
+            p.addCurve(to: Self.p(68, 108, w: w, h: h),
+                       control1: Self.p(50, 118, w: w, h: h),
+                       control2: Self.p(58, 114, w: w, h: h))
+            p.addCurve(to: Self.p(90, 98, w: w, h: h),
+                       control1: Self.p(78, 102, w: w, h: h),
+                       control2: Self.p(84, 99, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Right shoulder (mirrored)
+        RegionDef(name: "Schulter rechts") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(110, 76, w: w, h: h))
+            p.addCurve(to: Self.p(150, 118, w: w, h: h),
+                       control1: Self.p(132, 76, w: w, h: h),
+                       control2: Self.p(150, 95, w: w, h: h))
+            p.addCurve(to: Self.p(132, 108, w: w, h: h),
+                       control1: Self.p(150, 118, w: w, h: h),
+                       control2: Self.p(142, 114, w: w, h: h))
+            p.addCurve(to: Self.p(110, 98, w: w, h: h),
+                       control1: Self.p(122, 102, w: w, h: h),
+                       control2: Self.p(116, 99, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Chest (upper torso)
+        RegionDef(name: "Brust") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(68, 108, w: w, h: h))
+            p.addCurve(to: Self.p(70, 178, w: w, h: h),
+                       control1: Self.p(60, 132, w: w, h: h),
+                       control2: Self.p(64, 158, w: w, h: h))
+            p.addLine(to: Self.p(130, 178, w: w, h: h))
+            p.addCurve(to: Self.p(132, 108, w: w, h: h),
+                       control1: Self.p(136, 158, w: w, h: h),
+                       control2: Self.p(140, 132, w: w, h: h))
+            p.addCurve(to: Self.p(112, 98, w: w, h: h),
+                       control1: Self.p(128, 106, w: w, h: h),
+                       control2: Self.p(121, 101, w: w, h: h))
+            p.addLine(to: Self.p(90, 98, w: w, h: h))
+            p.addCurve(to: Self.p(68, 108, w: w, h: h),
+                       control1: Self.p(79, 101, w: w, h: h),
+                       control2: Self.p(72, 106, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Abdomen
+        RegionDef(name: "Bauch") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(70, 178, w: w, h: h))
+            p.addLine(to: Self.p(130, 178, w: w, h: h))
+            p.addCurve(to: Self.p(122, 220, w: w, h: h),
+                       control1: Self.p(136, 196, w: w, h: h),
+                       control2: Self.p(130, 210, w: w, h: h))
+            p.addLine(to: Self.p(78, 220, w: w, h: h))
+            p.addCurve(to: Self.p(70, 178, w: w, h: h),
+                       control1: Self.p(70, 210, w: w, h: h),
+                       control2: Self.p(64, 196, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Hips
+        RegionDef(name: "Hüfte") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(78, 220, w: w, h: h))
+            p.addLine(to: Self.p(122, 220, w: w, h: h))
+            p.addCurve(to: Self.p(132, 262, w: w, h: h),
+                       control1: Self.p(134, 234, w: w, h: h),
+                       control2: Self.p(136, 252, w: w, h: h))
+            p.addLine(to: Self.p(68, 262, w: w, h: h))
+            p.addCurve(to: Self.p(78, 220, w: w, h: h),
+                       control1: Self.p(64, 252, w: w, h: h),
+                       control2: Self.p(66, 234, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Left upper arm
+        RegionDef(name: "Oberarm links") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(56, 118, w: w, h: h))
+            p.addCurve(to: Self.p(40, 194, w: w, h: h),
+                       control1: Self.p(40, 148, w: w, h: h),
+                       control2: Self.p(36, 174, w: w, h: h))
+            p.addCurve(to: Self.p(62, 194, w: w, h: h),
+                       control1: Self.p(46, 202, w: w, h: h),
+                       control2: Self.p(56, 202, w: w, h: h))
+            p.addCurve(to: Self.p(68, 108, w: w, h: h),
+                       control1: Self.p(66, 174, w: w, h: h),
+                       control2: Self.p(68, 140, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Right upper arm
+        RegionDef(name: "Oberarm rechts") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(144, 118, w: w, h: h))
+            p.addCurve(to: Self.p(160, 194, w: w, h: h),
+                       control1: Self.p(160, 148, w: w, h: h),
+                       control2: Self.p(164, 174, w: w, h: h))
+            p.addCurve(to: Self.p(138, 194, w: w, h: h),
+                       control1: Self.p(154, 202, w: w, h: h),
+                       control2: Self.p(144, 202, w: w, h: h))
+            p.addCurve(to: Self.p(132, 108, w: w, h: h),
+                       control1: Self.p(134, 174, w: w, h: h),
+                       control2: Self.p(132, 140, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Left forearm
+        capsuleRegion(name: "Unterarm links", cx: 50, cy: 252, rw: 14, rh: 44),
+        // Right forearm
+        capsuleRegion(name: "Unterarm rechts", cx: 150, cy: 252, rw: 14, rh: 44),
+        // Hands
+        ellipseRegion(name: "Hand links", cx: 46, cy: 308, rx: 14, ry: 20),
+        ellipseRegion(name: "Hand rechts", cx: 154, cy: 308, rx: 14, ry: 20),
+        // Left thigh
+        RegionDef(name: "Oberschenkel links") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(68, 262, w: w, h: h))
+            p.addCurve(to: Self.p(62, 358, w: w, h: h),
+                       control1: Self.p(54, 298, w: w, h: h),
+                       control2: Self.p(56, 336, w: w, h: h))
+            p.addCurve(to: Self.p(88, 350, w: w, h: h),
+                       control1: Self.p(70, 360, w: w, h: h),
+                       control2: Self.p(80, 358, w: w, h: h))
+            p.addCurve(to: Self.p(84, 262, w: w, h: h),
+                       control1: Self.p(90, 328, w: w, h: h),
+                       control2: Self.p(90, 294, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Right thigh
+        RegionDef(name: "Oberschenkel rechts") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(132, 262, w: w, h: h))
+            p.addCurve(to: Self.p(138, 358, w: w, h: h),
+                       control1: Self.p(146, 298, w: w, h: h),
+                       control2: Self.p(144, 336, w: w, h: h))
+            p.addCurve(to: Self.p(112, 350, w: w, h: h),
+                       control1: Self.p(130, 360, w: w, h: h),
+                       control2: Self.p(120, 358, w: w, h: h))
+            p.addCurve(to: Self.p(116, 262, w: w, h: h),
+                       control1: Self.p(110, 328, w: w, h: h),
+                       control2: Self.p(110, 294, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Left calf
+        RegionDef(name: "Unterschenkel links") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(62, 358, w: w, h: h))
+            p.addCurve(to: Self.p(64, 448, w: w, h: h),
+                       control1: Self.p(54, 392, w: w, h: h),
+                       control2: Self.p(58, 428, w: w, h: h))
+            p.addCurve(to: Self.p(84, 440, w: w, h: h),
+                       control1: Self.p(68, 452, w: w, h: h),
+                       control2: Self.p(78, 448, w: w, h: h))
+            p.addCurve(to: Self.p(88, 350, w: w, h: h),
+                       control1: Self.p(88, 420, w: w, h: h),
+                       control2: Self.p(90, 386, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Right calf
+        RegionDef(name: "Unterschenkel rechts") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(138, 358, w: w, h: h))
+            p.addCurve(to: Self.p(136, 448, w: w, h: h),
+                       control1: Self.p(146, 392, w: w, h: h),
+                       control2: Self.p(142, 428, w: w, h: h))
+            p.addCurve(to: Self.p(116, 440, w: w, h: h),
+                       control1: Self.p(132, 452, w: w, h: h),
+                       control2: Self.p(122, 448, w: w, h: h))
+            p.addCurve(to: Self.p(112, 350, w: w, h: h),
+                       control1: Self.p(112, 420, w: w, h: h),
+                       control2: Self.p(110, 386, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        // Feet
+        ellipseRegion(name: "Fuss links", cx: 75, cy: 462, rx: 20, ry: 12),
+        ellipseRegion(name: "Fuss rechts", cx: 125, cy: 462, rx: 20, ry: 12),
     ]
 
-    static let hinten: [BodyRegion] = [
-        BodyRegion(name: "Kopf",                 fn: kopf),
-        BodyRegion(name: "Nacken",               fn: nacken),
-        BodyRegion(name: "Rücken oben",          fn: brust),
-        BodyRegion(name: "Rücken unten",         fn: bauch),
-        BodyRegion(name: "Gesäss",               fn: huefte),
-        BodyRegion(name: "Schulter links",       fn: schulterLinks),
-        BodyRegion(name: "Schulter rechts",      fn: mirrored(schulterLinks)),
-        BodyRegion(name: "Oberarm links",        fn: oberarmLinks),
-        BodyRegion(name: "Oberarm rechts",       fn: mirrored(oberarmLinks)),
-        BodyRegion(name: "Unterarm links",       fn: unterarmLinks),
-        BodyRegion(name: "Unterarm rechts",      fn: mirrored(unterarmLinks)),
-        BodyRegion(name: "Hand links",           fn: handLinks),
-        BodyRegion(name: "Hand rechts",          fn: mirrored(handLinks)),
-        BodyRegion(name: "Oberschenkel links",   fn: oberschenkelLinks),
-        BodyRegion(name: "Oberschenkel rechts",  fn: mirrored(oberschenkelLinks)),
-        BodyRegion(name: "Unterschenkel links",  fn: unterschenkelLinks),
-        BodyRegion(name: "Unterschenkel rechts", fn: mirrored(unterschenkelLinks)),
-        BodyRegion(name: "Fuss links",           fn: fussLinks),
-        BodyRegion(name: "Fuss rechts",          fn: mirrored(fussLinks)),
+    // MARK: Hinten (same structure, different region names for torso)
+
+    static let hinten: [RegionDef] = [
+        ellipseRegion(name: "Kopf", cx: 100, cy: 32, rx: 30, ry: 34),
+        capsuleRegion(name: "Nacken", cx: 100, cy: 72, rw: 12, rh: 10),
+        RegionDef(name: "Schulter links") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(90, 76, w: w, h: h))
+            p.addCurve(to: Self.p(50, 118, w: w, h: h),
+                       control1: Self.p(68, 76, w: w, h: h),
+                       control2: Self.p(50, 95, w: w, h: h))
+            p.addCurve(to: Self.p(68, 108, w: w, h: h),
+                       control1: Self.p(50, 118, w: w, h: h),
+                       control2: Self.p(58, 114, w: w, h: h))
+            p.addCurve(to: Self.p(90, 98, w: w, h: h),
+                       control1: Self.p(78, 102, w: w, h: h),
+                       control2: Self.p(84, 99, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        RegionDef(name: "Schulter rechts") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(110, 76, w: w, h: h))
+            p.addCurve(to: Self.p(150, 118, w: w, h: h),
+                       control1: Self.p(132, 76, w: w, h: h),
+                       control2: Self.p(150, 95, w: w, h: h))
+            p.addCurve(to: Self.p(132, 108, w: w, h: h),
+                       control1: Self.p(150, 118, w: w, h: h),
+                       control2: Self.p(142, 114, w: w, h: h))
+            p.addCurve(to: Self.p(110, 98, w: w, h: h),
+                       control1: Self.p(122, 102, w: w, h: h),
+                       control2: Self.p(116, 99, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        RegionDef(name: "Rücken oben") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(68, 108, w: w, h: h))
+            p.addCurve(to: Self.p(70, 196, w: w, h: h),
+                       control1: Self.p(60, 140, w: w, h: h),
+                       control2: Self.p(62, 172, w: w, h: h))
+            p.addLine(to: Self.p(130, 196, w: w, h: h))
+            p.addCurve(to: Self.p(132, 108, w: w, h: h),
+                       control1: Self.p(138, 172, w: w, h: h),
+                       control2: Self.p(140, 140, w: w, h: h))
+            p.addCurve(to: Self.p(112, 98, w: w, h: h),
+                       control1: Self.p(128, 106, w: w, h: h),
+                       control2: Self.p(121, 101, w: w, h: h))
+            p.addLine(to: Self.p(90, 98, w: w, h: h))
+            p.addCurve(to: Self.p(68, 108, w: w, h: h),
+                       control1: Self.p(79, 101, w: w, h: h),
+                       control2: Self.p(72, 106, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        RegionDef(name: "Rücken unten") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(70, 196, w: w, h: h))
+            p.addLine(to: Self.p(130, 196, w: w, h: h))
+            p.addLine(to: Self.p(126, 220, w: w, h: h))
+            p.addLine(to: Self.p(74, 220, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        RegionDef(name: "Gesäss") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(74, 220, w: w, h: h))
+            p.addLine(to: Self.p(126, 220, w: w, h: h))
+            p.addCurve(to: Self.p(136, 262, w: w, h: h),
+                       control1: Self.p(136, 236, w: w, h: h),
+                       control2: Self.p(138, 252, w: w, h: h))
+            p.addLine(to: Self.p(64, 262, w: w, h: h))
+            p.addCurve(to: Self.p(74, 220, w: w, h: h),
+                       control1: Self.p(62, 252, w: w, h: h),
+                       control2: Self.p(64, 236, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        RegionDef(name: "Oberarm links") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(56, 118, w: w, h: h))
+            p.addCurve(to: Self.p(40, 194, w: w, h: h),
+                       control1: Self.p(40, 148, w: w, h: h),
+                       control2: Self.p(36, 174, w: w, h: h))
+            p.addCurve(to: Self.p(62, 194, w: w, h: h),
+                       control1: Self.p(46, 202, w: w, h: h),
+                       control2: Self.p(56, 202, w: w, h: h))
+            p.addCurve(to: Self.p(68, 108, w: w, h: h),
+                       control1: Self.p(66, 174, w: w, h: h),
+                       control2: Self.p(68, 140, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        RegionDef(name: "Oberarm rechts") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(144, 118, w: w, h: h))
+            p.addCurve(to: Self.p(160, 194, w: w, h: h),
+                       control1: Self.p(160, 148, w: w, h: h),
+                       control2: Self.p(164, 174, w: w, h: h))
+            p.addCurve(to: Self.p(138, 194, w: w, h: h),
+                       control1: Self.p(154, 202, w: w, h: h),
+                       control2: Self.p(144, 202, w: w, h: h))
+            p.addCurve(to: Self.p(132, 108, w: w, h: h),
+                       control1: Self.p(134, 174, w: w, h: h),
+                       control2: Self.p(132, 140, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        capsuleRegion(name: "Unterarm links", cx: 50, cy: 252, rw: 14, rh: 44),
+        capsuleRegion(name: "Unterarm rechts", cx: 150, cy: 252, rw: 14, rh: 44),
+        ellipseRegion(name: "Hand links", cx: 46, cy: 308, rx: 14, ry: 20),
+        ellipseRegion(name: "Hand rechts", cx: 154, cy: 308, rx: 14, ry: 20),
+        RegionDef(name: "Oberschenkel links") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(64, 262, w: w, h: h))
+            p.addCurve(to: Self.p(58, 358, w: w, h: h),
+                       control1: Self.p(50, 298, w: w, h: h),
+                       control2: Self.p(52, 336, w: w, h: h))
+            p.addCurve(to: Self.p(84, 350, w: w, h: h),
+                       control1: Self.p(64, 362, w: w, h: h),
+                       control2: Self.p(76, 360, w: w, h: h))
+            p.addCurve(to: Self.p(80, 262, w: w, h: h),
+                       control1: Self.p(88, 328, w: w, h: h),
+                       control2: Self.p(86, 294, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        RegionDef(name: "Oberschenkel rechts") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(136, 262, w: w, h: h))
+            p.addCurve(to: Self.p(142, 358, w: w, h: h),
+                       control1: Self.p(150, 298, w: w, h: h),
+                       control2: Self.p(148, 336, w: w, h: h))
+            p.addCurve(to: Self.p(116, 350, w: w, h: h),
+                       control1: Self.p(136, 362, w: w, h: h),
+                       control2: Self.p(124, 360, w: w, h: h))
+            p.addCurve(to: Self.p(120, 262, w: w, h: h),
+                       control1: Self.p(112, 328, w: w, h: h),
+                       control2: Self.p(114, 294, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        RegionDef(name: "Unterschenkel links") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(58, 358, w: w, h: h))
+            p.addCurve(to: Self.p(60, 448, w: w, h: h),
+                       control1: Self.p(50, 392, w: w, h: h),
+                       control2: Self.p(54, 428, w: w, h: h))
+            p.addCurve(to: Self.p(84, 440, w: w, h: h),
+                       control1: Self.p(64, 452, w: w, h: h),
+                       control2: Self.p(76, 448, w: w, h: h))
+            p.addCurve(to: Self.p(84, 350, w: w, h: h),
+                       control1: Self.p(86, 420, w: w, h: h),
+                       control2: Self.p(88, 386, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        RegionDef(name: "Unterschenkel rechts") { w, h in
+            var p = Path()
+            p.move(to:    Self.p(142, 358, w: w, h: h))
+            p.addCurve(to: Self.p(140, 448, w: w, h: h),
+                       control1: Self.p(150, 392, w: w, h: h),
+                       control2: Self.p(146, 428, w: w, h: h))
+            p.addCurve(to: Self.p(116, 440, w: w, h: h),
+                       control1: Self.p(136, 452, w: w, h: h),
+                       control2: Self.p(124, 448, w: w, h: h))
+            p.addCurve(to: Self.p(116, 350, w: w, h: h),
+                       control1: Self.p(114, 420, w: w, h: h),
+                       control2: Self.p(112, 386, w: w, h: h))
+            p.closeSubpath()
+            return p
+        },
+        ellipseRegion(name: "Fuss links", cx: 75, cy: 462, rx: 20, ry: 12),
+        ellipseRegion(name: "Fuss rechts", cx: 125, cy: 462, rx: 20, ry: 12),
     ]
 }
