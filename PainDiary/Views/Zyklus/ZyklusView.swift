@@ -815,7 +815,7 @@ struct ZyklusEintragSheet: View {
             .navigationTitle("Tageseintrag")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { abbrechen() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Speichern") { speichern() } }
                 if bestehend != nil {
                     ToolbarItem(placement: .bottomBar) {
@@ -886,6 +886,14 @@ struct ZyklusEintragSheet: View {
         eintrag.basaltemperatur = Double(basaltemperatur.replacingOccurrences(of: ",", with: ".")) ?? 0
         eintrag.sexuelleAktivitaet = sexuelleAktivitaet
         eintrag.notizen = notizen
+        dismiss()
+    }
+
+    private func abbrechen() {
+        // Ghost-Einträge ohne Daten beim Abbrechen bereinigen
+        if let alt = bestehend, istLeer {
+            modelContext.delete(alt)
+        }
         dismiss()
     }
 

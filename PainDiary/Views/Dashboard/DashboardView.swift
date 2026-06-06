@@ -8,18 +8,22 @@ struct DashboardView: View {
     @Query private var medikamente: [Dauermedikation]
     @Query(sort: \MIDASBewertung.datum, order: .reverse) private var midasBewertungen: [MIDASBewertung]
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
+    @Query(sort: \EinnahmeLog.datum, order: .reverse) private var einnahmeLogs: [EinnahmeLog]
     @State private var viewModel = DashboardViewModel()
     @State private var exportURL: URL? = nil
     @State private var pdfVorschauAnzeigen = false
     @State private var exportOptionsAnzeigen = false
     @State private var exportOptionen = ExportOptionen()
     @State private var istAmExportieren = false
+    @State private var tagesstart = Calendar.current.startOfDay(for: Date())
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 statistikKarten
                 if profile.first?.zyklusTrackingAktiv == true { zyklusKarte }
+                if !medikamente.filter(\.aktiv).isEmpty { medikamentenKarte }
                 wellnessKarte
                 schnellLinks
                 schmerzVerlaufChart
@@ -29,6 +33,9 @@ struct DashboardView: View {
         }
         .navigationTitle("Übersicht")
         .onChange(of: eintraege) { _, neu in viewModel.eintraege = neu }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { tagesstart = Calendar.current.startOfDay(for: Date()) }
+        }
         .onAppear {
             viewModel.eintraege = eintraege
         }
@@ -84,6 +91,64 @@ struct DashboardView: View {
             }
         }
 #endif
+    }
+
+    private var medikamentenKarte: some View {
+        let aktive = medikamente.filter(\.aktiv)
+        let notif = NotificationManager.shared
+        let heuteLogs = einnahmeLogs.filter { $0.datum >= tagesstart }
+
+        return NavigationLink(destination: MedikamenteView()) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Medikamente heute", systemImage: "pill.fill")
+                        .font(.headline)
+                        .foregroundStyle(.blue)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+
+                ForEach(aktive.prefix(3)) { med in
+                    let erwartet = notif.anzahlDosen(med.frequenz)
+                    let eingenommen = heuteLogs.filter { $0.medikamentName == med.name }.count
+                    let fertig = erwartet > 0 ? eingenommen >= erwartet : eingenommen > 0
+
+                    HStack(spacing: 10) {
+                        Image(systemName: fertig ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(fertig ? .green : .secondary)
+                            .font(.body)
+                        Text(med.name)
+                            .font(.subheadline)
+                            .foregroundStyle(fertig ? .secondary : .primary)
+                        if !med.dosierung.isEmpty {
+                            Text(med.dosierung)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if erwartet > 1 {
+                            Text("\(eingenommen)/\(erwartet)")
+                                .font(.caption)
+                                .foregroundStyle(fertig ? .green : .secondary)
+                        } else if erwartet == 0 && eingenommen > 0 {
+                            Text("\(eingenommen)×")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                if aktive.count > 3 {
+                    Text("+ \(aktive.count - 3) weitere")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
     }
 
     private var wellnessKarte: some View {
