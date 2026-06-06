@@ -817,6 +817,14 @@ struct ZyklusEintragSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Speichern") { speichern() } }
+                if bestehend != nil {
+                    ToolbarItem(placement: .bottomBar) {
+                        Button(role: .destructive) { loeschen() } label: {
+                            Label("Eintrag löschen", systemImage: "trash")
+                                .font(.caption)
+                        }
+                    }
+                }
             }
             .onAppear { laden() }
         }
@@ -844,7 +852,25 @@ struct ZyklusEintragSheet: View {
         neuesSymptom = ""
     }
 
+    private var istLeer: Bool {
+        !istPeriode &&
+        symptome.isEmpty &&
+        ovulationstest.isEmpty &&
+        zervixschleim.isEmpty &&
+        (Double(basaltemperatur.replacingOccurrences(of: ",", with: ".")) ?? 0) == 0 &&
+        sexuelleAktivitaet.isEmpty &&
+        notizen.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     private func speichern() {
+        // Bestehenden Eintrag löschen wenn alle Felder geleert wurden
+        if let alt = bestehend, istLeer {
+            modelContext.delete(alt)
+            dismiss()
+            return
+        }
+        guard !istLeer else { dismiss(); return }
+
         let eintrag: ZyklusEintrag
         if let alt = bestehend {
             eintrag = alt
@@ -860,6 +886,11 @@ struct ZyklusEintragSheet: View {
         eintrag.basaltemperatur = Double(basaltemperatur.replacingOccurrences(of: ",", with: ".")) ?? 0
         eintrag.sexuelleAktivitaet = sexuelleAktivitaet
         eintrag.notizen = notizen
+        dismiss()
+    }
+
+    private func loeschen() {
+        if let alt = bestehend { modelContext.delete(alt) }
         dismiss()
     }
 }
