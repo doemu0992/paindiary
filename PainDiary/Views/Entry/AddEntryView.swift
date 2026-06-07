@@ -455,18 +455,25 @@ private struct OrtTypStepView: View {
     let onVorlageTapped: () -> Void
     let onVorlageDismissed: () -> Void
 
+    @StateObject private var scanService = BodyScanService.shared
+    @State private var scanSetupAnzeigen = false
+
+    private var ausgewaehlt: Set<String> {
+        Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             // Type selector
-            Picker("Eintragstyp", selection: $eintragTyp) {
+            Picker("Typ", selection: $eintragTyp) {
                 Text("Schmerzen").tag(EintragTyp.schmerz)
-                Text("Haut").tag(EintragTyp.haut)
+                Text("Hautveränderung").tag(EintragTyp.haut)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
 
-            // Vorlage banner (only for schmerz)
-            if eintragTyp == .schmerz && !vorlageDismissed, let letzter = letzterEintrag {
+            // Vorlage banner (schmerz only)
+            if eintragTyp == .schmerz, !vorlageDismissed, let letzter = letzterEintrag {
                 VorlageBannerView(
                     eintrag: letzter,
                     onUebernehmen: onVorlageTapped,
@@ -475,14 +482,69 @@ private struct OrtTypStepView: View {
                 .padding(.horizontal)
             }
 
-            // Body map
-            WizardAnatomieKarteView(
-                koerperstelle: $koerperstelle,
-                tintColor: eintragTyp == .schmerz ? .red : .orange,
-                subRegionenMap: eintragTyp == .schmerz ? nil : SubRegionen.hautMap,
-                titel: eintragTyp == .schmerz ? "Wo hast du Schmerzen?" : "Betroffene Hautstellen"
-            )
+            // Body map card
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(eintragTyp == .schmerz ? "Wo hast du Schmerzen?" : "Betroffene Hautstellen")
+                        .font(.headline)
+                    Spacer()
+                    Button { scanSetupAnzeigen = true } label: {
+                        Label(scanService.hatScan ? "Neu scannen" : "Körper scannen",
+                              systemImage: scanService.hatScan ? "arrow.triangle.2.circlepath" : "camera.viewfinder")
+                            .font(.caption)
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(Color.accentColor.opacity(0.12))
+                            .foregroundStyle(Color.accentColor)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                KoerperPickerView(
+                    auswahl: $koerperstelle,
+                    tintColor: eintragTyp == .schmerz ? .systemRed : .systemOrange,
+                    frameHeight: 380,
+                    subRegionenMap: eintragTyp == .schmerz ? nil : SubRegionen.hautMap
+                )
+
+                // Selected chips
+                if ausgewaehlt.isEmpty {
+                    Text("Tippe auf eine Körperstelle").font(.subheadline).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center).frame(height: 30)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(ausgewaehlt.sorted(), id: \.self) { r in
+                                Button {
+                                    var s = ausgewaehlt; s.remove(r)
+                                    koerperstelle = s.sorted().joined(separator: ", ")
+                                } label: {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                                        Text(r).font(.caption)
+                                    }
+                                    .padding(.horizontal, 10).padding(.vertical, 5)
+                                    .background(eintragTyp == .schmerz ? Color.red.opacity(0.12) : Color.orange.opacity(0.12))
+                                    .foregroundStyle(eintragTyp == .schmerz ? .red : .orange)
+                                    .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .frame(height: 30)
+                }
+
+                Label("Drehen zum Erkunden", systemImage: "hand.draw")
+                    .font(.caption2).foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .padding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .padding(.horizontal)
         }
+        .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
     }
 }
 
