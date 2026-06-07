@@ -19,6 +19,10 @@ struct AddEntryView: View {
     @State private var massnahmen = ""
     @State private var hautStellen = ""
     @State private var hautArt = ""
+    @State private var fotoDateiname = ""
+    @State private var verlauf = ""
+    @State private var letzterEintrag: PainEntry? = nil
+    @State private var vorlageDismissed = false
     @State private var stimmung = 3
     @State private var stressLevel = 3
     @State private var schlafStunden = 7.0
@@ -77,6 +81,7 @@ struct AddEntryView: View {
                 if eintrag == nil {
                     wetter.laden()
                     ladeSchlafVomHeutigenTag()
+                    ladeLetztenEintrag()
                     Task { healthSchlaf = await health.schlafStundenLetztteNacht() }
                 }
             }
@@ -159,9 +164,24 @@ struct AddEntryView: View {
     private var schrittInhalt: some View {
         switch schritt {
         case 0:
-            WizardAnatomieKarteView(koerperstelle: $koerperstelle)
+            VStack(spacing: 0) {
+                if !vorlageDismissed, let letzter = letzterEintrag {
+                    VorlageBannerView(eintrag: letzter) {
+                        übernehmeVorlage(letzter)
+                    } onDismiss: {
+                        vorlageDismissed = true
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                }
+                WizardAnatomieKarteView(koerperstelle: $koerperstelle)
+            }
         case 1:
-            IntensitaetStepView(schmerzstaerke: $schmerzstaerke)
+            IntensitaetStepView(
+                schmerzstaerke: $schmerzstaerke,
+                verlauf: $verlauf,
+                letzterEintrag: letzterEintrag
+            )
         case 2:
             CharakterStepView(
                 schmerzart: $schmerzart,
@@ -175,7 +195,7 @@ struct AddEntryView: View {
         case 5:
             MassnahmenStepView(massnahmen: $massnahmen, datum: datum)
         case 6:
-            HautStepView(hautStellen: $hautStellen, hautArt: $hautArt)
+            HautStepView(hautStellen: $hautStellen, hautArt: $hautArt, fotoDateiname: $fotoDateiname)
         case 7:
             WohlbefindenStepView(
                 stimmung: $stimmung,
@@ -268,6 +288,27 @@ struct AddEntryView: View {
 
     // MARK: - Data
 
+    private func ladeLetztenEintrag() {
+        var descriptor = FetchDescriptor<PainEntry>(
+            sortBy: [SortDescriptor(\.datum, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        letzterEintrag = try? modelContext.fetch(descriptor).first
+    }
+
+    private func übernehmeVorlage(_ e: PainEntry) {
+        koerperstelle    = e.koerperstelle
+        schmerzstaerke   = e.schmerzstaerke
+        schmerzart       = e.schmerzart
+        dauerMinuten     = e.dauerMinuten
+        ausloeser        = e.ausloeser
+        begleiterscheinungen = e.begleiterscheinungen
+        massnahmen       = e.massnahmen
+        hautStellen      = e.hautStellen
+        hautArt          = e.hautArt
+        vorlageDismissed = true
+    }
+
     private func ladeSchlafVomHeutigenTag() {
         let cal = Calendar.current
         let heute = cal.startOfDay(for: Date())
@@ -293,6 +334,8 @@ struct AddEntryView: View {
         massnahmen = e.massnahmen
         hautStellen = e.hautStellen
         hautArt = e.hautArt
+        fotoDateiname = e.fotoDateiname
+        verlauf = e.verlauf
         stimmung = e.stimmung
         stressLevel = e.stressLevel
         schlafStunden = e.schlafStunden
@@ -311,6 +354,8 @@ struct AddEntryView: View {
             e.massnahmen = massnahmen
             e.hautStellen = hautStellen
             e.hautArt = hautArt
+            e.fotoDateiname = fotoDateiname
+            e.verlauf = verlauf
             e.stimmung = stimmung
             e.schlafStunden = schlafStunden
             e.stressLevel = stressLevel
@@ -329,6 +374,8 @@ struct AddEntryView: View {
                 stimmung: stimmung,
                 hautStellen: hautStellen,
                 hautArt: hautArt,
+                fotoDateiname: fotoDateiname,
+                verlauf: verlauf,
                 schlafStunden: schlafStunden,
                 stressLevel: stressLevel,
                 wetterTemperatur: wetterSnap?.temperatur,
@@ -338,5 +385,53 @@ struct AddEntryView: View {
             modelContext.insert(neu)
         }
         dismiss()
+    }
+}
+
+// MARK: - Vorlage banner
+
+private struct VorlageBannerView: View {
+    let eintrag: PainEntry
+    let onUebernehmen: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "clock.arrow.circlepath")
+                .foregroundStyle(Color.accentColor)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Wie zuletzt?")
+                    .font(.caption.bold())
+                Text(zusammenfassung)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button("Übernehmen", action: onUebernehmen)
+                .font(.caption.bold())
+                .foregroundStyle(Color.accentColor)
+
+            Button { onDismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(Color.accentColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var zusammenfassung: String {
+        var teile: [String] = []
+        if !eintrag.koerperstelle.isEmpty {
+            teile.append(eintrag.koerperstelle.components(separatedBy: ", ").prefix(2).joined(separator: ", "))
+        }
+        teile.append("Stärke \(eintrag.schmerzstaerke)")
+        return teile.joined(separator: " · ")
     }
 }

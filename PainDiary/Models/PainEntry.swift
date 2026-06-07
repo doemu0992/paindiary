@@ -20,8 +20,10 @@ import SwiftData
     var wetterCode: Int?
     var wetterWind: Double?
 
-    var hautStellen: String = ""   // comma-separated body regions with skin changes
-    var hautArt: String = ""       // comma-separated skin condition types
+    var hautStellen: String = ""
+    var hautArt: String = ""
+    var fotoDateiname: String = ""
+    var verlauf: String = ""   // "besser" | "gleich" | "schlechter" | ""
 
     init(
         datum: Date = .now,
