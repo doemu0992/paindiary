@@ -5,42 +5,51 @@ struct HautArtFotoStepView: View {
     @Binding var hautArt: String
     @Binding var fotoDateiname: String
 
+    @State private var ausgewaehlt: Set<String> = []
+    @State private var freitext = ""
+    @State private var photoItem: PhotosPickerItem? = nil
+    @State private var geladensBild: UIImage? = nil
+
     private let artVorschlaege = [
         "Ausschlag", "Schuppenflechte", "Ekzem", "Rötung", "Schwellung",
         "Hämatom", "Wunde", "Juckreiz", "Trockene Haut", "Verbrennung", "Bläschen"
     ]
 
-    @State private var artAusgewaehlt: Set<String> = []
-    @State private var eigenerText = ""
-    @State private var photoItem: PhotosPickerItem? = nil
-    @State private var fotoBild: UIImage? = nil
-
     var body: some View {
         VStack(spacing: 24) {
-            stepHeader
+            // Step header
+            VStack(spacing: 6) {
+                Image(systemName: "bandage")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.orange)
+                Text("Was zeigt sich?")
+                    .font(.title2.bold())
+                    .multilineTextAlignment(.center)
+            }
 
+            // Card 1: Art der Hautveränderung
             VStack(alignment: .leading, spacing: 12) {
-                Text("Art der Veränderung")
+                Text("Art der Veränderung (mehrere möglich)")
                     .font(.headline)
                 FlowLayout(artVorschlaege) { art in
-                    ChipButton(label: art, ausgewaehlt: artAusgewaehlt.contains(art)) {
-                        if artAusgewaehlt.contains(art) { artAusgewaehlt.remove(art) }
-                        else { artAusgewaehlt.insert(art) }
-                        hautArt = artAusgewaehlt.sorted().joined(separator: ", ")
+                    ChipButton(label: art, ausgewaehlt: ausgewaehlt.contains(art)) {
+                        if ausgewaehlt.contains(art) { ausgewaehlt.remove(art) }
+                        else { ausgewaehlt.insert(art) }
+                        aktualisiereBinding()
                     }
                 }
                 HStack(spacing: 8) {
-                    TextField("Weitere Art…", text: $eigenerText)
+                    TextField("Eigene Beschreibung…", text: $freitext)
                         .textFieldStyle(.roundedBorder)
-                    if !eigenerText.isEmpty {
+                    if !freitext.isEmpty {
                         Button {
-                            let t = eigenerText.trimmingCharacters(in: .whitespaces)
-                            artAusgewaehlt.insert(t)
-                            eigenerText = ""
-                            hautArt = artAusgewaehlt.sorted().joined(separator: ", ")
+                            ausgewaehlt.insert(freitext.trimmingCharacters(in: .whitespaces))
+                            freitext = ""
+                            aktualisiereBinding()
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)
+                                .font(.title2)
                         }
                     }
                 }
@@ -48,77 +57,80 @@ struct HautArtFotoStepView: View {
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
 
+            // Card 2: Foto
             VStack(alignment: .leading, spacing: 12) {
-                Text("Foto-Anhang")
+                Text("Foto (optional)")
                     .font(.headline)
-                if let bild = fotoBild {
+
+                if let bild = geladensBild {
                     ZStack(alignment: .topTrailing) {
                         Image(uiImage: bild)
                             .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 180)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .scaledToFit()
+                            .frame(maxHeight: 220)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+
                         Button {
                             FotoManager.loeschen(dateiname: fotoDateiname)
                             fotoDateiname = ""
-                            fotoBild = nil
+                            geladensBild = nil
+                            photoItem = nil
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title2)
                                 .foregroundStyle(.white)
-                                .shadow(radius: 2)
+                                .background(Color.black.opacity(0.5), in: Circle())
                         }
+                        .buttonStyle(.plain)
                         .padding(8)
                     }
                 } else {
                     PhotosPicker(selection: $photoItem, matching: .images) {
-                        Label("Foto hinzufügen", systemImage: "camera.fill")
-                            .font(.subheadline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
-                            .foregroundStyle(.primary)
+                        HStack(spacing: 8) {
+                            Image(systemName: "camera.fill")
+                            Text("Foto hinzufügen")
+                        }
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(.orange)
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-
-            Text("Optional – du kannst diesen Schritt überspringen.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
         }
         .padding(.horizontal)
         .onAppear {
-            artAusgewaehlt = Set(hautArt.components(separatedBy: ", ").filter { !$0.isEmpty })
-            fotoBild = FotoManager.laden(dateiname: fotoDateiname)
+            ladeWerte()
+            if let bild = FotoManager.laden(dateiname: fotoDateiname) {
+                geladensBild = bild
+            }
         }
-        .onChange(of: photoItem) {
+        .onChange(of: photoItem) { _, newItem in
+            guard let newItem else { return }
             Task {
-                guard let data = try? await photoItem?.loadTransferable(type: Data.self),
-                      let bild = UIImage(data: data) else { return }
-                let alteDateiname = fotoDateiname
-                fotoDateiname = FotoManager.speichern(bild)
-                FotoManager.loeschen(dateiname: alteDateiname)
-                fotoBild = bild
+                if let data = try? await newItem.loadTransferable(type: Data.self),
+                   let bild = UIImage(data: data) {
+                    // Delete old foto if exists
+                    if !fotoDateiname.isEmpty {
+                        FotoManager.loeschen(dateiname: fotoDateiname)
+                    }
+                    fotoDateiname = FotoManager.speichern(bild)
+                    geladensBild = bild
+                }
             }
         }
     }
 
-    private var stepHeader: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "bandage")
-                .font(.system(size: 38))
-                .foregroundStyle(.orange)
-                .padding(14)
-                .background(Color.orange.opacity(0.1), in: Circle())
-            Text("Was zeigt sich?")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 4)
+    private func aktualisiereBinding() {
+        hautArt = ausgewaehlt.sorted().joined(separator: ", ")
+    }
+
+    private func ladeWerte() {
+        let teile = hautArt.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
+        ausgewaehlt = Set(teile.filter { !$0.isEmpty })
     }
 }

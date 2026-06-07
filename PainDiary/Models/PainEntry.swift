@@ -15,6 +15,12 @@ import SwiftData
     var schlafStunden: Double = 0
     var stressLevel: Int = 3          // 1–5
 
+    // Haut-Eintrag Felder
+    var hautStellen: String = ""
+    var hautArt: String = ""
+    var fotoDateiname: String = ""
+    var verlauf: String = ""
+
     // Wetter zum Zeitpunkt der Erfassung
     var wetterTemperatur: Double?
     var wetterCode: Int?

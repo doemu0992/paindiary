@@ -6,8 +6,8 @@ struct CharakterAusloeserStepView: View {
     @Binding var ausloeser: String
     let koerperstelle: String
 
-    @State private var charakterAusgewaehlt: Set<String> = []
-    @State private var charakterFreitext = ""
+    @State private var charAusgewaehlt: Set<String> = []
+    @State private var charFreitext = ""
     @State private var ausloeserAusgewaehlt: Set<String> = []
     @State private var ausloeserFreitext = ""
 
@@ -19,36 +19,46 @@ struct CharakterAusloeserStepView: View {
 
     private var ausloeserVorschlaege: [String] {
         SchmerzLexikon.db[koerperstelle]?.ausloeser ?? [
-            "Stress", "Bewegung", "Wetter", "Schlafmangel",
-            "Essen", "Alkohol", "Bildschirmarbeit", "Kälte", "Unbekannt"
+            "Stress", "Bewegung", "Wetter", "Schlafmangel", "Essen",
+            "Alkohol", "Bildschirmarbeit", "Kälte", "Unbekannt"
         ]
     }
 
     var body: some View {
         VStack(spacing: 24) {
-            stepHeader
+            // Step header
+            VStack(spacing: 6) {
+                Image(systemName: "waveform.path.ecg")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.blue)
+                Text("Wie und warum?")
+                    .font(.title2.bold())
+                    .multilineTextAlignment(.center)
+            }
 
+            // Card 1: Schmerzart
             VStack(alignment: .leading, spacing: 12) {
-                Text("Schmerzart")
+                Text("Schmerzart (mehrere möglich)")
                     .font(.headline)
-                FlowLayout(charakterVorschlaege) { v in
-                    ChipButton(label: v, ausgewaehlt: charakterAusgewaehlt.contains(v)) {
-                        if charakterAusgewaehlt.contains(v) { charakterAusgewaehlt.remove(v) }
-                        else { charakterAusgewaehlt.insert(v) }
+                FlowLayout(charakterVorschlaege) { vorschlag in
+                    ChipButton(label: vorschlag, ausgewaehlt: charAusgewaehlt.contains(vorschlag)) {
+                        if charAusgewaehlt.contains(vorschlag) { charAusgewaehlt.remove(vorschlag) }
+                        else { charAusgewaehlt.insert(vorschlag) }
                         aktualisiereSchmerzart()
                     }
                 }
                 HStack(spacing: 8) {
-                    TextField("Eigene Beschreibung…", text: $charakterFreitext)
+                    TextField("Eigene Beschreibung…", text: $charFreitext)
                         .textFieldStyle(.roundedBorder)
-                    if !charakterFreitext.isEmpty {
+                    if !charFreitext.isEmpty {
                         Button {
-                            charakterAusgewaehlt.insert(charakterFreitext.trimmingCharacters(in: .whitespaces))
-                            charakterFreitext = ""
+                            charAusgewaehlt.insert(charFreitext.trimmingCharacters(in: .whitespaces))
+                            charFreitext = ""
                             aktualisiereSchmerzart()
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)
+                                .font(.title2)
                         }
                     }
                 }
@@ -56,14 +66,14 @@ struct CharakterAusloeserStepView: View {
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
 
+            // Card 2: Dauer
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text("Dauer")
                         .font(.headline)
                     Spacer()
                     Text(formatierteDauer(dauerMinuten))
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(.secondary)
                 }
                 Slider(value: Binding(
                     get: { Double(dauerMinuten) },
@@ -71,21 +81,22 @@ struct CharakterAusloeserStepView: View {
                 ), in: 0...480, step: 15)
                 .tint(.blue)
                 HStack {
-                    Text("Keine Angabe").font(.caption2).foregroundStyle(.secondary)
+                    Text("Keine Angabe").font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Text("8 Std.").font(.caption2).foregroundStyle(.secondary)
+                    Text("8 Std.").font(.caption).foregroundStyle(.secondary)
                 }
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
 
+            // Card 3: Auslöser
             VStack(alignment: .leading, spacing: 12) {
-                Text("Auslöser")
+                Text("Häufige Auslöser (mehrere möglich)")
                     .font(.headline)
-                FlowLayout(ausloeserVorschlaege) { v in
-                    ChipButton(label: v, ausgewaehlt: ausloeserAusgewaehlt.contains(v)) {
-                        if ausloeserAusgewaehlt.contains(v) { ausloeserAusgewaehlt.remove(v) }
-                        else { ausloeserAusgewaehlt.insert(v) }
+                FlowLayout(ausloeserVorschlaege) { vorschlag in
+                    ChipButton(label: vorschlag, ausgewaehlt: ausloeserAusgewaehlt.contains(vorschlag)) {
+                        if ausloeserAusgewaehlt.contains(vorschlag) { ausloeserAusgewaehlt.remove(vorschlag) }
+                        else { ausloeserAusgewaehlt.insert(vorschlag) }
                         aktualisiereAusloeser()
                     }
                 }
@@ -100,6 +111,7 @@ struct CharakterAusloeserStepView: View {
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)
+                                .font(.title2)
                         }
                     }
                 }
@@ -108,35 +120,23 @@ struct CharakterAusloeserStepView: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         }
         .padding(.horizontal)
-        .onAppear { ladeBindings() }
-    }
-
-    private var stepHeader: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "waveform.path.ecg")
-                .font(.system(size: 38))
-                .foregroundStyle(.blue)
-                .padding(14)
-                .background(Color.blue.opacity(0.1), in: Circle())
-            Text("Wie und warum?")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 4)
+        .onAppear { ladeWerte() }
     }
 
     private func aktualisiereSchmerzart() {
-        schmerzart = charakterAusgewaehlt.sorted().joined(separator: ", ")
+        schmerzart = charAusgewaehlt.sorted().joined(separator: ", ")
     }
 
     private func aktualisiereAusloeser() {
         ausloeser = ausloeserAusgewaehlt.sorted().joined(separator: ", ")
     }
 
-    private func ladeBindings() {
-        charakterAusgewaehlt = Set(schmerzart.components(separatedBy: ", ").filter { !$0.isEmpty })
-        ausloeserAusgewaehlt = Set(ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty })
+    private func ladeWerte() {
+        let charTeile = schmerzart.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
+        charAusgewaehlt = Set(charTeile.filter { !$0.isEmpty })
+
+        let ausloeserTeile = ausloeser.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
+        ausloeserAusgewaehlt = Set(ausloeserTeile.filter { !$0.isEmpty })
     }
 
     private func formatierteDauer(_ min: Int) -> String {

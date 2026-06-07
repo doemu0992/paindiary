@@ -178,7 +178,9 @@ private struct PainEntryZeile: View {
         HStack(spacing: 12) {
             SchmerzBadge(staerke: eintrag.schmerzstaerke)
             VStack(alignment: .leading, spacing: 3) {
-                Text(eintrag.koerperstelle.isEmpty ? "Körperstelle unbekannt" : eintrag.koerperstelle)
+                Text(!eintrag.koerperstelle.isEmpty ? eintrag.koerperstelle
+                     : !eintrag.hautStellen.isEmpty ? eintrag.hautStellen
+                     : "Körperstelle unbekannt")
                     .font(.headline)
                 HStack(spacing: 6) {
                     if !eintrag.schmerzart.isEmpty {

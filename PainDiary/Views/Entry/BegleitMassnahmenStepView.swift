@@ -5,7 +5,7 @@ struct BegleitMassnahmenStepView: View {
     @Binding var begleiterscheinungen: String
     @Binding var massnahmen: String
     let koerperstelle: String
-    var datum: Date = .now
+    let datum: Date
 
     @Query private var alleEinnahmen: [EinnahmeLog]
 
@@ -14,6 +14,11 @@ struct BegleitMassnahmenStepView: View {
     @State private var massnahmenAusgewaehlt: Set<String> = []
     @State private var massnahmenFreitext = ""
 
+    private let massnahmenVorschlaege = [
+        "Schmerzmittel", "Wärme", "Kälte", "Ruhe", "Massage",
+        "Dehnung", "Sport", "Meditation", "Arzt besucht", "Schlaf"
+    ]
+
     private var begleitVorschlaege: [String] {
         SchmerzLexikon.db[koerperstelle]?.symptome ?? [
             "Übelkeit", "Schwindel", "Müdigkeit", "Schlafstörungen",
@@ -21,30 +26,33 @@ struct BegleitMassnahmenStepView: View {
         ]
     }
 
-    private let massnahmenVorschlaege = [
-        "Schmerzmittel", "Wärme", "Kälte", "Ruhe", "Massage",
-        "Dehnung", "Sport", "Meditation", "Arzt besucht", "Schlaf"
-    ]
-
     private var eingenommeneHeute: [EinnahmeLog] {
-        let cal = Calendar.current
-        return alleEinnahmen.filter {
-            $0.eingenommen && cal.isDate($0.datum, inSameDayAs: datum)
-        }
+        let start = Calendar.current.startOfDay(for: datum)
+        let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start
+        return alleEinnahmen.filter { $0.datum >= start && $0.datum < end && $0.eingenommen }
     }
 
     var body: some View {
         VStack(spacing: 24) {
-            stepHeader
+            // Step header
+            VStack(spacing: 6) {
+                Image(systemName: "list.clipboard")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.purple)
+                Text("Was noch?")
+                    .font(.title2.bold())
+                    .multilineTextAlignment(.center)
+            }
 
+            // Card 1: Begleitsymptome
             VStack(alignment: .leading, spacing: 12) {
-                Text("Begleiterscheinungen")
+                Text("Begleiterscheinungen (mehrere möglich)")
                     .font(.headline)
-                FlowLayout(begleitVorschlaege) { v in
-                    ChipButton(label: v, ausgewaehlt: begleitAusgewaehlt.contains(v)) {
-                        if begleitAusgewaehlt.contains(v) { begleitAusgewaehlt.remove(v) }
-                        else { begleitAusgewaehlt.insert(v) }
-                        aktualisiereBegleit()
+                FlowLayout(begleitVorschlaege) { vorschlag in
+                    ChipButton(label: vorschlag, ausgewaehlt: begleitAusgewaehlt.contains(vorschlag)) {
+                        if begleitAusgewaehlt.contains(vorschlag) { begleitAusgewaehlt.remove(vorschlag) }
+                        else { begleitAusgewaehlt.insert(vorschlag) }
+                        aktualisiereBegleiter()
                     }
                 }
                 HStack(spacing: 8) {
@@ -54,10 +62,11 @@ struct BegleitMassnahmenStepView: View {
                         Button {
                             begleitAusgewaehlt.insert(begleitFreitext.trimmingCharacters(in: .whitespaces))
                             begleitFreitext = ""
-                            aktualisiereBegleit()
+                            aktualisiereBegleiter()
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)
+                                .font(.title2)
                         }
                     }
                 }
@@ -65,27 +74,25 @@ struct BegleitMassnahmenStepView: View {
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
 
+            // Card 2: Massnahmen
             VStack(alignment: .leading, spacing: 12) {
-                Text("Massnahmen")
+                Text("Massnahmen (mehrere möglich)")
                     .font(.headline)
+
                 if !eingenommeneHeute.isEmpty {
                     HStack(spacing: 6) {
-                        Image(systemName: "info.circle")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("Heute eingenommen:")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Image(systemName: "pills.fill")
+                            .foregroundStyle(.purple)
                         Text(eingenommeneHeute.map { medLabel($0) }.joined(separator: ", "))
-                            .font(.caption.bold())
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
-                        Spacer()
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.purple.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
                 }
+
                 FlowLayout(massnahmenVorschlaege) { m in
                     ChipButton(label: m, ausgewaehlt: massnahmenAusgewaehlt.contains(m)) {
                         if massnahmenAusgewaehlt.contains(m) { massnahmenAusgewaehlt.remove(m) }
@@ -104,6 +111,7 @@ struct BegleitMassnahmenStepView: View {
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)
+                                .font(.title2)
                         }
                     }
                 }
@@ -112,41 +120,40 @@ struct BegleitMassnahmenStepView: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         }
         .padding(.horizontal)
-        .onAppear { ladeBindings() }
+        .onAppear { ladeWerte() }
     }
 
-    private var stepHeader: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "list.clipboard")
-                .font(.system(size: 38))
-                .foregroundStyle(.purple)
-                .padding(14)
-                .background(Color.purple.opacity(0.1), in: Circle())
-            Text("Was noch?")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 4)
+    private func aktualisiereBegleiter() {
+        var teile = begleitAusgewaehlt.sorted()
+        let trimmed = begleitFreitext.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty { teile.append(trimmed) }
+        begleiterscheinungen = teile.joined(separator: ", ")
+    }
+
+    private func aktualisiereMassnahmen() {
+        var teile = massnahmenAusgewaehlt.sorted()
+        let trimmed = massnahmenFreitext.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty { teile.append(trimmed) }
+        massnahmen = teile.joined(separator: ", ")
+    }
+
+    private func ladeWerte() {
+        let begleitTeile = begleiterscheinungen
+            .components(separatedBy: ", ")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        begleitAusgewaehlt = Set(begleitTeile.filter { begleitVorschlaege.contains($0) })
+        let customBegleit = begleitTeile.filter { !begleitVorschlaege.contains($0) }
+        begleitFreitext = customBegleit.joined(separator: ", ")
+
+        let massnahmenTeile = massnahmen
+            .components(separatedBy: ", ")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        massnahmenAusgewaehlt = Set(massnahmenTeile.filter { massnahmenVorschlaege.contains($0) })
     }
 
     private func medLabel(_ log: EinnahmeLog) -> String {
         log.dosierung.isEmpty ? log.medikamentName : "\(log.medikamentName) \(log.dosierung)"
-    }
-
-    private func aktualisiereBegleit() {
-        begleiterscheinungen = begleitAusgewaehlt.sorted().joined(separator: ", ")
-    }
-
-    private func aktualisiereMassnahmen() {
-        massnahmen = massnahmenAusgewaehlt.sorted().joined(separator: ", ")
-    }
-
-    private func ladeBindings() {
-        let begleitTeile = begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty }
-        begleitAusgewaehlt = Set(begleitTeile.filter { begleitVorschlaege.contains($0) })
-        let custom = begleitTeile.filter { !begleitVorschlaege.contains($0) }
-        begleitFreitext = custom.joined(separator: ", ")
-        massnahmenAusgewaehlt = Set(massnahmen.components(separatedBy: ", ").filter { !$0.isEmpty })
     }
 }
