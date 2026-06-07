@@ -47,16 +47,6 @@ struct AddEntryView: View {
                     .padding(.horizontal)
                     .padding(.top, 10)
 
-                HStack {
-                    DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
-                        .labelsHidden()
-                        .font(.caption)
-                    Spacer()
-                    wetterBadge
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
-
                 ScrollView {
                     schrittInhalt
                         .padding(.vertical, 24)
@@ -122,10 +112,12 @@ struct AddEntryView: View {
                 }
             }
 
-            HStack {
-                Text("Schritt \(schritt + 1) von \(gesamtSchritte)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
+                    .labelsHidden()
+                    .font(.caption)
+                    .fixedSize()
+                wetterBadge
                 Spacer()
                 Text(schrittNamen[schritt])
                     .font(.caption.bold())

@@ -8,6 +8,8 @@ struct ContentView: View {
     @AppStorage("biometrischesLockAktiv") private var biometriAktivCache = false
     @State private var ausgewaehlterTab = 0
     @State private var neuerEintragAnzeigen = false
+    @State private var hautSchnellerfassungAnzeigen = false
+    @State private var eintragsTypAuswahl = false
     @State private var entsperrt = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -73,12 +75,20 @@ struct ContentView: View {
         }
         .onChange(of: ausgewaehlterTab) { _, neu in
             if neu == 2 {
-                neuerEintragAnzeigen = true
+                eintragsTypAuswahl = true
                 ausgewaehlterTab = 1
             }
         }
+        .confirmationDialog("Neuen Eintrag erstellen", isPresented: $eintragsTypAuswahl, titleVisibility: .visible) {
+            Button("Schmerz erfassen") { neuerEintragAnzeigen = true }
+            Button("Hautveränderung dokumentieren") { hautSchnellerfassungAnzeigen = true }
+            Button("Abbrechen", role: .cancel) {}
+        }
         .sheet(isPresented: $neuerEintragAnzeigen) {
             AddEntryView()
+        }
+        .sheet(isPresented: $hautSchnellerfassungAnzeigen) {
+            HautSchnellerfassungView()
         }
     }
 
