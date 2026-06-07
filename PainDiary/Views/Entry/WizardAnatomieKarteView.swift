@@ -4,7 +4,6 @@ struct WizardAnatomieKarteView: View {
     @Binding var koerperstelle: String
     @StateObject private var scanService = BodyScanService.shared
     @State private var scanSetupAnzeigen = false
-    @State private var pendingRegion: RegionItem? = nil
 
     private var ausgewaehlt: Set<String> {
         Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
@@ -16,9 +15,7 @@ struct WizardAnatomieKarteView: View {
                 Text("Wo hast du Schmerzen?")
                     .font(.title2.bold())
                 Spacer()
-                Button {
-                    scanSetupAnzeigen = true
-                } label: {
+                Button { scanSetupAnzeigen = true } label: {
                     Label(scanService.hatScan ? "Neu scannen" : "Körper scannen",
                           systemImage: scanService.hatScan ? "arrow.triangle.2.circlepath" : "camera.viewfinder")
                         .font(.caption)
@@ -30,12 +27,7 @@ struct WizardAnatomieKarteView: View {
                 .buttonStyle(.plain)
             }
 
-            KoerperKarte3DView(
-                ausgewaehlt: ausgewaehlt,
-                onTap: handleTap,
-                proportionen: scanService.proportionen
-            )
-            .frame(height: 420)
+            KoerperPickerView(auswahl: $koerperstelle)
 
             if ausgewaehlt.isEmpty {
                 Text("Tippe auf eine Körperstelle")
@@ -46,8 +38,7 @@ struct WizardAnatomieKarteView: View {
                     HStack(spacing: 6) {
                         ForEach(ausgewaehlt.sorted(), id: \.self) { r in
                             Button {
-                                var s = ausgewaehlt
-                                s.remove(r)
+                                var s = ausgewaehlt; s.remove(r)
                                 koerperstelle = s.sorted().joined(separator: ", ")
                             } label: {
                                 HStack(spacing: 3) {
@@ -71,119 +62,5 @@ struct WizardAnatomieKarteView: View {
                 .font(.caption2).foregroundStyle(.tertiary)
         }
         .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
-        .sheet(item: $pendingRegion) { item in
-            SubRegionenSheet(region: item.id, ausgewaehlt: ausgewaehlt) { gewählt in
-                var s = ausgewaehlt
-                gewählt.forEach { s.insert($0) }
-                koerperstelle = s.sorted().joined(separator: ", ")
-            }
-        }
-    }
-
-    private func handleTap(_ name: String) {
-        if let subs = SubRegionen.map[name] {
-            // Any sub-region or the region itself already selected → deselect all
-            let hasSelection = ausgewaehlt.contains(name) || subs.contains { ausgewaehlt.contains($0) }
-            if hasSelection {
-                var s = ausgewaehlt
-                s.remove(name)
-                subs.forEach { s.remove($0) }
-                koerperstelle = s.sorted().joined(separator: ", ")
-            } else {
-                pendingRegion = RegionItem(id: name)
-            }
-        } else {
-            var s = ausgewaehlt
-            if s.contains(name) { s.remove(name) } else { s.insert(name) }
-            koerperstelle = s.sorted().joined(separator: ", ")
-        }
-    }
-}
-
-// MARK: - Helpers
-
-private struct RegionItem: Identifiable {
-    let id: String  // region name
-}
-
-// MARK: - Sub-region drill-down sheet
-
-private struct SubRegionenSheet: View {
-    let region: String
-    let ausgewaehlt: Set<String>
-    let onConfirm: (Set<String>) -> Void
-
-    @State private var lokalAusgewaehlt: Set<String> = []
-    @State private var freitext = ""
-    @Environment(\.dismiss) private var dismiss
-
-    private var subs: [String] { SubRegionen.map[region] ?? [] }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Wo genau bei \"\(region)\"?")
-                        .font(.headline)
-                        .padding(.top, 4)
-
-                    FlowLayout(subs) { sub in
-                        ChipButton(label: sub, ausgewaehlt: lokalAusgewaehlt.contains(sub)) {
-                            if lokalAusgewaehlt.contains(sub) { lokalAusgewaehlt.remove(sub) }
-                            else { lokalAusgewaehlt.insert(sub) }
-                        }
-                    }
-
-                    HStack(spacing: 8) {
-                        TextField("Andere Stelle…", text: $freitext)
-                            .textFieldStyle(.roundedBorder)
-                        if !freitext.isEmpty {
-                            Button {
-                                lokalAusgewaehlt.insert(freitext.trimmingCharacters(in: .whitespaces))
-                                freitext = ""
-                            } label: {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundStyle(Color.accentColor)
-                                    .font(.title2)
-                            }
-                        }
-                    }
-
-                    Divider()
-
-                    Button {
-                        onConfirm([region])
-                        dismiss()
-                    } label: {
-                        Text("Nur \"\(region)\" ohne Präzisierung")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding()
-            }
-            .navigationTitle(region)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Übernehmen") {
-                        var result = lokalAusgewaehlt
-                        let t = freitext.trimmingCharacters(in: .whitespaces)
-                        if !t.isEmpty { result.insert(t) }
-                        onConfirm(result.isEmpty ? [region] : result)
-                        dismiss()
-                    }
-                    .bold()
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-        .onAppear {
-            lokalAusgewaehlt = ausgewaehlt.intersection(Set(subs))
-        }
     }
 }

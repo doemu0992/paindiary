@@ -20,6 +20,9 @@ import SwiftData
     var wetterCode: Int?
     var wetterWind: Double?
 
+    var hautStellen: String = ""   // comma-separated body regions with skin changes
+    var hautArt: String = ""       // comma-separated skin condition types
+
     init(
         datum: Date = .now,
         schmerzstaerke: Int = 5,
@@ -35,7 +38,9 @@ import SwiftData
         stressLevel: Int = 3,
         wetterTemperatur: Double? = nil,
         wetterCode: Int? = nil,
-        wetterWind: Double? = nil
+        wetterWind: Double? = nil,
+        hautStellen: String = "",
+        hautArt: String = ""
     ) {
         self.datum = datum
         self.schmerzstaerke = schmerzstaerke
@@ -52,5 +57,7 @@ import SwiftData
         self.wetterTemperatur = wetterTemperatur
         self.wetterCode = wetterCode
         self.wetterWind = wetterWind
+        self.hautStellen = hautStellen
+        self.hautArt = hautArt
     }
 }

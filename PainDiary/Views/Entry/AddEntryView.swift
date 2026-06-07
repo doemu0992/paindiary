@@ -17,6 +17,8 @@ struct AddEntryView: View {
     @State private var ausloeser = ""
     @State private var begleiterscheinungen = ""
     @State private var massnahmen = ""
+    @State private var hautStellen = ""
+    @State private var hautArt = ""
     @State private var stimmung = 3
     @State private var stressLevel = 3
     @State private var schlafStunden = 7.0
@@ -25,11 +27,11 @@ struct AddEntryView: View {
 
     private let wetter = WetterService.shared
     private let health = HealthKitManager.shared
-    private let gesamtSchritte = 7
+    private let gesamtSchritte = 8
 
     private let schrittNamen = [
         "Ort", "Intensität", "Charakter", "Auslöser",
-        "Begleitsymptome", "Massnahmen", "Wohlbefinden"
+        "Begleitsymptome", "Massnahmen", "Haut", "Wohlbefinden"
     ]
     // Steps 0 (Ort) and 1 (Intensität) are required; all others are skippable
     private let pflichtSchritte: Set<Int> = [0, 1]
@@ -172,6 +174,8 @@ struct AddEntryView: View {
         case 5:
             MassnahmenStepView(massnahmen: $massnahmen, datum: datum)
         case 6:
+            HautStepView(hautStellen: $hautStellen, hautArt: $hautArt)
+        case 7:
             WohlbefindenStepView(
                 stimmung: $stimmung,
                 schlafStunden: $schlafStunden,
@@ -273,6 +277,8 @@ struct AddEntryView: View {
         ausloeser = e.ausloeser
         begleiterscheinungen = e.begleiterscheinungen
         massnahmen = e.massnahmen
+        hautStellen = e.hautStellen
+        hautArt = e.hautArt
         stimmung = e.stimmung
         stressLevel = e.stressLevel
         schlafStunden = e.schlafStunden
@@ -289,6 +295,8 @@ struct AddEntryView: View {
             e.ausloeser = ausloeser
             e.begleiterscheinungen = begleiterscheinungen
             e.massnahmen = massnahmen
+            e.hautStellen = hautStellen
+            e.hautArt = hautArt
             e.stimmung = stimmung
             e.schlafStunden = schlafStunden
             e.stressLevel = stressLevel
@@ -305,6 +313,8 @@ struct AddEntryView: View {
                 massnahmen: massnahmen,
                 notizen: notizen,
                 stimmung: stimmung,
+                hautStellen: hautStellen,
+                hautArt: hautArt,
                 schlafStunden: schlafStunden,
                 stressLevel: stressLevel,
                 wetterTemperatur: wetterSnap?.temperatur,

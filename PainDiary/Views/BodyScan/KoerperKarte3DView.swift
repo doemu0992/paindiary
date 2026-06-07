@@ -7,6 +7,7 @@ struct KoerperKarte3DView: UIViewRepresentable {
     let ausgewaehlt: Set<String>
     let onTap: (String) -> Void
     let proportionen: BodyProportionen
+    var tintColor: UIColor = .systemRed
 
     func makeUIView(context: Context) -> SCNView {
         let v = SCNView()
@@ -37,8 +38,8 @@ struct KoerperKarte3DView: UIViewRepresentable {
                 || (SubRegionen.map[name]?.contains { ausgewaehlt.contains($0) } ?? false)
             node.geometry?.materials.forEach { mat in
                 if isSelected {
-                    mat.diffuse.contents  = UIColor.systemRed.withAlphaComponent(0.78)
-                    mat.emission.contents = UIColor.systemRed.withAlphaComponent(0.18)
+                    mat.diffuse.contents  = tintColor.withAlphaComponent(0.78)
+                    mat.emission.contents = tintColor.withAlphaComponent(0.18)
                 } else {
                     mat.diffuse.contents  = BodySceneBuilder.hautfarbe
                     mat.emission.contents = UIColor.black
@@ -239,6 +240,12 @@ enum BodySceneBuilder {
         let llY   = -(p.oberschenkelLaenge + p.unterschenkelLaenge / 2 + 0.02)
         body.addChildNode(n("Unterschenkel links",  llGeo, SCNVector3(-beinX * 0.88, llY, 0)))
         body.addChildNode(n("Unterschenkel rechts", llGeo, SCNVector3( beinX * 0.88, llY, 0)))
+
+        // ── Ankles ────────────────────────────────────────────────────
+        let knoechelY  = -(p.oberschenkelLaenge + p.unterschenkelLaenge + 0.02)
+        let ankleGeo   = SCNSphere(radius: 0.030)
+        body.addChildNode(n("Knöchel links",  ankleGeo, SCNVector3(-beinX - 0.02, knoechelY, 0.01)))
+        body.addChildNode(n("Knöchel rechts", ankleGeo, SCNVector3( beinX + 0.02, knoechelY, 0.01)))
 
         // ── Feet ──────────────────────────────────────────────────────
         let fGeo = SCNBox(width: 0.082, height: 0.055, length: 0.190, chamferRadius: 0.025)
