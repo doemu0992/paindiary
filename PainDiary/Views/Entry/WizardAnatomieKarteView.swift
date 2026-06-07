@@ -4,8 +4,7 @@ struct WizardAnatomieKarteView: View {
     @Binding var koerperstelle: String
     @StateObject private var scanService = BodyScanService.shared
     @State private var scanSetupAnzeigen = false
-    @State private var pendingRegion: String? = nil
-    @State private var drillDownAnzeigen = false
+    @State private var pendingRegion: RegionItem? = nil
 
     private var ausgewaehlt: Set<String> {
         Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
@@ -72,13 +71,11 @@ struct WizardAnatomieKarteView: View {
                 .font(.caption2).foregroundStyle(.tertiary)
         }
         .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
-        .sheet(isPresented: $drillDownAnzeigen) {
-            if let region = pendingRegion {
-                SubRegionenSheet(region: region, ausgewaehlt: ausgewaehlt) { gewählt in
-                    var s = ausgewaehlt
-                    gewählt.forEach { s.insert($0) }
-                    koerperstelle = s.sorted().joined(separator: ", ")
-                }
+        .sheet(item: $pendingRegion) { item in
+            SubRegionenSheet(region: item.id, ausgewaehlt: ausgewaehlt) { gewählt in
+                var s = ausgewaehlt
+                gewählt.forEach { s.insert($0) }
+                koerperstelle = s.sorted().joined(separator: ", ")
             }
         }
     }
@@ -93,8 +90,7 @@ struct WizardAnatomieKarteView: View {
                 subs.forEach { s.remove($0) }
                 koerperstelle = s.sorted().joined(separator: ", ")
             } else {
-                pendingRegion = name
-                drillDownAnzeigen = true
+                pendingRegion = RegionItem(id: name)
             }
         } else {
             var s = ausgewaehlt
@@ -102,6 +98,12 @@ struct WizardAnatomieKarteView: View {
             koerperstelle = s.sorted().joined(separator: ", ")
         }
     }
+}
+
+// MARK: - Helpers
+
+private struct RegionItem: Identifiable {
+    let id: String  // region name
 }
 
 // MARK: - Sub-region drill-down sheet

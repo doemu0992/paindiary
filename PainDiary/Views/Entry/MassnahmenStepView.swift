@@ -75,7 +75,7 @@ struct MassnahmenStepView: View {
         }
         .padding(.horizontal)
         .onAppear { ladeAuswahlAusBinding() }
-        .onChange(of: eingenommeneHeute.map { $0.medikamentName }) {
+        .onChange(of: eingenommeneHeute.map { $0.medikamentName }, initial: false) {
             vorauswaehlenMedikamente()
         }
     }
