@@ -372,15 +372,15 @@ struct AddEntryView: View {
                 massnahmen: massnahmen,
                 notizen: notizen,
                 stimmung: stimmung,
-                hautStellen: hautStellen,
-                hautArt: hautArt,
-                fotoDateiname: fotoDateiname,
-                verlauf: verlauf,
                 schlafStunden: schlafStunden,
                 stressLevel: stressLevel,
                 wetterTemperatur: wetterSnap?.temperatur,
                 wetterCode: wetterSnap?.code,
-                wetterWind: wetterSnap?.windgeschwindigkeit
+                wetterWind: wetterSnap?.windgeschwindigkeit,
+                hautStellen: hautStellen,
+                hautArt: hautArt,
+                fotoDateiname: fotoDateiname,
+                verlauf: verlauf
             )
             modelContext.insert(neu)
         }
