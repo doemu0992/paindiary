@@ -170,7 +170,7 @@ struct AddEntryView: View {
         case 4:
             BegleitschmerzStepView(begleiterscheinungen: $begleiterscheinungen, koerperstelle: koerperstelle)
         case 5:
-            MassnahmenStepView(massnahmen: $massnahmen)
+            MassnahmenStepView(massnahmen: $massnahmen, datum: datum)
         case 6:
             WohlbefindenStepView(
                 stimmung: $stimmung,
