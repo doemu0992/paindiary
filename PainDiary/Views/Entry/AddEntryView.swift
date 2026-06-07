@@ -1,6 +1,8 @@
 import SwiftUI
 import SwiftData
 
+private enum EintragTyp { case schmerz, haut }
+
 struct AddEntryView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -9,6 +11,7 @@ struct AddEntryView: View {
 
     @State private var schritt = 0
     @State private var vorwaerts = true
+    @State private var eintragTyp: EintragTyp = .schmerz
     @State private var datum = Date()
     @State private var koerperstelle = ""
     @State private var schmerzstaerke = 5
@@ -31,21 +34,26 @@ struct AddEntryView: View {
 
     private let wetter = WetterService.shared
     private let health = HealthKitManager.shared
-    private let gesamtSchritte = 8
 
-    private let schrittNamen = [
+    // Step 0 = type selector (no dots); steps 1…N = content.
+    // Schmerz: 8 content steps; Haut: 1 content step.
+    private var gesamtSchritte: Int { eintragTyp == .haut ? 1 : 8 }
+
+    private let schrittNamenSchmerz = [
         "Ort", "Intensität", "Charakter", "Auslöser",
         "Begleitsymptome", "Massnahmen", "Haut", "Wohlbefinden"
     ]
-    // Steps 0 (Ort) and 1 (Intensität) are required; all others are skippable
-    private let pflichtSchritte: Set<Int> = [0, 1]
+    // Schmerz steps that cannot be skipped (new indices: 1=Ort, 2=Intensität)
+    private let pflichtSchritte: Set<Int> = [1, 2]
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                schrittIndikator
-                    .padding(.horizontal)
-                    .padding(.top, 10)
+                if schritt > 0 {
+                    schrittIndikator
+                        .padding(.horizontal)
+                        .padding(.vertical, 10)
+                }
 
                 ScrollView {
                     schrittInhalt
@@ -57,13 +65,22 @@ struct AddEntryView: View {
                     removal: .move(edge: vorwaerts ? .leading : .trailing).combined(with: .opacity)
                 ))
 
-                navigationsLeiste
+                if schritt > 0 {
+                    navigationsLeiste
+                }
             }
-            .navigationTitle(eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten")
+            .navigationTitle(navTitel)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") { dismiss() }
+                }
+                if schritt > 0 {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        DatePicker("", selection: $datum,
+                                   displayedComponents: [.date, .hourAndMinute])
+                            .labelsHidden()
+                    }
                 }
             }
             .onAppear {
@@ -78,75 +95,46 @@ struct AddEntryView: View {
         }
     }
 
-    // MARK: - Step indicator
-
-    private var schrittIndikator: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 0) {
-                ForEach(0..<gesamtSchritte, id: \.self) { i in
-                    ZStack {
-                        if i < schritt {
-                            Circle()
-                                .fill(Color.accentColor)
-                                .frame(width: 8, height: 8)
-                        } else if i == schritt {
-                            Circle()
-                                .fill(Color.accentColor)
-                                .frame(width: 14, height: 14)
-                                .shadow(color: Color.accentColor.opacity(0.5), radius: 4)
-                        } else {
-                            Circle()
-                                .fill(Color.secondary.opacity(0.25))
-                                .frame(width: 8, height: 8)
-                        }
-                    }
-                    .frame(width: 14, height: 14)
-                    .animation(.spring(response: 0.3), value: schritt)
-
-                    if i < gesamtSchritte - 1 {
-                        Rectangle()
-                            .fill(i < schritt ? Color.accentColor : Color.secondary.opacity(0.2))
-                            .frame(maxWidth: .infinity, maxHeight: 1.5)
-                            .animation(.easeInOut(duration: 0.3), value: schritt)
-                    }
-                }
-            }
-
-            HStack(spacing: 6) {
-                DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
-                    .labelsHidden()
-                    .font(.caption)
-                    .fixedSize()
-                wetterBadge
-                Spacer()
-                Text(schrittNamen[schritt])
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
-            }
-        }
+    private var navTitel: String {
+        guard eintrag == nil else { return "Eintrag bearbeiten" }
+        if schritt == 0 { return "Neuer Eintrag" }
+        if eintragTyp == .haut { return "Hautveränderung" }
+        let idx = schritt - 1
+        return idx < schrittNamenSchmerz.count ? schrittNamenSchmerz[idx] : ""
     }
 
-    // MARK: - Weather badge
+    // MARK: - Step indicator (dots only, no text row)
 
-    @ViewBuilder
-    private var wetterBadge: some View {
-        if wetter.isLoading {
-            ProgressView().scaleEffect(0.7)
-        } else if let w = wetter.aktuell {
-            HStack(spacing: 4) {
-                Image(systemName: w.symbol)
-                    .foregroundStyle(.yellow)
-                Text(String(format: "%.0f°C", w.temperatur))
-                    .font(.caption.bold())
-                if !w.luftdruckText.isEmpty {
-                    Text(w.luftdruckText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+    private var schrittIndikator: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<gesamtSchritte, id: \.self) { i in
+                let dotStep = i + 1
+                ZStack {
+                    if dotStep < schritt {
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 8, height: 8)
+                    } else if dotStep == schritt {
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 14, height: 14)
+                            .shadow(color: Color.accentColor.opacity(0.5), radius: 4)
+                    } else {
+                        Circle()
+                            .fill(Color.secondary.opacity(0.25))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                .frame(width: 14, height: 14)
+                .animation(.spring(response: 0.3), value: schritt)
+
+                if i < gesamtSchritte - 1 {
+                    Rectangle()
+                        .fill(dotStep < schritt ? Color.accentColor : Color.secondary.opacity(0.2))
+                        .frame(maxWidth: .infinity, maxHeight: 1.5)
+                        .animation(.easeInOut(duration: 0.3), value: schritt)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(.regularMaterial, in: Capsule())
         }
     }
 
@@ -156,6 +144,20 @@ struct AddEntryView: View {
     private var schrittInhalt: some View {
         switch schritt {
         case 0:
+            EintragTypStepView { typ in
+                eintragTyp = typ
+                vorwaerts = true
+                withAnimation(.easeInOut(duration: 0.25)) { schritt = 1 }
+            }
+
+        case 1 where eintragTyp == .haut:
+            HautStepView(
+                hautStellen: $hautStellen,
+                hautArt: $hautArt,
+                fotoDateiname: $fotoDateiname
+            )
+
+        case 1:
             VStack(spacing: 0) {
                 if !vorlageDismissed, let letzter = letzterEintrag {
                     VorlageBannerView(eintrag: letzter) {
@@ -168,27 +170,35 @@ struct AddEntryView: View {
                 }
                 WizardAnatomieKarteView(koerperstelle: $koerperstelle)
             }
-        case 1:
+
+        case 2:
             IntensitaetStepView(
                 schmerzstaerke: $schmerzstaerke,
                 verlauf: $verlauf,
                 letzterEintrag: letzterEintrag
             )
-        case 2:
+        case 3:
             CharakterStepView(
                 schmerzart: $schmerzart,
                 dauerMinuten: $dauerMinuten,
                 koerperstelle: koerperstelle
             )
-        case 3:
-            AusloeserStepView(ausloeser: $ausloeser, koerperstelle: koerperstelle)
         case 4:
-            BegleitschmerzStepView(begleiterscheinungen: $begleiterscheinungen, koerperstelle: koerperstelle)
+            AusloeserStepView(ausloeser: $ausloeser, koerperstelle: koerperstelle)
         case 5:
-            MassnahmenStepView(massnahmen: $massnahmen, datum: datum)
+            BegleitschmerzStepView(
+                begleiterscheinungen: $begleiterscheinungen,
+                koerperstelle: koerperstelle
+            )
         case 6:
-            HautStepView(hautStellen: $hautStellen, hautArt: $hautArt, fotoDateiname: $fotoDateiname)
+            MassnahmenStepView(massnahmen: $massnahmen, datum: datum)
         case 7:
+            HautStepView(
+                hautStellen: $hautStellen,
+                hautArt: $hautArt,
+                fotoDateiname: $fotoDateiname
+            )
+        case 8:
             WohlbefindenStepView(
                 stimmung: $stimmung,
                 schlafStunden: $schlafStunden,
@@ -204,26 +214,25 @@ struct AddEntryView: View {
 
     private var navigationsLeiste: some View {
         HStack(spacing: 12) {
-            // Back button
-            if schritt > 0 {
-                Button {
-                    vorwaerts = false
-                    withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 46, height: 46)
-                        .background(.regularMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-            } else {
-                Spacer().frame(width: 46)
+            Button {
+                vorwaerts = false
+                withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 46, height: 46)
+                    .background(.regularMaterial, in: Circle())
             }
+            .buttonStyle(.plain)
 
             Spacer()
 
-            // Skip button for optional steps (not last step)
-            if !pflichtSchritte.contains(schritt) && schritt < gesamtSchritte - 1 {
+            let isLast = schritt == gesamtSchritte
+            let canSkip = eintragTyp == .schmerz
+                && !pflichtSchritte.contains(schritt)
+                && !isLast
+
+            if canSkip {
                 Button {
                     vorwaerts = true
                     withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
@@ -235,31 +244,8 @@ struct AddEntryView: View {
                 .buttonStyle(.plain)
             }
 
-            // Forward / Save
-            if schritt < gesamtSchritte - 1 {
-                Button {
-                    vorwaerts = true
-                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
-                } label: {
-                    HStack(spacing: 6) {
-                        Text("Weiter")
-                        Image(systemName: "chevron.right")
-                    }
-                    .font(.subheadline.bold())
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 13)
-                    .background(
-                        (schritt == 0 && koerperstelle.isEmpty) ? Color.secondary.opacity(0.3) : Color.accentColor,
-                        in: Capsule()
-                    )
-                    .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
-                .disabled(schritt == 0 && koerperstelle.isEmpty)
-            } else {
-                Button {
-                    speichern()
-                } label: {
+            if isLast {
+                Button { speichern() } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark")
                         Text("Speichern")
@@ -271,6 +257,25 @@ struct AddEntryView: View {
                     .foregroundStyle(.white)
                 }
                 .buttonStyle(.plain)
+            } else {
+                let disabled = schritt == 1 && eintragTyp == .schmerz && koerperstelle.isEmpty
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Weiter")
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.subheadline.bold())
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 13)
+                    .background(disabled ? Color.secondary.opacity(0.3) : Color.accentColor,
+                                in: Capsule())
+                    .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .disabled(disabled)
             }
         }
         .padding(.horizontal, 16)
@@ -289,16 +294,16 @@ struct AddEntryView: View {
     }
 
     private func übernehmeVorlage(_ e: PainEntry) {
-        koerperstelle    = e.koerperstelle
-        schmerzstaerke   = e.schmerzstaerke
-        schmerzart       = e.schmerzart
-        dauerMinuten     = e.dauerMinuten
-        ausloeser        = e.ausloeser
+        koerperstelle        = e.koerperstelle
+        schmerzstaerke       = e.schmerzstaerke
+        schmerzart           = e.schmerzart
+        dauerMinuten         = e.dauerMinuten
+        ausloeser            = e.ausloeser
         begleiterscheinungen = e.begleiterscheinungen
-        massnahmen       = e.massnahmen
-        hautStellen      = e.hautStellen
-        hautArt          = e.hautArt
-        vorlageDismissed = true
+        massnahmen           = e.massnahmen
+        hautStellen          = e.hautStellen
+        hautArt              = e.hautArt
+        vorlageDismissed     = true
     }
 
     private func ladeSchlafVomHeutigenTag() {
@@ -332,11 +337,14 @@ struct AddEntryView: View {
         stressLevel = e.stressLevel
         schlafStunden = e.schlafStunden
         notizen = e.notizen
+        eintragTyp = (e.schmerzstaerke == 0 && !e.hautStellen.isEmpty) ? .haut : .schmerz
+        schritt = 1
     }
 
     private func speichern() {
         let wetterSnap = wetter.aktuell
         if let e = eintrag {
+            e.datum = datum
             e.koerperstelle = koerperstelle
             e.schmerzstaerke = schmerzstaerke
             e.schmerzart = schmerzart
@@ -355,7 +363,7 @@ struct AddEntryView: View {
         } else {
             let neu = PainEntry(
                 datum: datum,
-                schmerzstaerke: schmerzstaerke,
+                schmerzstaerke: eintragTyp == .haut ? 0 : schmerzstaerke,
                 koerperstelle: koerperstelle,
                 schmerzart: schmerzart,
                 dauerMinuten: dauerMinuten,
@@ -377,6 +385,78 @@ struct AddEntryView: View {
             modelContext.insert(neu)
         }
         dismiss()
+    }
+}
+
+// MARK: - Type selector step
+
+private struct EintragTypStepView: View {
+    let onAuswahl: (EintragTyp) -> Void
+
+    var body: some View {
+        VStack(spacing: 28) {
+            Text("Was möchtest du erfassen?")
+                .font(.title2.bold())
+                .multilineTextAlignment(.center)
+                .padding(.top, 8)
+
+            VStack(spacing: 14) {
+                TypKarteView(
+                    symbol: "waveform.path.ecg",
+                    farbe: .accentColor,
+                    titel: "Schmerzen erfassen",
+                    beschreibung: "Intensität, Auslöser, Massnahmen & mehr",
+                    action: { onAuswahl(.schmerz) }
+                )
+                TypKarteView(
+                    symbol: "bandage",
+                    farbe: .orange,
+                    titel: "Hautveränderung",
+                    beschreibung: "Ausschlag, Rötung, Foto & betroffener Bereich",
+                    action: { onAuswahl(.haut) }
+                )
+            }
+        }
+        .padding(.horizontal)
+    }
+}
+
+private struct TypKarteView: View {
+    let symbol: String
+    let farbe: Color
+    let titel: String
+    let beschreibung: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(farbe.opacity(0.15))
+                        .frame(width: 56, height: 56)
+                    Image(systemName: symbol)
+                        .font(.title2)
+                        .foregroundStyle(farbe)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(titel)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(beschreibung)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(18)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
     }
 }
 
