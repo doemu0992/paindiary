@@ -139,7 +139,10 @@ struct ZyklusRechner {
                 .map { kal.startOfDay(for: $0.datum) }
                 .sorted()
             guard let peak = peakTage.last else { return persOvulationsOffset }
-            return (kal.dateComponents([.day], from: currentStart, to: peak).day ?? 0) + 1
+            let observedOffset = (kal.dateComponents([.day], from: currentStart, to: peak).day ?? 0) + 1
+            // Only shift ovulation later — never earlier — to avoid treating the first
+            // day of fertile mucus as the peak (peak = last day; cycle is still ongoing).
+            return max(observedOffset, persOvulationsOffset)
         }()
 
         // Predictions use adaptive cycle length and personalized ovulation offset.
