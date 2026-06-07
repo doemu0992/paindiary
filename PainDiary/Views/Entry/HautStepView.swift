@@ -25,7 +25,7 @@ struct HautStepView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Betroffene Stellen")
                     .font(.headline)
-                KoerperPickerView(auswahl: $hautStellen, tintColor: .systemOrange, frameHeight: 300)
+                KoerperPickerView(auswahl: $hautStellen, tintColor: .systemOrange, frameHeight: 300, subRegionenMap: SubRegionen.hautMap)
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))

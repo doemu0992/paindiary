@@ -6,6 +6,8 @@ struct KoerperPickerView: View {
     @Binding var auswahl: String
     var tintColor: UIColor = .systemRed
     var frameHeight: CGFloat = 420
+    /// Override the sub-region drill-down map. Defaults to SubRegionen.map (pain).
+    var subRegionenMap: [String: [String]]? = nil
 
     @StateObject private var scanService = BodyScanService.shared
     @State private var pendingRegion: RegionItem? = nil
@@ -23,7 +25,11 @@ struct KoerperPickerView: View {
         )
         .frame(height: frameHeight)
         .sheet(item: $pendingRegion) { item in
-            SubRegionenSheet(region: item.id, ausgewaehlt: ausgewaehltSet) { gewählt in
+            SubRegionenSheet(
+                region: item.id,
+                ausgewaehlt: ausgewaehltSet,
+                subMap: subRegionenMap ?? SubRegionen.map
+            ) { gewählt in
                 var s = ausgewaehltSet
                 gewählt.forEach { s.insert($0) }
                 auswahl = s.sorted().joined(separator: ", ")
@@ -32,7 +38,8 @@ struct KoerperPickerView: View {
     }
 
     private func handleTap(_ name: String) {
-        if let subs = SubRegionen.map[name] {
+        let map = subRegionenMap ?? SubRegionen.map
+        if let subs = map[name] {
             let hasSelection = ausgewaehltSet.contains(name) || subs.contains { ausgewaehltSet.contains($0) }
             if hasSelection {
                 var s = ausgewaehltSet
@@ -61,13 +68,14 @@ struct RegionItem: Identifiable {
 struct SubRegionenSheet: View {
     let region: String
     let ausgewaehlt: Set<String>
+    var subMap: [String: [String]] = SubRegionen.map
     let onConfirm: (Set<String>) -> Void
 
     @State private var lokalAusgewaehlt: Set<String> = []
     @State private var freitext = ""
     @Environment(\.dismiss) private var dismiss
 
-    private var subs: [String] { SubRegionen.map[region] ?? [] }
+    private var subs: [String] { subMap[region] ?? [] }
 
     var body: some View {
         NavigationStack {

@@ -1,6 +1,7 @@
 import Foundation
 
 enum SubRegionen {
+    /// Pain-oriented sub-regions: includes internal anatomy (Herz, Niere, Wirbelsäule …)
     static let map: [String: [String]] = [
         "Kopf":              ["Stirn", "Scheitel", "Hinterkopf",
                               "Schläfe links", "Schläfe rechts",
@@ -29,5 +30,35 @@ enum SubRegionen {
                               "Fußsohle", "Ferse", "Fußspann"],
         "Fuss rechts":       ["Großzehe", "2. Zehe", "3. Zehe", "4. Zehe", "Kleiner Zehe",
                               "Fußsohle", "Ferse", "Fußspann"],
+    ]
+
+    /// Skin-oriented sub-regions: surface areas only, no internal organs or bones
+    static let hautMap: [String: [String]] = [
+        "Kopf":              ["Stirn", "Schläfe links", "Schläfe rechts",
+                              "Wange links", "Wange rechts", "Nase", "Kinn",
+                              "Augenbereich", "Ohr links", "Ohr rechts",
+                              "Haaransatz", "Scheitel", "Hinterkopf"],
+        "Hals":              ["Hals vorne", "Hals links", "Hals rechts"],
+        "Brust":             ["Obere Brust", "Untere Brust",
+                              "Brust links", "Brust rechts", "Décolleté"],
+        "Bauch":             ["Oberbauch", "Unterbauch", "Nabel",
+                              "Flanke links", "Flanke rechts"],
+        "Rücken oben":       ["Mitte oben", "Schulterblatt links", "Schulterblatt rechts"],
+        "Rücken unten":      ["Lende links", "Lende rechts", "Kreuzbereich"],
+        "Hüfte":             ["Hüfte links", "Hüfte rechts",
+                              "Leiste links", "Leiste rechts"],
+        "Gesäss":            ["Gesäss links", "Gesäss rechts"],
+        "Schulter links":    ["Schulter vorne", "Schulter hinten", "Achselhöhle"],
+        "Schulter rechts":   ["Schulter vorne", "Schulter hinten", "Achselhöhle"],
+        "Unterschenkel links":  ["Wade", "Schienbein"],
+        "Unterschenkel rechts": ["Wade", "Schienbein"],
+        "Hand links":        ["Daumen", "Zeigefinger", "Mittelfinger", "Ringfinger",
+                              "Kleiner Finger", "Handfläche", "Handrücken", "Handgelenk"],
+        "Hand rechts":       ["Daumen", "Zeigefinger", "Mittelfinger", "Ringfinger",
+                              "Kleiner Finger", "Handfläche", "Handrücken", "Handgelenk"],
+        "Fuss links":        ["Großzehe", "2. Zehe", "3. Zehe", "4. Zehe", "Kleiner Zehe",
+                              "Fußsohle", "Ferse", "Fußspann", "Knöchel"],
+        "Fuss rechts":       ["Großzehe", "2. Zehe", "3. Zehe", "4. Zehe", "Kleiner Zehe",
+                              "Fußsohle", "Ferse", "Fußspann", "Knöchel"],
     ]
 }
