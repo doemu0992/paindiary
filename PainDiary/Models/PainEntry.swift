@@ -42,7 +42,9 @@ import SwiftData
         wetterCode: Int? = nil,
         wetterWind: Double? = nil,
         hautStellen: String = "",
-        hautArt: String = ""
+        hautArt: String = "",
+        fotoDateiname: String = "",
+        verlauf: String = ""
     ) {
         self.datum = datum
         self.schmerzstaerke = schmerzstaerke
@@ -61,5 +63,7 @@ import SwiftData
         self.wetterWind = wetterWind
         self.hautStellen = hautStellen
         self.hautArt = hautArt
+        self.fotoDateiname = fotoDateiname
+        self.verlauf = verlauf
     }
 }
