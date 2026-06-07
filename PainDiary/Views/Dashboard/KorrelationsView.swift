@@ -526,20 +526,6 @@ struct KorrelationsView: View {
 
     // MARK: - Medikament-Effekt
 
-    // MARK: – Adherence model
-
-    private struct MedAdherenz {
-        let name: String
-        let dosierung: String
-        let adherenzRate: Double        // 0–1, capped
-        let einnahmenTage: Int
-        let erwarteterTage: Int
-        let avgSchmerzMit: Double?
-        let avgSchmerzOhne: Double?
-        let nMit: Int
-        let nOhne: Int
-    }
-
     private var adherenzDaten: [MedAdherenz] {
         let kal = Calendar.current
         let heute = kal.startOfDay(for: Date())
@@ -816,10 +802,24 @@ struct KorrelationsView: View {
     private func fmt(_ d: Double) -> String { String(format: "%.1f", d) }
 }
 
+// MARK: - Adherence model
+
+private struct MedAdherenz {
+    let name: String
+    let dosierung: String
+    let adherenzRate: Double        // 0–1, capped
+    let einnahmenTage: Int
+    let erwarteterTage: Int
+    let avgSchmerzMit: Double?
+    let avgSchmerzOhne: Double?
+    let nMit: Int
+    let nOhne: Int
+}
+
 // MARK: - Adherence row
 
 private struct MedAdherenzZeile: View {
-    let med: KorrelationsView.MedAdherenz
+    let med: MedAdherenz
     let fmt: (Double) -> String
 
     private var adherenzFarbe: Color {
