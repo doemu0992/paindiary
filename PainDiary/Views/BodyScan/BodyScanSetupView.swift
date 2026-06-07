@@ -47,8 +47,7 @@ struct BodyScanSetupView: View {
                 Spacer()
 
                 Button {
-                    let p = BodyProportionen(koerperGroesse: Float(groesse) / 100.0)
-                    scanService.scanErgebnisSpeichern(p)
+                    scanService.scanErgebnisSpeichern(BodyProportionen.fuerGroesse(groesse))
                     dismiss()
                 } label: {
                     Text("Übernehmen")
@@ -69,7 +68,7 @@ struct BodyScanSetupView: View {
                 }
             }
             .onAppear {
-                groesse = Double(scanService.proportionen.koerperGroesse * 100)
+                groesse = scanService.proportionen.geschaetzteGroesseCM
             }
         }
     }

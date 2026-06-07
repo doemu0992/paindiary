@@ -1,236 +1,274 @@
 import SwiftUI
 import SceneKit
 
+// MARK: - SwiftUI wrapper
+
 struct KoerperKarte3DView: UIViewRepresentable {
-    var ausgewaehlt: Set<String>
-    var onTap: (String) -> Void
-    var proportionen: BodyProportionen
+    let ausgewaehlt: Set<String>
+    let onTap: (String) -> Void
+    let proportionen: BodyProportionen
     var tintColor: UIColor = .systemRed
 
     func makeUIView(context: Context) -> SCNView {
-        let scnView = SCNView()
-        scnView.scene = KoerperSzene.bauen(proportionen: proportionen)
-        scnView.allowsCameraControl = true
-        scnView.autoenablesDefaultLighting = true
-        scnView.backgroundColor = .clear
-        scnView.antialiasingMode = .multisampling4X
+        let v = SCNView()
+        v.scene = BodySceneBuilder.build(proportionen)
+        v.backgroundColor = .clear
+        v.autoenablesDefaultLighting = false
+        v.allowsCameraControl = false
+        v.antialiasingMode = .multisampling4X
+
+        let pan = UIPanGestureRecognizer(target: context.coordinator,
+                                         action: #selector(Coordinator.handlePan(_:)))
+        v.addGestureRecognizer(pan)
 
         let tap = UITapGestureRecognizer(target: context.coordinator,
-                                         action: #selector(Coordinator.handleTap(_:)))
-        scnView.addGestureRecognizer(tap)
-        context.coordinator.scnView = scnView
-        context.coordinator.onTap = onTap
-        return scnView
+                                          action: #selector(Coordinator.handleTap(_:)))
+        tap.require(toFail: pan)
+        v.addGestureRecognizer(tap)
+
+        context.coordinator.scnView = v
+        return v
     }
 
-    func updateUIView(_ scnView: SCNView, context: Context) {
-        context.coordinator.onTap = onTap
-        KoerperSzene.aktualisiereAuswahl(in: scnView.scene!, ausgewaehlt: ausgewaehlt, tintColor: tintColor)
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    class Coordinator: NSObject {
-        weak var scnView: SCNView?
-        var onTap: ((String) -> Void)?
-
-        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-            guard let scnView = scnView else { return }
-            let loc = gesture.location(in: scnView)
-            let hits = scnView.hitTest(loc, options: [
-                .searchMode: SCNHitTestSearchMode.closest.rawValue
-            ])
-            if let hit = hits.first, let name = hit.node.name, !name.isEmpty {
-                onTap?(name)
+    func updateUIView(_ uiView: SCNView, context: Context) {
+        uiView.scene?.rootNode.enumerateChildNodes { node, _ in
+            guard let name = node.name else { return }
+            let isSelected = ausgewaehlt.contains(name)
+                || (SubRegionen.map[name]?.contains { ausgewaehlt.contains($0) } ?? false)
+            node.geometry?.materials.forEach { mat in
+                if isSelected {
+                    mat.diffuse.contents  = tintColor.withAlphaComponent(0.78)
+                    mat.emission.contents = tintColor.withAlphaComponent(0.18)
+                } else {
+                    mat.diffuse.contents  = BodySceneBuilder.hautfarbe
+                    mat.emission.contents = UIColor.black
+                }
             }
         }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap) }
+
+    // MARK: Coordinator
+
+    class Coordinator: NSObject {
+        let onTap: (String) -> Void
+        weak var scnView: SCNView?
+
+        init(onTap: @escaping (String) -> Void) { self.onTap = onTap }
+
+        @objc func handlePan(_ g: UIPanGestureRecognizer) {
+            guard let v = scnView,
+                  let body = v.scene?.rootNode.childNode(withName: "body", recursively: false)
+            else { return }
+            body.eulerAngles.y += Float(g.translation(in: v).x) * 0.013
+            g.setTranslation(.zero, in: v)
+        }
+
+        @objc func handleTap(_ g: UITapGestureRecognizer) {
+            guard let v = scnView else { return }
+            let hits = v.hitTest(g.location(in: v), options: [
+                SCNHitTestOption.firstFoundOnly: false,
+                SCNHitTestOption.backFaceCulling: false
+            ])
+            guard let name = hits.first?.node.name else { return }
+            let resolved = isFrontView ? name : (backMap[name] ?? name)
+            onTap(resolved)
+        }
+
+        private var isFrontView: Bool {
+            guard let body = scnView?.scene?.rootNode
+                    .childNode(withName: "body", recursively: false) else { return true }
+            var a = body.eulerAngles.y.truncatingRemainder(dividingBy: 2 * .pi)
+            if a >  .pi { a -= 2 * .pi }
+            if a < -.pi { a += 2 * .pi }
+            return abs(a) < .pi / 2
+        }
+
+        private let backMap: [String: String] = [
+            "Hals":  "Hals",
+            "Brust": "Rücken oben",
+            "Bauch": "Rücken unten",
+            "Hüfte": "Gesäss",
+        ]
     }
 }
 
 // MARK: - Scene builder
 
-enum KoerperSzene {
+enum BodySceneBuilder {
+    static let hautfarbe = UIColor(red: 0.91, green: 0.87, blue: 0.83, alpha: 1.0)
 
-    static func bauen(proportionen: BodyProportionen) -> SCNScene {
+    static func build(_ p: BodyProportionen) -> SCNScene {
         let scene = SCNScene()
-        let root = scene.rootNode
+        addLights(to: scene)
+        addCamera(to: scene)
 
-        // Camera
-        let cameraNode = SCNNode()
-        cameraNode.camera = SCNCamera()
-        cameraNode.position = SCNVector3(0, 0.9, 2.8)
-        cameraNode.look(at: SCNVector3(0, 0.9, 0))
-        root.addChildNode(cameraNode)
+        let body = SCNNode()
+        body.name = "body"
+        addParts(to: body, p: p)
 
-        // Lights
-        let light = SCNNode()
-        light.light = SCNLight()
-        light.light!.type = .omni
-        light.position = SCNVector3(1, 2, 3)
-        root.addChildNode(light)
+        let (lo, hi) = body.boundingBox
+        body.position.y = -(lo.y + (hi.y - lo.y) / 2)
 
-        let ambient = SCNNode()
-        ambient.light = SCNLight()
-        ambient.light!.type = .ambient
-        ambient.light!.color = UIColor(white: 0.4, alpha: 1)
-        root.addChildNode(ambient)
-
-        let directional = SCNNode()
-        directional.light = SCNLight()
-        directional.light!.type = .directional
-        directional.light!.intensity = 800
-        directional.eulerAngles = SCNVector3(-0.5, 0.5, 0)
-        root.addChildNode(directional)
-
-        let s = proportionen.schulterBreite
-        let b = proportionen.beckenBreite
-        let h = proportionen.koerperGroesse
-
-        let scale = CGFloat(h / 1.75)
-
-        // Head
-        addPart(to: root, name: "Kopf",
-                geo: SCNSphere(radius: 0.12 * scale),
-                pos: SCNVector3(0, 1.72 * scale, 0))
-
-        // Neck
-        addPart(to: root, name: "Hals",
-                geo: SCNCapsule(capRadius: 0.04 * scale, height: 0.12 * scale),
-                pos: SCNVector3(0, 1.55 * scale, 0))
-
-        // Chest (front)
-        addPart(to: root, name: "Brust",
-                geo: SCNCapsule(capRadius: CGFloat(s) * 0.45 * scale, height: 0.26 * scale),
-                pos: SCNVector3(0, 1.35 * scale, 0.02 * scale),
-                euler: SCNVector3(Float.pi / 2, 0, 0))
-
-        // Back upper
-        addPart(to: root, name: "Rücken oben",
-                geo: SCNCapsule(capRadius: CGFloat(s) * 0.42 * scale, height: 0.24 * scale),
-                pos: SCNVector3(0, 1.35 * scale, -0.02 * scale),
-                euler: SCNVector3(Float.pi / 2, 0, 0))
-
-        // Abdomen (front)
-        addPart(to: root, name: "Bauch",
-                geo: SCNCapsule(capRadius: CGFloat(b) * 0.48 * scale, height: 0.22 * scale),
-                pos: SCNVector3(0, 1.10 * scale, 0.02 * scale),
-                euler: SCNVector3(Float.pi / 2, 0, 0))
-
-        // Back lower
-        addPart(to: root, name: "Rücken unten",
-                geo: SCNCapsule(capRadius: CGFloat(b) * 0.45 * scale, height: 0.20 * scale),
-                pos: SCNVector3(0, 1.10 * scale, -0.02 * scale),
-                euler: SCNVector3(Float.pi / 2, 0, 0))
-
-        // Hips (front)
-        addPart(to: root, name: "Hüfte",
-                geo: SCNCapsule(capRadius: CGFloat(b) * 0.50 * scale, height: 0.18 * scale),
-                pos: SCNVector3(0, 0.88 * scale, 0.02 * scale),
-                euler: SCNVector3(Float.pi / 2, 0, 0))
-
-        // Buttocks
-        addPart(to: root, name: "Gesäss",
-                geo: SCNCapsule(capRadius: CGFloat(b) * 0.48 * scale, height: 0.18 * scale),
-                pos: SCNVector3(0, 0.88 * scale, -0.02 * scale),
-                euler: SCNVector3(Float.pi / 2, 0, 0))
-
-        // Shoulders
-        let sw = CGFloat(s) * 0.55 * scale
-        addPart(to: root, name: "Schulter links",
-                geo: SCNSphere(radius: 0.085 * scale),
-                pos: SCNVector3(-sw, 1.43 * scale, 0))
-        addPart(to: root, name: "Schulter rechts",
-                geo: SCNSphere(radius: 0.085 * scale),
-                pos: SCNVector3(sw, 1.43 * scale, 0))
-
-        // Upper arms
-        addPart(to: root, name: "Oberarm links",
-                geo: SCNCapsule(capRadius: 0.055 * scale, height: 0.25 * scale),
-                pos: SCNVector3(-sw - 0.01 * scale, 1.23 * scale, 0))
-        addPart(to: root, name: "Oberarm rechts",
-                geo: SCNCapsule(capRadius: 0.055 * scale, height: 0.25 * scale),
-                pos: SCNVector3(sw + 0.01 * scale, 1.23 * scale, 0))
-
-        // Forearms
-        let fax = sw + 0.015 * scale
-        addPart(to: root, name: "Unterarm links",
-                geo: SCNCapsule(capRadius: 0.045 * scale, height: 0.22 * scale),
-                pos: SCNVector3(-fax, 0.98 * scale, 0))
-        addPart(to: root, name: "Unterarm rechts",
-                geo: SCNCapsule(capRadius: 0.045 * scale, height: 0.22 * scale),
-                pos: SCNVector3(fax, 0.98 * scale, 0))
-
-        // Hands
-        let hx = sw + 0.02 * scale
-        addPart(to: root, name: "Hand links",
-                geo: SCNBox(width: 0.09 * scale, height: 0.11 * scale, length: 0.04 * scale, chamferRadius: 0.01 * scale),
-                pos: SCNVector3(-hx, 0.81 * scale, 0))
-        addPart(to: root, name: "Hand rechts",
-                geo: SCNBox(width: 0.09 * scale, height: 0.11 * scale, length: 0.04 * scale, chamferRadius: 0.01 * scale),
-                pos: SCNVector3(hx, 0.81 * scale, 0))
-
-        // Thighs
-        let tx = CGFloat(b) * 0.28 * scale
-        addPart(to: root, name: "Oberschenkel links",
-                geo: SCNCapsule(capRadius: 0.085 * scale, height: 0.32 * scale),
-                pos: SCNVector3(-tx, 0.58 * scale, 0))
-        addPart(to: root, name: "Oberschenkel rechts",
-                geo: SCNCapsule(capRadius: 0.085 * scale, height: 0.32 * scale),
-                pos: SCNVector3(tx, 0.58 * scale, 0))
-
-        // Lower legs
-        addPart(to: root, name: "Unterschenkel links",
-                geo: SCNCapsule(capRadius: 0.065 * scale, height: 0.30 * scale),
-                pos: SCNVector3(-tx, 0.23 * scale, 0))
-        addPart(to: root, name: "Unterschenkel rechts",
-                geo: SCNCapsule(capRadius: 0.065 * scale, height: 0.30 * scale),
-                pos: SCNVector3(tx, 0.23 * scale, 0))
-
-        // Feet
-        addPart(to: root, name: "Fuss links",
-                geo: SCNBox(width: 0.10 * scale, height: 0.06 * scale, length: 0.22 * scale, chamferRadius: 0.02 * scale),
-                pos: SCNVector3(-tx, 0.03 * scale, 0.04 * scale))
-        addPart(to: root, name: "Fuss rechts",
-                geo: SCNBox(width: 0.10 * scale, height: 0.06 * scale, length: 0.22 * scale, chamferRadius: 0.02 * scale),
-                pos: SCNVector3(tx, 0.03 * scale, 0.04 * scale))
-
+        scene.rootNode.addChildNode(body)
         return scene
     }
 
-    private static func addPart(to root: SCNNode, name: String, geo: SCNGeometry,
-                                 pos: SCNVector3, euler: SCNVector3 = SCNVector3(0, 0, 0)) {
-        let mat = SCNMaterial()
-        mat.diffuse.contents = UIColor.systemGray4
-        mat.specular.contents = UIColor.white
-        mat.lightingModel = .phong
-        mat.isDoubleSided = true
-        geo.materials = [mat]
+    // MARK: Lights
 
-        let node = SCNNode(geometry: geo)
-        node.name = name
-        node.position = pos
-        node.eulerAngles = euler
-        root.addChildNode(node)
-    }
-
-    static func aktualisiereAuswahl(in scene: SCNScene, ausgewaehlt: Set<String>, tintColor: UIColor) {
-        scene.rootNode.enumerateChildNodes { node, _ in
-            guard let name = node.name, !name.isEmpty else { return }
-            let selected = ausgewaehlt.contains(name)
-            node.geometry?.firstMaterial?.diffuse.contents = selected
-                ? tintColor.withAlphaComponent(0.8)
-                : UIColor.systemGray4
-            node.geometry?.firstMaterial?.emission.contents = selected
-                ? tintColor.withAlphaComponent(0.3)
-                : UIColor.black
+    private static func addLights(to scene: SCNScene) {
+        func light(_ type: SCNLight.LightType, intensity: CGFloat, euler: SCNVector3 = .init()) -> SCNNode {
+            let n = SCNNode()
+            n.light = SCNLight()
+            n.light!.type = type
+            n.light!.intensity = intensity
+            n.eulerAngles = euler
+            return n
         }
+        scene.rootNode.addChildNode(light(.ambient,     intensity: 420))
+        scene.rootNode.addChildNode(light(.directional, intensity: 850,
+                                          euler: SCNVector3(-0.5,  0.55, 0)))
+        scene.rootNode.addChildNode(light(.directional, intensity: 320,
+                                          euler: SCNVector3( 0.3, -0.80, 0)))
     }
-}
 
-// MARK: - SCNVector3 helpers
+    // MARK: Camera
 
-private extension SCNVector3 {
-    init(_ x: CGFloat, _ y: CGFloat, _ z: CGFloat) {
-        self.init(Float(x), Float(y), Float(z))
+    private static func addCamera(to scene: SCNScene) {
+        let cam = SCNNode()
+        cam.camera = SCNCamera()
+        cam.camera!.fieldOfView = 38
+        cam.camera!.zNear = 0.05
+        cam.camera!.zFar  = 20
+        cam.position = SCNVector3(0, 0, 2.8)
+        scene.rootNode.addChildNode(cam)
+    }
+
+    // MARK: Body parts
+
+    private static func addParts(to body: SCNNode, p: BodyProportionen) {
+        let huefteTop = p.huefteHoehe
+        let bauchTop  = huefteTop + p.bauchHoehe
+        let brustTop  = bauchTop  + p.brustHoehe
+        let kopfMitte = brustTop  + p.halsLaenge + p.kopfRadius
+
+        let armX  = p.schulterBreite / 2 + 0.04
+        let beinX = p.huefteBreite   * 0.28
+
+        // Head
+        body.addChildNode(n("Kopf",
+            SCNSphere(radius: CGFloat(p.kopfRadius)),
+            SCNVector3(0, kopfMitte, 0)))
+
+        // Ears
+        let ohrGeo = SCNSphere(radius: 0.022)
+        body.addChildNode(n("Ohr links",  ohrGeo, SCNVector3(-(p.kopfRadius + 0.016), kopfMitte - 0.015, 0)))
+        body.addChildNode(n("Ohr rechts", ohrGeo, SCNVector3(  p.kopfRadius + 0.016,  kopfMitte - 0.015, 0)))
+
+        // Neck
+        body.addChildNode(n("Hals",
+            SCNBox(width:  CGFloat(p.torsoBreite * 0.38),
+                   height: CGFloat(p.halsLaenge),
+                   length: CGFloat(p.torsoTiefe  * 0.55),
+                   chamferRadius: 0.03),
+            SCNVector3(0, brustTop + p.halsLaenge / 2, 0)))
+
+        // Chest
+        body.addChildNode(n("Brust",
+            tBox(p.torsoBreite, p.brustHoehe, p.torsoTiefe),
+            SCNVector3(0, bauchTop + p.brustHoehe / 2, 0)))
+
+        // Abdomen
+        body.addChildNode(n("Bauch",
+            tBox(p.torsoBreite * 0.90, p.bauchHoehe, p.torsoTiefe * 0.95),
+            SCNVector3(0, huefteTop + p.bauchHoehe / 2, 0)))
+
+        // Hips
+        body.addChildNode(n("Hüfte",
+            tBox(p.huefteBreite, p.huefteHoehe, p.torsoTiefe * 0.90),
+            SCNVector3(0, p.huefteHoehe / 2, 0)))
+
+        // Shoulders
+        let sGeo = SCNSphere(radius: 0.062)
+        body.addChildNode(n("Schulter links",  sGeo, SCNVector3(-armX + 0.03, brustTop - 0.01, 0)))
+        body.addChildNode(n("Schulter rechts", sGeo, SCNVector3( armX - 0.03, brustTop - 0.01, 0)))
+
+        // Upper arms
+        let oaGeo = SCNCapsule(capRadius: 0.040, height: CGFloat(p.oberarmLaenge))
+        let oaY   = brustTop - 0.02 - p.oberarmLaenge / 2
+        body.addChildNode(n("Oberarm links",  oaGeo, SCNVector3(-armX, oaY, 0)))
+        body.addChildNode(n("Oberarm rechts", oaGeo, SCNVector3( armX, oaY, 0)))
+
+        // Elbows
+        let ellbogenY = oaY - p.oberarmLaenge / 2
+        let elbowGeo  = SCNSphere(radius: 0.030)
+        body.addChildNode(n("Ellbogen links",  elbowGeo, SCNVector3(-armX - 0.015, ellbogenY, 0.015)))
+        body.addChildNode(n("Ellbogen rechts", elbowGeo, SCNVector3( armX + 0.015, ellbogenY, 0.015)))
+
+        // Forearms
+        let faGeo = SCNCapsule(capRadius: 0.033, height: CGFloat(p.unterarmLaenge))
+        let faY   = oaY - p.oberarmLaenge / 2 - p.unterarmLaenge / 2
+        body.addChildNode(n("Unterarm links",  faGeo, SCNVector3(-armX - 0.02, faY, 0)))
+        body.addChildNode(n("Unterarm rechts", faGeo, SCNVector3( armX + 0.02, faY, 0)))
+
+        // Hands
+        let hGeo = SCNSphere(radius: 0.044)
+        let hY   = faY - p.unterarmLaenge / 2 - 0.04
+        body.addChildNode(n("Hand links",  hGeo, SCNVector3(-armX - 0.03, hY, 0)))
+        body.addChildNode(n("Hand rechts", hGeo, SCNVector3( armX + 0.03, hY, 0)))
+
+        // Upper legs
+        let ulGeo = SCNCapsule(capRadius: 0.063, height: CGFloat(p.oberschenkelLaenge))
+        let ulY   = -(p.oberschenkelLaenge / 2 + 0.01)
+        body.addChildNode(n("Oberschenkel links",  ulGeo, SCNVector3(-beinX, ulY, 0)))
+        body.addChildNode(n("Oberschenkel rechts", ulGeo, SCNVector3( beinX, ulY, 0)))
+
+        // Knees
+        let knieY   = ulY - p.oberschenkelLaenge / 2
+        let kneeGeo = SCNSphere(radius: 0.042)
+        body.addChildNode(n("Knie links",  kneeGeo, SCNVector3(-beinX, knieY, 0.03)))
+        body.addChildNode(n("Knie rechts", kneeGeo, SCNVector3( beinX, knieY, 0.03)))
+
+        // Lower legs
+        let llGeo = SCNCapsule(capRadius: 0.047, height: CGFloat(p.unterschenkelLaenge))
+        let llY   = -(p.oberschenkelLaenge + p.unterschenkelLaenge / 2 + 0.02)
+        body.addChildNode(n("Unterschenkel links",  llGeo, SCNVector3(-beinX * 0.88, llY, 0)))
+        body.addChildNode(n("Unterschenkel rechts", llGeo, SCNVector3( beinX * 0.88, llY, 0)))
+
+        // Ankles
+        let knoechelY = -(p.oberschenkelLaenge + p.unterschenkelLaenge + 0.02)
+        let ankleGeo  = SCNSphere(radius: 0.030)
+        body.addChildNode(n("Knöchel links",  ankleGeo, SCNVector3(-beinX - 0.02, knoechelY, 0.01)))
+        body.addChildNode(n("Knöchel rechts", ankleGeo, SCNVector3( beinX + 0.02, knoechelY, 0.01)))
+
+        // Feet
+        let fGeo = SCNBox(width: 0.082, height: 0.055, length: 0.190, chamferRadius: 0.025)
+        let fY   = -(p.oberschenkelLaenge + p.unterschenkelLaenge + 0.045)
+        body.addChildNode(n("Fuss links",  fGeo, SCNVector3(-beinX * 0.88, fY, 0.04)))
+        body.addChildNode(n("Fuss rechts", fGeo, SCNVector3( beinX * 0.88, fY, 0.04)))
+    }
+
+    // MARK: Geometry helpers
+
+    private static func tBox(_ w: Float, _ h: Float, _ d: Float) -> SCNGeometry {
+        SCNBox(width: CGFloat(w), height: CGFloat(h), length: CGFloat(d), chamferRadius: 0.040)
+    }
+
+    private static func n(_ name: String, _ geo: SCNGeometry, _ pos: SCNVector3) -> SCNNode {
+        let uniqueGeo = geo.copy() as! SCNGeometry
+        let mat = SCNMaterial()
+        mat.diffuse.contents  = hautfarbe
+        mat.emission.contents = UIColor.black
+        mat.lightingModel     = .phong
+        mat.specular.contents = UIColor(white: 0.18, alpha: 1)
+        mat.shininess         = 22
+        mat.isDoubleSided     = true
+        uniqueGeo.materials = [mat]
+
+        let node = SCNNode(geometry: uniqueGeo)
+        node.name     = name
+        node.position = pos
+        return node
     }
 }
