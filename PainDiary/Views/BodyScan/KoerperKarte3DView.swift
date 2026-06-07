@@ -234,6 +234,8 @@ enum BodySceneBuilder {
     }
 
     private static func n(_ name: String, _ geo: SCNGeometry, _ pos: SCNVector3) -> SCNNode {
+        // Each node needs its own geometry copy so left/right sides don't share materials.
+        let uniqueGeo = geo.copy() as! SCNGeometry
         let mat = SCNMaterial()
         mat.diffuse.contents  = hautfarbe
         mat.emission.contents = UIColor.black
@@ -241,9 +243,9 @@ enum BodySceneBuilder {
         mat.specular.contents = UIColor(white: 0.18, alpha: 1)
         mat.shininess         = 22
         mat.isDoubleSided     = true
-        geo.materials = [mat]
+        uniqueGeo.materials = [mat]
 
-        let node = SCNNode(geometry: geo)
+        let node = SCNNode(geometry: uniqueGeo)
         node.name     = name
         node.position = pos
         return node
