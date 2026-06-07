@@ -32,8 +32,11 @@ struct KoerperKarte3DView: UIViewRepresentable {
     func updateUIView(_ uiView: SCNView, context: Context) {
         uiView.scene?.rootNode.enumerateChildNodes { node, _ in
             guard let name = node.name else { return }
+            // Highlight if directly selected OR if any sub-region of this node is selected.
+            let isSelected = ausgewaehlt.contains(name)
+                || (SubRegionen.map[name]?.contains { ausgewaehlt.contains($0) } ?? false)
             node.geometry?.materials.forEach { mat in
-                if ausgewaehlt.contains(name) {
+                if isSelected {
                     mat.diffuse.contents  = UIColor.systemRed.withAlphaComponent(0.78)
                     mat.emission.contents = UIColor.systemRed.withAlphaComponent(0.18)
                 } else {
@@ -162,6 +165,11 @@ enum BodySceneBuilder {
             SCNSphere(radius: CGFloat(p.kopfRadius)),
             SCNVector3(0, kopfMitte, 0)))
 
+        // ── Ears ──────────────────────────────────────────────────────
+        let ohrGeo = SCNSphere(radius: 0.022)
+        body.addChildNode(n("Ohr links",  ohrGeo, SCNVector3(-(p.kopfRadius + 0.016), kopfMitte - 0.015, 0)))
+        body.addChildNode(n("Ohr rechts", ohrGeo, SCNVector3(  p.kopfRadius + 0.016,  kopfMitte - 0.015, 0)))
+
         // ── Neck/Nacken (one box, front = "Hals", back = "Nacken") ────
         body.addChildNode(n("Hals",
             SCNBox(width:  CGFloat(p.torsoBreite * 0.38),
@@ -196,6 +204,12 @@ enum BodySceneBuilder {
         body.addChildNode(n("Oberarm links",  oaGeo, SCNVector3(-armX, oaY, 0)))
         body.addChildNode(n("Oberarm rechts", oaGeo, SCNVector3( armX, oaY, 0)))
 
+        // ── Elbows ────────────────────────────────────────────────────
+        let ellbogenY = oaY - p.oberarmLaenge / 2
+        let elbowGeo  = SCNSphere(radius: 0.030)
+        body.addChildNode(n("Ellbogen links",  elbowGeo, SCNVector3(-armX - 0.015, ellbogenY, 0.015)))
+        body.addChildNode(n("Ellbogen rechts", elbowGeo, SCNVector3( armX + 0.015, ellbogenY, 0.015)))
+
         // ── Forearms ──────────────────────────────────────────────────
         let faGeo = SCNCapsule(capRadius: 0.033, height: CGFloat(p.unterarmLaenge))
         let faY   = oaY - p.oberarmLaenge / 2 - p.unterarmLaenge / 2
@@ -213,6 +227,12 @@ enum BodySceneBuilder {
         let ulY   = -(p.oberschenkelLaenge / 2 + 0.01)
         body.addChildNode(n("Oberschenkel links",  ulGeo, SCNVector3(-beinX, ulY, 0)))
         body.addChildNode(n("Oberschenkel rechts", ulGeo, SCNVector3( beinX, ulY, 0)))
+
+        // ── Knees ─────────────────────────────────────────────────────
+        let knieY   = ulY - p.oberschenkelLaenge / 2
+        let kneeGeo = SCNSphere(radius: 0.042)
+        body.addChildNode(n("Knie links",  kneeGeo, SCNVector3(-beinX, knieY, 0.03)))
+        body.addChildNode(n("Knie rechts", kneeGeo, SCNVector3( beinX, knieY, 0.03)))
 
         // ── Lower legs ────────────────────────────────────────────────
         let llGeo = SCNCapsule(capRadius: 0.047, height: CGFloat(p.unterschenkelLaenge))
