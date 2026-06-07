@@ -76,6 +76,7 @@ struct AddEntryView: View {
                 ladeVorhandeneWerte()
                 if eintrag == nil {
                     wetter.laden()
+                    ladeSchlafVomHeutigenTag()
                     Task { healthSchlaf = await health.schlafStundenLetztteNacht() }
                 }
             }
@@ -266,6 +267,19 @@ struct AddEntryView: View {
     }
 
     // MARK: - Data
+
+    private func ladeSchlafVomHeutigenTag() {
+        let cal = Calendar.current
+        let heute = cal.startOfDay(for: Date())
+        let morgen = cal.date(byAdding: .day, value: 1, to: heute)!
+        let descriptor = FetchDescriptor<PainEntry>(
+            predicate: #Predicate { $0.datum >= heute && $0.datum < morgen && $0.schlafStunden > 0 },
+            sortBy: [SortDescriptor(\.datum)]
+        )
+        if let eintraege = try? modelContext.fetch(descriptor), let erster = eintraege.first {
+            schlafStunden = erster.schlafStunden
+        }
+    }
 
     private func ladeVorhandeneWerte() {
         guard let e = eintrag else { return }
