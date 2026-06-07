@@ -78,7 +78,10 @@ struct MedikamenteView: View {
     private var uebergebrauchWarnung: some View {
         let grenze = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         let letzter30Tage = logs.filter { $0.datum >= grenze && $0.eingenommen }
-        let zaehlung = Dictionary(grouping: letzter30Tage, by: \.medikamentName).mapValues(\.count)
+        let zaehlung = Dictionary(
+            grouping: letzter30Tage,
+            by: { $0.dosierung.isEmpty ? $0.medikamentName : "\($0.medikamentName) \($0.dosierung)" }
+        ).mapValues(\.count)
         let probleme = zaehlung.filter { $0.value > 10 }.sorted { $0.value > $1.value }
 
         if !probleme.isEmpty {
@@ -130,7 +133,9 @@ struct MedikamenteView: View {
     @ViewBuilder
     private func einnahmeKontrolle(med: Dauermedikation) -> some View {
         let anzahlErwartet = notif.anzahlDosen(med.frequenz)
-        let anzahlHeute = heutigeLogsHeute.filter { $0.medikamentName == med.name }.count
+        let anzahlHeute = heutigeLogsHeute.filter {
+            $0.medikamentName == med.name && $0.dosierung == med.dosierung
+        }.count
 
         if anzahlErwartet == 0 {
             // Bei Bedarf: Freitext-Zähler + Plus-Button

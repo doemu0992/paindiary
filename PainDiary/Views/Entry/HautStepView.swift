@@ -16,52 +16,20 @@ struct HautStepView: View {
     @State private var photoItem: PhotosPickerItem? = nil
     @State private var fotoBild: UIImage? = nil
 
-    private var stellenSet: Set<String> {
-        Set(hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty })
-    }
-
     var body: some View {
         VStack(spacing: 24) {
             Text("Hautveränderungen?")
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
 
-            // ── Betroffene Stellen ────────────────────────────────────
             VStack(alignment: .leading, spacing: 10) {
                 Text("Betroffene Stellen")
                     .font(.headline)
-
-                KoerperPickerView(auswahl: $hautStellen, tintColor: .systemOrange, frameHeight: 300)
-
-                if !stellenSet.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(stellenSet.sorted(), id: \.self) { s in
-                                Button {
-                                    var set = stellenSet; set.remove(s)
-                                    hautStellen = set.sorted().joined(separator: ", ")
-                                } label: {
-                                    HStack(spacing: 3) {
-                                        Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
-                                        Text(s).font(.caption)
-                                    }
-                                    .padding(.horizontal, 10).padding(.vertical, 5)
-                                    .background(Color.orange.opacity(0.15))
-                                    .foregroundStyle(.orange)
-                                    .clipShape(Capsule())
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    .frame(height: 30)
-                }
+                KoerperPickerView(auswahl: $hautStellen, tintColor: .orange, frameHeight: 300)
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
 
-            // ── Art der Veränderung ───────────────────────────────────
             VStack(alignment: .leading, spacing: 12) {
                 Text("Art der Veränderung")
                     .font(.headline)
@@ -89,11 +57,9 @@ struct HautStepView: View {
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
 
-            // ── Foto-Anhang ───────────────────────────────────────────
             VStack(alignment: .leading, spacing: 12) {
                 Text("Foto-Anhang")
                     .font(.headline)
-
                 if let bild = fotoBild {
                     ZStack(alignment: .topTrailing) {
                         Image(uiImage: bild)
@@ -102,7 +68,6 @@ struct HautStepView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 180)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
-
                         Button {
                             FotoManager.loeschen(dateiname: fotoDateiname)
                             fotoDateiname = ""; fotoBild = nil
