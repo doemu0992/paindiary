@@ -28,18 +28,24 @@ struct MassnahmenStepView: View {
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
 
+            // Read-only info: Dauermedikamente are tracked separately in adherence analysis
             if !eingenommeneHeute.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Eingenommene Medikamente")
-                        .font(.headline)
-                    FlowLayout(eingenommeneHeute.map { medLabel($0) }) { label in
-                        ChipButton(label: label, ausgewaehlt: ausgewaehlt.contains(label)) {
-                            toggleChip(label)
-                        }
-                    }
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Heute eingenommen:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(eingenommeneHeute.map { medLabel($0) }.joined(separator: ", "))
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Spacer()
                 }
-                .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
             }
 
             VStack(alignment: .leading, spacing: 12) {
@@ -47,7 +53,9 @@ struct MassnahmenStepView: View {
                     .font(.headline)
                 FlowLayout(massnahmenVorschlaege) { m in
                     ChipButton(label: m, ausgewaehlt: ausgewaehlt.contains(m)) {
-                        toggleChip(m)
+                        if ausgewaehlt.contains(m) { ausgewaehlt.remove(m) }
+                        else { ausgewaehlt.insert(m) }
+                        aktualisiereBinding()
                     }
                 }
                 HStack(spacing: 8) {
@@ -74,9 +82,9 @@ struct MassnahmenStepView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal)
-        .onAppear { ladeAuswahlAusBinding() }
-        .onChange(of: eingenommeneHeute.map { $0.medikamentName }, initial: false) {
-            vorauswaehlenMedikamente()
+        .onAppear {
+            let teile = massnahmen.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
+            ausgewaehlt = Set(teile.filter { !$0.isEmpty })
         }
     }
 
@@ -84,26 +92,7 @@ struct MassnahmenStepView: View {
         log.dosierung.isEmpty ? log.medikamentName : "\(log.medikamentName) \(log.dosierung)"
     }
 
-    private func toggleChip(_ label: String) {
-        if ausgewaehlt.contains(label) { ausgewaehlt.remove(label) }
-        else { ausgewaehlt.insert(label) }
-        aktualisiereBinding()
-    }
-
     private func aktualisiereBinding() {
         massnahmen = ausgewaehlt.sorted().joined(separator: ", ")
-    }
-
-    private func ladeAuswahlAusBinding() {
-        let teile = massnahmen.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
-        ausgewaehlt = Set(teile.filter { !$0.isEmpty })
-        vorauswaehlenMedikamente()
-    }
-
-    private func vorauswaehlenMedikamente() {
-        for log in eingenommeneHeute {
-            ausgewaehlt.insert(medLabel(log))
-        }
-        aktualisiereBinding()
     }
 }
