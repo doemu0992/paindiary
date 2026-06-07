@@ -96,7 +96,7 @@ struct DashboardView: View {
     private var medikamentenKarte: some View {
         let aktive = medikamente.filter(\.aktiv)
         let notif = NotificationManager.shared
-        let heuteLogs = einnahmeLogs.filter { $0.datum >= tagesstart }
+        let heuteLogs = einnahmeLogs.filter { $0.datum >= tagesstart && $0.eingenommen }
 
         return NavigationLink(destination: MedikamenteView()) {
             VStack(alignment: .leading, spacing: 12) {
@@ -112,7 +112,7 @@ struct DashboardView: View {
 
                 ForEach(aktive.prefix(3)) { med in
                     let erwartet = notif.anzahlDosen(med.frequenz)
-                    let eingenommen = heuteLogs.filter { $0.medikamentName == med.name }.count
+                    let eingenommen = heuteLogs.filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung }.count
                     let fertig = erwartet > 0 ? eingenommen >= erwartet : eingenommen > 0
 
                     HStack(spacing: 10) {
