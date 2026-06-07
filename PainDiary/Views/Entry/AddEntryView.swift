@@ -202,7 +202,7 @@ struct AddEntryView: View {
                     onVorlageDismissed: { vorlageDismissed = true }
                 )
             case 1:
-                IntensitaetStepView(schmerzstaerke: $schmerzstaerke)
+                IntensitaetStepView(schmerzstaerke: $schmerzstaerke, verlauf: $verlauf)
             case 2:
                 CharakterAusloeserStepView(
                     schmerzart: $schmerzart,
@@ -559,7 +559,7 @@ private struct VorlageBannerView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "clock.arrow.circlepath")
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                 Text("Letzter Eintrag übernehmen?")
                     .font(.subheadline.bold())
                 Spacer()
