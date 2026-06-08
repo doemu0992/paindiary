@@ -12,7 +12,6 @@ struct MedikamenteView: View {
     @State private var logAnzeigen = false
     @State private var tagesstart = Calendar.current.startOfDay(for: Date())
     @State private var medZuLoggen: Dauermedikation? = nil
-    @State private var logDatum = Date()
 
     private let notif = NotificationManager.shared
     private var aktive: [Dauermedikation] { medikamente.filter(\.aktiv) }
@@ -36,7 +35,6 @@ struct MedikamenteView: View {
                             .onTapGesture { zuBearbeiten = med }
                             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                 Button {
-                                    logDatum = Date()
                                     medZuLoggen = med
                                 } label: {
                                     Label("Einnahme erfassen", systemImage: "calendar.badge.plus")
@@ -79,7 +77,7 @@ struct MedikamenteView: View {
         .sheet(isPresented: $formAnzeigen) { MedikamentFormView() }
         .sheet(item: $zuBearbeiten) { med in MedikamentFormView(medikament: med) }
         .sheet(item: $medZuLoggen) { med in
-            einnahmeLogSheet(med: med)
+            EinnahmeLogSheet(med: med)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -302,66 +300,6 @@ struct MedikamenteView: View {
         }
     }
 
-    @ViewBuilder
-    private func einnahmeLogSheet(med: Dauermedikation) -> some View {
-        NavigationStack {
-            Form {
-                Section {
-                    DatePicker(
-                        "Datum & Uhrzeit",
-                        selection: $logDatum,
-                        in: ...Date(),
-                        displayedComponents: [.date, .hourAndMinute]
-                    )
-                } header: {
-                    Label(med.name, systemImage: med.typSymbol).font(.headline)
-                } footer: {
-                    if med.frequenz == "Wöchentlich" {
-                        Text("Wähle das Datum deiner letzten oder aktuellen Einnahme.")
-                    } else {
-                        Text("Hier kannst du auch vergangene Einnahmen nacherfassen.")
-                    }
-                }
-
-                if !med.dosierung.isEmpty {
-                    Section {
-                        HStack {
-                            Text("Dosierung")
-                            Spacer()
-                            Text(med.dosierung).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-            }
-            .navigationTitle("Einnahme erfassen")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { medZuLoggen = nil }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") {
-                        let log = EinnahmeLog(
-                            datum: logDatum,
-                            medikamentName: med.name,
-                            dosierung: med.dosierung,
-                            eingenommen: true)
-                        modelContext.insert(log)
-                        let stundenBisJetzt = max(0, Date().timeIntervalSince(logDatum))
-                        let abfrageVerzoegerung = Double(med.wirkungsAbfrageStunden) * 3600 - stundenBisJetzt
-                        if abfrageVerzoegerung > 60 {
-                            notif.planeWirkungsAbfrage(
-                                fuer: log, stunden: Int(abfrageVerzoegerung / 3600) + 1)
-                        }
-                        medZuLoggen = nil
-                    }
-                    .fontWeight(.semibold)
-                }
-            }
-        }
-        .presentationDetents([.medium])
-    }
 
     private func loeschen(aus liste: [Dauermedikation], offsets: IndexSet) {
         offsets.forEach { i in
@@ -603,6 +541,147 @@ struct MedikamentFormView: View {
             if erinnerungAktiv { notif.planeErinnerungen(fuer: neu) }
         }
         dismiss()
+    }
+}
+
+// MARK: - Einnahme-Log Sheet
+
+private struct EinnahmeLogSheet: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \EinnahmeLog.datum, order: .reverse) private var logs: [EinnahmeLog]
+
+    let med: Dauermedikation
+    private let notif = NotificationManager.shared
+
+    @State private var logDatum = Date()
+    @State private var fehlende: [Date] = []
+
+    private var istWöchentlich: Bool { med.frequenz == "Wöchentlich" }
+    private var istBeiBedarfs: Bool { med.frequenz == "Bei Bedarf" }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                // Einzelne Einnahme
+                Section {
+                    DatePicker(
+                        "Datum & Uhrzeit",
+                        selection: $logDatum,
+                        in: ...Date(),
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                } header: {
+                    Label(med.name, systemImage: med.typSymbol).font(.headline)
+                } footer: {
+                    if istWöchentlich {
+                        Text("Wähle das Datum deiner letzten oder aktuellen Einnahme.")
+                    } else {
+                        Text("Einzelne Einnahme zu einem bestimmten Zeitpunkt erfassen.")
+                    }
+                }
+
+                if !med.dosierung.isEmpty {
+                    Section {
+                        HStack {
+                            Text("Dosierung")
+                            Spacer()
+                            Text(med.dosierung).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                // Rückwirkend nacherfassen (nur für Dauermedikamente mit fixer Einnahmezeit)
+                if !istBeiBedarfs && !istWöchentlich && !fehlende.isEmpty {
+                    Section {
+                        Button {
+                            erstelleFehlendeLogs()
+                            dismiss()
+                        } label: {
+                            Label(
+                                "Alle \(fehlende.count) fehlenden Einnahmen nacherfassen",
+                                systemImage: "calendar.badge.checkmark"
+                            )
+                            .foregroundStyle(.blue)
+                        }
+                    } header: {
+                        Text("Rückwirkend nachführen")
+                    } footer: {
+                        let zeiten = notif.gueltigeZeiten(fuer: med)
+                        let zeitText = zeiten.map(\.anzeigeText).joined(separator: ", ")
+                        Text("Erstellt Einträge ab \(med.startDatum, format: .dateTime.day().month(.abbreviated).year()) bis heute zu den Zeiten \(zeitText). Bereits vorhandene Einnahmen werden übersprungen.")
+                    }
+                }
+            }
+            .navigationTitle("Einnahme erfassen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") { speichereEinzelLog() }
+                        .fontWeight(.semibold)
+                }
+            }
+            .onAppear { berechneFehlende() }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func speichereEinzelLog() {
+        let log = EinnahmeLog(datum: logDatum, medikamentName: med.name,
+                              dosierung: med.dosierung, eingenommen: true)
+        modelContext.insert(log)
+        // Wirksamkeits-Abfrage nur wenn Einnahme weniger als wirkungsAbfrageStunden alt
+        let stundenBisJetzt = max(0, Date().timeIntervalSince(logDatum)) / 3600
+        let verbleibend = Double(med.wirkungsAbfrageStunden) - stundenBisJetzt
+        if verbleibend > 0.1 {
+            notif.planeWirkungsAbfrage(fuer: log, stunden: max(1, Int(verbleibend.rounded(.up))))
+        }
+        dismiss()
+    }
+
+    private func berechneFehlende() {
+        guard !istBeiBedarfs && !istWöchentlich else { return }
+        let zeiten = notif.gueltigeZeiten(fuer: med)
+        guard !zeiten.isEmpty else { return }
+
+        let kal = Calendar.current
+        let heute = Date()
+        let heuteStart = kal.startOfDay(for: heute)
+        // Max 90 Tage rückwirkend
+        let maxStart = kal.date(byAdding: .day, value: -90, to: heuteStart) ?? heuteStart
+        let start = [kal.startOfDay(for: med.startDatum), maxStart].max() ?? maxStart
+
+        var result: [Date] = []
+        var tag = start
+        while tag <= heuteStart {
+            for zeit in zeiten {
+                var dc = kal.dateComponents([.year, .month, .day], from: tag)
+                dc.hour = zeit.stunde; dc.minute = zeit.minute
+                guard let datum = kal.date(from: dc), datum <= heute else { continue }
+                let schonVorhanden = logs.contains { log in
+                    log.medikamentName == med.name &&
+                    log.dosierung == med.dosierung &&
+                    log.eingenommen &&
+                    kal.isDate(log.datum, inSameDayAs: tag) &&
+                    abs(log.datum.timeIntervalSince(datum)) < 7200
+                }
+                if !schonVorhanden { result.append(datum) }
+            }
+            guard let naechster = kal.date(byAdding: .day, value: 1, to: tag) else { break }
+            tag = naechster
+        }
+        fehlende = result
+    }
+
+    private func erstelleFehlendeLogs() {
+        for datum in fehlende {
+            let log = EinnahmeLog(datum: datum, medikamentName: med.name,
+                                  dosierung: med.dosierung, eingenommen: true)
+            modelContext.insert(log)
+        }
     }
 }
 
