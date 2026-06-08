@@ -3,23 +3,17 @@ import SwiftData
 
 @main
 struct PainDiaryApp: App {
-    @State private var container: ModelContainer?
+    // App.init() is always called on the main thread by SwiftUI;
+    // assumeIsolated satisfies the Swift 6 @MainActor requirement
+    // without deferring to a .task, avoiding the main-thread I/O warning.
+    let container: ModelContainer = MainActor.assumeIsolated { makeContainer() }
 
     var body: some Scene {
         WindowGroup {
-            if let container {
-                ContentView()
-                    .task { await berechtigungenAnfordern() }
-                    .modelContainer(container)
-            } else {
-                ProgressView()
-                    .task {
-                        container = await Task.detached(priority: .userInitiated) {
-                            makeContainer()
-                        }.value
-                    }
-            }
+            ContentView()
+                .task { await berechtigungenAnfordern() }
         }
+        .modelContainer(container)
     }
 
     private func berechtigungenAnfordern() async {
