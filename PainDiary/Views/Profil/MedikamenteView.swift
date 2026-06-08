@@ -899,7 +899,7 @@ struct EinnahmeLogView: View {
         }
         .sheet(isPresented: $zeigePDFShare) {
             if let url = pdfURL {
-                ShareSheet(items: [url])
+                ShareSheet(url: url)
             }
         }
     }
@@ -921,10 +921,3 @@ struct EinnahmeLogView: View {
     }
 }
 
-private struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
-}
