@@ -96,9 +96,17 @@ struct AddEntryView: View {
                 .padding(.horizontal)
                 .padding(.top, 8)
 
-                ScrollView {
-                    schrittInhalt
-                        .padding(.vertical, 24)
+                Group {
+                    if schritt == 0 {
+                        schrittInhalt
+                            .frame(maxHeight: .infinity)
+                            .padding(.vertical, 8)
+                    } else {
+                        ScrollView {
+                            schrittInhalt
+                                .padding(.vertical, 24)
+                        }
+                    }
                 }
                 .id(schritt)
                 .transition(.asymmetric(
@@ -463,7 +471,7 @@ private struct OrtTypStepView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             // Type selector
             Picker("Typ", selection: $eintragTyp) {
                 Text("Schmerzen").tag(EintragTyp.schmerz)
@@ -483,7 +491,7 @@ private struct OrtTypStepView: View {
             }
 
             // Body map card
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(eintragTyp == .schmerz ? "Wo hast du Schmerzen?" : "Betroffene Hautstellen")
                         .font(.headline)
@@ -503,9 +511,10 @@ private struct OrtTypStepView: View {
                 KoerperPickerView(
                     auswahl: $koerperstelle,
                     tintColor: eintragTyp == .schmerz ? .systemRed : .systemOrange,
-                    frameHeight: 380,
                     subRegionenMap: eintragTyp == .schmerz ? nil : SubRegionen.hautMap
                 )
+                .frame(maxHeight: .infinity)
+                .layoutPriority(1)
 
                 // Selected chips
                 if ausgewaehlt.isEmpty {
@@ -543,6 +552,8 @@ private struct OrtTypStepView: View {
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal)
+            .frame(maxHeight: .infinity)
+            .layoutPriority(1)
         }
         .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
     }

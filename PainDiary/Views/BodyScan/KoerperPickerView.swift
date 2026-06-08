@@ -5,7 +5,7 @@ import SwiftUI
 struct KoerperPickerView: View {
     @Binding var auswahl: String
     var tintColor: UIColor = .systemRed
-    var frameHeight: CGFloat = 420
+    var frameHeight: CGFloat? = nil
     /// Override the sub-region drill-down map. Defaults to SubRegionen.map (pain).
     var subRegionenMap: [String: [String]]? = nil
 
@@ -24,6 +24,7 @@ struct KoerperPickerView: View {
             tintColor: tintColor
         )
         .frame(height: frameHeight)
+        .frame(maxHeight: frameHeight == nil ? .infinity : nil)
         .sheet(item: $pendingRegion) { item in
             SubRegionenSheet(
                 region: item.id,
