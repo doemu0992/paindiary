@@ -66,20 +66,27 @@ struct PDFNotfallKontakt {
 struct PDFMedikament {
     var name: String; var dosierung: String; var frequenz: String
     var startDatum: Date; var endDatum: Date?; var aktiv: Bool
+    var einnahmeHinweis: String
+    var vorrat: Int?; var vorratSchwelle: Int
+    var ablaufDatum: Date?
 
     static func aus(med: Dauermedikation) -> PDFMedikament {
         PDFMedikament(name: med.name, dosierung: med.dosierung, frequenz: med.frequenz,
-                      startDatum: med.startDatum, endDatum: med.endDatum, aktiv: med.aktiv)
+                      startDatum: med.startDatum, endDatum: med.endDatum, aktiv: med.aktiv,
+                      einnahmeHinweis: med.einnahmeHinweis,
+                      vorrat: med.vorrat, vorratSchwelle: med.vorratSchwelle,
+                      ablaufDatum: med.ablaufDatum)
     }
 }
 
 struct PDFEinnahmeLog {
     var datum: Date; var medikamentName: String; var dosierung: String
-    var eingenommen: Bool; var wirkung: String
+    var eingenommen: Bool; var wirkung: String; var notizen: String
 
     static func aus(log: EinnahmeLog) -> PDFEinnahmeLog {
         PDFEinnahmeLog(datum: log.datum, medikamentName: log.medikamentName,
-                       dosierung: log.dosierung, eingenommen: log.eingenommen, wirkung: log.wirkung)
+                       dosierung: log.dosierung, eingenommen: log.eingenommen,
+                       wirkung: log.wirkung, notizen: log.notizen)
     }
 }
 
@@ -621,7 +628,7 @@ class PDFExportService: @unchecked Sendable {
                  font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
             y += 20
 
-            let cols: [CGFloat] = [rand, rand + 180, rand + 300, rand + 400]
+            let cols: [CGFloat] = [rand, rand + 175, rand + 290, rand + 380]
             tabellenKopf(ctx: ctx, y: y, cols: cols, headers: ["Medikament", "Dosierung", "Frequenz", "Seit"])
             y += 26
 
@@ -630,10 +637,28 @@ class PDFExportService: @unchecked Sendable {
                 tabellenZeile(ctx: ctx, y: y, cols: cols,
                               werte: [med.name, med.dosierung, med.frequenz, fmt(med.startDatum)],
                               fett: [true, false, false, false])
-                y += 20
-                trennlinie(ctx: ctx, y: y - 1, alpha: 0.12)
+                y += 14
+                // Sub-row: hinweis / ablauf / vorrat
+                var extras: [String] = []
+                if !med.einnahmeHinweis.isEmpty   { extras.append("⚑ \(med.einnahmeHinweis)") }
+                if let ablauf = med.ablaufDatum {
+                    let tage = Calendar.current.dateComponents([.day], from: Date(), to: ablauf).day ?? 0
+                    extras.append(tage <= 14 ? "⚠ Ablauf: \(fmt(ablauf)) (\(tage) Tage)" : "Ablauf: \(fmt(ablauf))")
+                }
+                if let vorrat = med.vorrat {
+                    extras.append(vorrat <= med.vorratSchwelle ? "⚠ Vorrat: \(vorrat) Stück" : "Vorrat: \(vorrat) Stück")
+                }
+                if !extras.isEmpty {
+                    draw(extras.joined(separator: "   "),
+                         at: CGPoint(x: cols[1] + 4, y: y),
+                         font: .systemFont(ofSize: 8.5),
+                         color: extras.contains(where: { $0.hasPrefix("⚠") }) ? .systemOrange : .secondaryLabel)
+                    y += 13
+                }
+                trennlinie(ctx: ctx, y: y, alpha: 0.12)
+                y += 4
             }
-            y += 16
+            y += 12
         }
 
         if !inaktive.isEmpty {
@@ -676,8 +701,9 @@ class PDFExportService: @unchecked Sendable {
              font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
         y += 20
 
-        let cols: [CGFloat] = [rand, rand + 180, rand + 290, rand + 380]
-        tabellenKopf(ctx: ctx, y: y, cols: cols, headers: ["Medikament", "Dosierung", "Treue", "Einnahmen"])
+        let cols: [CGFloat] = [rand, rand + 160, rand + 270, rand + 355, rand + 430]
+        tabellenKopf(ctx: ctx, y: y, cols: cols,
+                     headers: ["Medikament", "Dosierung", "Hinweis", "Treue", "Einnahmen"])
         y += 26
 
         for med in aktive {
@@ -692,9 +718,10 @@ class PDFExportService: @unchecked Sendable {
             }
             let einnahmenTage = Set(einnahmenImFenster.map { kal.startOfDay(for: $0.datum) }).count
             let treue = fensterTage > 0 ? min(100, Int(Double(einnahmenTage) / Double(fensterTage) * 100)) : 0
+            let hinweis = med.einnahmeHinweis.isEmpty ? "–" : med.einnahmeHinweis
             tabellenZeile(ctx: ctx, y: y, cols: cols,
-                          werte: [med.name, med.dosierung, "\(treue)%", "\(einnahmenTage) Tage"],
-                          fett: [true, false, true, false])
+                          werte: [med.name, med.dosierung, hinweis, "\(treue)%", "\(einnahmenTage) Tage"],
+                          fett: [true, false, false, true, false])
             y += 20
             trennlinie(ctx: ctx, y: y - 1, alpha: 0.12)
         }
@@ -776,6 +803,28 @@ class PDFExportService: @unchecked Sendable {
             draw("⚠︎ Grenze: >2.5× pro Woche = Übergebrauchsrisiko (MOH)",
                  at: CGPoint(x: rand, y: y + 2), font: .systemFont(ofSize: 8), color: .systemOrange)
             y += 16
+        }
+
+        // Notizen aus Einnahme-Logs (letzte 30 Tage)
+        let notizLogs = einnahmeLogs.filter { !$0.notizen.isEmpty }
+        if !notizLogs.isEmpty && y < H - rand - 80 {
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Einnahme-Notizen", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+            for log in notizLogs.prefix(8) {
+                if y > H - rand - 30 { break }
+                let kopf = "\(fmtKurz(log.datum))  \(log.medikamentName)\(log.dosierung.isEmpty ? "" : " \(log.dosierung)")"
+                draw(kopf, at: CGPoint(x: rand, y: y),
+                     font: .systemFont(ofSize: 10, weight: .semibold), color: .label)
+                y += 14
+                let notizText = log.notizen.replacingOccurrences(of: "\n", with: " ")
+                drawClamped(notizText, at: CGPoint(x: rand + 10, y: y),
+                            font: .systemFont(ofSize: 9.5), color: .darkGray, maxW: iw - 10)
+                y += 14
+                trennlinie(ctx: ctx, y: y, alpha: 0.08)
+                y += 6
+            }
         }
 
         fusszeile(ctx: ctx, seite: seite)

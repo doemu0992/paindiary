@@ -866,7 +866,7 @@ struct KorrelationsView: View {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.blue.opacity(0.12))
                         .frame(width: 36, height: 36)
-                    Image(systemName: "pill.fill").foregroundStyle(.blue)
+                    Image(systemName: a.med.typSymbol).foregroundStyle(.blue)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(a.med.name).font(.headline)
@@ -875,6 +875,32 @@ struct KorrelationsView: View {
                         Text("· Seit \(a.med.startDatum, format: .dateTime.day().month(.abbreviated).year())")
                     }
                     .font(.caption).foregroundStyle(.secondary)
+                    // New fields row
+                    HStack(spacing: 8) {
+                        if !a.med.einnahmeHinweis.isEmpty {
+                            Label(a.med.einnahmeHinweis, systemImage: "fork.knife")
+                                .font(.caption2).foregroundStyle(.blue)
+                        }
+                        if let vorrat = a.med.vorrat {
+                            let knapp = vorrat <= a.med.vorratSchwelle
+                            Label("\(vorrat) Stück", systemImage: knapp ? "exclamationmark.circle.fill" : "shippingbox.fill")
+                                .font(.caption2).foregroundStyle(knapp ? .orange : .secondary)
+                        }
+                        if let ablauf = a.med.ablaufDatum {
+                            let tage = Calendar.current.dateComponents(
+                                [.day],
+                                from: Calendar.current.startOfDay(for: Date()),
+                                to: Calendar.current.startOfDay(for: ablauf)
+                            ).day ?? 0
+                            Label {
+                                Text(ablauf, format: .dateTime.day().month(.abbreviated).year())
+                            } icon: {
+                                Image(systemName: tage <= 14 ? "exclamationmark.triangle.fill" : "calendar.badge.clock")
+                            }
+                            .font(.caption2)
+                            .foregroundStyle(tage <= 14 ? .orange : .secondary)
+                        }
+                    }
                 }
                 Spacer()
                 let pct = Int(a.einnahmetreue * 100)
