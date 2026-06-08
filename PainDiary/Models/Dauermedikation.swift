@@ -12,6 +12,8 @@ import SwiftData
     var erinnerungAktiv: Bool = false
     // Komma-getrennte Zeiten "HH:mm,HH:mm" — leer = Standard je nach Frequenz
     var erinnerungsZeiten: String = ""
+    // Stunden bis Wirksamkeits-Abfrage nach Einnahme (2 / 24 / 48)
+    var wirkungsAbfrageStunden: Int = 2
 
     init(name: String = "", dosierung: String = "", frequenz: String = "",
          startDatum: Date = .now, aktiv: Bool = true) {

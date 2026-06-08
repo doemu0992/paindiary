@@ -77,13 +77,17 @@ struct MedikamenteView: View {
     // Unrated Bei Bedarf logs from today (older than 1h) waiting for effectiveness rating
     @ViewBuilder
     private var bewertungsSektion: some View {
-        let einStundeVor = Date().addingTimeInterval(-3600)
-        let zuBewerten = heutigeLogsHeute.filter {
-            $0.eingenommen && $0.wirkung.isEmpty && $0.datum <= einStundeVor
-        }
+        let zuBewerten = logs.filter { log in
+            guard log.eingenommen && log.wirkung.isEmpty else { return false }
+            let schwelle = Double(
+                medikamente.first(where: { $0.name == log.medikamentName })?.wirkungsAbfrageStunden ?? 2
+            ) * 3600
+            let alter = Date().timeIntervalSince(log.datum)
+            return alter >= schwelle && alter < 7 * 24 * 3600
+        }.prefix(3)
         if !zuBewerten.isEmpty {
             Section {
-                ForEach(zuBewerten) { log in
+                ForEach(Array(zuBewerten)) { log in
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
                             Image(systemName: "questionmark.circle.fill").foregroundStyle(.blue)
@@ -181,44 +185,82 @@ struct MedikamenteView: View {
 
     @ViewBuilder
     private func einnahmeKontrolle(med: Dauermedikation) -> some View {
-        let anzahlErwartet = notif.anzahlDosen(med.frequenz)
-        let anzahlHeute = heutigeLogsHeute.filter {
-            $0.medikamentName == med.name && $0.dosierung == med.dosierung
-        }.count
-
-        if anzahlErwartet == 0 {
-            // Bei Bedarf: Freitext-Zähler + Plus-Button
-            HStack(spacing: 8) {
-                if anzahlHeute > 0 {
-                    Text("\(anzahlHeute)× heute")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Button {
-                    let log = EinnahmeLog(
-                        medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
-                    modelContext.insert(log)
-                    notif.planeWirkungsAbfrage(fuer: log)
-                } label: {
-                    Image(systemName: "plus.circle")
-                        .font(.title3).foregroundStyle(.blue)
-                }
-                .buttonStyle(.plain)
+        if med.frequenz == "Wöchentlich" {
+            // Wöchentliche Injektion: Tage seit / bis zur nächsten
+            let letzteInjektion = logs.first { $0.medikamentName == med.name && $0.eingenommen }
+            let tageSeit: Int? = letzteInjektion.map {
+                max(0, Calendar.current.dateComponents([.day], from: $0.datum, to: Date()).day ?? 0)
             }
-        } else {
-            // Reguläre Dosen: ein Kreis pro erwarteter Dosis
-            HStack(spacing: 6) {
-                ForEach(0..<anzahlErwartet, id: \.self) { i in
-                    let bestaetigt = i < anzahlHeute
+            HStack(spacing: 8) {
+                if let tage = tageSeit {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        if tage == 0 {
+                            Text("Heute injiziert").font(.caption).foregroundStyle(.green)
+                        } else if tage < 7 {
+                            Text("Vor \(tage) Tag\(tage == 1 ? "" : "en")")
+                                .font(.caption2).foregroundStyle(.secondary)
+                            Text("In \(7 - tage) Tag\(7 - tage == 1 ? "" : "en")")
+                                .font(.caption).foregroundStyle(tage >= 6 ? .orange : .blue)
+                        } else {
+                            Text("Fällig!").font(.caption.bold()).foregroundStyle(.orange)
+                        }
+                    }
+                } else {
+                    Text("Noch nicht erfasst").font(.caption).foregroundStyle(.secondary)
+                }
+                if tageSeit == nil || (tageSeit ?? 0) >= 1 {
                     Button {
-                        guard !bestaetigt else { return }
-                        modelContext.insert(EinnahmeLog(
-                            medikamentName: med.name, dosierung: med.dosierung, eingenommen: true))
+                        let log = EinnahmeLog(
+                            medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
+                        modelContext.insert(log)
+                        notif.planeWirkungsAbfrage(fuer: log, stunden: med.wirkungsAbfrageStunden)
                     } label: {
-                        Image(systemName: bestaetigt ? "checkmark.circle.fill" : "circle")
-                            .font(.title3)
-                            .foregroundStyle(bestaetigt ? .green : .secondary)
+                        Image(systemName: "syringe")
+                            .font(.title3).foregroundStyle(.blue)
                     }
                     .buttonStyle(.plain)
+                }
+            }
+        } else {
+            let anzahlErwartet = notif.anzahlDosen(med.frequenz)
+            let anzahlHeute = heutigeLogsHeute.filter {
+                $0.medikamentName == med.name && $0.dosierung == med.dosierung
+            }.count
+
+            if anzahlErwartet == 0 {
+                // Bei Bedarf: Freitext-Zähler + Plus-Button
+                HStack(spacing: 8) {
+                    if anzahlHeute > 0 {
+                        Text("\(anzahlHeute)× heute")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Button {
+                        let log = EinnahmeLog(
+                            medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
+                        modelContext.insert(log)
+                        notif.planeWirkungsAbfrage(fuer: log, stunden: med.wirkungsAbfrageStunden)
+                    } label: {
+                        Image(systemName: "plus.circle")
+                            .font(.title3).foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                // Reguläre Dosen: ein Kreis pro erwarteter Dosis
+                HStack(spacing: 6) {
+                    ForEach(0..<anzahlErwartet, id: \.self) { i in
+                        let bestaetigt = i < anzahlHeute
+                        Button {
+                            guard !bestaetigt else { return }
+                            modelContext.insert(EinnahmeLog(
+                                medikamentName: med.name, dosierung: med.dosierung, eingenommen: true))
+                        } label: {
+                            Image(systemName: bestaetigt ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(bestaetigt ? .green : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
@@ -324,6 +366,7 @@ struct MedikamentFormView: View {
     @State private var endDatum = Date()
     @State private var erinnerungAktiv = false
     @State private var erinnerungsZeiten: [Date] = [defaultZeit(8)]
+    @State private var wirkungsAbfrageStunden: Int = 2
 
     private let notif = NotificationManager.shared
     private let frequenzOptionen = [
@@ -392,6 +435,22 @@ struct MedikamentFormView: View {
                         }
                     }
                 }
+
+                if !frequenz.isEmpty {
+                    Section {
+                        Picker("Wirksamkeits-Abfrage", selection: $wirkungsAbfrageStunden) {
+                            Text("Nach 2 Stunden").tag(2)
+                            Text("Nach 24 Stunden").tag(24)
+                            Text("Nach 48 Stunden").tag(48)
+                        }
+                    } header: {
+                        Text("Wirkung")
+                    } footer: {
+                        Text(frequenz == "Wöchentlich"
+                             ? "Empfohlen: 24–48h nach der Injektion. Du wirst dann nach der Wirkung gefragt."
+                             : "Nach dieser Zeit erhältst du eine Abfrage, ob das Medikament gewirkt hat.")
+                    }
+                }
             }
             .navigationTitle(medikament == nil ? "Neues Medikament" : "Medikament bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
@@ -409,6 +468,9 @@ struct MedikamentFormView: View {
     private func aktualisiereStandardZeiten(_ frequenz: String) {
         let standard = notif.standardZeiten(frequenz)
         erinnerungsZeiten = standard.isEmpty ? [defaultZeit(8)] : standard.map(\.alsDate)
+        if frequenz == "Wöchentlich" && wirkungsAbfrageStunden == 2 {
+            wirkungsAbfrageStunden = 24
+        }
     }
 
     private func ladeWerte() {
@@ -420,6 +482,7 @@ struct MedikamentFormView: View {
         aktiv = m.aktiv
         endDatum = m.endDatum ?? Date()
         erinnerungAktiv = m.erinnerungAktiv
+        wirkungsAbfrageStunden = m.wirkungsAbfrageStunden
         if !m.erinnerungsZeiten.isEmpty {
             erinnerungsZeiten = notif.parseZeitString(m.erinnerungsZeiten).map(\.alsDate)
         } else {
@@ -438,12 +501,14 @@ struct MedikamentFormView: View {
             m.endDatum = aktiv ? nil : endDatum
             m.erinnerungAktiv = erinnerungAktiv
             m.erinnerungsZeiten = zeitenString
+            m.wirkungsAbfrageStunden = wirkungsAbfrageStunden
             erinnerungAktiv ? notif.planeErinnerungen(fuer: m) : notif.loescheErinnerungen(fuer: m)
         } else {
             let neu = Dauermedikation(name: name, dosierung: dosierung, frequenz: frequenz,
                                       startDatum: startDatum, aktiv: aktiv)
             neu.erinnerungAktiv = erinnerungAktiv
             neu.erinnerungsZeiten = zeitenString
+            neu.wirkungsAbfrageStunden = wirkungsAbfrageStunden
             modelContext.insert(neu)
             if erinnerungAktiv { notif.planeErinnerungen(fuer: neu) }
         }

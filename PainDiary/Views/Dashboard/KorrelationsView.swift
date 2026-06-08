@@ -43,11 +43,12 @@ struct KorrelationsView: View {
                         zyklusSchmerzChart
                     }
 
-                    if !einnahmeLogs.isEmpty || !medAnalysen.isEmpty {
+                    if !einnahmeLogs.isEmpty || !medAnalysen.isEmpty || !wöchentlicheMedikamente.isEmpty {
                         abschnittTitel("Medikamente")
                         if !einnahmeLogs.isEmpty { medikamentEffektChart }
                         if !bedarfsTrendDaten.isEmpty { bedarfsTrendChart }
                         if !wirksamkeitDaten.isEmpty { wirksamkeitsChart }
+                        injektionsZyklusChart
                         ForEach(medAnalysen) { analyse in
                             dauermedikamentKarte(analyse)
                         }
@@ -1073,6 +1074,78 @@ struct KorrelationsView: View {
         HStack(spacing: 4) {
             Circle().fill(farbe).frame(width: 8, height: 8)
             Text("\(label) (\(n))").font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Injektions-Zyklus
+
+    private var wöchentlicheMedikamente: [Dauermedikation] {
+        alleDauermedikationen.filter { $0.frequenz == "Wöchentlich" }
+    }
+
+    private var injektionsZyklusDaten: [(tag: Int, schmerz: Double, anzahl: Int)] {
+        guard !wöchentlicheMedikamente.isEmpty else { return [] }
+        let kal = Calendar.current
+        let wöchentlicheNamen = Set(wöchentlicheMedikamente.map(\.name))
+        let injektionsLogs = einnahmeLogs.filter { wöchentlicheNamen.contains($0.medikamentName) && $0.eingenommen }
+        guard injektionsLogs.count >= 2 else { return [] }
+
+        var schmerzProTag: [Int: [Double]] = [:]
+        for injektion in injektionsLogs {
+            let injTag = kal.startOfDay(for: injektion.datum)
+            for e in eintraege {
+                let eTag = kal.startOfDay(for: e.datum)
+                let diff = kal.dateComponents([.day], from: injTag, to: eTag).day ?? -1
+                if diff >= 0 && diff < 7 {
+                    schmerzProTag[diff, default: []].append(Double(e.schmerzstaerke))
+                }
+            }
+        }
+        return (0..<7).compactMap { tag in
+            guard let werte = schmerzProTag[tag], !werte.isEmpty else { return nil }
+            return (tag: tag, schmerz: werte.reduce(0,+) / Double(werte.count), anzahl: werte.count)
+        }
+    }
+
+    @ViewBuilder
+    private var injektionsZyklusChart: some View {
+        if !wöchentlicheMedikamente.isEmpty {
+            karte {
+                Text("Schmerz im Injektions-Zyklus").font(.headline)
+                Text("Ø Schmerzstärke an den Tagen nach der Injektion (Tag 0 = Injektionstag)")
+                    .font(.caption).foregroundStyle(.secondary)
+
+                if injektionsZyklusDaten.count < 2 {
+                    Text("Nicht genug Daten. Erfasse mehr Injektionen und Schmerzeinträge.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Chart(injektionsZyklusDaten, id: \.tag) { p in
+                        BarMark(
+                            x: .value("Tag", "Tag \(p.tag)"),
+                            y: .value("Schmerz", p.schmerz)
+                        )
+                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
+                        .cornerRadius(6)
+                        .annotation(position: .top) {
+                            VStack(spacing: 0) {
+                                Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                                Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .chartYScale(domain: 0...10)
+                    .chartYAxis { AxisMarks(values: [0, 2, 4, 6, 8, 10]) }
+                    .frame(height: 200)
+
+                    if let peak = injektionsZyklusDaten.max(by: { $0.schmerz < $1.schmerz }) {
+                        HStack {
+                            Image(systemName: "syringe").foregroundStyle(.blue)
+                            Text("Stärkster Schmerz an Tag \(peak.tag) nach der Injektion")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
         }
     }
 
