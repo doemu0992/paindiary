@@ -42,13 +42,9 @@ struct KorrelationsView: View {
                         zyklusSchmerzChart
                     }
 
-                    if !einnahmeLogs.isEmpty {
+                    if !einnahmeLogs.isEmpty || !medAnalysen.isEmpty {
                         abschnittTitel("Medikamente")
-                        medikamentEffektChart
-                    }
-
-                    if !medAnalysen.isEmpty {
-                        abschnittTitel("Dauermedikamente")
+                        if !einnahmeLogs.isEmpty { medikamentEffektChart }
                         ForEach(medAnalysen) { analyse in
                             dauermedikamentKarte(analyse)
                         }
@@ -798,27 +794,29 @@ struct KorrelationsView: View {
         let notif = NotificationManager.shared
         let heute = kal.startOfDay(for: Date())
 
-        return dauermedikationen.compactMap { med in
+        return dauermedikationen
+            .filter { notif.anzahlDosen($0.frequenz) > 0 } // Bei Bedarf ausschliessen
+            .compactMap { med in
             let anzDosen = notif.anzahlDosen(med.frequenz)
 
-            // Einnahmetreue: letzte 30 Tage
-            let treue: Double
-            if anzDosen > 0 {
-                let letzten30 = (0..<30).compactMap { kal.date(byAdding: .day, value: -$0, to: heute) }
-                let geloggteTage = letzten30.filter { tag in
-                    einnahmeLogs.filter {
-                        kal.isDate($0.datum, inSameDayAs: tag) &&
-                        $0.medikamentName == med.name && $0.eingenommen
-                    }.count >= anzDosen
-                }
-                treue = Double(geloggteTage.count) / 30.0
-            } else {
-                treue = -1 // Bei Bedarf: nicht anwendbar
+            // Einnahmetreue: ab startDatum, max 30 Tage
+            let tageSeitStart = max(1, kal.dateComponents([.day],
+                from: kal.startOfDay(for: med.startDatum), to: heute).day ?? 1)
+            let fensterTage = min(30, tageSeitStart)
+            let letztenN = (0..<fensterTage).compactMap { kal.date(byAdding: .day, value: -$0, to: heute) }
+            let geloggteTage = letztenN.filter { tag in
+                einnahmeLogs.filter {
+                    kal.isDate($0.datum, inSameDayAs: tag) &&
+                    $0.medikamentName == med.name &&
+                    $0.dosierung == med.dosierung &&
+                    $0.eingenommen
+                }.count >= anzDosen
             }
+            let treue = Double(geloggteTage.count) / Double(fensterTage)
 
-            // Schmerz mit vs. ohne Einnahme
+            // Schmerz mit vs. ohne Einnahme (name + dosierung)
             let logTage = Set(einnahmeLogs
-                .filter { $0.medikamentName == med.name && $0.eingenommen }
+                .filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
                 .map { kal.startOfDay(for: $0.datum) })
             var mitMed: [Double] = []
             var ohneMed: [Double] = []
@@ -875,14 +873,12 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                if a.einnahmetreue >= 0 {
-                    let pct = Int(a.einnahmetreue * 100)
-                    Text("\(pct)%")
-                        .font(.subheadline.bold())
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(treueFarbe(a.einnahmetreue).opacity(0.12), in: Capsule())
-                        .foregroundStyle(treueFarbe(a.einnahmetreue))
-                }
+                let pct = Int(a.einnahmetreue * 100)
+                Text("\(pct)%")
+                    .font(.subheadline.bold())
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(treueFarbe(a.einnahmetreue).opacity(0.12), in: Capsule())
+                    .foregroundStyle(treueFarbe(a.einnahmetreue))
             }
 
             if let mit = a.schmerzMitMed, let ohne = a.schmerzOhneMed, a.nMit >= 3 {
@@ -925,9 +921,10 @@ struct KorrelationsView: View {
                 }
             }
 
-            Text(a.einnahmetreue >= 0
-                 ? "Einnahmetreue letzte 30 Tage · \(a.nMit + a.nOhne) Schmerzeinträge"
-                 : "Bedarfsmedikament · \(a.nMit) Einnahmetage erfasst")
+            let fenster = min(30, max(1, Calendar.current.dateComponents([.day],
+                from: Calendar.current.startOfDay(for: a.med.startDatum),
+                to: Calendar.current.startOfDay(for: Date())).day ?? 1))
+            Text("Einnahmetreue letzte \(fenster) Tage · \(a.nMit + a.nOhne) Schmerzeinträge")
                 .font(.caption2).foregroundStyle(.tertiary)
         }
     }
