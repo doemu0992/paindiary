@@ -25,6 +25,7 @@ struct MedikamenteView: View {
         List {
             berechtigungBanner
             uebergebrauchWarnung
+            vorratsAblaufWarnung
             bewertungsSektion
             heuteSektion
             if !aktive.isEmpty {
@@ -82,6 +83,51 @@ struct MedikamenteView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 tagesstart = Calendar.current.startOfDay(for: Date())
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var vorratsAblaufWarnung: some View {
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+        let ablaufWarnungen = aktive.filter { med in
+            guard let ablauf = med.ablaufDatum else { return false }
+            let tage = kal.dateComponents([.day], from: heute, to: kal.startOfDay(for: ablauf)).day ?? 0
+            return tage <= 14
+        }
+        let vorratWarnungen = aktive.filter { med in
+            guard let vorrat = med.vorrat else { return false }
+            return vorrat <= med.vorratSchwelle
+        }
+        if !ablaufWarnungen.isEmpty || !vorratWarnungen.isEmpty {
+            Section {
+                ForEach(ablaufWarnungen) { med in
+                    let tage = kal.dateComponents([.day], from: heute,
+                        to: kal.startOfDay(for: med.ablaufDatum!)).day ?? 0
+                    HStack(spacing: 10) {
+                        Image(systemName: tage <= 0 ? "xmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .foregroundStyle(tage <= 0 ? .red : .orange)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(med.name).font(.subheadline.bold())
+                            Text(tage <= 0 ? "Abgelaufen!" : "Läuft in \(tage) Tag\(tage == 1 ? "" : "en") ab")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                ForEach(vorratWarnungen) { med in
+                    HStack(spacing: 10) {
+                        Image(systemName: "shippingbox.fill").foregroundStyle(.orange)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(med.name).font(.subheadline.bold())
+                            Text("Vorrat: noch \(med.vorrat ?? 0) Stück")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                Label("Achtung", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
             }
         }
     }
@@ -185,6 +231,10 @@ struct MedikamenteView: View {
                             if !med.dosierung.isEmpty {
                                 Text(med.dosierung).font(.caption).foregroundStyle(.secondary)
                             }
+                            if !med.einnahmeHinweis.isEmpty {
+                                Text(med.einnahmeHinweis)
+                                    .font(.caption2).foregroundStyle(.blue)
+                            }
                         }
                         Spacer()
                         einnahmeKontrolle(med: med)
@@ -244,10 +294,7 @@ struct MedikamenteView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Button {
-                        let log = EinnahmeLog(
-                            medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
-                        modelContext.insert(log)
-                        notif.planeWirkungsAbfrage(fuer: log, stunden: med.wirkungsAbfrageStunden)
+                        loggeMedikament(med)
                     } label: {
                         Image(systemName: "plus.circle")
                             .font(.title3).foregroundStyle(.blue)
@@ -261,8 +308,7 @@ struct MedikamenteView: View {
                         let bestaetigt = i < anzahlHeute
                         Button {
                             guard !bestaetigt else { return }
-                            modelContext.insert(EinnahmeLog(
-                                medikamentName: med.name, dosierung: med.dosierung, eingenommen: true))
+                            loggeMedikament(med)
                         } label: {
                             Image(systemName: bestaetigt ? "checkmark.circle.fill" : "circle")
                                 .font(.title3)
@@ -299,6 +345,16 @@ struct MedikamenteView: View {
         }
     }
 
+
+    private func loggeMedikament(_ med: Dauermedikation) {
+        let log = EinnahmeLog(medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
+        modelContext.insert(log)
+        notif.planeWirkungsAbfrage(fuer: log, stunden: med.wirkungsAbfrageStunden)
+        if let vorrat = med.vorrat, vorrat > 0 {
+            med.vorrat = vorrat - 1
+            notif.planeVorratWarnung(fuer: med)
+        }
+    }
 
     private func loeschen(aus liste: [Dauermedikation], offsets: IndexSet) {
         offsets.forEach { i in
@@ -344,6 +400,33 @@ private struct MedikamentZeile: View {
                     let zeitText = zeiten.isEmpty ? medikament.frequenz : zeiten.map(\.anzeigeText).joined(separator: ", ")
                     Label(zeitText, systemImage: "clock").font(.caption).foregroundStyle(.secondary)
                 }
+                if !medikament.einnahmeHinweis.isEmpty {
+                    Label(medikament.einnahmeHinweis, systemImage: "fork.knife")
+                        .font(.caption).foregroundStyle(.blue)
+                }
+                if let ablauf = medikament.ablaufDatum {
+                    let tage = Calendar.current.dateComponents(
+                        [.day],
+                        from: Calendar.current.startOfDay(for: Date()),
+                        to: Calendar.current.startOfDay(for: ablauf)
+                    ).day ?? 0
+                    Label {
+                        Text(ablauf, format: .dateTime.day().month(.abbreviated).year())
+                    } icon: {
+                        Image(systemName: tage <= 14 ? "exclamationmark.triangle.fill" : "calendar.badge.clock")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(tage <= 14 ? .orange : .secondary)
+                }
+                if let vorrat = medikament.vorrat {
+                    Label {
+                        Text("\(vorrat) Stück verbleibend")
+                    } icon: {
+                        Image(systemName: vorrat <= medikament.vorratSchwelle ? "exclamationmark.circle.fill" : "shippingbox.fill")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(vorrat <= medikament.vorratSchwelle ? .orange : .secondary)
+                }
                 if !medikament.aktiv, let ende = medikament.endDatum {
                     Label {
                         Text(ende, format: .dateTime.day().month(.abbreviated).year())
@@ -378,6 +461,17 @@ struct MedikamentFormView: View {
     @State private var erinnerungAktiv = false
     @State private var erinnerungsZeiten: [Date] = [defaultZeit(8)]
     @State private var wirkungsAbfrageStunden: Int = 2
+    @State private var einnahmeHinweis: String = ""
+    @State private var vorratAktiv: Bool = false
+    @State private var vorratAnzahl: Int = 28
+    @State private var vorratSchwelle: Int = 7
+    @State private var ablaufAktiv: Bool = false
+    @State private var ablaufDatumState: Date = Date()
+
+    private let hinweisOptionen = [
+        "", "Mit Essen", "Nüchtern", "Mit viel Wasser",
+        "Vor dem Schlafen", "Morgens nüchtern", "Mit Milch"
+    ]
 
     private let notif = NotificationManager.shared
     private let frequenzOptionen = [
@@ -403,6 +497,38 @@ struct MedikamentFormView: View {
                         guard let typ = MedikamentTyp(rawValue: neue) else { return }
                         if typ.istInjektion { wirkungsAbfrageStunden = 24 }
                         else if wirkungsAbfrageStunden == 24 { wirkungsAbfrageStunden = 2 }
+                    }
+                    Picker("Einnahmehinweis", selection: $einnahmeHinweis) {
+                        ForEach(hinweisOptionen, id: \.self) { opt in
+                            Text(opt.isEmpty ? "Kein Hinweis" : opt).tag(opt)
+                        }
+                    }
+                }
+
+                Section {
+                    Toggle("Vorrat verfolgen", isOn: $vorratAktiv)
+                    if vorratAktiv {
+                        Stepper("Aktueller Vorrat: \(vorratAnzahl)", value: $vorratAnzahl, in: 0...999)
+                        Stepper("Warnung ab: \(vorratSchwelle) Stück", value: $vorratSchwelle, in: 1...99)
+                    }
+                } header: {
+                    Text("Vorrat")
+                } footer: {
+                    if vorratAktiv {
+                        Text("Du erhältst eine Benachrichtigung wenn der Vorrat auf \(vorratSchwelle) Stück fällt.")
+                    }
+                }
+
+                Section {
+                    Toggle("Ablaufdatum setzen", isOn: $ablaufAktiv)
+                    if ablaufAktiv {
+                        DatePicker("Ablaufdatum", selection: $ablaufDatumState, displayedComponents: .date)
+                    }
+                } header: {
+                    Text("Verfallsdatum")
+                } footer: {
+                    if ablaufAktiv {
+                        Text("Du erhältst eine Erinnerung 7 Tage vor dem Ablaufdatum.")
                     }
                 }
 
@@ -508,6 +634,10 @@ struct MedikamentFormView: View {
         medikamentTyp = m.medikamentTyp
         erinnerungAktiv = m.erinnerungAktiv
         wirkungsAbfrageStunden = m.wirkungsAbfrageStunden
+        einnahmeHinweis = m.einnahmeHinweis
+        vorratSchwelle = m.vorratSchwelle
+        if let v = m.vorrat { vorratAktiv = true; vorratAnzahl = v }
+        if let a = m.ablaufDatum { ablaufAktiv = true; ablaufDatumState = a }
         if !m.erinnerungsZeiten.isEmpty {
             erinnerungsZeiten = notif.parseZeitString(m.erinnerungsZeiten).map(\.alsDate)
         } else {
@@ -528,7 +658,12 @@ struct MedikamentFormView: View {
             m.erinnerungAktiv = erinnerungAktiv
             m.erinnerungsZeiten = zeitenString
             m.wirkungsAbfrageStunden = wirkungsAbfrageStunden
+            m.einnahmeHinweis = einnahmeHinweis
+            m.vorrat = vorratAktiv ? vorratAnzahl : nil
+            m.vorratSchwelle = vorratSchwelle
+            m.ablaufDatum = ablaufAktiv ? ablaufDatumState : nil
             erinnerungAktiv ? notif.planeErinnerungen(fuer: m) : notif.loescheErinnerungen(fuer: m)
+            notif.planeAblaufWarnung(fuer: m)
         } else {
             let neu = Dauermedikation(name: name, dosierung: dosierung, frequenz: frequenz,
                                       startDatum: startDatum, aktiv: aktiv)
@@ -536,8 +671,13 @@ struct MedikamentFormView: View {
             neu.erinnerungAktiv = erinnerungAktiv
             neu.erinnerungsZeiten = zeitenString
             neu.wirkungsAbfrageStunden = wirkungsAbfrageStunden
+            neu.einnahmeHinweis = einnahmeHinweis
+            neu.vorrat = vorratAktiv ? vorratAnzahl : nil
+            neu.vorratSchwelle = vorratSchwelle
+            neu.ablaufDatum = ablaufAktiv ? ablaufDatumState : nil
             modelContext.insert(neu)
             if erinnerungAktiv { notif.planeErinnerungen(fuer: neu) }
+            notif.planeAblaufWarnung(fuer: neu)
         }
         dismiss()
     }
@@ -554,6 +694,7 @@ private struct EinnahmeLogSheet: View {
     private let notif = NotificationManager.shared
 
     @State private var logDatum = Date()
+    @State private var notizen = ""
     @State private var fehlende: [Date] = []
 
     private var istWöchentlich: Bool { med.frequenz == "Wöchentlich" }
@@ -588,6 +729,11 @@ private struct EinnahmeLogSheet: View {
                             Text(med.dosierung).foregroundStyle(.secondary)
                         }
                     }
+                }
+
+                Section("Notizen") {
+                    TextField("Besonderheiten, Nebenwirkungen…", text: $notizen, axis: .vertical)
+                        .lineLimit(3, reservesSpace: true)
                 }
 
                 // Rückwirkend nacherfassen (nur für Dauermedikamente mit fixer Einnahmezeit)
@@ -630,13 +776,16 @@ private struct EinnahmeLogSheet: View {
 
     private func speichereEinzelLog() {
         let log = EinnahmeLog(datum: logDatum, medikamentName: med.name,
-                              dosierung: med.dosierung, eingenommen: true)
+                              dosierung: med.dosierung, eingenommen: true, notizen: notizen)
         modelContext.insert(log)
-        // Wirksamkeits-Abfrage nur wenn Einnahme weniger als wirkungsAbfrageStunden alt
         let stundenBisJetzt = max(0, Date().timeIntervalSince(logDatum)) / 3600
         let verbleibend = Double(med.wirkungsAbfrageStunden) - stundenBisJetzt
         if verbleibend > 0.1 {
             notif.planeWirkungsAbfrage(fuer: log, stunden: max(1, Int(verbleibend.rounded(.up))))
+        }
+        if let vorrat = med.vorrat, vorrat > 0 {
+            med.vorrat = vorrat - 1
+            notif.planeVorratWarnung(fuer: med)
         }
         dismiss()
     }
@@ -693,25 +842,39 @@ private func defaultZeit(_ stunde: Int) -> Date {
 
 struct EinnahmeLogView: View {
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var logs: [EinnahmeLog]
+    @Query(sort: \Dauermedikation.name) private var medikamente: [Dauermedikation]
     @Environment(\.modelContext) private var modelContext
+    @State private var zeigePDFShare = false
+    @State private var pdfURL: URL? = nil
 
     var body: some View {
         List {
             ForEach(logs as [EinnahmeLog]) { log in
-                HStack(spacing: 12) {
-                    Image(systemName: log.eingenommen ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .foregroundStyle(log.eingenommen ? .green : .red)
-                        .font(.title3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(log.medikamentName).font(.headline)
-                        if !log.dosierung.isEmpty {
-                            Text(log.dosierung).font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 12) {
+                        Image(systemName: log.eingenommen ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundStyle(log.eingenommen ? .green : .red)
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(log.medikamentName).font(.headline)
+                            if !log.dosierung.isEmpty {
+                                Text(log.dosierung).font(.caption).foregroundStyle(.secondary)
+                            }
+                            if !log.wirkung.isEmpty {
+                                wirkungBadge(log.wirkung)
+                            }
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(log.datum, style: .date).font(.caption).foregroundStyle(.secondary)
+                            Text(log.datum, style: .time).font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(log.datum, style: .date).font(.caption).foregroundStyle(.secondary)
-                        Text(log.datum, style: .time).font(.caption).foregroundStyle(.secondary)
+                    if !log.notizen.isEmpty {
+                        Text(log.notizen)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 40)
                     }
                 }
                 .padding(.vertical, 2)
@@ -719,5 +882,49 @@ struct EinnahmeLogView: View {
             .onDelete { idx in idx.forEach { modelContext.delete(logs[$0]) } }
         }
         .navigationTitle("Einnahme-Verlauf")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    Task { @MainActor in
+                        if let url = PDFExportService.shared.erstelleMedikamentenZusammenfassung(
+                            medikamente: Array(medikamente), logs: Array(logs)) {
+                            pdfURL = url
+                            zeigePDFShare = true
+                        }
+                    }
+                } label: {
+                    Label("Arztbesuch-PDF", systemImage: "doc.richtext")
+                }
+            }
+        }
+        .sheet(isPresented: $zeigePDFShare) {
+            if let url = pdfURL {
+                ShareSheet(items: [url])
+            }
+        }
     }
+
+    @ViewBuilder
+    private func wirkungBadge(_ wirkung: String) -> some View {
+        let (label, farbe): (String, Color) = switch wirkung {
+        case "gut":       ("Gut gewirkt", .green)
+        case "teilweise": ("Teilweise", .orange)
+        case "nicht":     ("Nicht gewirkt", .red)
+        default:          (wirkung, .secondary)
+        }
+        Text(label)
+            .font(.caption2.bold())
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(farbe.opacity(0.15))
+            .foregroundStyle(farbe)
+            .clipShape(Capsule())
+    }
+}
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }

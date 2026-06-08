@@ -48,6 +48,10 @@ enum MedikamentTyp: String, CaseIterable {
     // Stunden bis Wirksamkeits-Abfrage nach Einnahme (2 / 24 / 48)
     var wirkungsAbfrageStunden: Int = 2
     var medikamentTyp: String = MedikamentTyp.tablette.rawValue
+    var einnahmeHinweis: String = ""
+    var vorrat: Int? = nil
+    var vorratSchwelle: Int = 7
+    var ablaufDatum: Date? = nil
 
     var typSymbol: String {
         MedikamentTyp(rawValue: medikamentTyp)?.symbol ?? "pill.fill"

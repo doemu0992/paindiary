@@ -1080,6 +1080,28 @@ class PDFExportService: @unchecked Sendable {
         fusszeile(ctx: ctx.cgContext, seite: seite)
     }
 
+    // MARK: - Medication summary (called from EinnahmeLogView)
+
+    @MainActor
+    func erstelleMedikamentenZusammenfassung(
+        medikamente: [Dauermedikation],
+        logs: [EinnahmeLog]
+    ) -> URL? {
+        let patient  = PDFPatientenDaten()
+        let meds     = medikamente.map(PDFMedikament.aus)
+        let pdfLogs  = logs.sorted { $0.datum > $1.datum }.map(PDFEinnahmeLog.aus)
+        let optionen = ExportOptionen(
+            zeitraum: .dreissigTage, mitZusammenfassung: false,
+            mitMedikamente: true, mitMedikamentDossier: true,
+            mitEintraege: false, mitZyklus: false, mitErnaehrung: false
+        )
+        let url = renderPDF(patient: patient, eintraege: [], medikamente: meds,
+                            einnahmeLogs: pdfLogs, midas: [], zyklus: [],
+                            analyse: ZyklusRechner.analyse(eintraege: []),
+                            ernaehrung: [], optionen: optionen)
+        return url
+    }
+
     // MARK: - Drawing helpers
 
     private func infoBox(ctx: CGContext, x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat,

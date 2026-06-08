@@ -47,10 +47,14 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
         let zeiten = gueltigeZeiten(fuer: med)
         for (i, zeit) in zeiten.enumerated() {
+            let hinweis = med.einnahmeHinweis.isEmpty ? "" : " · \(med.einnahmeHinweis)"
+            let body = med.dosierung.isEmpty
+                ? "Zeit für deine Medikation\(hinweis)"
+                : "\(med.dosierung) einnehmen\(hinweis)"
             scheduleNotification(
                 id: "\(med.notifID)-\(i)",
                 titel: "💊 \(med.name)",
-                body: med.dosierung.isEmpty ? "Zeit für deine Medikation" : "\(med.dosierung) einnehmen",
+                body: body,
                 stunde: zeit.stunde,
                 minute: zeit.minute
             )
@@ -58,7 +62,9 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func loescheErinnerungen(fuer med: Dauermedikation) {
-        let ids = (0..<5).map { "\(med.notifID)-\($0)" }
+        var ids = (0..<5).map { "\(med.notifID)-\($0)" }
+        ids.append("vorrat-\(med.notifID)")
+        ids.append("ablauf-\(med.notifID)")
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
     }
 
@@ -67,6 +73,36 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             return parseZeitString(med.erinnerungsZeiten)
         }
         return standardZeiten(med.frequenz)
+    }
+
+    func planeVorratWarnung(fuer med: Dauermedikation) {
+        let id = "vorrat-\(med.notifID)"
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+        guard status == .authorized, let vorrat = med.vorrat, vorrat <= med.vorratSchwelle, vorrat >= 0 else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "💊 Vorrat wird knapp"
+        content.body = "Noch \(vorrat) \(med.name) auf Vorrat. Bitte rechtzeitig nachbestellen."
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+
+    func planeAblaufWarnung(fuer med: Dauermedikation) {
+        let id = "ablauf-\(med.notifID)"
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+        guard status == .authorized, let ablauf = med.ablaufDatum else { return }
+        let kal = Calendar.current
+        guard let warnDatum = kal.date(byAdding: .day, value: -7, to: ablauf),
+              warnDatum > Date() else { return }
+        var dc = kal.dateComponents([.year, .month, .day], from: warnDatum)
+        dc.hour = 9; dc.minute = 0
+        scheduleEinmalig(
+            id: id,
+            titel: "⚠️ Medikament läuft ab",
+            body: "\(med.name) läuft in 7 Tagen ab. Bitte rechtzeitig erneuern.",
+            components: dc
+        )
     }
 
     // MARK: - Wasser-Erinnerung
