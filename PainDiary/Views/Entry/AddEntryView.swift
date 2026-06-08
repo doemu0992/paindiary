@@ -45,7 +45,7 @@ struct AddEntryView: View {
     @State private var healthSchlaf: Double? = nil
 
     // Vorlage
-    @State private var vorlageDismissed = false
+    @State private var vorlageAngewendet = false
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
 
     private let wetter = WetterService.shared
@@ -91,6 +91,26 @@ struct AddEntryView: View {
                         .labelsHidden()
                         .font(.caption)
                     Spacer()
+                    if schritt == 0, !vorlageAngewendet, let letzter = letzterEintrag,
+                       !letzter.koerperstelle.isEmpty {
+                        Button { wendeVorlageAn(letzter) } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.counterclockwise")
+                                Text(letzter.koerperstelle)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                            }
+                            .font(.caption)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.accentColor.opacity(0.12))
+                            .foregroundStyle(Color.accentColor)
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: 160)
+                        .transition(.opacity.combined(with: .scale))
+                    }
                     wetterBadge
                 }
                 .padding(.horizontal)
@@ -203,11 +223,7 @@ struct AddEntryView: View {
             case 0:
                 OrtTypStepView(
                     koerperstelle: $koerperstelle,
-                    eintragTyp: $eintragTyp,
-                    letzterEintrag: letzterEintrag,
-                    vorlageDismissed: vorlageDismissed,
-                    onVorlageTapped: { wendeVorlageAn() },
-                    onVorlageDismissed: { vorlageDismissed = true }
+                    eintragTyp: $eintragTyp
                 )
             case 1:
                 IntensitaetStepView(schmerzstaerke: $schmerzstaerke, verlauf: $verlauf)
@@ -240,11 +256,7 @@ struct AddEntryView: View {
             case 0:
                 OrtTypStepView(
                     koerperstelle: $koerperstelle,
-                    eintragTyp: $eintragTyp,
-                    letzterEintrag: letzterEintrag,
-                    vorlageDismissed: vorlageDismissed,
-                    onVorlageTapped: { wendeVorlageAn() },
-                    onVorlageDismissed: { vorlageDismissed = true }
+                    eintragTyp: $eintragTyp
                 )
             case 1:
                 HautArtFotoStepView(hautArt: $hautArt, fotoDateiname: $fotoDateiname)
@@ -345,19 +357,20 @@ struct AddEntryView: View {
 
     // MARK: - Data
 
-    private func wendeVorlageAn() {
-        guard let e = letzterEintrag else { return }
-        koerperstelle = e.koerperstelle
-        schmerzstaerke = e.schmerzstaerke
-        schmerzart = e.schmerzart
-        dauerMinuten = e.dauerMinuten
-        ausloeser = e.ausloeser
-        begleiterscheinungen = e.begleiterscheinungen
-        massnahmen = e.massnahmen
-        stimmung = e.stimmung
-        stressLevel = e.stressLevel
-        schlafStunden = e.schlafStunden
-        vorlageDismissed = true
+    private func wendeVorlageAn(_ e: PainEntry) {
+        withAnimation(.spring(response: 0.25)) {
+            koerperstelle = e.koerperstelle
+            schmerzstaerke = e.schmerzstaerke
+            schmerzart = e.schmerzart
+            dauerMinuten = e.dauerMinuten
+            ausloeser = e.ausloeser
+            begleiterscheinungen = e.begleiterscheinungen
+            massnahmen = e.massnahmen
+            stimmung = e.stimmung
+            stressLevel = e.stressLevel
+            schlafStunden = e.schlafStunden
+            vorlageAngewendet = true
+        }
     }
 
     private func ladeVorhandeneWerte() {
@@ -458,10 +471,6 @@ struct AddEntryView: View {
 private struct OrtTypStepView: View {
     @Binding var koerperstelle: String
     @Binding var eintragTyp: EintragTyp
-    let letzterEintrag: PainEntry?
-    let vorlageDismissed: Bool
-    let onVorlageTapped: () -> Void
-    let onVorlageDismissed: () -> Void
 
     @StateObject private var scanService = BodyScanService.shared
     @State private var scanSetupAnzeigen = false
@@ -479,16 +488,6 @@ private struct OrtTypStepView: View {
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
-
-            // Vorlage banner (schmerz only)
-            if eintragTyp == .schmerz, !vorlageDismissed, let letzter = letzterEintrag {
-                VorlageBannerView(
-                    eintrag: letzter,
-                    onUebernehmen: onVorlageTapped,
-                    onDismiss: onVorlageDismissed
-                )
-                .padding(.horizontal)
-            }
 
             // Body map card
             VStack(alignment: .leading, spacing: 8) {
@@ -559,47 +558,3 @@ private struct OrtTypStepView: View {
     }
 }
 
-// MARK: - VorlageBannerView
-
-private struct VorlageBannerView: View {
-    let eintrag: PainEntry
-    let onUebernehmen: () -> Void
-    let onDismiss: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "clock.arrow.circlepath")
-                    .foregroundStyle(Color.accentColor)
-                Text("Letzter Eintrag übernehmen?")
-                    .font(.subheadline.bold())
-                Spacer()
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-
-            if !eintrag.koerperstelle.isEmpty {
-                Text(eintrag.koerperstelle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Button(action: onUebernehmen) {
-                Text("Übernehmen")
-                    .font(.subheadline.bold())
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 10))
-                    .foregroundStyle(.white)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-    }
-}
