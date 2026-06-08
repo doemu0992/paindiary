@@ -222,7 +222,6 @@ struct MedikamenteView: View {
                 }
                 if tageSeit == nil || (tageSeit ?? 0) >= 1 {
                     Button {
-                        logDatum = Date()
                         medZuLoggen = med
                     } label: {
                         Image(systemName: med.typSymbol)
