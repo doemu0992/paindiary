@@ -11,8 +11,8 @@ struct MedikamenteView: View {
     @State private var zuBearbeiten: Dauermedikation? = nil
     @State private var logAnzeigen = false
     @State private var tagesstart = Calendar.current.startOfDay(for: Date())
-    @State private var injektionZuLoggen: Dauermedikation? = nil
-    @State private var injektionsDatum = Date()
+    @State private var medZuLoggen: Dauermedikation? = nil
+    @State private var logDatum = Date()
 
     private let notif = NotificationManager.shared
     private var aktive: [Dauermedikation] { medikamente.filter(\.aktiv) }
@@ -34,6 +34,15 @@ struct MedikamenteView: View {
                         MedikamentZeile(medikament: med, notif: notif)
                             .contentShape(Rectangle())
                             .onTapGesture { zuBearbeiten = med }
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button {
+                                    logDatum = Date()
+                                    medZuLoggen = med
+                                } label: {
+                                    Label("Einnahme erfassen", systemImage: "calendar.badge.plus")
+                                }
+                                .tint(.blue)
+                            }
                     }
                     .onDelete { loeschen(aus: aktive, offsets: $0) }
                 }
@@ -69,8 +78,8 @@ struct MedikamenteView: View {
         }
         .sheet(isPresented: $formAnzeigen) { MedikamentFormView() }
         .sheet(item: $zuBearbeiten) { med in MedikamentFormView(medikament: med) }
-        .sheet(item: $injektionZuLoggen) { med in
-            injektionLogSheet(med: med)
+        .sheet(item: $medZuLoggen) { med in
+            einnahmeLogSheet(med: med)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -215,8 +224,8 @@ struct MedikamenteView: View {
                 }
                 if tageSeit == nil || (tageSeit ?? 0) >= 1 {
                     Button {
-                        injektionsDatum = Date()
-                        injektionZuLoggen = med
+                        logDatum = Date()
+                        medZuLoggen = med
                     } label: {
                         Image(systemName: med.typSymbol)
                             .font(.title3).foregroundStyle(.blue)
@@ -294,21 +303,24 @@ struct MedikamenteView: View {
     }
 
     @ViewBuilder
-    private func injektionLogSheet(med: Dauermedikation) -> some View {
+    private func einnahmeLogSheet(med: Dauermedikation) -> some View {
         NavigationStack {
             Form {
                 Section {
                     DatePicker(
                         "Datum & Uhrzeit",
-                        selection: $injektionsDatum,
+                        selection: $logDatum,
                         in: ...Date(),
                         displayedComponents: [.date, .hourAndMinute]
                     )
                 } header: {
-                    Label(med.name, systemImage: med.typSymbol)
-                        .font(.headline)
+                    Label(med.name, systemImage: med.typSymbol).font(.headline)
                 } footer: {
-                    Text("Du kannst auch vergangene Einnahmen erfassen.")
+                    if med.frequenz == "Wöchentlich" {
+                        Text("Wähle das Datum deiner letzten oder aktuellen Einnahme.")
+                    } else {
+                        Text("Hier kannst du auch vergangene Einnahmen nacherfassen.")
+                    }
                 }
 
                 if !med.dosierung.isEmpty {
@@ -320,28 +332,29 @@ struct MedikamenteView: View {
                         }
                     }
                 }
+
             }
             .navigationTitle("Einnahme erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { injektionZuLoggen = nil }
+                    Button("Abbrechen") { medZuLoggen = nil }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Speichern") {
                         let log = EinnahmeLog(
-                            datum: injektionsDatum,
+                            datum: logDatum,
                             medikamentName: med.name,
                             dosierung: med.dosierung,
                             eingenommen: true)
                         modelContext.insert(log)
-                        let stundenBisJetzt = max(0, Date().timeIntervalSince(injektionsDatum))
+                        let stundenBisJetzt = max(0, Date().timeIntervalSince(logDatum))
                         let abfrageVerzoegerung = Double(med.wirkungsAbfrageStunden) * 3600 - stundenBisJetzt
                         if abfrageVerzoegerung > 60 {
                             notif.planeWirkungsAbfrage(
                                 fuer: log, stunden: Int(abfrageVerzoegerung / 3600) + 1)
                         }
-                        injektionZuLoggen = nil
+                        medZuLoggen = nil
                     }
                     .fontWeight(.semibold)
                 }

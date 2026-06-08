@@ -799,7 +799,7 @@ struct KorrelationsView: View {
         let heute = kal.startOfDay(for: Date())
 
         return dauermedikationen
-            .filter { notif.anzahlDosen($0.frequenz) > 0 } // Bei Bedarf ausschliessen
+            .filter { notif.anzahlDosen($0.frequenz) > 0 && $0.frequenz != "Wöchentlich" }
             .compactMap { med in
             let anzDosen = notif.anzahlDosen(med.frequenz)
 
