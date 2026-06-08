@@ -24,6 +24,7 @@ struct MedikamenteView: View {
         List {
             berechtigungBanner
             uebergebrauchWarnung
+            bewertungsSektion
             heuteSektion
             if !aktive.isEmpty {
                 Section("Aktiv") {
@@ -71,6 +72,54 @@ struct MedikamenteView: View {
                 tagesstart = Calendar.current.startOfDay(for: Date())
             }
         }
+    }
+
+    // Unrated Bei Bedarf logs from today (older than 1h) waiting for effectiveness rating
+    @ViewBuilder
+    private var bewertungsSektion: some View {
+        let einStundeVor = Date().addingTimeInterval(-3600)
+        let zuBewerten = heutigeLogsHeute.filter {
+            $0.eingenommen && $0.wirkung.isEmpty && $0.datum <= einStundeVor
+        }
+        if !zuBewerten.isEmpty {
+            Section {
+                ForEach(zuBewerten) { log in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "questionmark.circle.fill").foregroundStyle(.blue)
+                            Text("Hat \(log.medikamentName) gewirkt?")
+                                .font(.subheadline.bold())
+                            Spacer()
+                            Text(log.datum, style: .time)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        HStack(spacing: 8) {
+                            wirkungsButton(log: log, wert: "gut",       label: "Gut",       farbe: .green)
+                            wirkungsButton(log: log, wert: "teilweise", label: "Teilweise", farbe: .orange)
+                            wirkungsButton(log: log, wert: "nicht",     label: "Nicht",     farbe: .red)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            } header: {
+                Text("Wirksamkeit bewerten")
+            }
+        }
+    }
+
+    private func wirkungsButton(log: EinnahmeLog, wert: String, label: String, farbe: Color) -> some View {
+        Button {
+            log.wirkung = wert
+        } label: {
+            Text(label)
+                .font(.caption.bold())
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(farbe.opacity(0.12))
+                .foregroundStyle(farbe)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
     }
 
     // Warn if any med was logged > 10x in the last 30 days (medication overuse threshold)
@@ -145,8 +194,10 @@ struct MedikamenteView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Button {
-                    modelContext.insert(EinnahmeLog(
-                        medikamentName: med.name, dosierung: med.dosierung, eingenommen: true))
+                    let log = EinnahmeLog(
+                        medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
+                    modelContext.insert(log)
+                    notif.planeWirkungsAbfrage(fuer: log)
                 } label: {
                     Image(systemName: "plus.circle")
                         .font(.title3).foregroundStyle(.blue)
@@ -241,6 +292,14 @@ private struct MedikamentZeile: View {
                     let zeitText = zeiten.isEmpty ? medikament.frequenz : zeiten.map(\.anzeigeText).joined(separator: ", ")
                     Label(zeitText, systemImage: "clock").font(.caption).foregroundStyle(.secondary)
                 }
+                if !medikament.aktiv, let ende = medikament.endDatum {
+                    Label {
+                        Text(ende, format: .dateTime.day().month(.abbreviated).year())
+                    } icon: {
+                        Image(systemName: "calendar.badge.minus")
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
+                }
             }
             Spacer()
             Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
@@ -262,6 +321,7 @@ struct MedikamentFormView: View {
     @State private var frequenz = ""
     @State private var startDatum = Date()
     @State private var aktiv = true
+    @State private var endDatum = Date()
     @State private var erinnerungAktiv = false
     @State private var erinnerungsZeiten: [Date] = [defaultZeit(8)]
 
@@ -295,7 +355,12 @@ struct MedikamentFormView: View {
                     DatePicker("Seit", selection: $startDatum, displayedComponents: .date)
                 }
 
-                Section { Toggle("Aktiv / Wird eingenommen", isOn: $aktiv) }
+                Section {
+                    Toggle("Aktiv / Wird eingenommen", isOn: $aktiv)
+                    if !aktiv {
+                        DatePicker("Abgesetzt am", selection: $endDatum, displayedComponents: .date)
+                    }
+                }
 
                 if !frequenz.isEmpty && frequenz != "Bei Bedarf" {
                     Section {
@@ -353,6 +418,7 @@ struct MedikamentFormView: View {
         frequenz = m.frequenz
         startDatum = m.startDatum
         aktiv = m.aktiv
+        endDatum = m.endDatum ?? Date()
         erinnerungAktiv = m.erinnerungAktiv
         if !m.erinnerungsZeiten.isEmpty {
             erinnerungsZeiten = notif.parseZeitString(m.erinnerungsZeiten).map(\.alsDate)
@@ -369,6 +435,7 @@ struct MedikamentFormView: View {
         if let m = medikament {
             m.name = name; m.dosierung = dosierung; m.frequenz = frequenz
             m.startDatum = startDatum; m.aktiv = aktiv
+            m.endDatum = aktiv ? nil : endDatum
             m.erinnerungAktiv = erinnerungAktiv
             m.erinnerungsZeiten = zeitenString
             erinnerungAktiv ? notif.planeErinnerungen(fuer: m) : notif.loescheErinnerungen(fuer: m)

@@ -7,6 +7,7 @@ struct KorrelationsView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var einnahmeLogs: [EinnahmeLog]
     @Query(filter: #Predicate<Dauermedikation> { $0.aktiv }) private var dauermedikationen: [Dauermedikation]
+    @Query(sort: \Dauermedikation.name) private var alleDauermedikationen: [Dauermedikation]
 
     var body: some View {
         ScrollView {
@@ -45,6 +46,8 @@ struct KorrelationsView: View {
                     if !einnahmeLogs.isEmpty || !medAnalysen.isEmpty {
                         abschnittTitel("Medikamente")
                         if !einnahmeLogs.isEmpty { medikamentEffektChart }
+                        if !bedarfsTrendDaten.isEmpty { bedarfsTrendChart }
+                        if !wirksamkeitDaten.isEmpty { wirksamkeitsChart }
                         ForEach(medAnalysen) { analyse in
                             dauermedikamentKarte(analyse)
                         }
@@ -941,6 +944,136 @@ struct KorrelationsView: View {
 
     private func treueFarbe(_ treue: Double) -> Color {
         treue >= 0.85 ? .green : treue >= 0.60 ? .orange : .red
+    }
+
+    // MARK: - Bedarfstrend-Chart (Feature D)
+
+    private struct BedarfsWoche: Identifiable {
+        let id: String; let label: String; let anzahl: Int
+    }
+
+    private var bedarfsTrendDaten: [BedarfsWoche] {
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+        let bedarfsMeds = alleDauermedikationen.filter {
+            NotificationManager.shared.anzahlDosen($0.frequenz) == 0
+        }.map { "\($0.name)|\($0.dosierung)" }
+        guard !bedarfsMeds.isEmpty else { return [] }
+        let bedarfsLogs = einnahmeLogs.filter { log in
+            bedarfsMeds.contains("\(log.medikamentName)|\(log.dosierung)") && log.eingenommen
+        }
+        guard !bedarfsLogs.isEmpty else { return [] }
+        return (0..<8).reversed().map { wocheVor in
+            guard let wocheEnde = kal.date(byAdding: .weekOfYear, value: -wocheVor, to: heute),
+                  let wocheStart = kal.date(byAdding: .day, value: -6, to: wocheEnde) else {
+                return BedarfsWoche(id: "\(wocheVor)", label: "?", anzahl: 0)
+            }
+            let anzahl = bedarfsLogs.filter { $0.datum >= wocheStart && $0.datum <= wocheEnde }.count
+            let label = wocheVor == 0 ? "Heute" : "−\(wocheVor)W"
+            return BedarfsWoche(id: "\(wocheVor)", label: label, anzahl: anzahl)
+        }
+    }
+
+    private var bedarfsTrendChart: some View {
+        karte {
+            Text("Bedarfsmedikation Trend").font(.headline)
+            Text("Einnahmen pro Woche (letzte 8 Wochen) – Warnschwelle 2.5/Woche (MOH)")
+                .font(.caption).foregroundStyle(.secondary)
+            Chart(bedarfsTrendDaten) { w in
+                BarMark(x: .value("Woche", w.label), y: .value("Einnahmen", w.anzahl))
+                    .foregroundStyle(w.anzahl > 2 ? Color.orange.gradient : Color.blue.gradient)
+                    .cornerRadius(4)
+                RuleMark(y: .value("MOH-Grenze", 2.5))
+                    .foregroundStyle(.red.opacity(0.6))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4]))
+                    .annotation(position: .trailing, alignment: .leading) {
+                        Text("MOH").font(.caption2).foregroundStyle(.red)
+                    }
+            }
+            .chartYScale(domain: 0...max(4, (bedarfsTrendDaten.map(\.anzahl).max() ?? 0) + 1))
+            .frame(height: 160)
+            if bedarfsTrendDaten.contains(where: { $0.anzahl > 2 }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Text("Häufige Bedarfseinnahme – Risiko für Übergebrauchskopfschmerzen")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Wirksamkeits-Chart (Feature A+D)
+
+    private struct WirksamkeitDaten: Identifiable {
+        let id: String; let name: String
+        let gut: Int; let teilweise: Int; let nicht: Int
+        var gesamt: Int { gut + teilweise + nicht }
+        var gutPct: Double { gesamt > 0 ? Double(gut) / Double(gesamt) * 100 : 0 }
+    }
+
+    private var wirksamkeitDaten: [WirksamkeitDaten] {
+        let bewertet = einnahmeLogs.filter { !$0.wirkung.isEmpty }
+        guard !bewertet.isEmpty else { return [] }
+        let grouped = Dictionary(grouping: bewertet) { "\($0.medikamentName)|\($0.dosierung)" }
+        return grouped.compactMap { key, logs in
+            let gut = logs.filter { $0.wirkung == "gut" }.count
+            let teilw = logs.filter { $0.wirkung == "teilweise" }.count
+            let nicht = logs.filter { $0.wirkung == "nicht" }.count
+            guard gut + teilw + nicht > 0 else { return nil }
+            let name = logs.first.map { d in
+                d.dosierung.isEmpty ? d.medikamentName : "\(d.medikamentName) \(d.dosierung)"
+            } ?? key
+            return WirksamkeitDaten(id: key, name: name, gut: gut, teilweise: teilw, nicht: nicht)
+        }
+        .sorted { $0.gutPct > $1.gutPct }
+    }
+
+    private var wirksamkeitsChart: some View {
+        karte {
+            Text("Wirksamkeit Bedarfsmedikation").font(.headline)
+            Text("Bewertungen: Gut / Teilweise / Nicht").font(.caption).foregroundStyle(.secondary)
+            VStack(spacing: 12) {
+                ForEach(wirksamkeitDaten) { d in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(d.name).font(.subheadline.bold())
+                            Spacer()
+                            Text("\(d.gesamt) Bewertungen").font(.caption).foregroundStyle(.secondary)
+                        }
+                        GeometryReader { geo in
+                            HStack(spacing: 0) {
+                                if d.gut > 0 {
+                                    RoundedRectangle(cornerRadius: 0).fill(Color.green)
+                                        .frame(width: geo.size.width * Double(d.gut) / Double(d.gesamt))
+                                }
+                                if d.teilweise > 0 {
+                                    Rectangle().fill(Color.orange)
+                                        .frame(width: geo.size.width * Double(d.teilweise) / Double(d.gesamt))
+                                }
+                                if d.nicht > 0 {
+                                    Rectangle().fill(Color.red)
+                                        .frame(width: geo.size.width * Double(d.nicht) / Double(d.gesamt))
+                                }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        .frame(height: 10)
+                        HStack(spacing: 12) {
+                            wirkungsLegende("Gut", n: d.gut, farbe: .green)
+                            wirkungsLegende("Teilweise", n: d.teilweise, farbe: .orange)
+                            wirkungsLegende("Nicht", n: d.nicht, farbe: .red)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func wirkungsLegende(_ label: String, n: Int, farbe: Color) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(farbe).frame(width: 8, height: 8)
+            Text("\(label) (\(n))").font(.caption2).foregroundStyle(.secondary)
+        }
     }
 
     // MARK: - Hilfsfunktionen

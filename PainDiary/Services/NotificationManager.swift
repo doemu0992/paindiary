@@ -213,6 +213,19 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    func planeWirkungsAbfrage(fuer log: EinnahmeLog) {
+        guard status == .authorized else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "💊 Hat \(log.medikamentName) gewirkt?"
+        content.body = "Tippe um deine Einnahme zu bewerten."
+        content.sound = .default
+        if #available(iOS 15.0, *) { content.interruptionLevel = .passive }
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2 * 3600, repeats: false)
+        let id = "wirkung-\(Int(log.datum.timeIntervalSince1970))"
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+
     func loescheZyklusErinnerungen() {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: ["zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung"])

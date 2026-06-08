@@ -79,6 +79,7 @@ struct DashboardView: View {
         PDFExportService.shared.erstellePDFAsync(
             eintraege: Array(eintraege),
             medikamente: Array(medikamente),
+            einnahmeLogs: Array(einnahmeLogs),
             midasBewertungen: Array(midasBewertungen),
             zyklusEintraege: Array(zyklusEintraege),
             profil: profile.first,
@@ -414,6 +415,7 @@ private struct ExportOptionsSheet: View {
                 Section("Abschnitte") {
                     Toggle("Zusammenfassung", isOn: $optionen.mitZusammenfassung)
                     Toggle("Medikamente", isOn: $optionen.mitMedikamente)
+                    Toggle("Medikamenten-Dossier", isOn: $optionen.mitMedikamentDossier)
                     if hatZyklusDaten {
                         Toggle("Zyklus", isOn: $optionen.mitZyklus)
                     }

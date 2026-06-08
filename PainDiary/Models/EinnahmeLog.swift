@@ -7,6 +7,8 @@ import SwiftData
     var dosierung: String = ""
     var eingenommen: Bool = true
     var notizen: String = ""
+    // "" = unbewertet, "gut" / "teilweise" / "nicht"
+    var wirkung: String = ""
 
     init(datum: Date = .now,
          medikamentName: String = "",

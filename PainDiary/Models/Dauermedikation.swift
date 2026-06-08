@@ -8,6 +8,7 @@ import SwiftData
     var frequenz: String = ""
     var startDatum: Date = Date()
     var aktiv: Bool = true
+    var endDatum: Date? = nil
     var erinnerungAktiv: Bool = false
     // Komma-getrennte Zeiten "HH:mm,HH:mm" — leer = Standard je nach Frequenz
     var erinnerungsZeiten: String = ""
