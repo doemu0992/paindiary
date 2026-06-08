@@ -165,7 +165,7 @@ struct MedikamenteView: View {
             Section("Heute") {
                 ForEach(aktive) { med in
                     HStack(spacing: 12) {
-                        Image(systemName: "pill.fill")
+                        Image(systemName: med.typSymbol)
                             .foregroundStyle(.blue)
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
@@ -215,7 +215,7 @@ struct MedikamenteView: View {
                         modelContext.insert(log)
                         notif.planeWirkungsAbfrage(fuer: log, stunden: med.wirkungsAbfrageStunden)
                     } label: {
-                        Image(systemName: "syringe")
+                        Image(systemName: med.typSymbol)
                             .font(.title3).foregroundStyle(.blue)
                     }
                     .buttonStyle(.plain)
@@ -310,7 +310,7 @@ private struct MedikamentZeile: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(medikament.aktiv ? Color.blue.opacity(0.15) : Color.secondary.opacity(0.1))
                     .frame(width: 44, height: 44)
-                Image(systemName: "pill.fill")
+                Image(systemName: medikament.typSymbol)
                     .foregroundStyle(medikament.aktiv ? .blue : .secondary)
             }
             VStack(alignment: .leading, spacing: 3) {
@@ -364,6 +364,7 @@ struct MedikamentFormView: View {
     @State private var startDatum = Date()
     @State private var aktiv = true
     @State private var endDatum = Date()
+    @State private var medikamentTyp: String = MedikamentTyp.tablette.rawValue
     @State private var erinnerungAktiv = false
     @State private var erinnerungsZeiten: [Date] = [defaultZeit(8)]
     @State private var wirkungsAbfrageStunden: Int = 2
@@ -383,6 +384,16 @@ struct MedikamentFormView: View {
                 Section("Medikament") {
                     TextField("Name (z.B. Ibuprofen)", text: $name)
                     TextField("Dosierung (z.B. 400 mg)", text: $dosierung)
+                    Picker("Art", selection: $medikamentTyp) {
+                        ForEach(MedikamentTyp.allCases, id: \.rawValue) { typ in
+                            Label(typ.rawValue, systemImage: typ.symbol).tag(typ.rawValue)
+                        }
+                    }
+                    .onChange(of: medikamentTyp) { _, neue in
+                        guard let typ = MedikamentTyp(rawValue: neue) else { return }
+                        if typ.istInjektion { wirkungsAbfrageStunden = 24 }
+                        else if wirkungsAbfrageStunden == 24 { wirkungsAbfrageStunden = 2 }
+                    }
                 }
 
                 Section("Einnahme") {
@@ -468,8 +479,11 @@ struct MedikamentFormView: View {
     private func aktualisiereStandardZeiten(_ frequenz: String) {
         let standard = notif.standardZeiten(frequenz)
         erinnerungsZeiten = standard.isEmpty ? [defaultZeit(8)] : standard.map(\.alsDate)
-        if frequenz == "Wöchentlich" && wirkungsAbfrageStunden == 2 {
-            wirkungsAbfrageStunden = 24
+        if frequenz == "Wöchentlich" {
+            if medikamentTyp == MedikamentTyp.tablette.rawValue {
+                medikamentTyp = MedikamentTyp.spritze.rawValue
+            }
+            if wirkungsAbfrageStunden == 2 { wirkungsAbfrageStunden = 24 }
         }
     }
 
@@ -481,6 +495,7 @@ struct MedikamentFormView: View {
         startDatum = m.startDatum
         aktiv = m.aktiv
         endDatum = m.endDatum ?? Date()
+        medikamentTyp = m.medikamentTyp
         erinnerungAktiv = m.erinnerungAktiv
         wirkungsAbfrageStunden = m.wirkungsAbfrageStunden
         if !m.erinnerungsZeiten.isEmpty {
@@ -499,6 +514,7 @@ struct MedikamentFormView: View {
             m.name = name; m.dosierung = dosierung; m.frequenz = frequenz
             m.startDatum = startDatum; m.aktiv = aktiv
             m.endDatum = aktiv ? nil : endDatum
+            m.medikamentTyp = medikamentTyp
             m.erinnerungAktiv = erinnerungAktiv
             m.erinnerungsZeiten = zeitenString
             m.wirkungsAbfrageStunden = wirkungsAbfrageStunden
@@ -506,6 +522,7 @@ struct MedikamentFormView: View {
         } else {
             let neu = Dauermedikation(name: name, dosierung: dosierung, frequenz: frequenz,
                                       startDatum: startDatum, aktiv: aktiv)
+            neu.medikamentTyp = medikamentTyp
             neu.erinnerungAktiv = erinnerungAktiv
             neu.erinnerungsZeiten = zeitenString
             neu.wirkungsAbfrageStunden = wirkungsAbfrageStunden
