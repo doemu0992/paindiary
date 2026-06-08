@@ -13,7 +13,11 @@ struct PainDiaryApp: App {
                     .modelContainer(container)
             } else {
                 ProgressView()
-                    .task { container = makeContainer() }
+                    .task {
+                        container = await Task.detached(priority: .userInitiated) {
+                            makeContainer()
+                        }.value
+                    }
             }
         }
     }
