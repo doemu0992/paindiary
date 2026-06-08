@@ -11,6 +11,8 @@ struct MedikamenteView: View {
     @State private var zuBearbeiten: Dauermedikation? = nil
     @State private var logAnzeigen = false
     @State private var tagesstart = Calendar.current.startOfDay(for: Date())
+    @State private var injektionZuLoggen: Dauermedikation? = nil
+    @State private var injektionsDatum = Date()
 
     private let notif = NotificationManager.shared
     private var aktive: [Dauermedikation] { medikamente.filter(\.aktiv) }
@@ -67,6 +69,9 @@ struct MedikamenteView: View {
         }
         .sheet(isPresented: $formAnzeigen) { MedikamentFormView() }
         .sheet(item: $zuBearbeiten) { med in MedikamentFormView(medikament: med) }
+        .sheet(item: $injektionZuLoggen) { med in
+            injektionLogSheet(med: med)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 tagesstart = Calendar.current.startOfDay(for: Date())
@@ -210,10 +215,8 @@ struct MedikamenteView: View {
                 }
                 if tageSeit == nil || (tageSeit ?? 0) >= 1 {
                     Button {
-                        let log = EinnahmeLog(
-                            medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
-                        modelContext.insert(log)
-                        notif.planeWirkungsAbfrage(fuer: log, stunden: med.wirkungsAbfrageStunden)
+                        injektionsDatum = Date()
+                        injektionZuLoggen = med
                     } label: {
                         Image(systemName: med.typSymbol)
                             .font(.title3).foregroundStyle(.blue)
@@ -288,6 +291,63 @@ struct MedikamenteView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func injektionLogSheet(med: Dauermedikation) -> some View {
+        NavigationStack {
+            Form {
+                Section {
+                    DatePicker(
+                        "Datum & Uhrzeit",
+                        selection: $injektionsDatum,
+                        in: ...Date(),
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                } header: {
+                    Label(med.name, systemImage: med.typSymbol)
+                        .font(.headline)
+                } footer: {
+                    Text("Du kannst auch vergangene Einnahmen erfassen.")
+                }
+
+                if !med.dosierung.isEmpty {
+                    Section {
+                        HStack {
+                            Text("Dosierung")
+                            Spacer()
+                            Text(med.dosierung).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Einnahme erfassen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { injektionZuLoggen = nil }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        let log = EinnahmeLog(
+                            datum: injektionsDatum,
+                            medikamentName: med.name,
+                            dosierung: med.dosierung,
+                            eingenommen: true)
+                        modelContext.insert(log)
+                        let stundenBisJetzt = max(0, Date().timeIntervalSince(injektionsDatum))
+                        let abfrageVerzoegerung = Double(med.wirkungsAbfrageStunden) * 3600 - stundenBisJetzt
+                        if abfrageVerzoegerung > 60 {
+                            notif.planeWirkungsAbfrage(
+                                fuer: log, stunden: Int(abfrageVerzoegerung / 3600) + 1)
+                        }
+                        injektionZuLoggen = nil
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     private func loeschen(aus liste: [Dauermedikation], offsets: IndexSet) {
