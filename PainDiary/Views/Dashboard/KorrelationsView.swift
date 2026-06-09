@@ -21,6 +21,9 @@ struct KorrelationsView: View {
                 } else {
                     erkenntnisseKarte
 
+                    abschnittTitel("Schmerzverlauf")
+                    SchmerzVerlaufKarte(eintraege: Array(eintraege))
+
                     abschnittTitel("Schmerzmuster")
                     wochentagChart
                     ausloeserChart

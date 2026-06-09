@@ -310,48 +310,7 @@ struct DashboardView: View {
     }
 
     private var schmerzVerlaufChart: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Schmerzverlauf (7 Tage)")
-                .font(.headline)
-
-            if viewModel.letzten7TageEintraege.isEmpty {
-                Text("Noch nicht genug Daten")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 120)
-            } else {
-                Chart(viewModel.letzten7TageEintraege, id: \.datum) { punkt in
-                    LineMark(
-                        x: .value("Tag", punkt.datum, unit: .day),
-                        y: .value("Schmerz", punkt.schmerz)
-                    )
-                    .foregroundStyle(Color.orange.gradient)
-                    .interpolationMethod(.catmullRom)
-
-                    AreaMark(
-                        x: .value("Tag", punkt.datum, unit: .day),
-                        y: .value("Schmerz", punkt.schmerz)
-                    )
-                    .foregroundStyle(Color.orange.opacity(0.15).gradient)
-                    .interpolationMethod(.catmullRom)
-
-                    PointMark(
-                        x: .value("Tag", punkt.datum, unit: .day),
-                        y: .value("Schmerz", punkt.schmerz)
-                    )
-                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(punkt.schmerz)))
-                }
-                .chartYScale(domain: 0...10)
-                .chartXAxis {
-                    AxisMarks(values: .stride(by: .day)) {
-                        AxisValueLabel(format: .dateTime.weekday(.narrow))
-                    }
-                }
-                .frame(height: 160)
-            }
-        }
-        .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        SchmerzVerlaufKarte(eintraege: Array(eintraege))
     }
 
     private var letzteEintraege: some View {
