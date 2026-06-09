@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import SwiftData
 
@@ -20,6 +21,12 @@ import SwiftData
     var wetterCode: Int?
     var wetterWind: Double?
 
+    // Haut-Eintrag Felder
+    var hautStellen: String = ""
+    var hautArt: String = ""
+    var fotoDateiname: String = ""
+    var verlauf: String = ""   // "besser" | "gleich" | "schlechter" | ""
+
     init(
         datum: Date = .now,
         schmerzstaerke: Int = 5,
@@ -35,7 +42,11 @@ import SwiftData
         stressLevel: Int = 3,
         wetterTemperatur: Double? = nil,
         wetterCode: Int? = nil,
-        wetterWind: Double? = nil
+        wetterWind: Double? = nil,
+        hautStellen: String = "",
+        hautArt: String = "",
+        fotoDateiname: String = "",
+        verlauf: String = ""
     ) {
         self.datum = datum
         self.schmerzstaerke = schmerzstaerke
@@ -52,5 +63,9 @@ import SwiftData
         self.wetterTemperatur = wetterTemperatur
         self.wetterCode = wetterCode
         self.wetterWind = wetterWind
+        self.hautStellen = hautStellen
+        self.hautArt = hautArt
+        self.fotoDateiname = fotoDateiname
+        self.verlauf = verlauf
     }
 }

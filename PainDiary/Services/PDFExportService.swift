@@ -64,11 +64,29 @@ struct PDFNotfallKontakt {
 }
 
 struct PDFMedikament {
-    var name: String; var dosierung: String; var frequenz: String; var startDatum: Date; var aktiv: Bool
+    var name: String; var dosierung: String; var frequenz: String
+    var startDatum: Date; var endDatum: Date?; var aktiv: Bool
+    var einnahmeHinweis: String
+    var vorrat: Int?; var vorratSchwelle: Int
+    var ablaufDatum: Date?
 
     static func aus(med: Dauermedikation) -> PDFMedikament {
         PDFMedikament(name: med.name, dosierung: med.dosierung, frequenz: med.frequenz,
-                      startDatum: med.startDatum, aktiv: med.aktiv)
+                      startDatum: med.startDatum, endDatum: med.endDatum, aktiv: med.aktiv,
+                      einnahmeHinweis: med.einnahmeHinweis,
+                      vorrat: med.vorrat, vorratSchwelle: med.vorratSchwelle,
+                      ablaufDatum: med.ablaufDatum)
+    }
+}
+
+struct PDFEinnahmeLog {
+    var datum: Date; var medikamentName: String; var dosierung: String
+    var eingenommen: Bool; var wirkung: String; var notizen: String
+
+    static func aus(log: EinnahmeLog) -> PDFEinnahmeLog {
+        PDFEinnahmeLog(datum: log.datum, medikamentName: log.medikamentName,
+                       dosierung: log.dosierung, eingenommen: log.eingenommen,
+                       wirkung: log.wirkung, notizen: log.notizen)
     }
 }
 
@@ -173,6 +191,7 @@ struct ExportOptionen {
     var zeitraum: ExportZeitraum = .dreissigTage
     var mitZusammenfassung: Bool = true
     var mitMedikamente: Bool = true
+    var mitMedikamentDossier: Bool = true
     var mitEintraege: Bool = true
     var mitZyklus: Bool = true
     var mitErnaehrung: Bool = true
@@ -214,6 +233,7 @@ class PDFExportService: @unchecked Sendable {
     func erstellePDFAsync(
         eintraege: [PainEntry],
         medikamente: [Dauermedikation],
+        einnahmeLogs: [EinnahmeLog] = [],
         midasBewertungen: [MIDASBewertung],
         zyklusEintraege: [ZyklusEintrag],
         profil: Benutzerprofil?,
@@ -231,6 +251,12 @@ class PDFExportService: @unchecked Sendable {
             gefiltert = eintraege.sorted { $0.datum > $1.datum }.map(PDFEintrag.aus)
         }
         let meds      = medikamente.map(PDFMedikament.aus)
+        let logs: [PDFEinnahmeLog]
+        if let start = optionen.zeitraum.startDatum() {
+            logs = einnahmeLogs.filter { $0.datum >= start }.sorted { $0.datum > $1.datum }.map(PDFEinnahmeLog.aus)
+        } else {
+            logs = einnahmeLogs.sorted { $0.datum > $1.datum }.map(PDFEinnahmeLog.aus)
+        }
         let midas     = midasBewertungen.sorted { $0.datum > $1.datum }.map(PDFMidas.aus)
         let analyse   = ZyklusRechner.analyse(eintraege: zyklusEintraege)
         let zyklus    = zyklusEintraege.sorted { $0.datum > $1.datum }.map(PDFZyklusEintrag.aus)
@@ -238,7 +264,7 @@ class PDFExportService: @unchecked Sendable {
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let url = self.renderPDF(patient: patient, eintraege: gefiltert,
-                                     medikamente: meds, midas: midas,
+                                     medikamente: meds, einnahmeLogs: logs, midas: midas,
                                      zyklus: zyklus, analyse: analyse,
                                      ernaehrung: ernaehrung, optionen: optionen)
             Task { @MainActor in completion(url) }
@@ -251,6 +277,7 @@ class PDFExportService: @unchecked Sendable {
         patient: PDFPatientenDaten,
         eintraege: [PDFEintrag],
         medikamente: [PDFMedikament],
+        einnahmeLogs: [PDFEinnahmeLog] = [],
         midas: [PDFMidas],
         zyklus: [PDFZyklusEintrag],
         analyse: ZyklusAnalyse,
@@ -277,6 +304,12 @@ class PDFExportService: @unchecked Sendable {
                     if optionen.mitMedikamente && !medikamente.isEmpty {
                         seite += 1; ctx.beginPage()
                         medikamenteSeite(ctx: ctx.cgContext, medikamente: medikamente, seite: seite)
+                    }
+
+                    if optionen.mitMedikamentDossier && (!medikamente.isEmpty || !einnahmeLogs.isEmpty) {
+                        seite += 1; ctx.beginPage()
+                        medikamentDossierSeite(ctx: ctx.cgContext, medikamente: medikamente,
+                                               einnahmeLogs: einnahmeLogs, eintraege: eintraege, seite: seite)
                     }
 
                     if optionen.mitZyklus && !zyklus.isEmpty {
@@ -595,7 +628,7 @@ class PDFExportService: @unchecked Sendable {
                  font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
             y += 20
 
-            let cols: [CGFloat] = [rand, rand + 180, rand + 300, rand + 400]
+            let cols: [CGFloat] = [rand, rand + 175, rand + 290, rand + 380]
             tabellenKopf(ctx: ctx, y: y, cols: cols, headers: ["Medikament", "Dosierung", "Frequenz", "Seit"])
             y += 26
 
@@ -604,10 +637,28 @@ class PDFExportService: @unchecked Sendable {
                 tabellenZeile(ctx: ctx, y: y, cols: cols,
                               werte: [med.name, med.dosierung, med.frequenz, fmt(med.startDatum)],
                               fett: [true, false, false, false])
-                y += 20
-                trennlinie(ctx: ctx, y: y - 1, alpha: 0.12)
+                y += 14
+                // Sub-row: hinweis / ablauf / vorrat
+                var extras: [String] = []
+                if !med.einnahmeHinweis.isEmpty   { extras.append("⚑ \(med.einnahmeHinweis)") }
+                if let ablauf = med.ablaufDatum {
+                    let tage = Calendar.current.dateComponents([.day], from: Date(), to: ablauf).day ?? 0
+                    extras.append(tage <= 14 ? "⚠ Ablauf: \(fmt(ablauf)) (\(tage) Tage)" : "Ablauf: \(fmt(ablauf))")
+                }
+                if let vorrat = med.vorrat {
+                    extras.append(vorrat <= med.vorratSchwelle ? "⚠ Vorrat: \(vorrat) Stück" : "Vorrat: \(vorrat) Stück")
+                }
+                if !extras.isEmpty {
+                    draw(extras.joined(separator: "   "),
+                         at: CGPoint(x: cols[1] + 4, y: y),
+                         font: .systemFont(ofSize: 8.5),
+                         color: extras.contains(where: { $0.hasPrefix("⚠") }) ? .systemOrange : .secondaryLabel)
+                    y += 13
+                }
+                trennlinie(ctx: ctx, y: y, alpha: 0.12)
+                y += 4
             }
-            y += 16
+            y += 12
         }
 
         if !inaktive.isEmpty {
@@ -616,15 +667,163 @@ class PDFExportService: @unchecked Sendable {
                  font: .systemFont(ofSize: 13, weight: .semibold), color: .secondaryLabel)
             y += 20
 
+            let inaktCols: [CGFloat] = [rand, rand + 180, rand + 300, rand + 400]
+            tabellenKopf(ctx: ctx, y: y, cols: inaktCols, headers: ["Medikament", "Dosierung", "Seit", "Abgesetzt"])
+            y += 26
+
             for med in inaktive {
                 if y > H - rand - 20 { break }
-                draw("• \(med.name)", at: CGPoint(x: rand + 8, y: y),
-                     font: .systemFont(ofSize: 11), color: .secondaryLabel)
-                if !med.dosierung.isEmpty {
-                    draw(med.dosierung, at: CGPoint(x: rand + 200, y: y),
-                         font: .systemFont(ofSize: 11), color: .secondaryLabel)
-                }
+                tabellenZeile(ctx: ctx, y: y, cols: inaktCols,
+                              werte: [med.name, med.dosierung, fmt(med.startDatum),
+                                      med.endDatum.map { fmt($0) } ?? "–"],
+                              fett: [false, false, false, false])
                 y += 18
+                trennlinie(ctx: ctx, y: y - 1, alpha: 0.08)
+            }
+        }
+
+        fusszeile(ctx: ctx, seite: seite)
+    }
+
+    // MARK: - Medication Dossier page (Feature F)
+
+    private func medikamentDossierSeite(ctx: CGContext, medikamente: [PDFMedikament],
+                                         einnahmeLogs: [PDFEinnahmeLog],
+                                         eintraege: [PDFEintrag], seite: Int) {
+        seitenKopf(ctx: ctx, titel: "Medikamenten-Dossier", seite: seite)
+        var y: CGFloat = rand + 52
+
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+        let aktive = medikamente.filter { $0.aktiv }
+
+        draw("Einnahmetreue (letzte 30 Tage)", at: CGPoint(x: rand, y: y),
+             font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+        y += 20
+
+        let cols: [CGFloat] = [rand, rand + 160, rand + 270, rand + 355, rand + 430]
+        tabellenKopf(ctx: ctx, y: y, cols: cols,
+                     headers: ["Medikament", "Dosierung", "Hinweis", "Treue", "Einnahmen"])
+        y += 26
+
+        for med in aktive {
+            if y > H - rand - 30 { break }
+            let fensterStart = kal.date(byAdding: .day, value: -30, to: heute)!
+            let tageSeitStart = max(1, kal.dateComponents([.day],
+                from: kal.startOfDay(for: med.startDatum), to: heute).day ?? 1)
+            let fensterTage = min(30, tageSeitStart)
+            let einnahmenImFenster = einnahmeLogs.filter {
+                $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                $0.eingenommen && $0.datum >= fensterStart
+            }
+            let einnahmenTage = Set(einnahmenImFenster.map { kal.startOfDay(for: $0.datum) }).count
+            let treue = fensterTage > 0 ? min(100, Int(Double(einnahmenTage) / Double(fensterTage) * 100)) : 0
+            let hinweis = med.einnahmeHinweis.isEmpty ? "–" : med.einnahmeHinweis
+            tabellenZeile(ctx: ctx, y: y, cols: cols,
+                          werte: [med.name, med.dosierung, hinweis, "\(treue)%", "\(einnahmenTage) Tage"],
+                          fett: [true, false, false, true, false])
+            y += 20
+            trennlinie(ctx: ctx, y: y - 1, alpha: 0.12)
+        }
+        y += 12
+
+        let bewertet = einnahmeLogs.filter { !$0.wirkung.isEmpty }
+        if !bewertet.isEmpty {
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Wirksamkeit Bedarfsmedikation", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+
+            let grouped = Dictionary(grouping: bewertet) { "\($0.medikamentName)|\($0.dosierung)" }
+            for (_, logs) in grouped.sorted(by: { $0.key < $1.key }) {
+                if y > H - rand - 40 { break }
+                guard let erster = logs.first else { continue }
+                let name = erster.dosierung.isEmpty ? erster.medikamentName : "\(erster.medikamentName) \(erster.dosierung)"
+                let gut = logs.filter { $0.wirkung == "gut" }.count
+                let teilw = logs.filter { $0.wirkung == "teilweise" }.count
+                let nicht = logs.filter { $0.wirkung == "nicht" }.count
+                let gesamt = gut + teilw + nicht
+                let gutPct = gesamt > 0 ? Int(Double(gut) / Double(gesamt) * 100) : 0
+                draw(name, at: CGPoint(x: rand, y: y),
+                     font: .systemFont(ofSize: 11, weight: .semibold), color: .label)
+                let barMaxW: CGFloat = iw - 220
+                let barStart: CGFloat = rand + 200
+                let gutW  = barMaxW * CGFloat(gut)  / CGFloat(max(1, gesamt))
+                let teilwW = barMaxW * CGFloat(teilw) / CGFloat(max(1, gesamt))
+                let nichtW = barMaxW * CGFloat(nicht) / CGFloat(max(1, gesamt))
+                ctx.setFillColor(UIColor.systemGreen.withAlphaComponent(0.65).cgColor)
+                ctx.fill(CGRect(x: barStart, y: y + 2, width: gutW, height: 12))
+                ctx.setFillColor(UIColor.systemOrange.withAlphaComponent(0.65).cgColor)
+                ctx.fill(CGRect(x: barStart + gutW, y: y + 2, width: teilwW, height: 12))
+                ctx.setFillColor(UIColor.systemRed.withAlphaComponent(0.65).cgColor)
+                ctx.fill(CGRect(x: barStart + gutW + teilwW, y: y + 2, width: nichtW, height: 12))
+                draw("\(gutPct)% gut  (\(gut)/\(teilw)/\(nicht))",
+                     at: CGPoint(x: barStart + barMaxW + 6, y: y + 2),
+                     font: .systemFont(ofSize: 9), color: .secondaryLabel)
+                y += 22
+            }
+        }
+
+        let bedarfsMeds = medikamente.filter { $0.frequenz == "Bei Bedarf" || $0.frequenz.isEmpty }
+        let bedarfsLogs = einnahmeLogs.filter { log in
+            bedarfsMeds.contains { $0.name == log.medikamentName } && log.eingenommen
+        }
+        if !bedarfsLogs.isEmpty {
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Bedarfsmedikation – Wochenverlauf (letzte 8 Wochen)", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+
+            let wochen = (0..<8).reversed().map { wocheVor -> (label: String, anzahl: Int) in
+                guard let wocheEnde = kal.date(byAdding: .weekOfYear, value: -wocheVor, to: heute),
+                      let wocheStart = kal.date(byAdding: .day, value: -6, to: wocheEnde) else {
+                    return ("?", 0)
+                }
+                let n = bedarfsLogs.filter { $0.datum >= wocheStart && $0.datum <= wocheEnde }.count
+                return (wocheVor == 0 ? "Diese Woche" : "−\(wocheVor)W", n)
+            }
+            let maxAnzahl = max(1, wochen.map(\.anzahl).max() ?? 1)
+            let barMaxW: CGFloat = iw - 80
+            let barH: CGFloat = 14
+
+            for (label, anzahl) in wochen {
+                if y > H - rand - 30 { break }
+                let bw = CGFloat(anzahl) / CGFloat(maxAnzahl) * barMaxW
+                draw(label, at: CGPoint(x: rand, y: y), font: .systemFont(ofSize: 9), color: .secondaryLabel)
+                let farbe = anzahl > 2 ? UIColor.systemOrange : UIColor.systemBlue
+                if bw > 0 {
+                    ctx.setFillColor(farbe.withAlphaComponent(0.55).cgColor)
+                    ctx.fill(CGRect(x: rand + 72, y: y + 1, width: bw, height: barH - 3))
+                }
+                draw("\(anzahl)×", at: CGPoint(x: rand + 72 + bw + 4, y: y),
+                     font: .systemFont(ofSize: 9, weight: anzahl > 2 ? .bold : .regular),
+                     color: anzahl > 2 ? .systemOrange : .secondaryLabel)
+                y += barH + 2
+            }
+            draw("⚠︎ Grenze: >2.5× pro Woche = Übergebrauchsrisiko (MOH)",
+                 at: CGPoint(x: rand, y: y + 2), font: .systemFont(ofSize: 8), color: .systemOrange)
+            y += 16
+        }
+
+        // Notizen aus Einnahme-Logs (letzte 30 Tage)
+        let notizLogs = einnahmeLogs.filter { !$0.notizen.isEmpty }
+        if !notizLogs.isEmpty && y < H - rand - 80 {
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Einnahme-Notizen", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+            for log in notizLogs.prefix(8) {
+                if y > H - rand - 30 { break }
+                let kopf = "\(fmtKurz(log.datum))  \(log.medikamentName)\(log.dosierung.isEmpty ? "" : " \(log.dosierung)")"
+                draw(kopf, at: CGPoint(x: rand, y: y),
+                     font: .systemFont(ofSize: 10, weight: .semibold), color: .label)
+                y += 14
+                let notizText = log.notizen.replacingOccurrences(of: "\n", with: " ")
+                drawClamped(notizText, at: CGPoint(x: rand + 10, y: y),
+                            font: .systemFont(ofSize: 9.5), color: .darkGray, maxW: iw - 10)
+                y += 14
+                trennlinie(ctx: ctx, y: y, alpha: 0.08)
+                y += 6
             }
         }
 
@@ -928,6 +1127,28 @@ class PDFExportService: @unchecked Sendable {
         }
 
         fusszeile(ctx: ctx.cgContext, seite: seite)
+    }
+
+    // MARK: - Medication summary (called from EinnahmeLogView)
+
+    @MainActor
+    func erstelleMedikamentenZusammenfassung(
+        medikamente: [Dauermedikation],
+        logs: [EinnahmeLog]
+    ) -> URL? {
+        let patient  = PDFPatientenDaten()
+        let meds     = medikamente.map(PDFMedikament.aus)
+        let pdfLogs  = logs.sorted { $0.datum > $1.datum }.map(PDFEinnahmeLog.aus)
+        let optionen = ExportOptionen(
+            zeitraum: .dreissigTage, mitZusammenfassung: false,
+            mitMedikamente: true, mitMedikamentDossier: true,
+            mitEintraege: false, mitZyklus: false, mitErnaehrung: false
+        )
+        let url = renderPDF(patient: patient, eintraege: [], medikamente: meds,
+                            einnahmeLogs: pdfLogs, midas: [], zyklus: [],
+                            analyse: ZyklusRechner.analyse(eintraege: []),
+                            ernaehrung: [], optionen: optionen)
+        return url
     }
 
     // MARK: - Drawing helpers

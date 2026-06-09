@@ -402,6 +402,7 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "PainDiary verwendet Face ID, um deine Gesundheitsdaten zu schützen.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "PainDiary liest deine Schlafdaten und Schritte aus der Gesundheits-App, um dein Wohlbefinden besser zu verstehen.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "PainDiary schreibt keine Daten in die Gesundheits-App.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Wird benötigt, um deinen Körper einmalig für den Körper-Picker zu scannen.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Wetterbedingungen zum Zeitpunkt deines Schmerzeintrags erfassen";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -427,6 +428,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				UIBackgroundModes = (
+					"background-processing",
 					"remote-notification",
 				);
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -455,6 +457,7 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "PainDiary verwendet Face ID, um deine Gesundheitsdaten zu schützen.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "PainDiary liest deine Schlafdaten und Schritte aus der Gesundheits-App, um dein Wohlbefinden besser zu verstehen.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "PainDiary schreibt keine Daten in die Gesundheits-App.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Wird benötigt, um deinen Körper einmalig für den Körper-Picker zu scannen.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Wetterbedingungen zum Zeitpunkt deines Schmerzeintrags erfassen";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -480,6 +483,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				UIBackgroundModes = (
+					"background-processing",
 					"remote-notification",
 				);
 				SWIFT_EMIT_LOC_STRINGS = YES;

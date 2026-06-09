@@ -6,6 +6,8 @@ struct KorrelationsView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var einnahmeLogs: [EinnahmeLog]
+    @Query(filter: #Predicate<Dauermedikation> { $0.aktiv }) private var dauermedikationen: [Dauermedikation]
+    @Query(sort: \Dauermedikation.name) private var alleDauermedikationen: [Dauermedikation]
 
     var body: some View {
         ScrollView {
@@ -41,9 +43,15 @@ struct KorrelationsView: View {
                         zyklusSchmerzChart
                     }
 
-                    if !einnahmeLogs.isEmpty {
+                    if !einnahmeLogs.isEmpty || !medAnalysen.isEmpty || !wöchentlicheMedikamente.isEmpty {
                         abschnittTitel("Medikamente")
-                        medikamentEffektChart
+                        if !einnahmeLogs.isEmpty { medikamentEffektChart }
+                        if !bedarfsTrendDaten.isEmpty { bedarfsTrendChart }
+                        if !wirksamkeitDaten.isEmpty { wirksamkeitsChart }
+                        injektionsZyklusChart
+                        ForEach(medAnalysen) { analyse in
+                            dauermedikamentKarte(analyse)
+                        }
                     }
                 }
             }
@@ -157,6 +165,23 @@ struct KorrelationsView: View {
             liste.append(Erkenntnis(
                 text: "In der \(worst.phase) ist dein Schmerz am stärksten (Ø \(fmt(worst.schmerz))/10)",
                 symbol: "drop.circle.fill", farbe: .pink))
+        }
+
+        // Medikament-Wirksamkeit / Einnahmetreue
+        for a in medAnalysen {
+            if let vor = a.schmerzVorStart, let nach = a.schmerzNachStart,
+               a.nVor >= 3, a.nNach >= 5, vor - nach > 1.0 {
+                liste.append(Erkenntnis(
+                    text: "Seit \(a.med.name): Ø Schmerz von \(fmt(vor)) auf \(fmt(nach)) gesunken (−\(fmt(vor - nach)) Punkte)",
+                    symbol: "arrow.down.circle.fill", farbe: .green))
+                break
+            }
+            if a.einnahmetreue >= 0 && a.einnahmetreue < 0.70 {
+                liste.append(Erkenntnis(
+                    text: "\(a.med.name): Einnahmetreue \(Int(a.einnahmetreue * 100))% – regelmässige Einnahme kann die Wirksamkeit verbessern",
+                    symbol: "pill.fill", farbe: .orange))
+                break
+            }
         }
 
         return Array(liste.prefix(4))
@@ -525,50 +550,82 @@ struct KorrelationsView: View {
 
     // MARK: - Medikament-Effekt
 
-    private var medikamentVergleich: (mitMed: Double?, ohneMed: Double?, nMit: Int, nOhne: Int) {
+    private var adherenzDaten: [MedAdherenz] {
         let kal = Calendar.current
-        let logTage = Set(einnahmeLogs.filter(\.eingenommen).map { kal.startOfDay(for: $0.datum) })
-        var mitMed: [Double] = []
-        var ohneMed: [Double] = []
-        for e in eintraege {
-            let tag = kal.startOfDay(for: e.datum)
-            let s = Double(e.schmerzstaerke)
-            if logTage.contains(tag) { mitMed.append(s) } else { ohneMed.append(s) }
+        let heute = kal.startOfDay(for: Date())
+        let fenster = kal.date(byAdding: .day, value: -90, to: heute)!
+
+        // Group taken days per medication name
+        var einnahmenProMed: [String: Set<Date>] = [:]
+        for log in einnahmeLogs where log.eingenommen {
+            let tag = kal.startOfDay(for: log.datum)
+            guard tag >= fenster else { continue }
+            einnahmenProMed[log.medikamentName, default: []].insert(tag)
         }
-        return (
-            mitMed.isEmpty  ? nil : mitMed.reduce(0,+)  / Double(mitMed.count),
-            ohneMed.isEmpty ? nil : ohneMed.reduce(0,+) / Double(ohneMed.count),
-            mitMed.count, ohneMed.count
-        )
+
+        // All known medication names (active + any seen in logs)
+        var medNamen = Set(dauermedikationen.map { $0.name })
+        einnahmenProMed.keys.forEach { medNamen.insert($0) }
+
+        return medNamen.sorted().compactMap { name in
+            let einnahmen = einnahmenProMed[name] ?? []
+
+            // Earliest log entry for this med within window
+            let erstesLogDatum = einnahmeLogs
+                .filter { $0.medikamentName == name }
+                .map { kal.startOfDay(for: $0.datum) }
+                .filter { $0 >= fenster }
+                .min() ?? heute
+            let erwartetTage = max(kal.dateComponents([.day], from: erstesLogDatum, to: heute).day ?? 1, 1)
+
+            guard !einnahmen.isEmpty else { return nil }
+
+            // Pain on days WITH vs WITHOUT medication
+            var mitMed: [Double] = []
+            var ohneMed: [Double] = []
+            for e in eintraege {
+                let tag = kal.startOfDay(for: e.datum)
+                guard tag >= fenster else { continue }
+                let s = Double(e.schmerzstaerke)
+                if einnahmen.contains(tag) { mitMed.append(s) } else { ohneMed.append(s) }
+            }
+
+            let dosierung = einnahmeLogs.first { $0.medikamentName == name }?.dosierung ?? ""
+
+            return MedAdherenz(
+                name: name,
+                dosierung: dosierung,
+                adherenzRate: min(Double(einnahmen.count) / Double(erwartetTage), 1.0),
+                einnahmenTage: einnahmen.count,
+                erwarteterTage: erwartetTage,
+                avgSchmerzMit:  mitMed.isEmpty  ? nil : mitMed.reduce(0,+)  / Double(mitMed.count),
+                avgSchmerzOhne: ohneMed.isEmpty ? nil : ohneMed.reduce(0,+) / Double(ohneMed.count),
+                nMit:  mitMed.count,
+                nOhne: ohneMed.count
+            )
+        }
     }
 
     private var medikamentEffektChart: some View {
-        let vgl = medikamentVergleich
-        return karte {
-            Text("Medikament-Effekt").font(.headline)
-            Text("Ø Schmerz an Tagen mit vs. ohne Medikamenteneinnahme")
-                .font(.caption).foregroundStyle(.secondary)
-            if vgl.mitMed == nil || vgl.ohneMed == nil {
-                Text("Nicht genug Daten für diese Analyse.").font(.caption).foregroundStyle(.secondary)
+        karte {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Medikamenten-Adherenz").font(.headline)
+                Text("Einnahmetreue & Ø Schmerz mit / ohne Einnahme (letzte 90 Tage)")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            let daten = adherenzDaten
+            if daten.isEmpty {
+                Text("Noch keine Einnahmen erfasst.")
+                    .font(.caption).foregroundStyle(.secondary)
             } else {
-                let balken: [(label: String, wert: Double, farbe: Color, n: Int)] = [
-                    ("Mit\nMedikament", vgl.mitMed!, .blue, vgl.nMit),
-                    ("Ohne\nMedikament", vgl.ohneMed!, .secondary, vgl.nOhne)
-                ]
-                Chart(balken, id: \.label) { b in
-                    BarMark(x: .value("Gruppe", b.label), y: .value("Schmerz", b.wert))
-                        .foregroundStyle(b.farbe.gradient).cornerRadius(6)
-                        .annotation(position: .top) {
-                            VStack(spacing: 0) {
-                                Text(fmt(b.wert)).font(.caption2.bold()).foregroundStyle(.secondary)
-                                Text("n=\(b.n)").font(.system(size: 9)).foregroundStyle(.tertiary)
-                            }
-                        }
+                VStack(spacing: 14) {
+                    ForEach(daten, id: \.name) { med in
+                        MedAdherenzZeile(med: med, fmt: fmt)
+                    }
                 }
-                .chartYScale(domain: 0...10)
-                .frame(height: 160)
-                Text("Hinweis: Medikamente werden oft bei starkem Schmerz eingenommen — kein Beweis für Unwirksamkeit.")
-                    .font(.caption2).foregroundStyle(.secondary).italic()
+                Text("Hinweis: Kausale Wirkrichtung ist aus diesen Daten nicht ableitbar.")
+                    .font(.caption2).foregroundStyle(.tertiary).italic()
             }
         }
     }
@@ -720,6 +777,404 @@ struct KorrelationsView: View {
         }
     }
 
+    // MARK: - Dauermedikament-Analyse
+
+    private struct MedAnalyse: Identifiable {
+        var id: String { med.notifID }
+        let med: Dauermedikation
+        let einnahmetreue: Double   // -1 = Bei Bedarf, 0.0–1.0 sonst
+        let schmerzMitMed: Double?
+        let schmerzOhneMed: Double?
+        let schmerzVorStart: Double?
+        let schmerzNachStart: Double?
+        let nMit: Int
+        let nOhne: Int
+        let nVor: Int
+        let nNach: Int
+    }
+
+    private var medAnalysen: [MedAnalyse] {
+        let kal = Calendar.current
+        let notif = NotificationManager.shared
+        let heute = kal.startOfDay(for: Date())
+
+        return dauermedikationen
+            .filter { notif.anzahlDosen($0.frequenz) > 0 && $0.frequenz != "Wöchentlich" }
+            .compactMap { med in
+            let anzDosen = notif.anzahlDosen(med.frequenz)
+
+            // Einnahmetreue: ab startDatum, max 30 Tage
+            let tageSeitStart = max(1, kal.dateComponents([.day],
+                from: kal.startOfDay(for: med.startDatum), to: heute).day ?? 1)
+            let fensterTage = min(30, tageSeitStart)
+            let letztenN = (0..<fensterTage).compactMap { kal.date(byAdding: .day, value: -$0, to: heute) }
+            let geloggteTage = letztenN.filter { tag in
+                einnahmeLogs.filter {
+                    kal.isDate($0.datum, inSameDayAs: tag) &&
+                    $0.medikamentName == med.name &&
+                    $0.dosierung == med.dosierung &&
+                    $0.eingenommen
+                }.count >= anzDosen
+            }
+            let treue = Double(geloggteTage.count) / Double(fensterTage)
+
+            // Schmerz mit vs. ohne Einnahme (name + dosierung)
+            let logTage = Set(einnahmeLogs
+                .filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
+                .map { kal.startOfDay(for: $0.datum) })
+            var mitMed: [Double] = []
+            var ohneMed: [Double] = []
+            for e in eintraege where e.schmerzstaerke > 0 {
+                if logTage.contains(kal.startOfDay(for: e.datum)) {
+                    mitMed.append(Double(e.schmerzstaerke))
+                } else {
+                    ohneMed.append(Double(e.schmerzstaerke))
+                }
+            }
+
+            // Wirksamkeit: vor vs. nach Startdatum
+            let startTag = kal.startOfDay(for: med.startDatum)
+            var vorStart: [Double] = []
+            var nachStart: [Double] = []
+            for e in eintraege where e.schmerzstaerke > 0 {
+                let tag = kal.startOfDay(for: e.datum)
+                if tag < startTag { vorStart.append(Double(e.schmerzstaerke)) }
+                else { nachStart.append(Double(e.schmerzstaerke)) }
+            }
+
+            guard mitMed.count >= 3 || nachStart.count >= 3 else { return nil }
+
+            return MedAnalyse(
+                med: med,
+                einnahmetreue: treue,
+                schmerzMitMed: mitMed.isEmpty ? nil : mitMed.reduce(0,+) / Double(mitMed.count),
+                schmerzOhneMed: ohneMed.isEmpty ? nil : ohneMed.reduce(0,+) / Double(ohneMed.count),
+                schmerzVorStart: vorStart.count >= 3 ? vorStart.reduce(0,+) / Double(vorStart.count) : nil,
+                schmerzNachStart: nachStart.count >= 3 ? nachStart.reduce(0,+) / Double(nachStart.count) : nil,
+                nMit: mitMed.count,
+                nOhne: ohneMed.count,
+                nVor: vorStart.count,
+                nNach: nachStart.count
+            )
+        }
+    }
+
+    private func dauermedikamentKarte(_ a: MedAnalyse) -> some View {
+        karte {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.blue.opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: a.med.typSymbol).foregroundStyle(.blue)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(a.med.name).font(.headline)
+                    HStack(spacing: 4) {
+                        if !a.med.dosierung.isEmpty { Text(a.med.dosierung) }
+                        Text("· Seit \(a.med.startDatum, format: .dateTime.day().month(.abbreviated).year())")
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
+                    // New fields row
+                    HStack(spacing: 8) {
+                        if !a.med.einnahmeHinweis.isEmpty {
+                            Label(a.med.einnahmeHinweis, systemImage: "fork.knife")
+                                .font(.caption2).foregroundStyle(.blue)
+                        }
+                        if let vorrat = a.med.vorrat {
+                            let knapp = vorrat <= a.med.vorratSchwelle
+                            Label("\(vorrat) Stück", systemImage: knapp ? "exclamationmark.circle.fill" : "shippingbox.fill")
+                                .font(.caption2).foregroundStyle(knapp ? .orange : .secondary)
+                        }
+                        if let ablauf = a.med.ablaufDatum {
+                            let tage = Calendar.current.dateComponents(
+                                [.day],
+                                from: Calendar.current.startOfDay(for: Date()),
+                                to: Calendar.current.startOfDay(for: ablauf)
+                            ).day ?? 0
+                            Label {
+                                Text(ablauf, format: .dateTime.day().month(.abbreviated).year())
+                            } icon: {
+                                Image(systemName: tage <= 14 ? "exclamationmark.triangle.fill" : "calendar.badge.clock")
+                            }
+                            .font(.caption2)
+                            .foregroundStyle(tage <= 14 ? .orange : .secondary)
+                        }
+                    }
+                }
+                Spacer()
+                let pct = Int(a.einnahmetreue * 100)
+                Text("\(pct)%")
+                    .font(.subheadline.bold())
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(treueFarbe(a.einnahmetreue).opacity(0.12), in: Capsule())
+                    .foregroundStyle(treueFarbe(a.einnahmetreue))
+            }
+
+            if let mit = a.schmerzMitMed, let ohne = a.schmerzOhneMed, a.nMit >= 3 {
+                Divider()
+                HStack(spacing: 0) {
+                    medStatSpalte("Mit Medikament", wert: fmt(mit), farbe: .blue, n: a.nMit)
+                    Divider().frame(height: 44)
+                    medStatSpalte("Ohne Medikament", wert: fmt(ohne), farbe: .secondary, n: a.nOhne)
+                }
+            }
+
+            if let vor = a.schmerzVorStart, let nach = a.schmerzNachStart {
+                let diff = vor - nach
+                Divider()
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(spacing: 2) {
+                        Text(fmt(vor)).font(.title3.bold()).foregroundStyle(.orange)
+                        Text("Vor Start").font(.caption2).foregroundStyle(.secondary)
+                        Text("n=\(a.nVor)").font(.caption2).foregroundStyle(.tertiary)
+                    }
+                    Image(systemName: "arrow.right").foregroundStyle(.secondary)
+                    VStack(spacing: 2) {
+                        Text(fmt(nach)).font(.title3.bold())
+                            .foregroundStyle(diff > 0.5 ? .green : diff < -0.5 ? .red : .orange)
+                        Text("Nach Start").font(.caption2).foregroundStyle(.secondary)
+                        Text("n=\(a.nNach)").font(.caption2).foregroundStyle(.tertiary)
+                    }
+                    Spacer()
+                    if abs(diff) > 0.3 {
+                        VStack(spacing: 2) {
+                            Text(diff > 0 ? "−\(fmt(diff))" : "+\(fmt(abs(diff)))")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(diff > 0 ? .green : .red)
+                            Text("Ø Schmerz").font(.caption2).foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background((diff > 0 ? Color.green : Color.red).opacity(0.1),
+                                    in: RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+
+            let fenster = min(30, max(1, Calendar.current.dateComponents([.day],
+                from: Calendar.current.startOfDay(for: a.med.startDatum),
+                to: Calendar.current.startOfDay(for: Date())).day ?? 1))
+            Text("Einnahmetreue letzte \(fenster) Tage · \(a.nMit + a.nOhne) Schmerzeinträge")
+                .font(.caption2).foregroundStyle(.tertiary)
+        }
+    }
+
+    @ViewBuilder
+    private func medStatSpalte(_ titel: String, wert: String, farbe: Color, n: Int) -> some View {
+        VStack(spacing: 4) {
+            Text(wert).font(.title3.bold()).foregroundStyle(farbe)
+            Text(titel).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Text("n=\(n)").font(.caption2).foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func treueFarbe(_ treue: Double) -> Color {
+        treue >= 0.85 ? .green : treue >= 0.60 ? .orange : .red
+    }
+
+    // MARK: - Bedarfstrend-Chart (Feature D)
+
+    private struct BedarfsWoche: Identifiable {
+        let id: String; let label: String; let anzahl: Int
+    }
+
+    private var bedarfsTrendDaten: [BedarfsWoche] {
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+        let bedarfsMeds = alleDauermedikationen.filter {
+            NotificationManager.shared.anzahlDosen($0.frequenz) == 0
+        }.map { "\($0.name)|\($0.dosierung)" }
+        guard !bedarfsMeds.isEmpty else { return [] }
+        let bedarfsLogs = einnahmeLogs.filter { log in
+            bedarfsMeds.contains("\(log.medikamentName)|\(log.dosierung)") && log.eingenommen
+        }
+        guard !bedarfsLogs.isEmpty else { return [] }
+        return (0..<8).reversed().map { wocheVor in
+            guard let wocheEnde = kal.date(byAdding: .weekOfYear, value: -wocheVor, to: heute),
+                  let wocheStart = kal.date(byAdding: .day, value: -6, to: wocheEnde) else {
+                return BedarfsWoche(id: "\(wocheVor)", label: "?", anzahl: 0)
+            }
+            let anzahl = bedarfsLogs.filter { $0.datum >= wocheStart && $0.datum <= wocheEnde }.count
+            let label = wocheVor == 0 ? "Heute" : "−\(wocheVor)W"
+            return BedarfsWoche(id: "\(wocheVor)", label: label, anzahl: anzahl)
+        }
+    }
+
+    private var bedarfsTrendChart: some View {
+        karte {
+            Text("Bedarfsmedikation Trend").font(.headline)
+            Text("Einnahmen pro Woche (letzte 8 Wochen) – Warnschwelle 2.5/Woche (MOH)")
+                .font(.caption).foregroundStyle(.secondary)
+            Chart(bedarfsTrendDaten) { w in
+                BarMark(x: .value("Woche", w.label), y: .value("Einnahmen", w.anzahl))
+                    .foregroundStyle(w.anzahl > 2 ? Color.orange.gradient : Color.blue.gradient)
+                    .cornerRadius(4)
+                RuleMark(y: .value("MOH-Grenze", 2.5))
+                    .foregroundStyle(.red.opacity(0.6))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4]))
+                    .annotation(position: .trailing, alignment: .leading) {
+                        Text("MOH").font(.caption2).foregroundStyle(.red)
+                    }
+            }
+            .chartYScale(domain: 0...max(4, (bedarfsTrendDaten.map(\.anzahl).max() ?? 0) + 1))
+            .frame(height: 160)
+            if bedarfsTrendDaten.contains(where: { $0.anzahl > 2 }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Text("Häufige Bedarfseinnahme – Risiko für Übergebrauchskopfschmerzen")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Wirksamkeits-Chart (Feature A+D)
+
+    private struct WirksamkeitDaten: Identifiable {
+        let id: String; let name: String
+        let gut: Int; let teilweise: Int; let nicht: Int
+        var gesamt: Int { gut + teilweise + nicht }
+        var gutPct: Double { gesamt > 0 ? Double(gut) / Double(gesamt) * 100 : 0 }
+    }
+
+    private var wirksamkeitDaten: [WirksamkeitDaten] {
+        let bewertet = einnahmeLogs.filter { !$0.wirkung.isEmpty }
+        guard !bewertet.isEmpty else { return [] }
+        let grouped = Dictionary(grouping: bewertet) { "\($0.medikamentName)|\($0.dosierung)" }
+        return grouped.compactMap { key, logs in
+            let gut = logs.filter { $0.wirkung == "gut" }.count
+            let teilw = logs.filter { $0.wirkung == "teilweise" }.count
+            let nicht = logs.filter { $0.wirkung == "nicht" }.count
+            guard gut + teilw + nicht > 0 else { return nil }
+            let name = logs.first.map { d in
+                d.dosierung.isEmpty ? d.medikamentName : "\(d.medikamentName) \(d.dosierung)"
+            } ?? key
+            return WirksamkeitDaten(id: key, name: name, gut: gut, teilweise: teilw, nicht: nicht)
+        }
+        .sorted { $0.gutPct > $1.gutPct }
+    }
+
+    private var wirksamkeitsChart: some View {
+        karte {
+            Text("Wirksamkeit Bedarfsmedikation").font(.headline)
+            Text("Bewertungen: Gut / Teilweise / Nicht").font(.caption).foregroundStyle(.secondary)
+            VStack(spacing: 12) {
+                ForEach(wirksamkeitDaten) { d in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(d.name).font(.subheadline.bold())
+                            Spacer()
+                            Text("\(d.gesamt) Bewertungen").font(.caption).foregroundStyle(.secondary)
+                        }
+                        GeometryReader { geo in
+                            HStack(spacing: 0) {
+                                if d.gut > 0 {
+                                    RoundedRectangle(cornerRadius: 0).fill(Color.green)
+                                        .frame(width: geo.size.width * Double(d.gut) / Double(d.gesamt))
+                                }
+                                if d.teilweise > 0 {
+                                    Rectangle().fill(Color.orange)
+                                        .frame(width: geo.size.width * Double(d.teilweise) / Double(d.gesamt))
+                                }
+                                if d.nicht > 0 {
+                                    Rectangle().fill(Color.red)
+                                        .frame(width: geo.size.width * Double(d.nicht) / Double(d.gesamt))
+                                }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        .frame(height: 10)
+                        HStack(spacing: 12) {
+                            wirkungsLegende("Gut", n: d.gut, farbe: .green)
+                            wirkungsLegende("Teilweise", n: d.teilweise, farbe: .orange)
+                            wirkungsLegende("Nicht", n: d.nicht, farbe: .red)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func wirkungsLegende(_ label: String, n: Int, farbe: Color) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(farbe).frame(width: 8, height: 8)
+            Text("\(label) (\(n))").font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Injektions-Zyklus
+
+    private var wöchentlicheMedikamente: [Dauermedikation] {
+        alleDauermedikationen.filter { $0.frequenz == "Wöchentlich" }
+    }
+
+    private var injektionsZyklusDaten: [(tag: Int, schmerz: Double, anzahl: Int)] {
+        guard !wöchentlicheMedikamente.isEmpty else { return [] }
+        let kal = Calendar.current
+        let wöchentlicheNamen = Set(wöchentlicheMedikamente.map(\.name))
+        let injektionsLogs = einnahmeLogs.filter { wöchentlicheNamen.contains($0.medikamentName) && $0.eingenommen }
+        guard injektionsLogs.count >= 2 else { return [] }
+
+        var schmerzProTag: [Int: [Double]] = [:]
+        for injektion in injektionsLogs {
+            let injTag = kal.startOfDay(for: injektion.datum)
+            for e in eintraege {
+                let eTag = kal.startOfDay(for: e.datum)
+                let diff = kal.dateComponents([.day], from: injTag, to: eTag).day ?? -1
+                if diff >= 0 && diff < 7 {
+                    schmerzProTag[diff, default: []].append(Double(e.schmerzstaerke))
+                }
+            }
+        }
+        return (0..<7).compactMap { tag in
+            guard let werte = schmerzProTag[tag], !werte.isEmpty else { return nil }
+            return (tag: tag, schmerz: werte.reduce(0,+) / Double(werte.count), anzahl: werte.count)
+        }
+    }
+
+    @ViewBuilder
+    private var injektionsZyklusChart: some View {
+        if !wöchentlicheMedikamente.isEmpty {
+            karte {
+                Text("Schmerz im Injektions-Zyklus").font(.headline)
+                Text("Ø Schmerzstärke an den Tagen nach der Injektion (Tag 0 = Injektionstag)")
+                    .font(.caption).foregroundStyle(.secondary)
+
+                if injektionsZyklusDaten.count < 2 {
+                    Text("Nicht genug Daten. Erfasse mehr Injektionen und Schmerzeinträge.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Chart(injektionsZyklusDaten, id: \.tag) { p in
+                        BarMark(
+                            x: .value("Tag", "Tag \(p.tag)"),
+                            y: .value("Schmerz", p.schmerz)
+                        )
+                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
+                        .cornerRadius(6)
+                        .annotation(position: .top) {
+                            VStack(spacing: 0) {
+                                Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                                Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .chartYScale(domain: 0...10)
+                    .chartYAxis { AxisMarks(values: [0, 2, 4, 6, 8, 10]) }
+                    .frame(height: 200)
+
+                    if let peak = injektionsZyklusDaten.max(by: { $0.schmerz < $1.schmerz }) {
+                        HStack {
+                            Image(systemName: "syringe").foregroundStyle(.blue)
+                            Text("Stärkster Schmerz an Tag \(peak.tag) nach der Injektion")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Hilfsfunktionen
 
     @ViewBuilder
@@ -767,4 +1222,102 @@ struct KorrelationsView: View {
     }
 
     private func fmt(_ d: Double) -> String { String(format: "%.1f", d) }
+}
+
+// MARK: - Adherence model
+
+private struct MedAdherenz {
+    let name: String
+    let dosierung: String
+    let adherenzRate: Double        // 0–1, capped
+    let einnahmenTage: Int
+    let erwarteterTage: Int
+    let avgSchmerzMit: Double?
+    let avgSchmerzOhne: Double?
+    let nMit: Int
+    let nOhne: Int
+}
+
+// MARK: - Adherence row
+
+private struct MedAdherenzZeile: View {
+    let med: MedAdherenz
+    let fmt: (Double) -> String
+
+    private var adherenzFarbe: Color {
+        switch med.adherenzRate {
+        case 0.8...: return .green
+        case 0.5...: return .orange
+        default:     return .red
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(med.name).font(.subheadline.bold())
+                    if !med.dosierung.isEmpty {
+                        Text(med.dosierung).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Text("\(Int(med.adherenzRate * 100)) %")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(adherenzFarbe)
+            }
+
+            // Adherence progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.secondary.opacity(0.15))
+                        .frame(height: 6)
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(adherenzFarbe.gradient)
+                        .frame(width: geo.size.width * med.adherenzRate, height: 6)
+                }
+            }
+            .frame(height: 6)
+
+            Text("\(med.einnahmenTage) von \(med.erwarteterTage) Tagen eingenommen")
+                .font(.caption2).foregroundStyle(.tertiary)
+
+            // Pain comparison
+            if let mit = med.avgSchmerzMit {
+                HStack(spacing: 12) {
+                    PainPill(label: "Mit Einnahme", wert: mit, n: med.nMit, farbe: .blue, fmt: fmt)
+                    if let ohne = med.avgSchmerzOhne {
+                        PainPill(label: "Ohne Einnahme", wert: ohne, n: med.nOhne, farbe: .secondary, fmt: fmt)
+                    }
+                }
+            } else {
+                Text("Nicht genug Schmerzdaten für Vergleich.")
+                    .font(.caption2).foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct PainPill: View {
+    let label: String
+    let wert: Double
+    let n: Int
+    let farbe: Color
+    let fmt: (Double) -> String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(fmt(wert))
+                    .font(.subheadline.bold())
+                    .foregroundStyle(farbe)
+                Text("Ø").font(.caption2).foregroundStyle(.secondary)
+                Text("(n=\(n))").font(.caption2).foregroundStyle(.tertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
