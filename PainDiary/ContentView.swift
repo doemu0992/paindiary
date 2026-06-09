@@ -75,7 +75,7 @@ struct ContentView: View {
             Button { neuerEintragAnzeigen = true } label: {
                 ZStack {
                     Circle()
-                        .fill(Color.accentColor)
+                        .fill(akzentFarbe.alsAkzentFarbe)
                         .frame(width: 54, height: 54)
                     Image(systemName: "plus")
                         .font(.system(size: 24, weight: .bold))
