@@ -71,6 +71,20 @@ struct ContentView: View {
                 .tabItem { Label("Profil", systemImage: "person.circle") }
                 .tag(4)
         }
+        .overlay(alignment: .bottom) {
+            Button { neuerEintragAnzeigen = true } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 52, height: 52)
+                        .shadow(color: Color.accentColor.opacity(0.4), radius: 10, x: 0, y: 4)
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .padding(.bottom, 28)
+        }
         .onChange(of: ausgewaehlterTab) { _, neu in
             if neu == 2 {
                 neuerEintragAnzeigen = true

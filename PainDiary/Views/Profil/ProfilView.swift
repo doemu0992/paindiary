@@ -128,6 +128,21 @@ private struct ProfilInhaltView: View {
         }
     }
 
+    private var profilUntertitel: String {
+        var teile: [String] = []
+        if let geb = profil.geburtsdatum {
+            let jahre = Calendar.current.dateComponents([.year], from: geb, to: Date()).year ?? 0
+            teile.append("\(jahre) Jahre")
+        }
+        if let bmi = profil.bmi {
+            teile.append(String(format: "BMI %.1f", bmi))
+        }
+        if !profil.blutgruppe.isEmpty {
+            teile.append(profil.blutgruppe)
+        }
+        return teile.joined(separator: " · ")
+    }
+
     // MARK: - Persönliche Daten
 
     private var persoenlicheDaten: some View {
@@ -148,6 +163,13 @@ private struct ProfilInhaltView: View {
                     Text("\(profil.vorname) \(profil.nachname)".trimmingCharacters(in: .whitespaces))
                         .font(.title3.bold())
                         .multilineTextAlignment(.center)
+                    let untertitel = profilUntertitel
+                    if !untertitel.isEmpty {
+                        Text(untertitel)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
                 Spacer()
             }
