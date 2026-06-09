@@ -238,18 +238,26 @@ struct KorrelationsView: View {
                 Text("Nicht genug Daten.").font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(wochentagDaten, id: \.tag) { p in
-                    BarMark(x: .value("Tag", p.tag), y: .value("Schmerz", p.schmerz))
-                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
-                        .cornerRadius(8)
+                    BarMark(
+                        x: .value("Tag", p.tag),
+                        y: .value("Schmerz", p.schmerz),
+                        width: .ratio(0.65)
+                    )
+                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .top) {
+                        Text(fmt(p.schmerz))
+                            .font(.caption2.bold()).foregroundStyle(.secondary)
+                    }
                 }
                 .chartYScale(domain: 0...10)
                 .chartYAxis {
-                    AxisMarks(values: [0, 2, 4, 6, 8, 10]) {
+                    AxisMarks(values: [0, 5, 10]) {
                         AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
                         AxisValueLabel()
                     }
                 }
-                .frame(height: 180)
+                .frame(height: 190)
             }
         }
     }
@@ -282,14 +290,20 @@ struct KorrelationsView: View {
                         y: .value("Auslöser", item.ausloeser)
                     )
                     .foregroundStyle(SchmerzBadge.farbe(fuer: Int(item.schmerz)).gradient)
-                    .cornerRadius(6)
+                    .cornerRadius(8)
                     .annotation(position: .trailing) {
-                        Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                        Text("\(fmt(item.schmerz))  ×\(item.anzahl)")
+                            .font(.caption2).foregroundStyle(.secondary)
                     }
                 }
                 .chartXScale(domain: 0...10)
-                .chartXAxis { AxisMarks(values: [0, 2, 4, 6, 8, 10]) }
-                .frame(height: CGFloat(topAusloeser.count * 44 + 20))
+                .chartXAxis {
+                    AxisMarks(values: [0, 5, 10]) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(topAusloeser.count * 46 + 20))
             }
         }
     }
@@ -359,14 +373,24 @@ struct KorrelationsView: View {
                 Text("Nicht genug Daten für diese Analyse.").font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(stressPegelDaten, id: \.level) { p in
-                    BarMark(x: .value("Schmerz", p.schmerz), y: .value("Stress", p.level))
-                        .foregroundStyle(Color.orange.gradient).cornerRadius(6)
-                        .annotation(position: .trailing) {
-                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                        }
+                    BarMark(
+                        x: .value("Schmerz", p.schmerz),
+                        y: .value("Stress", p.level)
+                    )
+                    .foregroundStyle(Color.orange.gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .trailing) {
+                        Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                    }
                 }
                 .chartXScale(domain: 0...10)
-                .frame(height: CGFloat(stressPegelDaten.count * 44 + 20))
+                .chartXAxis {
+                    AxisMarks(values: [0, 5, 10]) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(stressPegelDaten.count * 46 + 20))
                 let nums = stressPegelDaten.enumerated().map { (Double($0.offset + 1), $0.element.schmerz) }
                 korrBadge(korrelation(nums.map(\.0), nums.map(\.1)),
                           label: "Mehr Stress geht mit mehr Schmerz einher")
@@ -395,14 +419,25 @@ struct KorrelationsView: View {
                 Text("Nicht genug Daten für diese Analyse.").font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(stimmungPegelDaten, id: \.level) { p in
-                    BarMark(x: .value("Stimmung", p.level), y: .value("Schmerz", p.schmerz))
-                        .foregroundStyle(Color.pink.gradient).cornerRadius(6)
-                        .annotation(position: .top) {
-                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                        }
+                    BarMark(
+                        x: .value("Stimmung", p.level),
+                        y: .value("Schmerz", p.schmerz),
+                        width: .ratio(0.65)
+                    )
+                    .foregroundStyle(Color.pink.gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .top) {
+                        Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                    }
                 }
                 .chartYScale(domain: 0...10)
-                .frame(height: 160)
+                .chartYAxis {
+                    AxisMarks(values: [0, 5, 10]) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: 180)
             }
         }
     }
@@ -450,14 +485,25 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(koffeinGruppenDaten, id: \.label) { p in
-                    BarMark(x: .value("Koffein", p.label), y: .value("Schmerz", p.schmerz))
-                        .foregroundStyle(braun.gradient).cornerRadius(6)
-                        .annotation(position: .top) {
-                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                        }
+                    BarMark(
+                        x: .value("Koffein", p.label),
+                        y: .value("Schmerz", p.schmerz),
+                        width: .ratio(0.65)
+                    )
+                    .foregroundStyle(braun.gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .top) {
+                        Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                    }
                 }
                 .chartYScale(domain: 0...10)
-                .frame(height: 160)
+                .chartYAxis {
+                    AxisMarks(values: [0, 5, 10]) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: 180)
                 Text("Basiert auf \(koffeinDaten.count) Tagen mit erfasstem Koffeinkonsum")
                     .font(.caption2).foregroundStyle(.secondary)
             }
@@ -489,12 +535,24 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(wetterDaten, id: \.wetter) { p in
-                    BarMark(x: .value("Schmerz", p.schmerz), y: .value("Wetter", p.wetter))
-                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
-                        .cornerRadius(6)
+                    BarMark(
+                        x: .value("Schmerz", p.schmerz),
+                        y: .value("Wetter", p.wetter)
+                    )
+                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .trailing) {
+                        Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                    }
                 }
                 .chartXScale(domain: 0...10)
-                .frame(height: CGFloat(wetterDaten.count * 44 + 20))
+                .chartXAxis {
+                    AxisMarks(values: [0, 5, 10]) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(wetterDaten.count * 46 + 20))
             }
         }
     }
@@ -541,17 +599,28 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(zyklusPhasenDaten, id: \.phase) { p in
-                    BarMark(x: .value("Phase", p.phase), y: .value("Schmerz", p.schmerz))
-                        .foregroundStyle(Color.pink.gradient).cornerRadius(6)
-                        .annotation(position: .top) {
-                            VStack(spacing: 0) {
-                                Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                                Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
-                            }
+                    BarMark(
+                        x: .value("Phase", p.phase),
+                        y: .value("Schmerz", p.schmerz),
+                        width: .ratio(0.65)
+                    )
+                    .foregroundStyle(Color.pink.gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .top) {
+                        VStack(spacing: 1) {
+                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                            Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
                         }
+                    }
                 }
                 .chartYScale(domain: 0...10)
-                .frame(height: 180)
+                .chartYAxis {
+                    AxisMarks(values: [0, 5, 10]) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: 190)
                 if let worst = zyklusPhasenDaten.max(by: { $0.schmerz < $1.schmerz }) {
                     HStack {
                         Image(systemName: "drop.circle.fill").foregroundStyle(.pink)
@@ -670,16 +739,24 @@ struct KorrelationsView: View {
                 Text("Keine Körperstellen erfasst.").font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(koerperstellenDaten, id: \.ort) { item in
-                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Ort", item.ort))
-                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(item.avgSchmerz)).gradient)
-                        .cornerRadius(6)
-                        .annotation(position: .trailing) {
-                            Text("×\(item.anzahl)  Ø\(fmt(item.avgSchmerz))")
-                                .font(.caption2).foregroundStyle(.secondary)
-                        }
+                    BarMark(
+                        x: .value("Anzahl", item.anzahl),
+                        y: .value("Ort", item.ort)
+                    )
+                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(item.avgSchmerz)).gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .trailing) {
+                        Text("×\(item.anzahl)  Ø\(fmt(item.avgSchmerz))")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
-                .frame(height: CGFloat(koerperstellenDaten.count * 42 + 20))
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(koerperstellenDaten.count * 46 + 20))
             }
         }
     }
@@ -709,15 +786,23 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(schmerzartDaten, id: \.art) { item in
-                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Art", item.art))
-                        .foregroundStyle(Color.purple.gradient)
-                        .cornerRadius(6)
-                        .annotation(position: .trailing) {
-                            Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
-                        }
+                    BarMark(
+                        x: .value("Anzahl", item.anzahl),
+                        y: .value("Art", item.art)
+                    )
+                    .foregroundStyle(Color.purple.gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .trailing) {
+                        Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
-                .frame(height: CGFloat(schmerzartDaten.count * 42 + 20))
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(schmerzartDaten.count * 46 + 20))
             }
         }
     }
@@ -744,15 +829,23 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(begleitDaten, id: \.symptom) { item in
-                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Symptom", item.symptom))
-                        .foregroundStyle(Color.teal.gradient)
-                        .cornerRadius(6)
-                        .annotation(position: .trailing) {
-                            Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
-                        }
+                    BarMark(
+                        x: .value("Anzahl", item.anzahl),
+                        y: .value("Symptom", item.symptom)
+                    )
+                    .foregroundStyle(Color.teal.gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .trailing) {
+                        Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
-                .frame(height: CGFloat(begleitDaten.count * 42 + 20))
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(begleitDaten.count * 46 + 20))
             }
         }
     }
@@ -779,15 +872,23 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(massnahmenDaten, id: \.massnahme) { item in
-                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Massnahme", item.massnahme))
-                        .foregroundStyle(Color.green.gradient)
-                        .cornerRadius(6)
-                        .annotation(position: .trailing) {
-                            Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
-                        }
+                    BarMark(
+                        x: .value("Anzahl", item.anzahl),
+                        y: .value("Massnahme", item.massnahme)
+                    )
+                    .foregroundStyle(Color.green.gradient)
+                    .cornerRadius(8)
+                    .annotation(position: .trailing) {
+                        Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
-                .frame(height: CGFloat(massnahmenDaten.count * 42 + 20))
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(massnahmenDaten.count * 46 + 20))
             }
         }
     }
@@ -1169,19 +1270,25 @@ struct KorrelationsView: View {
                     Chart(injektionsZyklusDaten, id: \.tag) { p in
                         BarMark(
                             x: .value("Tag", "Tag \(p.tag)"),
-                            y: .value("Schmerz", p.schmerz)
+                            y: .value("Schmerz", p.schmerz),
+                            width: .ratio(0.65)
                         )
                         .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
-                        .cornerRadius(6)
+                        .cornerRadius(8)
                         .annotation(position: .top) {
-                            VStack(spacing: 0) {
+                            VStack(spacing: 1) {
                                 Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
                                 Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
                             }
                         }
                     }
                     .chartYScale(domain: 0...10)
-                    .chartYAxis { AxisMarks(values: [0, 2, 4, 6, 8, 10]) }
+                    .chartYAxis {
+                        AxisMarks(values: [0, 5, 10]) {
+                            AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                            AxisValueLabel()
+                        }
+                    }
                     .frame(height: 200)
 
                     if let peak = injektionsZyklusDaten.max(by: { $0.schmerz < $1.schmerz }) {
