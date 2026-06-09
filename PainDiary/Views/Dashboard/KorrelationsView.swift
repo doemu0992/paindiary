@@ -66,11 +66,14 @@ struct KorrelationsView: View {
     }
 
     private func abschnittTitel(_ titel: String) -> some View {
-        HStack {
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.indigo)
+                .frame(width: 3, height: 18)
             Text(titel).font(.title3.bold())
             Spacer()
         }
-        .padding(.top, 4)
+        .padding(.top, 8)
     }
 
     // MARK: - Erkenntnisse
@@ -192,8 +195,15 @@ struct KorrelationsView: View {
 
     private var erkenntnisseKarte: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Deine Erkenntnisse", systemImage: "lightbulb.fill")
-                .font(.headline).foregroundStyle(.yellow)
+            HStack {
+                Label("Deine Erkenntnisse", systemImage: "lightbulb.fill")
+                    .font(.headline).foregroundStyle(.yellow)
+                Spacer()
+                InfoButton(
+                    titel: "Deine Erkenntnisse",
+                    text: "Die App analysiert deine Einträge automatisch und hebt die auffälligsten Muster hervor – z.B. Wochentage mit besonders hohem Schmerz, Zusammenhänge mit Schlaf oder Stress oder Auswirkungen von Medikamenten.\n\nDiese Erkenntnisse sind statistische Beobachtungen aus deinen eigenen Daten. Sie ersetzen keine ärztliche Diagnose, können aber wertvolle Gesprächsgrundlage beim nächsten Arzttermin sein."
+                )
+            }
 
             if alleErkenntnisse.isEmpty {
                 Text("Erfasse mehr Einträge um personalisierte Erkenntnisse zu erhalten.")
@@ -232,8 +242,11 @@ struct KorrelationsView: View {
 
     private var wochentagChart: some View {
         karte {
-            Text("Schmerz nach Wochentag").font(.headline)
-            Text("Ø Schmerzstärke pro Wochentag").font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Schmerz nach Wochentag",
+                untertitel: "Ø Schmerzstärke pro Wochentag",
+                info: "Alle Schmerzeinträge werden nach Wochentag gruppiert und der Durchschnitt berechnet.\n\nWorauf achten: Gibt es Tage mit konstant höherem Schmerz? Das kann auf Arbeitsstress, Schlafrhythmus oder Wochenroutinen hinweisen – und ist ein hilfreicher Ausgangspunkt für Gespräche mit dem Arzt."
+            )
             if wochentagDaten.isEmpty {
                 Text("Nicht genug Daten.").font(.caption).foregroundStyle(.secondary)
             } else {
@@ -278,8 +291,11 @@ struct KorrelationsView: View {
 
     private var ausloeserChart: some View {
         karte {
-            Text("Auslöser-Ranking").font(.headline)
-            Text("Top Auslöser nach Häufigkeit mit Ø Schmerz").font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Auslöser-Ranking",
+                untertitel: "Top Auslöser nach Häufigkeit mit Ø Schmerz",
+                info: "Zeigt die von dir eingetragenen Auslöser, sortiert nach Häufigkeit. Die Balkenfarbe zeigt die durchschnittliche Schmerzstärke bei diesem Auslöser.\n\nWorauf achten: Auslöser mit hoher Häufigkeit und starkem Schmerz (orange/roter Balken) sind am wichtigsten für Arztgespräche und die Anpassung des Alltags."
+            )
             if topAusloeser.isEmpty {
                 Text("Keine Auslöser erfasst. Trage Auslöser in deinen Einträgen ein.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -317,8 +333,11 @@ struct KorrelationsView: View {
 
     private var schlafSchmerzChart: some View {
         karte {
-            Text("Schlaf ↔ Schmerz").font(.headline)
-            Text("Weniger Schlaf = mehr Schmerz?").font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Schlaf ↔ Schmerz",
+                untertitel: "Weniger Schlaf = mehr Schmerz?",
+                info: "Jeder Punkt steht für einen Tag mit Schlafeintrag. Die Pearson-Korrelation misst den linearen Zusammenhang zwischen Schlafstunden und Schmerzwert.\n\nWichtig: Korrelation ≠ Kausalität. Schlechter Schlaf kann Schmerz verstärken – aber umgekehrt verhindert Schmerz oft erholsamen Schlaf. Beide Richtungen sind möglich."
+            )
             if schlafDaten.count < 3 {
                 Text("Nicht genug Daten. Aktiviere HealthKit oder trage Schlafstunden manuell ein.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -366,9 +385,11 @@ struct KorrelationsView: View {
 
     private var stressSchmerzChart: some View {
         karte {
-            Text("Stress ↔ Schmerz").font(.headline)
-            Text("Ø Schmerzstärke je Stresslevel (von links: sehr gering → sehr hoch)")
-                .font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Stress ↔ Schmerz",
+                untertitel: "Ø Schmerzstärke je Stresslevel (sehr gering → sehr hoch)",
+                info: "Alle Einträge werden nach dem erfassten Stresslevel (1–5) gruppiert und der Ø Schmerzwert je Gruppe berechnet.\n\nWorauf achten: Ein klarer Anstieg von links nach rechts bestätigt einen Stress-Schmerz-Zusammenhang. Stressmanagement (Entspannungstechniken, Schlafhygiene) kann dann besonders wirksam sein."
+            )
             if stressPegelDaten.count < 2 {
                 Text("Nicht genug Daten für diese Analyse.").font(.caption).foregroundStyle(.secondary)
             } else {
@@ -412,9 +433,11 @@ struct KorrelationsView: View {
 
     private var stimmungSchmerzChart: some View {
         karte {
-            Text("Stimmung ↔ Schmerz").font(.headline)
-            Text("Ø Schmerzstärke je Stimmungslage (😞 schlecht → 😄 sehr gut)")
-                .font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Stimmung ↔ Schmerz",
+                untertitel: "Ø Schmerzstärke je Stimmungslage (😞 → 😄)",
+                info: "Vergleicht die Stimmungslage mit der Schmerzstärke – gruppiert nach den 5 Emoji-Stufen.\n\nHinweis: Schmerz und Stimmung beeinflussen sich gegenseitig (bidirektional). Anhaltend niedrige Stimmung in Kombination mit Schmerz sollte ärztlich besprochen werden, da beides auf eine behandelbare Komorbidität hinweisen kann."
+            )
             if stimmungPegelDaten.count < 2 {
                 Text("Nicht genug Daten für diese Analyse.").font(.caption).foregroundStyle(.secondary)
             } else {
@@ -477,9 +500,11 @@ struct KorrelationsView: View {
     private var koffeinSchmerzChart: some View {
         let braun = Color(red: 0.55, green: 0.35, blue: 0.15)
         return karte {
-            Text("Koffein → Folgetag-Schmerz").font(.headline)
-            Text("Koffeinkonsum vom Vortag vs. heutiger Schmerz")
-                .font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Koffein → Folgetag-Schmerz",
+                untertitel: "Koffeinkonsum vom Vortag vs. heutiger Schmerz",
+                info: "Vergleicht deinen Koffeinkonsum vom Vortag mit dem heutigen Schmerzwert. Der Vergleich mit dem Folgetag ist wichtig, weil Koffeinentzug (nach hohem Konsum) selbst Kopfschmerzen auslösen kann.\n\nHinweis: Koffein lindert Schmerz kurzfristig, kann aber bei täglichem Konsum zu Abhängigkeit und Entzugskopfschmerzen führen. Fachärzte empfehlen oft eine schrittweise Reduktion."
+            )
             if koffeinGruppenDaten.count < 2 {
                 Text("Nicht genug Daten. Erfasse deinen Koffeinkonsum täglich unter Wohlbefinden.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -528,8 +553,11 @@ struct KorrelationsView: View {
 
     private var wetterSchmerzChart: some View {
         karte {
-            Text("Wetter ↔ Schmerz").font(.headline)
-            Text("Ø Schmerzstärke je Wetterlage").font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Wetter ↔ Schmerz",
+                untertitel: "Ø Schmerzstärke je Wetterlage",
+                info: "Zeigt den Ø Schmerzwert je Wetterlage zum Zeitpunkt der Erfassung. Einträge ohne Standortangabe werden nicht berücksichtigt.\n\nHintergrund: Wetterempfindlichkeit ist bei Schmerzpatienten häufig – besonders Föhn, Tiefdruckgebiete und rasche Temperaturwechsel werden oft genannt. Diese Ansicht hilft, dein persönliches Muster zu erkennen."
+            )
             if wetterDaten.isEmpty {
                 Text("Noch keine Wetterdaten. Erlaube Standortzugriff beim Erfassen.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -592,8 +620,11 @@ struct KorrelationsView: View {
 
     private var zyklusSchmerzChart: some View {
         karte {
-            Text("Zyklus-Phase ↔ Schmerz").font(.headline)
-            Text("Ø Schmerzstärke je Zyklusphase").font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Zyklus-Phase ↔ Schmerz",
+                untertitel: "Ø Schmerzstärke je Zyklusphase",
+                info: "Ordnet jeden Schmerzeintrag einer Zyklusphase zu und berechnet den Ø Schmerz pro Phase.\n\nHintergrund: Östrogen erhöht die Schmerzschwelle – kurz vor der Periode fällt der Östrogenspiegel, was Schmerz verstärken kann. Hormonschwankungen sind ein bekannter Triggerfaktor bei Migräne und anderen Schmerzerkrankungen."
+            )
             if zyklusPhasenDaten.count < 2 {
                 Text("Nicht genug Daten. Erfasse mehr Zyklus- und Schmerzeinträge.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -692,11 +723,11 @@ struct KorrelationsView: View {
 
     private var medikamentEffektChart: some View {
         karte {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Medikamenten-Adherenz").font(.headline)
-                Text("Einnahmetreue & Ø Schmerz mit / ohne Einnahme (letzte 90 Tage)")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
+            karteHeader(
+                titel: "Medikamenten-Adherenz",
+                untertitel: "Einnahmetreue & Ø Schmerz mit / ohne Einnahme (letzte 90 Tage)",
+                info: "Zeigt für jedes Dauermedikament die Einnahmetreue der letzten 30 Tage sowie den Ø Schmerzwert an Tagen mit vs. ohne Einnahme.\n\nWichtig: Ein niedrigerer Schmerz an Einnahmetagen bedeutet nicht zwingend, dass das Medikament wirkt – es könnte auch sein, dass es bevorzugt an ohnehin weniger schlimmen Tagen eingenommen wird. Die Auswertung ist explorativ."
+            )
 
             let daten = adherenzDaten
             if daten.isEmpty {
@@ -732,9 +763,11 @@ struct KorrelationsView: View {
 
     private var koerperstellenChart: some View {
         karte {
-            Text("Häufigste Schmerzorte").font(.headline)
-            Text("Anzahl Einträge je Körperregion, Farbe = Ø Schmerzstärke")
-                .font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Häufigste Schmerzorte",
+                untertitel: "Häufigkeit je Körperregion, Farbe = Ø Schmerzstärke",
+                info: "Zeigt die am häufigsten betroffenen Körperstellen, sortiert nach Anzahl der Einträge. Die Balkenfarbe zeigt die durchschnittliche Schmerzstärke (grün = gering, rot = stark).\n\nWarum wichtig: Die Lokalisation ist ein wichtiges diagnostisches Merkmal. Mehrere Körperstellen oder ein Wechsel des Schmerzorts können auf spezifische Erkrankungen hinweisen."
+            )
             if koerperstellenDaten.isEmpty {
                 Text("Keine Körperstellen erfasst.").font(.caption).foregroundStyle(.secondary)
             } else {
@@ -779,8 +812,11 @@ struct KorrelationsView: View {
 
     private var schmerzartChart: some View {
         karte {
-            Text("Häufige Schmerzarten").font(.headline)
-            Text("Wie sich der Schmerz typischerweise anfühlt").font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Häufige Schmerzarten",
+                untertitel: "Wie sich der Schmerz typischerweise anfühlt",
+                info: "Zeigt den Schmerzcharakter sortiert nach Häufigkeit der Nennung.\n\nWarum wichtig: Der Charakter des Schmerzes (pochend, brennend, drückend, stechend...) ist ein zentrales diagnostisches Kriterium. Pochender Schmerz z.B. ist typisch für Migräne, brennender für neuropathische Schmerzen. Diese Übersicht ist wertvoll für Arztgespräche."
+            )
             if schmerzartDaten.isEmpty {
                 Text("Keine Schmerzarten erfasst. Wähle im Wizard unter «Charakter» die Schmerzart.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -822,8 +858,11 @@ struct KorrelationsView: View {
 
     private var begleiterscheinungenChart: some View {
         karte {
-            Text("Häufige Begleiterscheinungen").font(.headline)
-            Text("Welche Begleitsymptome am häufigsten auftreten").font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Häufige Begleiterscheinungen",
+                untertitel: "Welche Begleitsymptome am häufigsten auftreten",
+                info: "Zeigt Symptome, die am häufigsten zusammen mit dem Schmerz auftreten.\n\nWarum wichtig: Bestimmte Begleitmuster weisen auf spezifische Diagnosen hin – z.B. Übelkeit + Lichtempfindlichkeit + Phonophobie bei Migräne. Zeige diese Übersicht beim nächsten Arzttermin."
+            )
             if begleitDaten.isEmpty {
                 Text("Keine Begleiterscheinungen erfasst.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -865,8 +904,11 @@ struct KorrelationsView: View {
 
     private var massnahmenChart: some View {
         karte {
-            Text("Angewandte Massnahmen").font(.headline)
-            Text("Was du am häufigsten gegen den Schmerz unternimmst").font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Angewandte Massnahmen",
+                untertitel: "Was du am häufigsten gegen den Schmerz unternimmst",
+                info: "Zeigt deine am häufigsten angewandten Massnahmen bei Schmerz.\n\nWorauf achten: Entspricht die Häufigkeit der Massnahmen den ärztlichen Empfehlungen? Werden nicht-medikamentöse Strategien (z.B. Entspannung, Kälte/Wärme, Bewegung) ausreichend eingesetzt? Diese Übersicht hilft, das Selbstmanagement zu reflektieren."
+            )
             if massnahmenDaten.isEmpty {
                 Text("Keine Massnahmen erfasst.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -1020,6 +1062,10 @@ struct KorrelationsView: View {
                 }
                 Spacer()
                 let pct = Int(a.einnahmetreue * 100)
+                InfoButton(
+                    titel: a.med.name,
+                    text: "Zeigt Einnahmetreue, Schmerz mit vs. ohne Einnahme sowie die Schmerzentwicklung vor und nach Therapiebeginn.\n\nWichtig: Diese Auswertung ist rein explorativ. Nur eine Fachperson kann die klinische Wirksamkeit beurteilen. Bitte die Ergebnisse immer im Arztgespräch besprechen."
+                )
                 Text("\(pct)%")
                     .font(.subheadline.bold())
                     .padding(.horizontal, 10).padding(.vertical, 5)
@@ -1119,9 +1165,11 @@ struct KorrelationsView: View {
 
     private var bedarfsTrendChart: some View {
         karte {
-            Text("Bedarfsmedikation Trend").font(.headline)
-            Text("Einnahmen pro Woche (letzte 8 Wochen) – Warnschwelle 2.5/Woche (MOH)")
-                .font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Bedarfsmedikation Trend",
+                untertitel: "Einnahmen pro Woche – MOH-Schwelle bei 2.5×/Woche",
+                info: "Zeigt wie oft du pro Woche Bedarfsmedikamente eingenommen hast (letzte 8 Wochen).\n\nMOH-Warnschwelle: Mehr als 2–3 Einnahmen pro Woche über mehrere Wochen gilt als Risikofaktor für Medication Overuse Headache (medikamenteninduzierter Kopfschmerz). Bitte bei Überschreitung unbedingt mit dem Arzt besprechen."
+            )
             Chart(bedarfsTrendDaten) { w in
                 BarMark(x: .value("Woche", w.label), y: .value("Einnahmen", w.anzahl))
                     .foregroundStyle(w.anzahl > 2 ? Color.orange.gradient : Color.indigo.gradient)
@@ -1179,8 +1227,11 @@ struct KorrelationsView: View {
 
     private var wirksamkeitsChart: some View {
         karte {
-            Text("Wirksamkeit Bedarfsmedikation").font(.headline)
-            Text("Bewertungen: Gut / Teilweise / Nicht").font(.caption).foregroundStyle(.secondary)
+            karteHeader(
+                titel: "Wirksamkeit Bedarfsmedikation",
+                untertitel: "Bewertungen: Gut / Teilweise / Nicht wirksam",
+                info: "Zeigt das Verhältnis deiner Wirksamkeitsbewertungen je Bedarfsmedikament basierend auf deinen Einträgen im Medikamenten-Tagebuch.\n\nTipp: Medikamente mit häufig «nicht wirksam» sollten im nächsten Arzttermin besprochen werden – möglicherweise gibt es wirksamere Alternativen."
+            )
             VStack(spacing: 12) {
                 ForEach(wirksamkeitDaten) { d in
                     VStack(alignment: .leading, spacing: 4) {
@@ -1259,9 +1310,11 @@ struct KorrelationsView: View {
     private var injektionsZyklusChart: some View {
         if !wöchentlicheMedikamente.isEmpty {
             karte {
-                Text("Schmerz im Injektions-Zyklus").font(.headline)
-                Text("Ø Schmerzstärke an den Tagen nach der Injektion (Tag 0 = Injektionstag)")
-                    .font(.caption).foregroundStyle(.secondary)
+                karteHeader(
+                    titel: "Schmerz im Injektions-Zyklus",
+                    untertitel: "Ø Schmerzstärke pro Tag nach Injektion (Tag 0 = Injektionstag)",
+                    info: "Alle Injektionsereignisse werden übereinandergelegt und der Ø Schmerz pro Tag im 7-Tage-Fenster berechnet (gepoolte Analyse).\n\nAnwendung: Bei CGRP-Antikörpern (z.B. Ajovy, Emgality) oder Cortison-Injektionen zeigt diese Ansicht, wann die Wirkung einsetzt und wie lange sie anhält – hilfreich für die Anpassung des Injektionsintervalls."
+                )
 
                 if injektionsZyklusDaten.count < 2 {
                     Text("Nicht genug Daten. Erfasse mehr Injektionen und Schmerzeinträge.")
@@ -1313,6 +1366,19 @@ struct KorrelationsView: View {
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    }
+
+    private func karteHeader(titel: String, untertitel: String? = nil, info: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(titel).font(.headline)
+                if let untertitel {
+                    Text(untertitel).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 4)
+            InfoButton(titel: titel, text: info)
+        }
     }
 
     private func korrBadge(_ r: Double, label: String) -> some View {

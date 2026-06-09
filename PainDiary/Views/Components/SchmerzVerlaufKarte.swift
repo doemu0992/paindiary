@@ -82,11 +82,20 @@ struct SchmerzVerlaufKarte: View {
                     Text(p.datum.formatted(.dateTime.day().month(.wide)))
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Text("Schmerzverlauf").font(.headline)
-                    if !aktivDaten.isEmpty {
-                        let avg = aktivDaten.map(\.schmerz).reduce(0, +) / Double(aktivDaten.count)
-                        Text(String(format: "Ø %.1f / 10", avg))
-                            .font(.caption).foregroundStyle(.secondary)
+                    HStack(alignment: .top, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Schmerzverlauf").font(.headline)
+                            if !aktivDaten.isEmpty {
+                                let avg = aktivDaten.map(\.schmerz).reduce(0, +) / Double(aktivDaten.count)
+                                Text(String(format: "Ø %.1f / 10", avg))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        InfoButton(
+                            titel: "Schmerzverlauf",
+                            text: "Zeigt den Ø Schmerzwert pro Tag. Tage ohne Eintrag werden ausgelassen – die Linie verbindet nur Tage mit tatsächlichen Daten.\n\nBedienung: Tippe oder ziehe über den Chart um einzelne Tage auszuwählen. Wechsle oben rechts zwischen Woche, Monat, 3 Monaten und Jahr.\n\nFarbe der Punkte: grün ≤3, gelb 4–6, orange 7–8, rot ≥9."
+                        )
+                        .padding(.top, 2)
                     }
                 }
             }
