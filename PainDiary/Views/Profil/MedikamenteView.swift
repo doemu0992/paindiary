@@ -259,12 +259,22 @@ struct MedikamentFormView: View {
     @State private var aktiv = true
     @State private var erinnerungAktiv = false
     @State private var erinnerungsZeiten: [Date] = [defaultZeit(8)]
+    @State private var einnahmeHinweis = ""
+    @State private var vorratAktiv = false
+    @State private var vorrat = 30
+    @State private var vorratSchwelle = 7
+    @State private var ablaufAktiv = false
+    @State private var ablaufDatum = Date()
 
     private let notif = NotificationManager.shared
     private let frequenzOptionen = [
         "1× täglich", "2× täglich", "3× täglich",
         "Morgens", "Abends", "Morgens & Abends",
         "Bei Bedarf", "Wöchentlich"
+    ]
+    private let hinweisOptionen = [
+        "", "Mit viel Wasser", "Nüchtern", "Zum Essen",
+        "Nicht auf nüchternen Magen", "Nicht zerkauen", "Vor dem Schlafen"
     ]
 
     private var anzahlZeiten: Int { notif.anzahlDosen(frequenz) }
@@ -322,6 +332,40 @@ struct MedikamentFormView: View {
                         }
                     }
                 }
+
+                Section("Einnahmehinweis") {
+                    Picker("Hinweis", selection: $einnahmeHinweis) {
+                        Text("Keiner").tag("")
+                        ForEach(hinweisOptionen.dropFirst(), id: \.self) { Text($0).tag($0) }
+                    }
+                }
+
+                Section {
+                    Toggle("Vorrat verfolgen", isOn: $vorratAktiv)
+                    if vorratAktiv {
+                        Stepper("Aktueller Vorrat: \(vorrat) Stück", value: $vorrat, in: 0...999)
+                        Stepper("Warnung ab: \(vorratSchwelle) Stück", value: $vorratSchwelle, in: 1...30)
+                    }
+                } header: {
+                    Text("Vorrat")
+                } footer: {
+                    if vorratAktiv {
+                        Text("Du erhältst eine Benachrichtigung wenn der Vorrat \(vorratSchwelle) oder weniger Stück erreicht.")
+                    }
+                }
+
+                Section {
+                    Toggle("Ablaufdatum erfassen", isOn: $ablaufAktiv)
+                    if ablaufAktiv {
+                        DatePicker("Ablaufdatum", selection: $ablaufDatum, displayedComponents: .date)
+                    }
+                } header: {
+                    Text("Haltbarkeit")
+                } footer: {
+                    if ablaufAktiv {
+                        Text("Erinnerung 7 Tage vor Ablauf.")
+                    }
+                }
             }
             .navigationTitle(medikament == nil ? "Neues Medikament" : "Medikament bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
@@ -354,6 +398,16 @@ struct MedikamentFormView: View {
         } else {
             aktualisiereStandardZeiten(m.frequenz)
         }
+        einnahmeHinweis = m.einnahmeHinweis
+        if let v = m.vorrat {
+            vorratAktiv = true
+            vorrat = v
+            vorratSchwelle = m.vorratSchwelle
+        }
+        if let a = m.ablaufDatum {
+            ablaufAktiv = true
+            ablaufDatum = a
+        }
     }
 
     private func speichern() {
@@ -366,14 +420,24 @@ struct MedikamentFormView: View {
             m.startDatum = startDatum; m.aktiv = aktiv
             m.erinnerungAktiv = erinnerungAktiv
             m.erinnerungsZeiten = zeitenString
+            m.einnahmeHinweis = einnahmeHinweis
+            m.vorrat = vorratAktiv ? vorrat : nil
+            m.vorratSchwelle = vorratSchwelle
+            m.ablaufDatum = ablaufAktiv ? ablaufDatum : nil
             erinnerungAktiv ? notif.planeErinnerungen(fuer: m) : notif.loescheErinnerungen(fuer: m)
+            if ablaufAktiv { notif.planeAblaufWarnung(fuer: m) }
         } else {
             let neu = Dauermedikation(name: name, dosierung: dosierung, frequenz: frequenz,
                                       startDatum: startDatum, aktiv: aktiv)
             neu.erinnerungAktiv = erinnerungAktiv
             neu.erinnerungsZeiten = zeitenString
+            neu.einnahmeHinweis = einnahmeHinweis
+            neu.vorrat = vorratAktiv ? vorrat : nil
+            neu.vorratSchwelle = vorratSchwelle
+            neu.ablaufDatum = ablaufAktiv ? ablaufDatum : nil
             modelContext.insert(neu)
             if erinnerungAktiv { notif.planeErinnerungen(fuer: neu) }
+            if ablaufAktiv { notif.planeAblaufWarnung(fuer: neu) }
         }
         dismiss()
     }

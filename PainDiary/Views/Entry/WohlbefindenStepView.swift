@@ -4,6 +4,7 @@ struct WohlbefindenStepView: View {
     @Binding var stimmung: Int
     @Binding var schlafStunden: Double
     @Binding var stressLevel: Int
+    @Binding var notizen: String
     var healthSchlafVorschlag: Double? = nil
 
     var body: some View {
@@ -106,6 +107,30 @@ struct WohlbefindenStepView: View {
                 .padding()
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
             }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Notizen")
+                    .font(.headline)
+                ZStack(alignment: .topLeading) {
+                    if notizen.isEmpty {
+                        Text("Weitere Beobachtungen, Bemerkungen…")
+                            .foregroundStyle(.tertiary)
+                            .font(.subheadline)
+                            .padding(.top, 8).padding(.leading, 4)
+                    }
+                    TextEditor(text: $notizen)
+                        .frame(minHeight: 80)
+                        .font(.subheadline)
+                        .scrollContentBackground(.hidden)
+                }
+            }
+            .padding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+
+            Text("Optional – du kannst diesen Schritt überspringen.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
         .padding(.horizontal)
     }

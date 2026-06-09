@@ -176,6 +176,7 @@ struct AddEntryView: View {
                 stimmung: $stimmung,
                 schlafStunden: $schlafStunden,
                 stressLevel: $stressLevel,
+                notizen: $notizen,
                 healthSchlafVorschlag: healthSchlaf
             )
         default:
@@ -282,6 +283,7 @@ struct AddEntryView: View {
     private func speichern() {
         let wetterSnap = wetter.aktuell
         if let e = eintrag {
+            e.datum = datum
             e.koerperstelle = koerperstelle
             e.schmerzstaerke = schmerzstaerke
             e.schmerzart = schmerzart

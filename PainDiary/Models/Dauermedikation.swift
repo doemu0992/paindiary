@@ -11,6 +11,10 @@ import SwiftData
     var erinnerungAktiv: Bool = false
     // Komma-getrennte Zeiten "HH:mm,HH:mm" — leer = Standard je nach Frequenz
     var erinnerungsZeiten: String = ""
+    var einnahmeHinweis: String = ""
+    var vorrat: Int? = nil
+    var vorratSchwelle: Int = 7
+    var ablaufDatum: Date? = nil
 
     init(name: String = "", dosierung: String = "", frequenz: String = "",
          startDatum: Date = .now, aktiv: Bool = true) {

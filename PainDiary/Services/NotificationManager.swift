@@ -58,8 +58,32 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func loescheErinnerungen(fuer med: Dauermedikation) {
-        let ids = (0..<5).map { "\(med.notifID)-\($0)" }
+        var ids = (0..<5).map { "\(med.notifID)-\($0)" }
+        ids += ["vorrat-\(med.notifID)", "ablauf-\(med.notifID)"]
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
+    }
+
+    func planeVorratWarnung(fuer med: Dauermedikation) {
+        guard let vorrat = med.vorrat, vorrat == med.vorratSchwelle else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "⚠️ Vorrat wird knapp"
+        content.body = "\(med.name): noch \(vorrat) Einheit\(vorrat == 1 ? "" : "en") übrig."
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: "vorrat-\(med.notifID)", content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    func planeAblaufWarnung(fuer med: Dauermedikation) {
+        guard let ablauf = med.ablaufDatum else { return }
+        let kal = Calendar.current
+        guard let warntag = kal.date(byAdding: .day, value: -7, to: ablauf),
+              kal.startOfDay(for: warntag) >= kal.startOfDay(for: Date()) else { return }
+        var dc = kal.dateComponents([.year, .month, .day], from: warntag)
+        dc.hour = 9; dc.minute = 0
+        let titel = "⏰ Ablaufdatum in 7 Tagen"
+        let body = "\(med.name) läuft am \(ablauf.formatted(date: .abbreviated, time: .omitted)) ab."
+        scheduleEinmalig(id: "ablauf-\(med.notifID)", titel: titel, body: body, components: dc)
     }
 
     func gueltigeZeiten(fuer med: Dauermedikation) -> [ZeitPunkt] {
