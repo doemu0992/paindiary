@@ -99,7 +99,9 @@ struct DashboardView: View {
 
     private var begrüssungsHeader: some View {
         let stunde = Calendar.current.component(.hour, from: Date())
-        let gruss = stunde < 12 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend"
+        let grussBase = stunde < 12 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend"
+        let vorname = profile.first?.vorname.trimmingCharacters(in: .whitespaces) ?? ""
+        let gruss = vorname.isEmpty ? grussBase : "\(grussBase), \(vorname)"
         let df = DateFormatter()
         df.dateFormat = "EEEE, d. MMMM"
         df.locale = Locale(identifier: "de_CH")
