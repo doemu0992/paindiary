@@ -393,8 +393,7 @@ struct AddEntryView: View {
         fotoDateiname = e.fotoDateiname
         verlauf = e.verlauf
 
-        // Detect haut entries: schmerzstaerke == 0 and hautStellen not empty
-        if e.schmerzstaerke == 0 && !e.hautStellen.isEmpty {
+        if e.istHautEintrag || (e.schmerzstaerke == 0 && !e.hautStellen.isEmpty) {
             eintragTyp = .haut
             koerperstelle = e.hautStellen
             schritt = 1
@@ -406,6 +405,7 @@ struct AddEntryView: View {
         if let e = eintrag {
             // Editing existing entry
             e.datum = datum
+            e.istHautEintrag = (eintragTyp == .haut)
             switch eintragTyp {
             case .schmerz:
                 e.koerperstelle = koerperstelle
@@ -463,6 +463,7 @@ struct AddEntryView: View {
                 fotoDateiname: fotoDateiname,
                 verlauf: verlauf
             )
+            neu.istHautEintrag = (eintragTyp == .haut)
             modelContext.insert(neu)
         }
         dismiss()

@@ -12,6 +12,7 @@ struct MedikamenteView: View {
     @State private var logAnzeigen = false
     @State private var tagesstart = Calendar.current.startOfDay(for: Date())
     @State private var medZuLoggen: Dauermedikation? = nil
+    @State private var loeschenZiel: (liste: [Dauermedikation], offsets: IndexSet)?
 
     private let notif = NotificationManager.shared
     private var aktive: [Dauermedikation] { medikamente.filter(\.aktiv) }
@@ -84,6 +85,23 @@ struct MedikamenteView: View {
             if phase == .active {
                 tagesstart = Calendar.current.startOfDay(for: Date())
             }
+        }
+        .alert("Medikament löschen?", isPresented: Binding(
+            get: { loeschenZiel != nil },
+            set: { if !$0 { loeschenZiel = nil } }
+        )) {
+            Button("Löschen", role: .destructive) {
+                if let ziel = loeschenZiel {
+                    ziel.offsets.forEach { i in
+                        notif.loescheErinnerungen(fuer: ziel.liste[i])
+                        modelContext.delete(ziel.liste[i])
+                    }
+                }
+                loeschenZiel = nil
+            }
+            Button("Abbrechen", role: .cancel) { loeschenZiel = nil }
+        } message: {
+            Text("Das Medikament wird unwiderruflich gelöscht. Einnahme-Logs bleiben erhalten.")
         }
     }
 
@@ -170,16 +188,22 @@ struct MedikamenteView: View {
     }
 
     private func wirkungsButton(log: EinnahmeLog, wert: String, label: String, farbe: Color) -> some View {
-        Button {
-            log.wirkung = wert
+        let ausgewaehlt = log.wirkung == wert
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) { log.wirkung = wert }
         } label: {
-            Text(label)
-                .font(.caption.bold())
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(farbe.opacity(0.12))
-                .foregroundStyle(farbe)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            HStack(spacing: 4) {
+                if ausgewaehlt {
+                    Image(systemName: "checkmark").font(.caption2.bold())
+                }
+                Text(label).font(.caption.bold())
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(ausgewaehlt ? farbe : farbe.opacity(0.12))
+            .foregroundStyle(ausgewaehlt ? .white : farbe)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
         }
         .buttonStyle(.plain)
     }
@@ -357,10 +381,7 @@ struct MedikamenteView: View {
     }
 
     private func loeschen(aus liste: [Dauermedikation], offsets: IndexSet) {
-        offsets.forEach { i in
-            notif.loescheErinnerungen(fuer: liste[i])
-            modelContext.delete(liste[i])
-        }
+        loeschenZiel = (liste: liste, offsets: offsets)
     }
 }
 
@@ -604,7 +625,7 @@ struct MedikamentFormView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Speichern") { speichern() }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || frequenz.isEmpty)
                 }
             }
             .onAppear { ladeWerte() }

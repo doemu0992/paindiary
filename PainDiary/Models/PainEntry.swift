@@ -22,6 +22,7 @@ import SwiftData
     var wetterWind: Double?
 
     // Haut-Eintrag Felder
+    var istHautEintrag: Bool = false
     var hautStellen: String = ""
     var hautArt: String = ""
     var fotoDateiname: String = ""
