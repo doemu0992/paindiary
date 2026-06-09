@@ -66,14 +66,14 @@ struct PDFNotfallKontakt {
 struct PDFMedikament {
     var name: String; var dosierung: String; var frequenz: String
     var startDatum: Date; var endDatum: Date?; var aktiv: Bool
-    var einnahmeHinweis: String
+    var einnahmeHinweis: String; var medikamentTyp: String
     var vorrat: Int?; var vorratSchwelle: Int
     var ablaufDatum: Date?
 
     static func aus(med: Dauermedikation) -> PDFMedikament {
         PDFMedikament(name: med.name, dosierung: med.dosierung, frequenz: med.frequenz,
                       startDatum: med.startDatum, endDatum: med.endDatum, aktiv: med.aktiv,
-                      einnahmeHinweis: med.einnahmeHinweis,
+                      einnahmeHinweis: med.einnahmeHinweis, medikamentTyp: med.medikamentTyp,
                       vorrat: med.vorrat, vorratSchwelle: med.vorratSchwelle,
                       ablaufDatum: med.ablaufDatum)
     }
@@ -95,6 +95,8 @@ struct PDFEintrag {
     var schmerzart: String; var dauerMinuten: Int; var ausloeser: String
     var massnahmen: String; var notizen: String; var begleiterscheinungen: String
     var stimmung: Int; var stressLevel: Int; var schlafStunden: Double
+    var istHautEintrag: Bool; var hautStellen: String; var hautArt: String; var verlauf: String
+    var wetterTemperatur: Double?; var wetterCode: Int?; var wetterWind: Double?
 
     static func aus(eintrag: PainEntry) -> PDFEintrag {
         PDFEintrag(datum: eintrag.datum, schmerzstaerke: eintrag.schmerzstaerke,
@@ -103,7 +105,12 @@ struct PDFEintrag {
                    massnahmen: eintrag.massnahmen, notizen: eintrag.notizen,
                    begleiterscheinungen: eintrag.begleiterscheinungen,
                    stimmung: eintrag.stimmung, stressLevel: eintrag.stressLevel,
-                   schlafStunden: eintrag.schlafStunden)
+                   schlafStunden: eintrag.schlafStunden,
+                   istHautEintrag: eintrag.istHautEintrag,
+                   hautStellen: eintrag.hautStellen, hautArt: eintrag.hautArt,
+                   verlauf: eintrag.verlauf,
+                   wetterTemperatur: eintrag.wetterTemperatur,
+                   wetterCode: eintrag.wetterCode, wetterWind: eintrag.wetterWind)
     }
 }
 
@@ -638,8 +645,9 @@ class PDFExportService: @unchecked Sendable {
                               werte: [med.name, med.dosierung, med.frequenz, fmt(med.startDatum)],
                               fett: [true, false, false, false])
                 y += 14
-                // Sub-row: hinweis / ablauf / vorrat
+                // Sub-row: typ / hinweis / ablauf / vorrat
                 var extras: [String] = []
+                if !med.medikamentTyp.isEmpty { extras.append(med.medikamentTyp) }
                 if !med.einnahmeHinweis.isEmpty   { extras.append("⚑ \(med.einnahmeHinweis)") }
                 if let ablauf = med.ablaufDatum {
                     let tage = Calendar.current.dateComponents([.day], from: Date(), to: ablauf).day ?? 0
@@ -1069,57 +1077,83 @@ class PDFExportService: @unchecked Sendable {
     private func eintraegeSeiten(ctx: UIGraphicsPDFRendererContext, eintraege: [PDFEintrag], startSeite: Int) {
         var seite = startSeite
         ctx.beginPage()
-        seitenKopf(ctx: ctx.cgContext, titel: "Schmerzeinträge", seite: seite)
+        seitenKopf(ctx: ctx.cgContext, titel: "Einträge", seite: seite)
         var y: CGFloat = rand + 52
 
-        let cols: [CGFloat] = [rand, rand + 72, rand + 162, rand + 262, rand + 322, rand + 378]
-        tabellenKopf(ctx: ctx.cgContext, y: y, cols: cols,
-                     headers: ["Datum", "Stärke", "Körperstelle", "Auslöser", "Dauer", "Art"])
+        // col widths: Datum 72 | Stärke 68 | Körperstelle 140 | Auslöser 80 | Dauer 55 | Art rest
+        let cols: [CGFloat] = [rand, rand + 72, rand + 140, rand + 280, rand + 360, rand + 415]
+        let headers = ["Datum", "Stärke", "Körperstelle / Hautstelle", "Auslöser", "Dauer", "Art / Typ"]
+        tabellenKopf(ctx: ctx.cgContext, y: y, cols: cols, headers: headers)
         y += 26
 
         for eintrag in eintraege {
-            // Always show sub-rows with all additional fields
-            let subTeile1: [String] = [
-                eintrag.begleiterscheinungen.isEmpty ? nil : "Begleit.: \(String(eintrag.begleiterscheinungen.prefix(40)))",
-                eintrag.massnahmen.isEmpty ? nil : "Massnahmen: \(String(eintrag.massnahmen.prefix(40)))",
-            ].compactMap { $0 }
-            let subTeile2: [String] = [
+            let quelleStellen = eintrag.istHautEintrag ? eintrag.hautStellen : eintrag.koerperstelle
+            let koerperstellen = quelleStellen.components(separatedBy: ", ").filter { !$0.isEmpty }
+            let mehrereStellen = koerperstellen.count > 1
+
+            // Build sub-rows
+            var subZeilen: [(text: String, farbe: UIColor)] = []
+            if mehrereStellen {
+                subZeilen.append((
+                    "Alle Stellen: \(koerperstellen.joined(separator: ", "))",
+                    UIColor.systemOrange.withAlphaComponent(0.8)
+                ))
+            }
+            if !eintrag.begleiterscheinungen.isEmpty {
+                subZeilen.append(("Begleit.: \(String(eintrag.begleiterscheinungen.prefix(60)))", .secondaryLabel))
+            }
+            if !eintrag.massnahmen.isEmpty {
+                subZeilen.append(("Massnahmen: \(String(eintrag.massnahmen.prefix(60)))", .secondaryLabel))
+            }
+            let wbTeile: [String] = [
                 eintrag.stimmung > 0 ? "Stimmung: \(eintrag.stimmung)/5" : nil,
                 eintrag.stressLevel > 0 ? "Stress: \(eintrag.stressLevel)/5" : nil,
                 eintrag.schlafStunden > 0 ? String(format: "Schlaf: %.1fh", eintrag.schlafStunden) : nil,
-                eintrag.notizen.isEmpty ? nil : "Notiz: \(String(eintrag.notizen.prefix(40)))",
             ].compactMap { $0 }
+            if !wbTeile.isEmpty {
+                subZeilen.append((wbTeile.joined(separator: "   "), UIColor.systemBlue.withAlphaComponent(0.7)))
+            }
+            if let temp = eintrag.wetterTemperatur {
+                var wParts = [String(format: "%.0f°C", temp)]
+                if let wind = eintrag.wetterWind { wParts.append(String(format: "Wind %.0f km/h", wind)) }
+                subZeilen.append(("Wetter: \(wParts.joined(separator: ", "))", .secondaryLabel))
+            }
+            if eintrag.istHautEintrag && !eintrag.verlauf.isEmpty {
+                subZeilen.append(("Verlauf: \(eintrag.verlauf)", .secondaryLabel))
+            }
+            if !eintrag.notizen.isEmpty {
+                subZeilen.append(("Notiz: \(String(eintrag.notizen.prefix(70)))", .secondaryLabel))
+            }
 
-            let hatSubzeile1 = !subTeile1.isEmpty
-            let hatSubzeile2 = !subTeile2.isEmpty
-            let zeilenH: CGFloat = 20 + (hatSubzeile1 ? 14 : 0) + (hatSubzeile2 ? 14 : 0)
+            let zeilenH: CGFloat = 20 + CGFloat(subZeilen.count) * 13
 
             if y + zeilenH > H - rand - 20 {
                 fusszeile(ctx: ctx.cgContext, seite: seite)
                 ctx.beginPage(); seite += 1
-                seitenKopf(ctx: ctx.cgContext, titel: "Schmerzeinträge (Forts.)", seite: seite)
+                seitenKopf(ctx: ctx.cgContext, titel: "Einträge (Forts.)", seite: seite)
                 y = rand + 52
-                tabellenKopf(ctx: ctx.cgContext, y: y, cols: cols,
-                             headers: ["Datum", "Stärke", "Körperstelle", "Auslöser", "Dauer", "Art"])
+                tabellenKopf(ctx: ctx.cgContext, y: y, cols: cols, headers: headers)
                 y += 26
             }
 
             let dauer = eintrag.dauerMinuten > 0 ? dauerText(eintrag.dauerMinuten) : "–"
-            let koerper = eintrag.koerperstelle.components(separatedBy: ", ").first ?? eintrag.koerperstelle
+            let staerkeText = eintrag.istHautEintrag ? "Haut" : "\(eintrag.schmerzstaerke)/10"
+            let artText = eintrag.istHautEintrag
+                ? String(eintrag.hautArt.prefix(18))
+                : String(eintrag.schmerzart.prefix(18))
+            let ersteStelle = koerperstellen.first ?? ""
+            let stelleAnzeige = mehrereStellen ? "\(ersteStelle) +\(koerperstellen.count - 1)" : ersteStelle
+
             tabellenZeile(ctx: ctx.cgContext, y: y, cols: cols,
-                          werte: [fmtKurz(eintrag.datum), "\(eintrag.schmerzstaerke)/10",
-                                  koerper, String(eintrag.ausloeser.prefix(22)),
-                                  dauer, String(eintrag.schmerzart.prefix(16))],
+                          werte: [fmtKurz(eintrag.datum), staerkeText,
+                                  stelleAnzeige, String(eintrag.ausloeser.prefix(24)),
+                                  dauer, artText],
                           fett: [false, true, false, false, false, false])
             y += 14
-            if hatSubzeile1 {
-                draw(subTeile1.joined(separator: "   "), at: CGPoint(x: cols[2], y: y),
-                     font: .systemFont(ofSize: 8.5), color: .secondaryLabel)
-                y += 13
-            }
-            if hatSubzeile2 {
-                draw(subTeile2.joined(separator: "   "), at: CGPoint(x: cols[2], y: y),
-                     font: .systemFont(ofSize: 8.5), color: UIColor.systemBlue.withAlphaComponent(0.7))
+
+            for sub in subZeilen {
+                draw(sub.text, at: CGPoint(x: cols[2], y: y),
+                     font: .systemFont(ofSize: 8.5), color: sub.farbe)
                 y += 13
             }
             trennlinie(ctx: ctx.cgContext, y: y, alpha: 0.1)
