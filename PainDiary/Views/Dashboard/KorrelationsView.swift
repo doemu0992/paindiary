@@ -178,7 +178,7 @@ struct KorrelationsView: View {
             let pct = Int(round(Double(topOrt.anzahl) / Double(eintraege.count) * 100))
             liste.append(Erkenntnis(
                 text: "\"\(topOrt.ort)\" ist deine häufigste Schmerzregion – \(pct)% der Einträge (Ø \(fmt(topOrt.avgSchmerz))/10)",
-                symbol: "figure.body", farbe: .blue))
+                symbol: "figure.stand", farbe: .blue))
         }
 
         if let topBeg = begleitDaten.first, topBeg.anzahl >= 3 {
