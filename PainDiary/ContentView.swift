@@ -60,7 +60,7 @@ struct ContentView: View {
                 .tag(1)
 
             Color.clear
-                .tabItem { Label("Neu", systemImage: "plus.circle.fill") }
+                .tabItem { Label(" ", systemImage: "plus") }
                 .tag(2)
 
             NavigationStack { WellnessView() }
@@ -70,6 +70,19 @@ struct ContentView: View {
             NavigationStack { ProfilView() }
                 .tabItem { Label("Profil", systemImage: "person.circle") }
                 .tag(4)
+        }
+        .overlay(alignment: .bottom) {
+            Button { neuerEintragAnzeigen = true } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 54, height: 54)
+                    Image(systemName: "plus")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .padding(.bottom, 4)
         }
         .onChange(of: ausgewaehlterTab) { _, neu in
             if neu == 2 {
