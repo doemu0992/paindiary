@@ -19,7 +19,11 @@ struct SchmerzVerlaufKarte: View {
 
     @State private var zeitBereich: ZeitBereich = .woche
     @State private var ausgewaehlt: Date? = nil
-    @State private var scrollPosition: Date? = nil
+    @State private var scrollPosition: Date = .now
+
+    private var scrollBinding: Binding<Date?> {
+        Binding(get: { scrollPosition }, set: { scrollPosition = $0 ?? .now })
+    }
 
     private var schmerzEintraege: [PainEntry] {
         eintraege.filter { !$0.istHautEintrag }
@@ -156,7 +160,7 @@ struct SchmerzVerlaufKarte: View {
         }
         .chartScrollableAxes(.horizontal)
         .chartXVisibleDomain(length: zeitBereich.visibleSek)
-        .chartScrollPosition(x: $scrollPosition)
+        .chartScrollPosition(x: scrollBinding)
         .chartXSelection(value: $ausgewaehlt)
         .frame(height: 180)
     }
@@ -223,6 +227,6 @@ struct SchmerzVerlaufKarte: View {
             byAdding: .day,
             value: -(zeitBereich.sichtbareTage - 1),
             to: .now
-        )
+        ) ?? .now
     }
 }
