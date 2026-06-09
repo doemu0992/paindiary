@@ -3,10 +3,13 @@ import SwiftUI
 import UIKit
 
 struct ShareSheet: UIViewControllerRepresentable {
-    let url: URL
+    let urls: [URL]
+
+    init(url: URL) { self.urls = [url] }
+    init(urls: [URL]) { self.urls = urls }
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        UIActivityViewController(activityItems: urls, applicationActivities: nil)
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

@@ -1,9 +1,21 @@
 import SwiftUI
+import SwiftData
 
 struct EinstellungenView: View {
     @AppStorage("akzentFarbe") private var akzentFarbe = "blau"
     @AppStorage("tagesErinnerungAktiv") private var tagesErinnerungAktiv = false
     @AppStorage("tagesErinnerungZeit") private var tagesErinnerungZeitSek = 28800.0 // 08:00
+
+    @Environment(\.modelContext) private var modelContext
+    @Query private var eintraege: [PainEntry]
+    @Query private var medikamente: [Dauermedikation]
+    @Query private var logs: [EinnahmeLog]
+
+    @State private var exportURLs: [URL] = []
+    @State private var zeigeShareSheet = false
+    @State private var exportFehler: String?
+    @State private var zeigeExportFehler = false
+    @State private var zeigeLoeschenBestaetigung = false
 
     private let notif = NotificationManager.shared
 
@@ -91,6 +103,24 @@ struct EinstellungenView: View {
                 }
             }
 
+            Section {
+                Button {
+                    exportieren()
+                } label: {
+                    Label("Als CSV exportieren", systemImage: "square.and.arrow.up")
+                }
+
+                Button(role: .destructive) {
+                    zeigeLoeschenBestaetigung = true
+                } label: {
+                    Label("Alle Daten löschen", systemImage: "trash")
+                }
+            } header: {
+                Text("Daten")
+            } footer: {
+                Text("CSV-Dateien enthalten Schmerzeinträge, Medikamente und Einnahme-Logs.")
+            }
+
             Section("App") {
                 NavigationLink(destination: DatenschutzView()) {
                     Label("Datenschutz", systemImage: "lock.shield")
@@ -103,6 +133,51 @@ struct EinstellungenView: View {
             }
         }
         .navigationTitle("Einstellungen")
+        .sheet(isPresented: $zeigeShareSheet) {
+            ShareSheet(urls: exportURLs)
+        }
+        .alert("Export fehlgeschlagen", isPresented: $zeigeExportFehler) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportFehler ?? "Unbekannter Fehler")
+        }
+        .confirmationDialog(
+            "Alle Daten unwiderruflich löschen?",
+            isPresented: $zeigeLoeschenBestaetigung,
+            titleVisibility: .visible
+        ) {
+            Button("Löschen", role: .destructive) { alleDatenLoeschen() }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Schmerzeinträge, Medikamente und Einnahme-Logs werden permanent gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.")
+        }
+    }
+
+    // MARK: - Actions
+
+    private func exportieren() {
+        do {
+            exportURLs = try CSVExportService.erstelleExport(
+                eintraege: eintraege,
+                medikamente: medikamente,
+                logs: logs
+            )
+            zeigeShareSheet = true
+        } catch {
+            exportFehler = error.localizedDescription
+            zeigeExportFehler = true
+        }
+    }
+
+    private func alleDatenLoeschen() {
+        do {
+            try modelContext.delete(model: PainEntry.self)
+            try modelContext.delete(model: Dauermedikation.self)
+            try modelContext.delete(model: EinnahmeLog.self)
+        } catch {
+            exportFehler = error.localizedDescription
+            zeigeExportFehler = true
+        }
     }
 }
 
