@@ -240,10 +240,15 @@ struct KorrelationsView: View {
                 Chart(wochentagDaten, id: \.tag) { p in
                     BarMark(x: .value("Tag", p.tag), y: .value("Schmerz", p.schmerz))
                         .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
-                        .cornerRadius(6)
+                        .cornerRadius(8)
                 }
                 .chartYScale(domain: 0...10)
-                .chartYAxis { AxisMarks(values: [0, 2, 4, 6, 8, 10]) }
+                .chartYAxis {
+                    AxisMarks(values: [0, 2, 4, 6, 8, 10]) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
                 .frame(height: 180)
             }
         }
@@ -309,17 +314,24 @@ struct KorrelationsView: View {
                         x: .value("Schlaf (Std.)", p.schlaf),
                         y: .value("Schmerz", p.schmerz)
                     )
-                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).opacity(0.8))
-                    .symbolSize(60)
+                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).opacity(0.75))
+                    .symbolSize(70)
                 }
                 .chartXScale(domain: 0...12)
                 .chartYScale(domain: 0...10)
                 .chartXAxis {
                     AxisMarks(values: [0, 2, 4, 6, 8, 10, 12]) { v in
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
                         AxisValueLabel { if let d = v.as(Double.self) { Text("\(Int(d))h") } }
                     }
                 }
-                .frame(height: 180)
+                .chartYAxis {
+                    AxisMarks(values: [0, 2, 4, 6, 8, 10]) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: 200)
                 korrBadge(korrelation(schlafDaten.map(\.schlaf), schlafDaten.map(\.schmerz)),
                           label: "Starke Korrelation: mehr Schlaf = weniger Schmerz")
             }
@@ -1011,16 +1023,22 @@ struct KorrelationsView: View {
                 .font(.caption).foregroundStyle(.secondary)
             Chart(bedarfsTrendDaten) { w in
                 BarMark(x: .value("Woche", w.label), y: .value("Einnahmen", w.anzahl))
-                    .foregroundStyle(w.anzahl > 2 ? Color.orange.gradient : Color.blue.gradient)
-                    .cornerRadius(4)
+                    .foregroundStyle(w.anzahl > 2 ? Color.orange.gradient : Color.indigo.gradient)
+                    .cornerRadius(8)
                 RuleMark(y: .value("MOH-Grenze", 2.5))
-                    .foregroundStyle(.red.opacity(0.6))
+                    .foregroundStyle(.red.opacity(0.5))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4]))
                     .annotation(position: .trailing, alignment: .leading) {
                         Text("MOH").font(.caption2).foregroundStyle(.red)
                     }
             }
             .chartYScale(domain: 0...max(4, (bedarfsTrendDaten.map(\.anzahl).max() ?? 0) + 1))
+            .chartYAxis {
+                AxisMarks {
+                    AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                    AxisValueLabel()
+                }
+            }
             .frame(height: 160)
             if bedarfsTrendDaten.contains(where: { $0.anzahl > 2 }) {
                 HStack(spacing: 6) {
@@ -1182,11 +1200,12 @@ struct KorrelationsView: View {
 
     @ViewBuilder
     private func karte<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             content()
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
     private func korrBadge(_ r: Double, label: String) -> some View {

@@ -43,49 +43,51 @@ struct SchmerzVerlaufKarte: View {
 
     var body: some View {
         let daten = tagesDaten
-        let hatDaten = daten.contains { $0.anzahl > 0 }
+        let aktivDaten = daten.filter { $0.anzahl > 0 }
 
         VStack(alignment: .leading, spacing: 12) {
-            header(daten: daten)
+            header(aktivDaten: aktivDaten)
 
-            if hatDaten {
-                chartView(daten: daten)
-                legendeView(daten: daten)
-            } else {
+            if aktivDaten.isEmpty {
                 Text("Noch keine Einträge in diesem Zeitraum.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                chartView(aktivDaten: aktivDaten)
+                legendeView(aktivDaten: aktivDaten)
             }
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .onAppear { resetScroll() }
         .onChange(of: zeitBereich) { ausgewaehlt = nil; resetScroll() }
     }
 
     // MARK: - Header
 
-    private func header(daten: [(datum: Date, schmerz: Double, anzahl: Int)]) -> some View {
+    private func header(aktivDaten: [(datum: Date, schmerz: Double, anzahl: Int)]) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 if let sel = ausgewaehlt,
-                   let p = daten.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: sel) }) {
-                    if p.anzahl > 0 {
+                   let p = aktivDaten.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: sel) }) {
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
                         Text(String(format: "%.1f", p.schmerz))
                             .font(.title2.bold())
+                            .foregroundStyle(schmerzFarbe(p.schmerz))
                             .contentTransition(.numericText())
-                    } else {
-                        Text("Kein Eintrag")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        Text("/ 10").font(.caption).foregroundStyle(.secondary)
                     }
                     Text(p.datum.formatted(.dateTime.day().month(.wide)))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Text("Schmerzverlauf")
-                        .font(.headline)
+                    Text("Schmerzverlauf").font(.headline)
+                    if !aktivDaten.isEmpty {
+                        let avg = aktivDaten.map(\.schmerz).reduce(0, +) / Double(aktivDaten.count)
+                        Text(String(format: "Ø %.1f / 10", avg))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
             .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
@@ -103,53 +105,78 @@ struct SchmerzVerlaufKarte: View {
     // MARK: - Chart
 
     @ViewBuilder
-    private func chartView(daten: [(datum: Date, schmerz: Double, anzahl: Int)]) -> some View {
-        Chart(daten, id: \.datum) { punkt in
-            if punkt.anzahl > 0 {
-                BarMark(
+    private func chartView(aktivDaten: [(datum: Date, schmerz: Double, anzahl: Int)]) -> some View {
+        let selectedPunkt: (datum: Date, schmerz: Double, anzahl: Int)? = ausgewaehlt.flatMap { sel in
+            aktivDaten.first { Calendar.current.isDate($0.datum, inSameDayAs: sel) }
+        }
+
+        Chart {
+            ForEach(aktivDaten, id: \.datum) { punkt in
+                AreaMark(
                     x: .value("Tag", punkt.datum, unit: .day),
-                    y: .value("Schmerz", punkt.schmerz),
-                    width: .ratio(zeitBereich == .jahr ? 0.85 : 0.65)
+                    yStart: .value("Basis", 0),
+                    yEnd: .value("Schmerz", punkt.schmerz)
                 )
-                .foregroundStyle(barFarbe(datum: punkt.datum, schmerz: punkt.schmerz))
-                .cornerRadius(zeitBereich == .jahr ? 2 : 4)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.indigo.opacity(0.22), Color.indigo.opacity(0.01)],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                )
+                .interpolationMethod(.monotone)
             }
 
-            if let sel = ausgewaehlt,
-               Calendar.current.isDate(punkt.datum, inSameDayAs: sel),
-               punkt.anzahl > 0 {
-                RuleMark(x: .value("Tag", punkt.datum, unit: .day))
-                    .foregroundStyle(Color.secondary.opacity(0.3))
+            ForEach(aktivDaten, id: \.datum) { punkt in
+                LineMark(
+                    x: .value("Tag", punkt.datum, unit: .day),
+                    y: .value("Schmerz", punkt.schmerz)
+                )
+                .foregroundStyle(Color.indigo)
+                .lineStyle(StrokeStyle(lineWidth: 2.5))
+                .interpolationMethod(.monotone)
+            }
+
+            if let p = selectedPunkt {
+                RuleMark(x: .value("Tag", p.datum, unit: .day))
+                    .foregroundStyle(Color.secondary.opacity(0.25))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
                     .annotation(
-                        position: .top, spacing: 4,
+                        position: .top, spacing: 6,
                         overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
                     ) {
-                        callout(fuer: punkt)
+                        callout(fuer: p)
                     }
+
+                PointMark(
+                    x: .value("Tag", p.datum, unit: .day),
+                    y: .value("Schmerz", p.schmerz)
+                )
+                .foregroundStyle(schmerzFarbe(p.schmerz))
+                .symbolSize(110)
             }
         }
+        .chartLegend(.hidden)
         .chartYScale(domain: 0...10)
         .chartYAxis {
             AxisMarks(values: [0, 5, 10]) {
-                AxisGridLine().foregroundStyle(Color.secondary.opacity(0.15))
-                AxisValueLabel()
+                AxisGridLine().foregroundStyle(Color.secondary.opacity(0.12))
+                AxisValueLabel().foregroundStyle(Color.secondary)
             }
         }
         .chartXAxis {
             if zeitBereich == .woche {
                 AxisMarks(values: .stride(by: .day)) {
-                    AxisGridLine().foregroundStyle(Color.secondary.opacity(0.1))
+                    AxisGridLine().foregroundStyle(Color.secondary.opacity(0.08))
                     AxisValueLabel(format: .dateTime.weekday(.narrow))
                 }
             } else if zeitBereich == .monat {
                 AxisMarks(values: .stride(by: .weekOfYear)) {
-                    AxisGridLine().foregroundStyle(Color.secondary.opacity(0.1))
+                    AxisGridLine().foregroundStyle(Color.secondary.opacity(0.08))
                     AxisValueLabel(format: .dateTime.day())
                 }
             } else {
                 AxisMarks(values: .stride(by: .month)) {
-                    AxisGridLine().foregroundStyle(Color.secondary.opacity(0.1))
+                    AxisGridLine().foregroundStyle(Color.secondary.opacity(0.08))
                     AxisValueLabel(format: .dateTime.month(.abbreviated))
                 }
             }
@@ -157,21 +184,31 @@ struct SchmerzVerlaufKarte: View {
         .chartScrollableAxes(.horizontal)
         .chartXVisibleDomain(length: zeitBereich.visibleSek)
         .chartScrollPosition(x: $scrollPosition)
-        .chartXSelection(value: $ausgewaehlt)
-        .frame(height: 180)
+        .chartOverlay { proxy in
+            GeometryReader { _ in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { val in
+                                guard let date: Date = proxy.value(atX: val.location.x) else { return }
+                                let nearest = aktivDaten.min {
+                                    abs($0.datum.timeIntervalSince(date)) < abs($1.datum.timeIntervalSince(date))
+                                }
+                                ausgewaehlt = nearest?.datum
+                            }
+                    )
+            }
+        }
+        .frame(height: 200)
     }
 
     // MARK: - Legende
 
-    private func legendeView(daten: [(datum: Date, schmerz: Double, anzahl: Int)]) -> some View {
-        let aktiv = daten.filter { $0.anzahl > 0 }
+    private func legendeView(aktivDaten: [(datum: Date, schmerz: Double, anzahl: Int)]) -> some View {
+        let avg = aktivDaten.map(\.schmerz).reduce(0, +) / Double(aktivDaten.count)
         return HStack(spacing: 12) {
-            if !aktiv.isEmpty {
-                let avg = aktiv.map(\.schmerz).reduce(0, +) / Double(aktiv.count)
-                Label(String(format: "Ø %.1f/10", avg), systemImage: "minus")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            Label(String(format: "Ø %.1f / 10", avg), systemImage: "waveform.path.ecg")
+                .font(.caption2).foregroundStyle(.secondary)
             Spacer()
             HStack(spacing: 6) {
                 legendePunkt(label: "≤3",  farbe: .green)
@@ -183,8 +220,8 @@ struct SchmerzVerlaufKarte: View {
     }
 
     private func legendePunkt(label: String, farbe: Color) -> some View {
-        HStack(spacing: 2) {
-            RoundedRectangle(cornerRadius: 2).fill(farbe).frame(width: 8, height: 8)
+        HStack(spacing: 3) {
+            Circle().fill(farbe).frame(width: 7, height: 7)
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
     }
@@ -192,30 +229,24 @@ struct SchmerzVerlaufKarte: View {
     // MARK: - Callout
 
     private func callout(fuer punkt: (datum: Date, schmerz: Double, anzahl: Int)) -> some View {
-        VStack(spacing: 1) {
+        VStack(spacing: 2) {
             Text(String(format: "%.1f", punkt.schmerz))
                 .font(.caption.bold())
+                .foregroundStyle(schmerzFarbe(punkt.schmerz))
             Text(punkt.datum.formatted(.dateTime.day().month(.abbreviated)))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .shadow(color: .black.opacity(0.12), radius: 4, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.10), radius: 6, x: 0, y: 2)
     }
 
     // MARK: - Helpers
 
-    private func barFarbe(datum: Date, schmerz: Double) -> Color {
-        let base = schmerzFarbe(schmerz)
-        guard let sel = ausgewaehlt else { return base }
-        return Calendar.current.isDate(datum, inSameDayAs: sel) ? base : base.opacity(0.3)
-    }
-
     private func schmerzFarbe(_ v: Double) -> Color {
-        v < 3 ? .green : v < 6 ? .yellow : v < 8 ? .orange : .red
+        v <= 3 ? .green : v <= 6 ? .yellow : v <= 8 ? .orange : .red
     }
 
     private func resetScroll() {
