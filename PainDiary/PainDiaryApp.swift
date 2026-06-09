@@ -17,9 +17,7 @@ struct PainDiaryApp: App {
             }
             .task {
                 guard container == nil else { return }
-                container = await Task.detached(priority: .userInitiated) {
-                    makeContainer()
-                }.value
+                container = makeContainer()
                 await berechtigungenAnfordern()
             }
         }
@@ -30,6 +28,7 @@ struct PainDiaryApp: App {
     }
 }
 
+@MainActor
 private func makeContainer() -> ModelContainer {
     let alleTypen: [any PersistentModel.Type] = [
         PainEntry.self,
