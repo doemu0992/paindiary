@@ -209,7 +209,7 @@ struct AddEntryView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(.regularMaterial, in: Capsule())
+            .background(Color(.secondarySystemBackground), in: Capsule())
         }
     }
 
@@ -288,7 +288,7 @@ struct AddEntryView: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .semibold))
                         .frame(width: 46, height: 46)
-                        .background(.regularMaterial, in: Circle())
+                        .background(Color(.secondarySystemBackground), in: Circle())
                 }
                 .buttonStyle(.plain)
             } else {
@@ -553,7 +553,7 @@ private struct OrtTypStepView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal)
             .frame(maxHeight: .infinity)
             .layoutPriority(1)

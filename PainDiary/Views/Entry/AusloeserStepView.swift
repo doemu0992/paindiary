@@ -46,7 +46,7 @@ struct AusloeserStepView: View {
                 }
             }
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
 
             Text("Du kannst auch überspringen, wenn du es nicht weisst.")
                 .font(.caption)

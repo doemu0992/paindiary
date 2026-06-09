@@ -36,7 +36,7 @@ struct WohlbefindenStepView: View {
                     }
                 }
                 .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
 
                 // Stresslevel
                 VStack(alignment: .leading, spacing: 10) {
@@ -69,7 +69,7 @@ struct WohlbefindenStepView: View {
                     }
                 }
                 .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
 
                 // Schlaf
                 VStack(alignment: .leading, spacing: 10) {
@@ -105,7 +105,7 @@ struct WohlbefindenStepView: View {
                     }
                 }
                 .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
             }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -125,7 +125,7 @@ struct WohlbefindenStepView: View {
                 }
             }
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
 
             Text("Optional – du kannst diesen Schritt überspringen.")
                 .font(.caption)

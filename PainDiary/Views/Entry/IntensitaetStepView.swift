@@ -44,7 +44,7 @@ struct IntensitaetStepView: View {
                 }
             }
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
 
             if let letzter = letzterEintrag {
                 VerlaufSektionView(letzterEintrag: letzter, verlauf: $verlauf)
@@ -126,7 +126,7 @@ private struct VerlaufSektionView: View {
             }
         }
         .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     private var zeitAbstand: String {

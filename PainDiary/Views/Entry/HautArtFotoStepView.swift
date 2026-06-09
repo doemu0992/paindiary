@@ -55,7 +55,7 @@ struct HautArtFotoStepView: View {
                 }
             }
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
 
             // Card 2: Foto
             VStack(alignment: .leading, spacing: 12) {
@@ -100,7 +100,7 @@ struct HautArtFotoStepView: View {
                 }
             }
             .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         }
         .padding(.horizontal)
         .onAppear {
