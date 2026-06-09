@@ -19,7 +19,8 @@ struct MedikamenteView: View {
     private var inaktive: [Dauermedikation] { medikamente.filter { !$0.aktiv } }
 
     private var heutigeLogsHeute: [EinnahmeLog] {
-        logs.filter { $0.datum >= tagesstart }
+        let tagesende = Calendar.current.date(byAdding: .day, value: 1, to: tagesstart) ?? tagesstart
+        return logs.filter { $0.datum >= tagesstart && $0.datum < tagesende }
     }
 
     var body: some View {

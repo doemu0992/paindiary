@@ -6,8 +6,9 @@ class DashboardViewModel {
     var eintraege: [PainEntry] = []
 
     var durchschnittsSchmerz: Double {
-        guard !eintraege.isEmpty else { return 0 }
-        return Double(eintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(eintraege.count)
+        let schmerzEintraege = eintraege.filter { !$0.istHautEintrag }
+        guard !schmerzEintraege.isEmpty else { return 0 }
+        return Double(schmerzEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(schmerzEintraege.count)
     }
 
     var haeufigsterAusloeser: String? {
@@ -21,13 +22,14 @@ class DashboardViewModel {
     var letzten7TageEintraege: [(datum: Date, schmerz: Double)] {
         let kalender = Calendar.current
         let heute = Date()
-        return (0..<7).compactMap { versatz -> (datum: Date, schmerz: Double)? in
-            guard let tag = kalender.date(byAdding: .day, value: -versatz, to: heute) else { return nil }
+        return (0..<7).map { versatz -> (datum: Date, schmerz: Double) in
+            let tag = kalender.date(byAdding: .day, value: -versatz, to: heute) ?? heute
             let tagesEintraege = eintraege.filter {
-                kalender.isDate($0.datum, inSameDayAs: tag)
+                !$0.istHautEintrag && kalender.isDate($0.datum, inSameDayAs: tag)
             }
-            guard !tagesEintraege.isEmpty else { return nil }
-            let durchschnitt = Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
+            let durchschnitt = tagesEintraege.isEmpty
+                ? 0.0
+                : Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
             return (datum: tag, schmerz: durchschnitt)
         }.reversed()
     }

@@ -36,8 +36,13 @@ private func makeContainer() -> ModelContainer {
     ]
     let schema = Schema(alleTypen)
 
-    let appSupport = FileManager.default
-        .urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+    guard let appSupport = FileManager.default
+        .urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+        return try! ModelContainer(for: schema, configurations: [
+            ModelConfiguration("hauptdaten", schema: schema,
+                               isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        ])
+    }
 
     func makeConfig(cloudKit: Bool) -> ModelConfiguration {
         ModelConfiguration(
