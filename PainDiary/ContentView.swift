@@ -77,7 +77,6 @@ struct ContentView: View {
                     Circle()
                         .fill(Color.accentColor)
                         .frame(width: 52, height: 52)
-                        .shadow(color: Color.accentColor.opacity(0.4), radius: 10, x: 0, y: 4)
                     Image(systemName: "plus")
                         .font(.system(size: 22, weight: .bold))
                         .foregroundStyle(.white)
