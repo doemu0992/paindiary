@@ -19,6 +19,7 @@ struct KorrelationsView: View {
                         description: Text("Erfasse mindestens 5 Einträge um Analysen zu sehen.")
                     )
                 } else {
+                    zusammenfassungHeader
                     erkenntnisseKarte
 
                     abschnittTitel("Schmerzverlauf")
@@ -65,11 +66,43 @@ struct KorrelationsView: View {
         .navigationBarTitleDisplayMode(.large)
     }
 
+    // MARK: - Zusammenfassung
+
+    private var zusammenfassungHeader: some View {
+        let avg = eintraege.isEmpty ? 0.0 : Double(eintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(eintraege.count)
+        let tage = eintraege.last.map {
+            max(0, Calendar.current.dateComponents([.day], from: $0.datum, to: .now).day ?? 0)
+        } ?? 0
+        return HStack(spacing: 0) {
+            summaryPill("\(eintraege.count)", label: "Einträge",    symbol: "list.bullet.clipboard.fill", farbe: .indigo)
+            Divider().frame(height: 40)
+            summaryPill(String(format: "%.1f", avg), label: "Ø Schmerz", symbol: "waveform.path.ecg",      farbe: schmerzFarbeGlobal(avg))
+            Divider().frame(height: 40)
+            summaryPill("\(tage)",           label: "Tage erfasst", symbol: "calendar",                    farbe: .teal)
+        }
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    }
+
+    private func summaryPill(_ wert: String, label: String, symbol: String, farbe: Color) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: symbol).font(.caption).foregroundStyle(farbe.opacity(0.8))
+            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func schmerzFarbeGlobal(_ v: Double) -> Color {
+        v <= 3 ? .green : v <= 6 ? .yellow : v <= 8 ? .orange : .red
+    }
+
+    // MARK: - Abschnittstitel
+
     private func abschnittTitel(_ titel: String) -> some View {
         HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.indigo)
-                .frame(width: 3, height: 18)
+            RoundedRectangle(cornerRadius: 2).fill(Color.indigo).frame(width: 3, height: 18)
             Text(titel).font(.title3.bold())
             Spacer()
         }
@@ -79,16 +112,12 @@ struct KorrelationsView: View {
     // MARK: - Erkenntnisse
 
     private struct Erkenntnis: Identifiable {
-        let id = UUID()
-        let text: String
-        let symbol: String
-        let farbe: Color
+        let id = UUID(); let text: String; let symbol: String; let farbe: Color
     }
 
     private var alleErkenntnisse: [Erkenntnis] {
         var liste: [Erkenntnis] = []
 
-        // Wochentag mit höchstem / niedrigstem Schmerz
         if let worst = wochentagDaten.max(by: { $0.schmerz < $1.schmerz }),
            let best  = wochentagDaten.min(by: { $0.schmerz < $1.schmerz }),
            worst.schmerz - best.schmerz > 0.5 {
@@ -97,7 +126,6 @@ struct KorrelationsView: View {
                 symbol: "calendar", farbe: .orange))
         }
 
-        // Schlaf
         let wenigSchlaf = schlafDaten.filter { $0.schlaf < 6 }
         let vielSchlaf  = schlafDaten.filter { $0.schlaf >= 7 }
         if wenigSchlaf.count >= 3 && vielSchlaf.count >= 3 {
@@ -111,7 +139,6 @@ struct KorrelationsView: View {
             }
         }
 
-        // Stress
         let stressHoch    = eintraege.filter { $0.stressLevel >= 4 }
         let stressNiedrig = eintraege.filter { $0.stressLevel <= 2 }
         if stressHoch.count >= 3 && stressNiedrig.count >= 3 {
@@ -125,17 +152,15 @@ struct KorrelationsView: View {
             }
         }
 
-        // Häufigster Auslöser
         let ausloeserListe = eintraege.compactMap { $0.ausloeser.isEmpty ? nil : $0.ausloeser }
         if !ausloeserListe.isEmpty,
            let top = Dictionary(ausloeserListe.map { ($0, 1) }, uniquingKeysWith: +).max(by: { $0.value < $1.value }) {
             let pct = Int(round(Double(top.value) / Double(eintraege.count) * 100))
             liste.append(Erkenntnis(
-                text: "\"\(top.key)\" ist dein häufigster Auslöser - tritt in \(pct)% der Einträge auf",
+                text: "\"\(top.key)\" ist dein häufigster Auslöser – tritt in \(pct)% der Einträge auf",
                 symbol: "exclamationmark.triangle.fill", farbe: .orange))
         }
 
-        // Koffein
         let kHoch  = koffeinDaten.filter { $0.koffein >= 3 }
         let kKeine = koffeinDaten.filter { $0.koffein == 0 }
         if kHoch.count >= 3 && kKeine.count >= 3 {
@@ -149,7 +174,6 @@ struct KorrelationsView: View {
             }
         }
 
-        // Häufigste Körperstelle
         if let topOrt = koerperstellenDaten.first, topOrt.anzahl >= 3 {
             let pct = Int(round(Double(topOrt.anzahl) / Double(eintraege.count) * 100))
             liste.append(Erkenntnis(
@@ -157,7 +181,6 @@ struct KorrelationsView: View {
                 symbol: "figure.body", farbe: .blue))
         }
 
-        // Häufigste Begleiterscheinung
         if let topBeg = begleitDaten.first, topBeg.anzahl >= 3 {
             let pct = Int(round(Double(topBeg.anzahl) / Double(eintraege.count) * 100))
             liste.append(Erkenntnis(
@@ -165,7 +188,6 @@ struct KorrelationsView: View {
                 symbol: "stethoscope", farbe: .teal))
         }
 
-        // Zyklus
         if !zyklusPhasenDaten.isEmpty,
            let worst = zyklusPhasenDaten.max(by: { $0.schmerz < $1.schmerz }) {
             liste.append(Erkenntnis(
@@ -173,19 +195,12 @@ struct KorrelationsView: View {
                 symbol: "drop.circle.fill", farbe: .pink))
         }
 
-        // Medikament-Wirksamkeit / Einnahmetreue
         for a in medAnalysen {
             if let vor = a.schmerzVorStart, let nach = a.schmerzNachStart,
                a.nVor >= 3, a.nNach >= 5, vor - nach > 1.0 {
                 liste.append(Erkenntnis(
                     text: "Seit \(a.med.name): Ø Schmerz von \(fmt(vor)) auf \(fmt(nach)) gesunken (−\(fmt(vor - nach)) Punkte)",
                     symbol: "arrow.down.circle.fill", farbe: .green))
-                break
-            }
-            if a.einnahmetreue >= 0 && a.einnahmetreue < 0.70 {
-                liste.append(Erkenntnis(
-                    text: "\(a.med.name): Einnahmetreue \(Int(a.einnahmetreue * 100))% – regelmässige Einnahme kann die Wirksamkeit verbessern",
-                    symbol: "pill.fill", farbe: .orange))
                 break
             }
         }
@@ -201,7 +216,7 @@ struct KorrelationsView: View {
                 Spacer()
                 InfoButton(
                     titel: "Deine Erkenntnisse",
-                    text: "Die App analysiert deine Einträge automatisch und hebt die auffälligsten Muster hervor – z.B. Wochentage mit besonders hohem Schmerz, Zusammenhänge mit Schlaf oder Stress oder Auswirkungen von Medikamenten.\n\nDiese Erkenntnisse sind statistische Beobachtungen aus deinen eigenen Daten. Sie ersetzen keine ärztliche Diagnose, können aber wertvolle Gesprächsgrundlage beim nächsten Arzttermin sein."
+                    text: "Die App analysiert deine Einträge automatisch und hebt die auffälligsten Muster hervor – z.B. Wochentage mit besonders hohem Schmerz, Zusammenhänge mit Schlaf oder Stress, oder Auswirkungen von Medikamenten.\n\nDiese Erkenntnisse sind statistische Beobachtungen aus deinen eigenen Daten. Sie ersetzen keine ärztliche Diagnose, können aber eine wertvolle Gesprächsgrundlage beim nächsten Arzttermin sein."
                 )
             }
 
@@ -223,6 +238,7 @@ struct KorrelationsView: View {
         .padding()
         .background(Color.yellow.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.yellow.opacity(0.3), lineWidth: 1))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
     // MARK: - Wochentag
@@ -251,17 +267,12 @@ struct KorrelationsView: View {
                 Text("Nicht genug Daten.").font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(wochentagDaten, id: \.tag) { p in
-                    BarMark(
-                        x: .value("Tag", p.tag),
-                        y: .value("Schmerz", p.schmerz),
-                        width: .ratio(0.65)
-                    )
-                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .top) {
-                        Text(fmt(p.schmerz))
-                            .font(.caption2.bold()).foregroundStyle(.secondary)
-                    }
+                    BarMark(x: .value("Tag", p.tag), y: .value("Schmerz", p.schmerz), width: .ratio(0.65))
+                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .top) {
+                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                        }
                 }
                 .chartYScale(domain: 0...10)
                 .chartYAxis {
@@ -301,16 +312,13 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(topAusloeser, id: \.ausloeser) { item in
-                    BarMark(
-                        x: .value("Schmerz", item.schmerz),
-                        y: .value("Auslöser", item.ausloeser)
-                    )
-                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(item.schmerz)).gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .trailing) {
-                        Text("\(fmt(item.schmerz))  ×\(item.anzahl)")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
+                    BarMark(x: .value("Schmerz", item.schmerz), y: .value("Auslöser", item.ausloeser))
+                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(item.schmerz)).gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .trailing) {
+                            Text("\(fmt(item.schmerz))  ×\(item.anzahl)")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
                 }
                 .chartXScale(domain: 0...10)
                 .chartXAxis {
@@ -343,12 +351,9 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(schlafDaten, id: \.schlaf) { p in
-                    PointMark(
-                        x: .value("Schlaf (Std.)", p.schlaf),
-                        y: .value("Schmerz", p.schmerz)
-                    )
-                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).opacity(0.75))
-                    .symbolSize(70)
+                    PointMark(x: .value("Schlaf (Std.)", p.schlaf), y: .value("Schmerz", p.schmerz))
+                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).opacity(0.75))
+                        .symbolSize(70)
                 }
                 .chartXScale(domain: 0...12)
                 .chartYScale(domain: 0...10)
@@ -394,15 +399,12 @@ struct KorrelationsView: View {
                 Text("Nicht genug Daten für diese Analyse.").font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(stressPegelDaten, id: \.level) { p in
-                    BarMark(
-                        x: .value("Schmerz", p.schmerz),
-                        y: .value("Stress", p.level)
-                    )
-                    .foregroundStyle(Color.orange.gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .trailing) {
-                        Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                    }
+                    BarMark(x: .value("Schmerz", p.schmerz), y: .value("Stress", p.level))
+                        .foregroundStyle(Color.orange.gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .trailing) {
+                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                        }
                 }
                 .chartXScale(domain: 0...10)
                 .chartXAxis {
@@ -442,16 +444,12 @@ struct KorrelationsView: View {
                 Text("Nicht genug Daten für diese Analyse.").font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(stimmungPegelDaten, id: \.level) { p in
-                    BarMark(
-                        x: .value("Stimmung", p.level),
-                        y: .value("Schmerz", p.schmerz),
-                        width: .ratio(0.65)
-                    )
-                    .foregroundStyle(Color.pink.gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .top) {
-                        Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                    }
+                    BarMark(x: .value("Stimmung", p.level), y: .value("Schmerz", p.schmerz), width: .ratio(0.65))
+                        .foregroundStyle(Color.pink.gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .top) {
+                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                        }
                 }
                 .chartYScale(domain: 0...10)
                 .chartYAxis {
@@ -510,16 +508,12 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(koffeinGruppenDaten, id: \.label) { p in
-                    BarMark(
-                        x: .value("Koffein", p.label),
-                        y: .value("Schmerz", p.schmerz),
-                        width: .ratio(0.65)
-                    )
-                    .foregroundStyle(braun.gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .top) {
-                        Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                    }
+                    BarMark(x: .value("Koffein", p.label), y: .value("Schmerz", p.schmerz), width: .ratio(0.65))
+                        .foregroundStyle(braun.gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .top) {
+                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                        }
                 }
                 .chartYScale(domain: 0...10)
                 .chartYAxis {
@@ -563,15 +557,12 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(wetterDaten, id: \.wetter) { p in
-                    BarMark(
-                        x: .value("Schmerz", p.schmerz),
-                        y: .value("Wetter", p.wetter)
-                    )
-                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .trailing) {
-                        Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                    }
+                    BarMark(x: .value("Schmerz", p.schmerz), y: .value("Wetter", p.wetter))
+                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .trailing) {
+                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                        }
                 }
                 .chartXScale(domain: 0...10)
                 .chartXAxis {
@@ -630,19 +621,15 @@ struct KorrelationsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Chart(zyklusPhasenDaten, id: \.phase) { p in
-                    BarMark(
-                        x: .value("Phase", p.phase),
-                        y: .value("Schmerz", p.schmerz),
-                        width: .ratio(0.65)
-                    )
-                    .foregroundStyle(Color.pink.gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .top) {
-                        VStack(spacing: 1) {
-                            Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                            Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
+                    BarMark(x: .value("Phase", p.phase), y: .value("Schmerz", p.schmerz), width: .ratio(0.65))
+                        .foregroundStyle(Color.pink.gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .top) {
+                            VStack(spacing: 1) {
+                                Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                                Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
+                            }
                         }
-                    }
                 }
                 .chartYScale(domain: 0...10)
                 .chartYAxis {
@@ -663,14 +650,13 @@ struct KorrelationsView: View {
         }
     }
 
-    // MARK: - Medikament-Effekt
+    // MARK: - Medikament-Adherenz
 
     private var adherenzDaten: [MedAdherenz] {
         let kal = Calendar.current
         let heute = kal.startOfDay(for: Date())
         let fenster = kal.date(byAdding: .day, value: -90, to: heute)!
 
-        // Group taken days per medication name
         var einnahmenProMed: [String: Set<Date>] = [:]
         for log in einnahmeLogs where log.eingenommen {
             let tag = kal.startOfDay(for: log.datum)
@@ -678,24 +664,19 @@ struct KorrelationsView: View {
             einnahmenProMed[log.medikamentName, default: []].insert(tag)
         }
 
-        // All known medication names (active + any seen in logs)
         var medNamen = Set(dauermedikationen.map { $0.name })
         einnahmenProMed.keys.forEach { medNamen.insert($0) }
 
         return medNamen.sorted().compactMap { name in
             let einnahmen = einnahmenProMed[name] ?? []
-
-            // Earliest log entry for this med within window
             let erstesLogDatum = einnahmeLogs
                 .filter { $0.medikamentName == name }
                 .map { kal.startOfDay(for: $0.datum) }
                 .filter { $0 >= fenster }
                 .min() ?? heute
             let erwartetTage = max(kal.dateComponents([.day], from: erstesLogDatum, to: heute).day ?? 1, 1)
-
             guard !einnahmen.isEmpty else { return nil }
 
-            // Pain on days WITH vs WITHOUT medication
             var mitMed: [Double] = []
             var ohneMed: [Double] = []
             for e in eintraege {
@@ -706,17 +687,13 @@ struct KorrelationsView: View {
             }
 
             let dosierung = einnahmeLogs.first { $0.medikamentName == name }?.dosierung ?? ""
-
             return MedAdherenz(
-                name: name,
-                dosierung: dosierung,
+                name: name, dosierung: dosierung,
                 adherenzRate: min(Double(einnahmen.count) / Double(erwartetTage), 1.0),
-                einnahmenTage: einnahmen.count,
-                erwarteterTage: erwartetTage,
+                einnahmenTage: einnahmen.count, erwarteterTage: erwartetTage,
                 avgSchmerzMit:  mitMed.isEmpty  ? nil : mitMed.reduce(0,+)  / Double(mitMed.count),
                 avgSchmerzOhne: ohneMed.isEmpty ? nil : ohneMed.reduce(0,+) / Double(ohneMed.count),
-                nMit:  mitMed.count,
-                nOhne: ohneMed.count
+                nMit: mitMed.count, nOhne: ohneMed.count
             )
         }
     }
@@ -728,16 +705,12 @@ struct KorrelationsView: View {
                 untertitel: "Einnahmetreue & Ø Schmerz mit / ohne Einnahme (letzte 90 Tage)",
                 info: "Zeigt für jedes Dauermedikament die Einnahmetreue der letzten 30 Tage sowie den Ø Schmerzwert an Tagen mit vs. ohne Einnahme.\n\nWichtig: Ein niedrigerer Schmerz an Einnahmetagen bedeutet nicht zwingend, dass das Medikament wirkt – es könnte auch sein, dass es bevorzugt an ohnehin weniger schlimmen Tagen eingenommen wird. Die Auswertung ist explorativ."
             )
-
             let daten = adherenzDaten
             if daten.isEmpty {
-                Text("Noch keine Einnahmen erfasst.")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text("Noch keine Einnahmen erfasst.").font(.caption).foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 14) {
-                    ForEach(daten, id: \.name) { med in
-                        MedAdherenzZeile(med: med, fmt: fmt)
-                    }
+                    ForEach(daten, id: \.name) { med in MedAdherenzZeile(med: med, fmt: fmt) }
                 }
                 Text("Hinweis: Kausale Wirkrichtung ist aus diesen Daten nicht ableitbar.")
                     .font(.caption2).foregroundStyle(.tertiary).italic()
@@ -745,397 +718,7 @@ struct KorrelationsView: View {
         }
     }
 
-    // MARK: - Körperstellen
-
-    private var koerperstellenDaten: [(ort: String, anzahl: Int, avgSchmerz: Double)] {
-        var dict: [String: [Int]] = [:]
-        for e in eintraege where !e.koerperstelle.isEmpty {
-            e.koerperstelle.components(separatedBy: ", ")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
-                .forEach { dict[$0, default: []].append(e.schmerzstaerke) }
-        }
-        return dict
-            .map { ort, w in (ort: ort, anzahl: w.count, avgSchmerz: Double(w.reduce(0,+)) / Double(w.count)) }
-            .sorted { $0.anzahl > $1.anzahl }
-            .prefix(7).map { $0 }
-    }
-
-    private var koerperstellenChart: some View {
-        karte {
-            karteHeader(
-                titel: "Häufigste Schmerzorte",
-                untertitel: "Häufigkeit je Körperregion, Farbe = Ø Schmerzstärke",
-                info: "Zeigt die am häufigsten betroffenen Körperstellen, sortiert nach Anzahl der Einträge. Die Balkenfarbe zeigt die durchschnittliche Schmerzstärke (grün = gering, rot = stark).\n\nWarum wichtig: Die Lokalisation ist ein wichtiges diagnostisches Merkmal. Mehrere Körperstellen oder ein Wechsel des Schmerzorts können auf spezifische Erkrankungen hinweisen."
-            )
-            if koerperstellenDaten.isEmpty {
-                Text("Keine Körperstellen erfasst.").font(.caption).foregroundStyle(.secondary)
-            } else {
-                Chart(koerperstellenDaten, id: \.ort) { item in
-                    BarMark(
-                        x: .value("Anzahl", item.anzahl),
-                        y: .value("Ort", item.ort)
-                    )
-                    .foregroundStyle(SchmerzBadge.farbe(fuer: Int(item.avgSchmerz)).gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .trailing) {
-                        Text("×\(item.anzahl)  Ø\(fmt(item.avgSchmerz))")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 4)) {
-                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
-                        AxisValueLabel()
-                    }
-                }
-                .frame(height: CGFloat(koerperstellenDaten.count * 46 + 20))
-            }
-        }
-    }
-
-    // MARK: - Schmerzarten
-
-    private var schmerzartDaten: [(art: String, anzahl: Int, avgSchmerz: Double)] {
-        var dict: [String: [Int]] = [:]
-        for e in eintraege where !e.schmerzart.isEmpty {
-            e.schmerzart.components(separatedBy: ", ")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
-                .forEach { dict[$0, default: []].append(e.schmerzstaerke) }
-        }
-        return dict
-            .map { art, w in (art: art, anzahl: w.count, avgSchmerz: Double(w.reduce(0,+)) / Double(w.count)) }
-            .sorted { $0.anzahl > $1.anzahl }
-            .prefix(8).map { $0 }
-    }
-
-    private var schmerzartChart: some View {
-        karte {
-            karteHeader(
-                titel: "Häufige Schmerzarten",
-                untertitel: "Wie sich der Schmerz typischerweise anfühlt",
-                info: "Zeigt den Schmerzcharakter sortiert nach Häufigkeit der Nennung.\n\nWarum wichtig: Der Charakter des Schmerzes (pochend, brennend, drückend, stechend...) ist ein zentrales diagnostisches Kriterium. Pochender Schmerz z.B. ist typisch für Migräne, brennender für neuropathische Schmerzen. Diese Übersicht ist wertvoll für Arztgespräche."
-            )
-            if schmerzartDaten.isEmpty {
-                Text("Keine Schmerzarten erfasst. Wähle im Wizard unter «Charakter» die Schmerzart.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                Chart(schmerzartDaten, id: \.art) { item in
-                    BarMark(
-                        x: .value("Anzahl", item.anzahl),
-                        y: .value("Art", item.art)
-                    )
-                    .foregroundStyle(Color.purple.gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .trailing) {
-                        Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 4)) {
-                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
-                        AxisValueLabel()
-                    }
-                }
-                .frame(height: CGFloat(schmerzartDaten.count * 46 + 20))
-            }
-        }
-    }
-
-    // MARK: - Begleiterscheinungen
-
-    private var begleitDaten: [(symptom: String, anzahl: Int)] {
-        var dict: [String: Int] = [:]
-        for e in eintraege where !e.begleiterscheinungen.isEmpty {
-            e.begleiterscheinungen.components(separatedBy: ", ")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
-                .forEach { dict[$0, default: 0] += 1 }
-        }
-        return dict.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }.prefix(8).map { $0 }
-    }
-
-    private var begleiterscheinungenChart: some View {
-        karte {
-            karteHeader(
-                titel: "Häufige Begleiterscheinungen",
-                untertitel: "Welche Begleitsymptome am häufigsten auftreten",
-                info: "Zeigt Symptome, die am häufigsten zusammen mit dem Schmerz auftreten.\n\nWarum wichtig: Bestimmte Begleitmuster weisen auf spezifische Diagnosen hin – z.B. Übelkeit + Lichtempfindlichkeit + Phonophobie bei Migräne. Zeige diese Übersicht beim nächsten Arzttermin."
-            )
-            if begleitDaten.isEmpty {
-                Text("Keine Begleiterscheinungen erfasst.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                Chart(begleitDaten, id: \.symptom) { item in
-                    BarMark(
-                        x: .value("Anzahl", item.anzahl),
-                        y: .value("Symptom", item.symptom)
-                    )
-                    .foregroundStyle(Color.teal.gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .trailing) {
-                        Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 4)) {
-                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
-                        AxisValueLabel()
-                    }
-                }
-                .frame(height: CGFloat(begleitDaten.count * 46 + 20))
-            }
-        }
-    }
-
-    // MARK: - Massnahmen
-
-    private var massnahmenDaten: [(massnahme: String, anzahl: Int)] {
-        var dict: [String: Int] = [:]
-        for e in eintraege where !e.massnahmen.isEmpty {
-            e.massnahmen.components(separatedBy: ", ")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
-                .forEach { dict[$0, default: 0] += 1 }
-        }
-        return dict.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }.prefix(8).map { $0 }
-    }
-
-    private var massnahmenChart: some View {
-        karte {
-            karteHeader(
-                titel: "Angewandte Massnahmen",
-                untertitel: "Was du am häufigsten gegen den Schmerz unternimmst",
-                info: "Zeigt deine am häufigsten angewandten Massnahmen bei Schmerz.\n\nWorauf achten: Entspricht die Häufigkeit der Massnahmen den ärztlichen Empfehlungen? Werden nicht-medikamentöse Strategien (z.B. Entspannung, Kälte/Wärme, Bewegung) ausreichend eingesetzt? Diese Übersicht hilft, das Selbstmanagement zu reflektieren."
-            )
-            if massnahmenDaten.isEmpty {
-                Text("Keine Massnahmen erfasst.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                Chart(massnahmenDaten, id: \.massnahme) { item in
-                    BarMark(
-                        x: .value("Anzahl", item.anzahl),
-                        y: .value("Massnahme", item.massnahme)
-                    )
-                    .foregroundStyle(Color.green.gradient)
-                    .cornerRadius(8)
-                    .annotation(position: .trailing) {
-                        Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 4)) {
-                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
-                        AxisValueLabel()
-                    }
-                }
-                .frame(height: CGFloat(massnahmenDaten.count * 46 + 20))
-            }
-        }
-    }
-
-    // MARK: - Dauermedikament-Analyse
-
-    private struct MedAnalyse: Identifiable {
-        var id: String { med.notifID }
-        let med: Dauermedikation
-        let einnahmetreue: Double   // -1 = Bei Bedarf, 0.0–1.0 sonst
-        let schmerzMitMed: Double?
-        let schmerzOhneMed: Double?
-        let schmerzVorStart: Double?
-        let schmerzNachStart: Double?
-        let nMit: Int
-        let nOhne: Int
-        let nVor: Int
-        let nNach: Int
-    }
-
-    private var medAnalysen: [MedAnalyse] {
-        let kal = Calendar.current
-        let notif = NotificationManager.shared
-        let heute = kal.startOfDay(for: Date())
-
-        return dauermedikationen
-            .filter { notif.anzahlDosen($0.frequenz) > 0 && $0.frequenz != "Wöchentlich" }
-            .compactMap { med in
-            let anzDosen = notif.anzahlDosen(med.frequenz)
-
-            // Einnahmetreue: ab startDatum, max 30 Tage
-            let tageSeitStart = max(1, kal.dateComponents([.day],
-                from: kal.startOfDay(for: med.startDatum), to: heute).day ?? 1)
-            let fensterTage = min(30, tageSeitStart)
-            let letztenN = (0..<fensterTage).compactMap { kal.date(byAdding: .day, value: -$0, to: heute) }
-            let geloggteTage = letztenN.filter { tag in
-                einnahmeLogs.filter {
-                    kal.isDate($0.datum, inSameDayAs: tag) &&
-                    $0.medikamentName == med.name &&
-                    $0.dosierung == med.dosierung &&
-                    $0.eingenommen
-                }.count >= anzDosen
-            }
-            let treue = Double(geloggteTage.count) / Double(fensterTage)
-
-            // Schmerz mit vs. ohne Einnahme (name + dosierung)
-            let logTage = Set(einnahmeLogs
-                .filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
-                .map { kal.startOfDay(for: $0.datum) })
-            var mitMed: [Double] = []
-            var ohneMed: [Double] = []
-            for e in eintraege where e.schmerzstaerke > 0 {
-                if logTage.contains(kal.startOfDay(for: e.datum)) {
-                    mitMed.append(Double(e.schmerzstaerke))
-                } else {
-                    ohneMed.append(Double(e.schmerzstaerke))
-                }
-            }
-
-            // Wirksamkeit: vor vs. nach Startdatum
-            let startTag = kal.startOfDay(for: med.startDatum)
-            var vorStart: [Double] = []
-            var nachStart: [Double] = []
-            for e in eintraege where e.schmerzstaerke > 0 {
-                let tag = kal.startOfDay(for: e.datum)
-                if tag < startTag { vorStart.append(Double(e.schmerzstaerke)) }
-                else { nachStart.append(Double(e.schmerzstaerke)) }
-            }
-
-            guard mitMed.count >= 3 || nachStart.count >= 3 else { return nil }
-
-            return MedAnalyse(
-                med: med,
-                einnahmetreue: treue,
-                schmerzMitMed: mitMed.isEmpty ? nil : mitMed.reduce(0,+) / Double(mitMed.count),
-                schmerzOhneMed: ohneMed.isEmpty ? nil : ohneMed.reduce(0,+) / Double(ohneMed.count),
-                schmerzVorStart: vorStart.count >= 3 ? vorStart.reduce(0,+) / Double(vorStart.count) : nil,
-                schmerzNachStart: nachStart.count >= 3 ? nachStart.reduce(0,+) / Double(nachStart.count) : nil,
-                nMit: mitMed.count,
-                nOhne: ohneMed.count,
-                nVor: vorStart.count,
-                nNach: nachStart.count
-            )
-        }
-    }
-
-    private func dauermedikamentKarte(_ a: MedAnalyse) -> some View {
-        karte {
-            HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.blue.opacity(0.12))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: a.med.typSymbol).foregroundStyle(.blue)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(a.med.name).font(.headline)
-                    HStack(spacing: 4) {
-                        if !a.med.dosierung.isEmpty { Text(a.med.dosierung) }
-                        Text("· Seit \(a.med.startDatum, format: .dateTime.day().month(.abbreviated).year())")
-                    }
-                    .font(.caption).foregroundStyle(.secondary)
-                    // New fields row
-                    HStack(spacing: 8) {
-                        if !a.med.einnahmeHinweis.isEmpty {
-                            Label(a.med.einnahmeHinweis, systemImage: "fork.knife")
-                                .font(.caption2).foregroundStyle(.blue)
-                        }
-                        if let vorrat = a.med.vorrat {
-                            let knapp = vorrat <= a.med.vorratSchwelle
-                            Label("\(vorrat) Stück", systemImage: knapp ? "exclamationmark.circle.fill" : "shippingbox.fill")
-                                .font(.caption2).foregroundStyle(knapp ? .orange : .secondary)
-                        }
-                        if let ablauf = a.med.ablaufDatum {
-                            let tage = Calendar.current.dateComponents(
-                                [.day],
-                                from: Calendar.current.startOfDay(for: Date()),
-                                to: Calendar.current.startOfDay(for: ablauf)
-                            ).day ?? 0
-                            Label {
-                                Text(ablauf, format: .dateTime.day().month(.abbreviated).year())
-                            } icon: {
-                                Image(systemName: tage <= 14 ? "exclamationmark.triangle.fill" : "calendar.badge.clock")
-                            }
-                            .font(.caption2)
-                            .foregroundStyle(tage <= 14 ? .orange : .secondary)
-                        }
-                    }
-                }
-                Spacer()
-                let pct = Int(a.einnahmetreue * 100)
-                InfoButton(
-                    titel: a.med.name,
-                    text: "Zeigt Einnahmetreue, Schmerz mit vs. ohne Einnahme sowie die Schmerzentwicklung vor und nach Therapiebeginn.\n\nWichtig: Diese Auswertung ist rein explorativ. Nur eine Fachperson kann die klinische Wirksamkeit beurteilen. Bitte die Ergebnisse immer im Arztgespräch besprechen."
-                )
-                Text("\(pct)%")
-                    .font(.subheadline.bold())
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(treueFarbe(a.einnahmetreue).opacity(0.12), in: Capsule())
-                    .foregroundStyle(treueFarbe(a.einnahmetreue))
-            }
-
-            if let mit = a.schmerzMitMed, let ohne = a.schmerzOhneMed, a.nMit >= 3 {
-                Divider()
-                HStack(spacing: 0) {
-                    medStatSpalte("Mit Medikament", wert: fmt(mit), farbe: .blue, n: a.nMit)
-                    Divider().frame(height: 44)
-                    medStatSpalte("Ohne Medikament", wert: fmt(ohne), farbe: .secondary, n: a.nOhne)
-                }
-            }
-
-            if let vor = a.schmerzVorStart, let nach = a.schmerzNachStart {
-                let diff = vor - nach
-                Divider()
-                HStack(alignment: .center, spacing: 12) {
-                    VStack(spacing: 2) {
-                        Text(fmt(vor)).font(.title3.bold()).foregroundStyle(.orange)
-                        Text("Vor Start").font(.caption2).foregroundStyle(.secondary)
-                        Text("n=\(a.nVor)").font(.caption2).foregroundStyle(.tertiary)
-                    }
-                    Image(systemName: "arrow.right").foregroundStyle(.secondary)
-                    VStack(spacing: 2) {
-                        Text(fmt(nach)).font(.title3.bold())
-                            .foregroundStyle(diff > 0.5 ? .green : diff < -0.5 ? .red : .orange)
-                        Text("Nach Start").font(.caption2).foregroundStyle(.secondary)
-                        Text("n=\(a.nNach)").font(.caption2).foregroundStyle(.tertiary)
-                    }
-                    Spacer()
-                    if abs(diff) > 0.3 {
-                        VStack(spacing: 2) {
-                            Text(diff > 0 ? "−\(fmt(diff))" : "+\(fmt(abs(diff)))")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(diff > 0 ? .green : .red)
-                            Text("Ø Schmerz").font(.caption2).foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background((diff > 0 ? Color.green : Color.red).opacity(0.1),
-                                    in: RoundedRectangle(cornerRadius: 8))
-                    }
-                }
-            }
-
-            let fenster = min(30, max(1, Calendar.current.dateComponents([.day],
-                from: Calendar.current.startOfDay(for: a.med.startDatum),
-                to: Calendar.current.startOfDay(for: Date())).day ?? 1))
-            Text("Einnahmetreue letzte \(fenster) Tage · \(a.nMit + a.nOhne) Schmerzeinträge")
-                .font(.caption2).foregroundStyle(.tertiary)
-        }
-    }
-
-    @ViewBuilder
-    private func medStatSpalte(_ titel: String, wert: String, farbe: Color, n: Int) -> some View {
-        VStack(spacing: 4) {
-            Text(wert).font(.title3.bold()).foregroundStyle(farbe)
-            Text(titel).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Text("n=\(n)").font(.caption2).foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private func treueFarbe(_ treue: Double) -> Color {
-        treue >= 0.85 ? .green : treue >= 0.60 ? .orange : .red
-    }
-
-    // MARK: - Bedarfstrend-Chart (Feature D)
+    // MARK: - Bedarfstrend
 
     private struct BedarfsWoche: Identifiable {
         let id: String; let label: String; let anzahl: Int
@@ -1153,13 +736,12 @@ struct KorrelationsView: View {
         }
         guard !bedarfsLogs.isEmpty else { return [] }
         return (0..<8).reversed().map { wocheVor in
-            guard let wocheEnde = kal.date(byAdding: .weekOfYear, value: -wocheVor, to: heute),
+            guard let wocheEnde  = kal.date(byAdding: .weekOfYear, value: -wocheVor, to: heute),
                   let wocheStart = kal.date(byAdding: .day, value: -6, to: wocheEnde) else {
                 return BedarfsWoche(id: "\(wocheVor)", label: "?", anzahl: 0)
             }
             let anzahl = bedarfsLogs.filter { $0.datum >= wocheStart && $0.datum <= wocheEnde }.count
-            let label = wocheVor == 0 ? "Heute" : "−\(wocheVor)W"
-            return BedarfsWoche(id: "\(wocheVor)", label: label, anzahl: anzahl)
+            return BedarfsWoche(id: "\(wocheVor)", label: wocheVor == 0 ? "Heute" : "−\(wocheVor)W", anzahl: anzahl)
         }
     }
 
@@ -1199,7 +781,7 @@ struct KorrelationsView: View {
         }
     }
 
-    // MARK: - Wirksamkeits-Chart (Feature A+D)
+    // MARK: - Wirksamkeit
 
     private struct WirksamkeitDaten: Identifiable {
         let id: String; let name: String
@@ -1211,18 +793,18 @@ struct KorrelationsView: View {
     private var wirksamkeitDaten: [WirksamkeitDaten] {
         let bewertet = einnahmeLogs.filter { !$0.wirkung.isEmpty }
         guard !bewertet.isEmpty else { return [] }
-        let grouped = Dictionary(grouping: bewertet) { "\($0.medikamentName)|\($0.dosierung)" }
-        return grouped.compactMap { key, logs in
-            let gut = logs.filter { $0.wirkung == "gut" }.count
-            let teilw = logs.filter { $0.wirkung == "teilweise" }.count
-            let nicht = logs.filter { $0.wirkung == "nicht" }.count
-            guard gut + teilw + nicht > 0 else { return nil }
-            let name = logs.first.map { d in
-                d.dosierung.isEmpty ? d.medikamentName : "\(d.medikamentName) \(d.dosierung)"
-            } ?? key
-            return WirksamkeitDaten(id: key, name: name, gut: gut, teilweise: teilw, nicht: nicht)
-        }
-        .sorted { $0.gutPct > $1.gutPct }
+        return Dictionary(grouping: bewertet) { "\($0.medikamentName)|\($0.dosierung)" }
+            .compactMap { key, logs in
+                let gut = logs.filter { $0.wirkung == "gut" }.count
+                let teilw = logs.filter { $0.wirkung == "teilweise" }.count
+                let nicht = logs.filter { $0.wirkung == "nicht" }.count
+                guard gut + teilw + nicht > 0 else { return nil }
+                let name = logs.first.map { d in
+                    d.dosierung.isEmpty ? d.medikamentName : "\(d.medikamentName) \(d.dosierung)"
+                } ?? key
+                return WirksamkeitDaten(id: key, name: name, gut: gut, teilweise: teilw, nicht: nicht)
+            }
+            .sorted { $0.gutPct > $1.gutPct }
     }
 
     private var wirksamkeitsChart: some View {
@@ -1259,9 +841,9 @@ struct KorrelationsView: View {
                         }
                         .frame(height: 10)
                         HStack(spacing: 12) {
-                            wirkungsLegende("Gut", n: d.gut, farbe: .green)
+                            wirkungsLegende("Gut",       n: d.gut,       farbe: .green)
                             wirkungsLegende("Teilweise", n: d.teilweise, farbe: .orange)
-                            wirkungsLegende("Nicht", n: d.nicht, farbe: .red)
+                            wirkungsLegende("Nicht",     n: d.nicht,     farbe: .red)
                         }
                     }
                 }
@@ -1321,19 +903,15 @@ struct KorrelationsView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
                     Chart(injektionsZyklusDaten, id: \.tag) { p in
-                        BarMark(
-                            x: .value("Tag", "Tag \(p.tag)"),
-                            y: .value("Schmerz", p.schmerz),
-                            width: .ratio(0.65)
-                        )
-                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
-                        .cornerRadius(8)
-                        .annotation(position: .top) {
-                            VStack(spacing: 1) {
-                                Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
-                                Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
+                        BarMark(x: .value("Tag", "Tag \(p.tag)"), y: .value("Schmerz", p.schmerz), width: .ratio(0.65))
+                            .foregroundStyle(SchmerzBadge.farbe(fuer: Int(p.schmerz)).gradient)
+                            .cornerRadius(8)
+                            .annotation(position: .top) {
+                                VStack(spacing: 1) {
+                                    Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                                    Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
+                                }
                             }
-                        }
                     }
                     .chartYScale(domain: 0...10)
                     .chartYAxis {
@@ -1352,6 +930,361 @@ struct KorrelationsView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: - Dauermedikament-Analyse
+
+    private struct MedAnalyse: Identifiable {
+        var id: String { med.notifID }
+        let med: Dauermedikation
+        let einnahmetreue: Double
+        let schmerzMitMed: Double?
+        let schmerzOhneMed: Double?
+        let schmerzVorStart: Double?
+        let schmerzNachStart: Double?
+        let nMit: Int; let nOhne: Int; let nVor: Int; let nNach: Int
+    }
+
+    private var medAnalysen: [MedAnalyse] {
+        let kal = Calendar.current
+        let notif = NotificationManager.shared
+        let heute = kal.startOfDay(for: Date())
+
+        return dauermedikationen
+            .filter { notif.anzahlDosen($0.frequenz) > 0 && $0.frequenz != "Wöchentlich" }
+            .compactMap { med in
+                let anzDosen = notif.anzahlDosen(med.frequenz)
+                let tageSeitStart = max(1, kal.dateComponents([.day],
+                    from: kal.startOfDay(for: med.startDatum), to: heute).day ?? 1)
+                let fensterTage = min(30, tageSeitStart)
+                let letztenN = (0..<fensterTage).compactMap { kal.date(byAdding: .day, value: -$0, to: heute) }
+                let geloggteTage = letztenN.filter { tag in
+                    einnahmeLogs.filter {
+                        kal.isDate($0.datum, inSameDayAs: tag) &&
+                        $0.medikamentName == med.name &&
+                        $0.dosierung == med.dosierung &&
+                        $0.eingenommen
+                    }.count >= anzDosen
+                }
+                let treue = Double(geloggteTage.count) / Double(fensterTage)
+
+                let logTage = Set(einnahmeLogs
+                    .filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
+                    .map { kal.startOfDay(for: $0.datum) })
+                var mitMed: [Double] = []; var ohneMed: [Double] = []
+                for e in eintraege where e.schmerzstaerke > 0 {
+                    if logTage.contains(kal.startOfDay(for: e.datum)) { mitMed.append(Double(e.schmerzstaerke)) }
+                    else { ohneMed.append(Double(e.schmerzstaerke)) }
+                }
+
+                let startTag = kal.startOfDay(for: med.startDatum)
+                var vorStart: [Double] = []; var nachStart: [Double] = []
+                for e in eintraege where e.schmerzstaerke > 0 {
+                    let tag = kal.startOfDay(for: e.datum)
+                    if tag < startTag { vorStart.append(Double(e.schmerzstaerke)) }
+                    else { nachStart.append(Double(e.schmerzstaerke)) }
+                }
+
+                guard mitMed.count >= 3 || nachStart.count >= 3 else { return nil }
+
+                return MedAnalyse(
+                    med: med, einnahmetreue: treue,
+                    schmerzMitMed:    mitMed.isEmpty  ? nil : mitMed.reduce(0,+)  / Double(mitMed.count),
+                    schmerzOhneMed:   ohneMed.isEmpty ? nil : ohneMed.reduce(0,+) / Double(ohneMed.count),
+                    schmerzVorStart:  vorStart.count  >= 3 ? vorStart.reduce(0,+)  / Double(vorStart.count)  : nil,
+                    schmerzNachStart: nachStart.count >= 3 ? nachStart.reduce(0,+) / Double(nachStart.count) : nil,
+                    nMit: mitMed.count, nOhne: ohneMed.count, nVor: vorStart.count, nNach: nachStart.count
+                )
+            }
+    }
+
+    private func dauermedikamentKarte(_ a: MedAnalyse) -> some View {
+        karte {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8).fill(Color.blue.opacity(0.12)).frame(width: 36, height: 36)
+                    Image(systemName: a.med.typSymbol).foregroundStyle(.blue)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(a.med.name).font(.headline)
+                    HStack(spacing: 4) {
+                        if !a.med.dosierung.isEmpty { Text(a.med.dosierung) }
+                        Text("· Seit \(a.med.startDatum, format: .dateTime.day().month(.abbreviated).year())")
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        if !a.med.einnahmeHinweis.isEmpty {
+                            Label(a.med.einnahmeHinweis, systemImage: "fork.knife")
+                                .font(.caption2).foregroundStyle(.blue)
+                        }
+                        if let vorrat = a.med.vorrat {
+                            let knapp = vorrat <= a.med.vorratSchwelle
+                            Label("\(vorrat) Stück", systemImage: knapp ? "exclamationmark.circle.fill" : "shippingbox.fill")
+                                .font(.caption2).foregroundStyle(knapp ? .orange : .secondary)
+                        }
+                        if let ablauf = a.med.ablaufDatum {
+                            let tage = Calendar.current.dateComponents([.day],
+                                from: Calendar.current.startOfDay(for: Date()),
+                                to: Calendar.current.startOfDay(for: ablauf)).day ?? 0
+                            Label {
+                                Text(ablauf, format: .dateTime.day().month(.abbreviated).year())
+                            } icon: {
+                                Image(systemName: tage <= 14 ? "exclamationmark.triangle.fill" : "calendar.badge.clock")
+                            }
+                            .font(.caption2)
+                            .foregroundStyle(tage <= 14 ? .orange : .secondary)
+                        }
+                    }
+                }
+                Spacer()
+                InfoButton(
+                    titel: a.med.name,
+                    text: "Zeigt Einnahmetreue, Schmerz mit vs. ohne Einnahme sowie die Schmerzentwicklung vor und nach Therapiebeginn.\n\nWichtig: Diese Auswertung ist rein explorativ. Nur eine Fachperson kann die klinische Wirksamkeit beurteilen. Bitte die Ergebnisse immer im Arztgespräch besprechen."
+                )
+                let pct = Int(a.einnahmetreue * 100)
+                Text("\(pct)%")
+                    .font(.subheadline.bold())
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(treueFarbe(a.einnahmetreue).opacity(0.12), in: Capsule())
+                    .foregroundStyle(treueFarbe(a.einnahmetreue))
+            }
+
+            if let mit = a.schmerzMitMed, let ohne = a.schmerzOhneMed, a.nMit >= 3 {
+                Divider()
+                HStack(spacing: 0) {
+                    medStatSpalte("Mit Medikament",   wert: fmt(mit),  farbe: .blue,      n: a.nMit)
+                    Divider().frame(height: 44)
+                    medStatSpalte("Ohne Medikament",  wert: fmt(ohne), farbe: .secondary, n: a.nOhne)
+                }
+            }
+
+            if let vor = a.schmerzVorStart, let nach = a.schmerzNachStart {
+                let diff = vor - nach
+                Divider()
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(spacing: 2) {
+                        Text(fmt(vor)).font(.title3.bold()).foregroundStyle(.orange)
+                        Text("Vor Start").font(.caption2).foregroundStyle(.secondary)
+                        Text("n=\(a.nVor)").font(.caption2).foregroundStyle(.tertiary)
+                    }
+                    Image(systemName: "arrow.right").foregroundStyle(.secondary)
+                    VStack(spacing: 2) {
+                        Text(fmt(nach)).font(.title3.bold())
+                            .foregroundStyle(diff > 0.5 ? .green : diff < -0.5 ? .red : .orange)
+                        Text("Nach Start").font(.caption2).foregroundStyle(.secondary)
+                        Text("n=\(a.nNach)").font(.caption2).foregroundStyle(.tertiary)
+                    }
+                    Spacer()
+                    if abs(diff) > 0.3 {
+                        VStack(spacing: 2) {
+                            Text(diff > 0 ? "−\(fmt(diff))" : "+\(fmt(abs(diff)))")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(diff > 0 ? .green : .red)
+                            Text("Ø Schmerz").font(.caption2).foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background((diff > 0 ? Color.green : Color.red).opacity(0.1),
+                                    in: RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+
+            let fenster = min(30, max(1, Calendar.current.dateComponents([.day],
+                from: Calendar.current.startOfDay(for: a.med.startDatum),
+                to: Calendar.current.startOfDay(for: Date())).day ?? 1))
+            Text("Einnahmetreue letzte \(fenster) Tage · \(a.nMit + a.nOhne) Schmerzeinträge")
+                .font(.caption2).foregroundStyle(.tertiary)
+        }
+    }
+
+    @ViewBuilder
+    private func medStatSpalte(_ titel: String, wert: String, farbe: Color, n: Int) -> some View {
+        VStack(spacing: 4) {
+            Text(wert).font(.title3.bold()).foregroundStyle(farbe)
+            Text(titel).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Text("n=\(n)").font(.caption2).foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func treueFarbe(_ treue: Double) -> Color {
+        treue >= 0.85 ? .green : treue >= 0.60 ? .orange : .red
+    }
+
+    // MARK: - Körperstellen
+
+    private var koerperstellenDaten: [(ort: String, anzahl: Int, avgSchmerz: Double)] {
+        var dict: [String: [Int]] = [:]
+        for e in eintraege where !e.koerperstelle.isEmpty {
+            e.koerperstelle.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { dict[$0, default: []].append(e.schmerzstaerke) }
+        }
+        return dict
+            .map { ort, w in (ort: ort, anzahl: w.count, avgSchmerz: Double(w.reduce(0,+)) / Double(w.count)) }
+            .sorted { $0.anzahl > $1.anzahl }
+            .prefix(7).map { $0 }
+    }
+
+    private var koerperstellenChart: some View {
+        karte {
+            karteHeader(
+                titel: "Häufigste Schmerzorte",
+                untertitel: "Häufigkeit je Körperregion, Farbe = Ø Schmerzstärke",
+                info: "Zeigt die am häufigsten betroffenen Körperstellen, sortiert nach Anzahl der Einträge. Die Balkenfarbe zeigt die durchschnittliche Schmerzstärke (grün = gering, rot = stark).\n\nWarum wichtig: Die Lokalisation ist ein wichtiges diagnostisches Merkmal. Mehrere Körperstellen oder ein Wechsel des Schmerzorts können auf spezifische Erkrankungen hinweisen."
+            )
+            if koerperstellenDaten.isEmpty {
+                Text("Keine Körperstellen erfasst.").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(koerperstellenDaten, id: \.ort) { item in
+                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Ort", item.ort))
+                        .foregroundStyle(SchmerzBadge.farbe(fuer: Int(item.avgSchmerz)).gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .trailing) {
+                            Text("×\(item.anzahl)  Ø\(fmt(item.avgSchmerz))")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(koerperstellenDaten.count * 46 + 20))
+            }
+        }
+    }
+
+    // MARK: - Schmerzarten
+
+    private var schmerzartDaten: [(art: String, anzahl: Int, avgSchmerz: Double)] {
+        var dict: [String: [Int]] = [:]
+        for e in eintraege where !e.schmerzart.isEmpty {
+            e.schmerzart.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { dict[$0, default: []].append(e.schmerzstaerke) }
+        }
+        return dict
+            .map { art, w in (art: art, anzahl: w.count, avgSchmerz: Double(w.reduce(0,+)) / Double(w.count)) }
+            .sorted { $0.anzahl > $1.anzahl }
+            .prefix(8).map { $0 }
+    }
+
+    private var schmerzartChart: some View {
+        karte {
+            karteHeader(
+                titel: "Häufige Schmerzarten",
+                untertitel: "Wie sich der Schmerz typischerweise anfühlt",
+                info: "Zeigt den Schmerzcharakter sortiert nach Häufigkeit der Nennung.\n\nWarum wichtig: Der Charakter des Schmerzes (pochend, brennend, drückend, stechend...) ist ein zentrales diagnostisches Kriterium. Pochender Schmerz ist typisch für Migräne, brennender für neuropathische Schmerzen. Diese Übersicht ist wertvoll für Arztgespräche."
+            )
+            if schmerzartDaten.isEmpty {
+                Text("Keine Schmerzarten erfasst. Wähle im Wizard unter «Charakter» die Schmerzart.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(schmerzartDaten, id: \.art) { item in
+                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Art", item.art))
+                        .foregroundStyle(Color.purple.gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .trailing) {
+                            Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(schmerzartDaten.count * 46 + 20))
+            }
+        }
+    }
+
+    // MARK: - Begleiterscheinungen
+
+    private var begleitDaten: [(symptom: String, anzahl: Int)] {
+        var dict: [String: Int] = [:]
+        for e in eintraege where !e.begleiterscheinungen.isEmpty {
+            e.begleiterscheinungen.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { dict[$0, default: 0] += 1 }
+        }
+        return dict.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }.prefix(8).map { $0 }
+    }
+
+    private var begleiterscheinungenChart: some View {
+        karte {
+            karteHeader(
+                titel: "Häufige Begleiterscheinungen",
+                untertitel: "Welche Begleitsymptome am häufigsten auftreten",
+                info: "Zeigt Symptome, die am häufigsten zusammen mit dem Schmerz auftreten.\n\nWarum wichtig: Bestimmte Begleitmuster weisen auf spezifische Diagnosen hin – z.B. Übelkeit + Lichtempfindlichkeit + Phonophobie bei Migräne. Zeige diese Übersicht beim nächsten Arzttermin."
+            )
+            if begleitDaten.isEmpty {
+                Text("Keine Begleiterscheinungen erfasst.").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(begleitDaten, id: \.symptom) { item in
+                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Symptom", item.symptom))
+                        .foregroundStyle(Color.teal.gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .trailing) {
+                            Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(begleitDaten.count * 46 + 20))
+            }
+        }
+    }
+
+    // MARK: - Massnahmen
+
+    private var massnahmenDaten: [(massnahme: String, anzahl: Int)] {
+        var dict: [String: Int] = [:]
+        for e in eintraege where !e.massnahmen.isEmpty {
+            e.massnahmen.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .forEach { dict[$0, default: 0] += 1 }
+        }
+        return dict.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }.prefix(8).map { $0 }
+    }
+
+    private var massnahmenChart: some View {
+        karte {
+            karteHeader(
+                titel: "Angewandte Massnahmen",
+                untertitel: "Was du am häufigsten gegen den Schmerz unternimmst",
+                info: "Zeigt deine am häufigsten angewandten Massnahmen bei Schmerz.\n\nWorauf achten: Entspricht die Häufigkeit der Massnahmen den ärztlichen Empfehlungen? Werden nicht-medikamentöse Strategien (z.B. Entspannung, Kälte/Wärme, Bewegung) ausreichend eingesetzt?"
+            )
+            if massnahmenDaten.isEmpty {
+                Text("Keine Massnahmen erfasst.").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(massnahmenDaten, id: \.massnahme) { item in
+                    BarMark(x: .value("Anzahl", item.anzahl), y: .value("Massnahme", item.massnahme))
+                        .foregroundStyle(Color.green.gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .trailing) {
+                            Text("×\(item.anzahl)").font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: CGFloat(massnahmenDaten.count * 46 + 20))
             }
         }
     }
@@ -1422,15 +1355,11 @@ struct KorrelationsView: View {
 // MARK: - Adherence model
 
 private struct MedAdherenz {
-    let name: String
-    let dosierung: String
-    let adherenzRate: Double        // 0–1, capped
-    let einnahmenTage: Int
-    let erwarteterTage: Int
-    let avgSchmerzMit: Double?
-    let avgSchmerzOhne: Double?
-    let nMit: Int
-    let nOhne: Int
+    let name: String; let dosierung: String
+    let adherenzRate: Double
+    let einnahmenTage: Int; let erwarteterTage: Int
+    let avgSchmerzMit: Double?; let avgSchmerzOhne: Double?
+    let nMit: Int; let nOhne: Int
 }
 
 // MARK: - Adherence row
@@ -1458,18 +1387,13 @@ private struct MedAdherenzZeile: View {
                 }
                 Spacer()
                 Text("\(Int(med.adherenzRate * 100)) %")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(adherenzFarbe)
+                    .font(.subheadline.bold()).foregroundStyle(adherenzFarbe)
             }
 
-            // Adherence progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.secondary.opacity(0.15))
-                        .frame(height: 6)
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(adherenzFarbe.gradient)
+                    RoundedRectangle(cornerRadius: 4).fill(Color.secondary.opacity(0.15)).frame(height: 6)
+                    RoundedRectangle(cornerRadius: 4).fill(adherenzFarbe.gradient)
                         .frame(width: geo.size.width * med.adherenzRate, height: 6)
                 }
             }
@@ -1478,17 +1402,15 @@ private struct MedAdherenzZeile: View {
             Text("\(med.einnahmenTage) von \(med.erwarteterTage) Tagen eingenommen")
                 .font(.caption2).foregroundStyle(.tertiary)
 
-            // Pain comparison
             if let mit = med.avgSchmerzMit {
                 HStack(spacing: 12) {
-                    PainPill(label: "Mit Einnahme", wert: mit, n: med.nMit, farbe: .blue, fmt: fmt)
+                    PainPill(label: "Mit Einnahme",   wert: mit,             n: med.nMit,  farbe: .blue,      fmt: fmt)
                     if let ohne = med.avgSchmerzOhne {
                         PainPill(label: "Ohne Einnahme", wert: ohne, n: med.nOhne, farbe: .secondary, fmt: fmt)
                     }
                 }
             } else {
-                Text("Nicht genug Schmerzdaten für Vergleich.")
-                    .font(.caption2).foregroundStyle(.tertiary)
+                Text("Nicht genug Schmerzdaten für Vergleich.").font(.caption2).foregroundStyle(.tertiary)
             }
         }
         .padding(.vertical, 4)
@@ -1496,19 +1418,13 @@ private struct MedAdherenzZeile: View {
 }
 
 private struct PainPill: View {
-    let label: String
-    let wert: Double
-    let n: Int
-    let farbe: Color
-    let fmt: (Double) -> String
+    let label: String; let wert: Double; let n: Int; let farbe: Color; let fmt: (Double) -> String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(.caption2).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(fmt(wert))
-                    .font(.subheadline.bold())
-                    .foregroundStyle(farbe)
+                Text(fmt(wert)).font(.subheadline.bold()).foregroundStyle(farbe)
                 Text("Ø").font(.caption2).foregroundStyle(.secondary)
                 Text("(n=\(n))").font(.caption2).foregroundStyle(.tertiary)
             }
