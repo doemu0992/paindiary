@@ -27,13 +27,13 @@ struct DashboardView: View {
                 heuteKarte
                 if profile.first?.zyklusTrackingAktiv == true { zyklusKarte }
                 if !medikamente.filter(\.aktiv).isEmpty { medikamentenKarte }
-                wellnessKarte
+                hautVeraenderungKarte
 
                 abschnittTitel("Verlauf")
                 schmerzVerlaufChart
 
                 abschnittTitel("Zuletzt")
-                letzteEintraege
+                stimmungStressKarte
                 schnellLinks
             }
             .padding()
@@ -158,9 +158,15 @@ struct DashboardView: View {
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Ø Schmerzstärke")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        Text("Ø Schmerzstärke")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        InfoButton(
+                            titel: "Ø Schmerzstärke",
+                            text: "Der Gesamtdurchschnitt aller erfassten Schmerzeinträge. Der Trend-Badge (↑/↓) vergleicht diese Woche mit der Vorwoche – grün bedeutet Verbesserung, rot eine Verschlechterung."
+                        )
+                    }
                     HStack(alignment: .lastTextBaseline, spacing: 6) {
                         Text(String(format: "%.1f", avg))
                             .font(.system(size: 48, weight: .bold, design: .rounded))
@@ -206,6 +212,10 @@ struct DashboardView: View {
                 HStack {
                     Label("Medikamente heute", systemImage: "pill.fill")
                         .font(.headline).foregroundStyle(.blue)
+                    InfoButton(
+                        titel: "Medikamente heute",
+                        text: "Zeigt deine aktiven Dauermedikamente und deren heutigen Einnahmestatus. Hake Einnahmen im Medikamenten-Tab ab."
+                    )
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
@@ -241,53 +251,58 @@ struct DashboardView: View {
         .buttonStyle(.plain)
     }
 
-    private var wellnessKarte: some View {
-        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
-        let wasserMl = UserDefaults.standard.integer(forKey: "wasserMl_\(df.string(from: Date()))")
-        let wasserZiel = { let z = UserDefaults.standard.integer(forKey: "wasserZielMl"); return z > 0 ? z : 2000 }()
-        let fortschritt = min(Double(wasserMl) / Double(wasserZiel), 1.0)
+    @ViewBuilder
+    private var hautVeraenderungKarte: some View {
+        let hautEintraege = eintraege.filter { $0.istHautEintrag }
+        if !hautEintraege.isEmpty {
+            let kal = Calendar.current
+            let wocheStart = kal.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+            let dieseWoche = hautEintraege.filter { $0.datum >= wocheStart }
+            let alleArten = hautEintraege.flatMap { $0.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty } }
+            let topArt = Dictionary(grouping: alleArten, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key
+            let alleStellen = hautEintraege.flatMap { $0.hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty } }
+            let topStellen = Dictionary(grouping: alleStellen, by: { $0 })
+                .sorted { $0.value.count > $1.value.count }.prefix(3).map(\.key)
 
-        return NavigationLink(destination: WellnessView()) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Label("Wohlbefinden", systemImage: "heart.text.square.fill")
-                        .font(.headline).foregroundStyle(.pink)
+                    Label("Hautveränderungen", systemImage: "allergens")
+                        .font(.headline).foregroundStyle(.orange)
+                    InfoButton(
+                        titel: "Hautveränderungen",
+                        text: "Zeigt eine Zusammenfassung deiner erfassten Hautveränderungen. Häufig betroffene Stellen und Arten helfen dir und deinem Arzt, Muster und Zusammenhänge zu erkennen."
+                    )
                     Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
+                Divider()
                 HStack(spacing: 0) {
-                    VStack(spacing: 6) {
-                        ZStack {
-                            Circle().stroke(Color.teal.opacity(0.2), lineWidth: 5).frame(width: 44, height: 44)
-                            Circle()
-                                .trim(from: 0, to: fortschritt)
-                                .stroke(Color.teal, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                                .frame(width: 44, height: 44)
-                            Image(systemName: "drop.fill").font(.caption).foregroundStyle(.teal)
+                    miniStat("Diese Woche", wert: "\(dieseWoche.count)", farbe: .orange)
+                    Divider().frame(height: 36)
+                    miniStat("Gesamt", wert: "\(hautEintraege.count)", farbe: .orange)
+                    Divider().frame(height: 36)
+                    miniStat("Häufigste Art", wert: topArt ?? "–", farbe: .orange)
+                }
+                if !topStellen.isEmpty {
+                    Divider()
+                    Text("Häufig betroffene Stellen")
+                        .font(.caption).foregroundStyle(.secondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(topStellen, id: \.self) { stelle in
+                                Text(stelle)
+                                    .font(.caption)
+                                    .padding(.horizontal, 10).padding(.vertical, 5)
+                                    .background(Color.orange.opacity(0.12), in: Capsule())
+                                    .foregroundStyle(.orange)
+                            }
                         }
-                        Text("\(wasserMl) ml").font(.caption.bold())
-                        Text("Wasser").font(.caption2).foregroundStyle(.secondary)
                     }
-                    .frame(maxWidth: .infinity)
-
-                    Divider().frame(height: 56)
-
-                    VStack(spacing: 6) {
-                        Image(systemName: fortschritt >= 1 ? "checkmark.circle.fill" : "circle.dashed")
-                            .font(.title2).foregroundStyle(fortschritt >= 1 ? .green : .secondary)
-                        Text(fortschritt >= 1 ? "Ziel erreicht" : String(format: "%.0f%%", fortschritt * 100))
-                            .font(.caption.bold()).foregroundStyle(fortschritt >= 1 ? .green : .secondary)
-                        Text("Tagesziel").font(.caption2).foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
                 }
             }
             .padding()
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
-        .buttonStyle(.plain)
     }
 
     private var zyklusKarte: some View {
@@ -321,6 +336,10 @@ struct DashboardView: View {
                 HStack {
                     Label("Zyklus-Tracker", systemImage: "drop.circle.fill")
                         .font(.headline).foregroundStyle(.pink)
+                    InfoButton(
+                        titel: "Zyklus-Tracker",
+                        text: "Zeigt deinen aktuellen Zyklustag, die voraussichtliche nächste Periode und das fruchtbare Fenster basierend auf deinen bisherigen Einträgen."
+                    )
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
@@ -373,51 +392,94 @@ struct DashboardView: View {
         SchmerzVerlaufKarte(eintraege: Array(eintraege))
     }
 
-    private var letzteEintraege: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Letzte Einträge").font(.headline)
+    private var stimmungStressKarte: some View {
+        let kal = Calendar.current
+        let wocheStart = kal.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let wochenEintraege = eintraege.filter { $0.datum >= wocheStart && !$0.istHautEintrag }
+        let stimmungWerte = wochenEintraege.filter { $0.stimmung > 0 }.map(\.stimmung)
+        let avgStimmung = stimmungWerte.isEmpty ? 0.0 : Double(stimmungWerte.reduce(0, +)) / Double(stimmungWerte.count)
+        let stressWerte = wochenEintraege.filter { $0.stressLevel > 0 }.map(\.stressLevel)
+        let avgStress = stressWerte.isEmpty ? 0.0 : Double(stressWerte.reduce(0, +)) / Double(stressWerte.count)
+        let schlafWerte = wochenEintraege.filter { $0.schlafStunden > 0 }.map(\.schlafStunden)
+        let avgSchlaf = schlafWerte.isEmpty ? 0.0 : schlafWerte.reduce(0, +) / Double(schlafWerte.count)
+        let schlafFarbe: Color = avgSchlaf >= 7 ? .green : avgSchlaf >= 5 ? .orange : .red
 
-            if eintraege.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "heart.text.clipboard")
-                        .font(.system(size: 36)).foregroundStyle(.secondary)
-                    Text("Noch keine Einträge").font(.subheadline.bold())
-                    Text("Tippe auf + um deinen ersten Schmerzeintrag zu erfassen.")
-                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Stimmung & Stress", systemImage: "heart.text.square.fill")
+                    .font(.headline).foregroundStyle(.pink)
+                InfoButton(
+                    titel: "Stimmung & Stress",
+                    text: "Zeigt den Wochen-Durchschnitt deiner Stimmung (1 = Schlecht, 5 = Super), deines Stresslevels (1 = Entspannt, 5 = Extrem) und deiner Schlafdauer – alles aus den Einträgen der letzten 7 Tage."
+                )
+                Spacer()
+            }
+            Divider()
+
+            if stimmungWerte.isEmpty && stressWerte.isEmpty && schlafWerte.isEmpty {
+                Text("Noch keine Wohlbefindens-Daten diese Woche.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity).padding(.vertical, 8)
             } else {
-                ForEach(eintraege.prefix(5)) { eintrag in
-                    NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
-                        HStack(spacing: 12) {
-                            SchmerzBadge(staerke: eintrag.schmerzstaerke)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(eintrag.koerperstelle.isEmpty ? "Körperstelle unbekannt" : eintrag.koerperstelle)
-                                    .font(.subheadline).fontWeight(.medium).foregroundStyle(.primary)
-                                Group {
-                                    if Calendar.current.isDateInToday(eintrag.datum) {
-                                        Text(eintrag.datum, style: .relative)
-                                    } else if Calendar.current.isDateInYesterday(eintrag.datum) {
-                                        Text("Gestern")
-                                    } else {
-                                        Text(eintrag.datum, style: .date)
-                                    }
-                                }
-                                .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                        }
-                        .padding(.vertical, 6)
+                HStack(spacing: 0) {
+                    VStack(spacing: 6) {
+                        Text(avgStimmung > 0 ? stimmungLabel(Int(avgStimmung.rounded())) : "–")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(avgStimmung > 0 ? stimmungFarbe(Int(avgStimmung.rounded())) : .secondary)
+                        Image(systemName: "heart.fill").font(.caption)
+                            .foregroundStyle(avgStimmung > 0 ? stimmungFarbe(Int(avgStimmung.rounded())) : .secondary)
+                        Text("Stimmung").font(.caption2).foregroundStyle(.secondary)
                     }
-                    if eintrag.id != eintraege.prefix(5).last?.id { Divider() }
+                    .frame(maxWidth: .infinity)
+
+                    Divider().frame(height: 56)
+
+                    VStack(spacing: 6) {
+                        Text(avgStress > 0 ? stressLabel(Int(avgStress.rounded())) : "–")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(avgStress > 0 ? stressFarbe(Int(avgStress.rounded())) : .secondary)
+                        HStack(spacing: 3) {
+                            ForEach(1...5, id: \.self) { i in
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Double(i) <= avgStress
+                                          ? stressFarbe(Int(avgStress.rounded()))
+                                          : Color.secondary.opacity(0.2))
+                                    .frame(width: 8, height: 12)
+                            }
+                        }
+                        Text("Stress").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    Divider().frame(height: 56)
+
+                    VStack(spacing: 6) {
+                        Text(avgSchlaf > 0 ? String(format: "%.1fh", avgSchlaf) : "–")
+                            .font(.subheadline.bold()).foregroundStyle(avgSchlaf > 0 ? schlafFarbe : .secondary)
+                        Image(systemName: "moon.zzz.fill").font(.caption)
+                            .foregroundStyle(avgSchlaf > 0 ? schlafFarbe : .secondary)
+                        Text("Schlaf").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
             }
         }
         .padding()
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    }
+
+    private func stimmungLabel(_ s: Int) -> String {
+        switch s { case 1: "Schlecht"; case 2: "Mässig"; case 3: "Okay"; case 4: "Gut"; default: "Super" }
+    }
+    private func stimmungFarbe(_ s: Int) -> Color {
+        switch s { case 1: .red; case 2: .orange; case 3: .yellow; case 4: .mint; default: .green }
+    }
+    private func stressLabel(_ s: Int) -> String {
+        switch s { case 1: "Entspannt"; case 2: "Leicht"; case 3: "Mässig"; case 4: "Hoch"; default: "Extrem" }
+    }
+    private func stressFarbe(_ s: Int) -> Color {
+        switch s { case 1: .green; case 2: .mint; case 3: .yellow; case 4: .orange; default: .red }
     }
 
     // MARK: - PDF
