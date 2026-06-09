@@ -21,6 +21,7 @@ struct DashboardView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                begrüssungsHeader
                 statistikKarten
                 if profile.first?.zyklusTrackingAktiv == true { zyklusKarte }
                 if !medikamente.filter(\.aktiv).isEmpty { medikamentenKarte }
@@ -94,6 +95,28 @@ struct DashboardView: View {
 #endif
     }
 
+    // MARK: - Header
+
+    private var begrüssungsHeader: some View {
+        let stunde = Calendar.current.component(.hour, from: Date())
+        let gruss = stunde < 12 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend"
+        let df = DateFormatter()
+        df.dateFormat = "EEEE, d. MMMM"
+        df.locale = Locale(identifier: "de_CH")
+        return HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(gruss)
+                    .font(.title2.bold())
+                Text(df.string(from: Date()))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: - Karten
+
     private var medikamentenKarte: some View {
         let aktive = medikamente.filter(\.aktiv)
         let notif = NotificationManager.shared
@@ -148,6 +171,7 @@ struct DashboardView: View {
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -171,7 +195,6 @@ struct DashboardView: View {
                 }
 
                 HStack(spacing: 0) {
-                    // Wasser
                     VStack(spacing: 6) {
                         ZStack {
                             Circle()
@@ -194,7 +217,6 @@ struct DashboardView: View {
 
                     Divider().frame(height: 56)
 
-                    // Wellness-Tab Shortcut
                     VStack(spacing: 6) {
                         Image(systemName: fortschritt >= 1 ? "checkmark.circle.fill" : "circle.dashed")
                             .font(.title2)
@@ -209,6 +231,7 @@ struct DashboardView: View {
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -264,6 +287,7 @@ struct DashboardView: View {
             }
             .padding()
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -279,6 +303,7 @@ struct DashboardView: View {
                 }
                 .padding()
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .buttonStyle(.plain)
 
@@ -291,6 +316,7 @@ struct DashboardView: View {
                 }
                 .padding()
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .buttonStyle(.plain)
         }
@@ -319,9 +345,19 @@ struct DashboardView: View {
                 .font(.headline)
 
             if eintraege.isEmpty {
-                Text("Noch keine Einträge vorhanden.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(spacing: 12) {
+                    Image(systemName: "heart.text.clipboard")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.secondary)
+                    Text("Noch keine Einträge")
+                        .font(.subheadline.bold())
+                    Text("Tippe auf + um deinen ersten Schmerzeintrag zu erfassen.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
             } else {
                 ForEach(eintraege.prefix(5)) { eintrag in
                     NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
@@ -331,8 +367,16 @@ struct DashboardView: View {
                                 Text(eintrag.koerperstelle.isEmpty ? "Körperstelle unbekannt" : eintrag.koerperstelle)
                                     .font(.subheadline).fontWeight(.medium)
                                     .foregroundStyle(.primary)
-                                Text(eintrag.datum, style: .relative)
-                                    .font(.caption).foregroundStyle(.secondary)
+                                Group {
+                                    if Calendar.current.isDateInToday(eintrag.datum) {
+                                        Text(eintrag.datum, style: .relative)
+                                    } else if Calendar.current.isDateInYesterday(eintrag.datum) {
+                                        Text("Gestern")
+                                    } else {
+                                        Text(eintrag.datum, style: .date)
+                                    }
+                                }
+                                .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -349,6 +393,7 @@ struct DashboardView: View {
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 }
 
@@ -427,8 +472,14 @@ private struct StatKarte: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Image(systemName: symbol)
-                    .foregroundStyle(farbe)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(farbe.opacity(0.15))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: symbol)
+                        .foregroundStyle(farbe)
+                        .font(.system(size: 15, weight: .semibold))
+                }
                 Spacer()
             }
             Text(wert)
@@ -441,5 +492,6 @@ private struct StatKarte: View {
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 }

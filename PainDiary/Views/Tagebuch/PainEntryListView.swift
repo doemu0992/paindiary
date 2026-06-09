@@ -174,6 +174,14 @@ struct PainEntryListView: View {
 private struct PainEntryZeile: View {
     let eintrag: PainEntry
 
+    private func stimmungFarbe(_ wert: Int) -> Color {
+        switch wert {
+        case 1...2: return .gray
+        case 3: return .orange
+        default: return .pink
+        }
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             SchmerzBadge(staerke: eintrag.schmerzstaerke)
@@ -189,8 +197,16 @@ private struct PainEntryZeile: View {
                             .lineLimit(1)
                         Text("·").font(.caption).foregroundStyle(.secondary)
                     }
-                    Text(eintrag.datum, style: .date)
-                        .font(.caption).foregroundStyle(.secondary)
+                    Group {
+                        if Calendar.current.isDateInToday(eintrag.datum) {
+                            Text(eintrag.datum, style: .relative)
+                        } else if Calendar.current.isDateInYesterday(eintrag.datum) {
+                            Text("Gestern")
+                        } else {
+                            Text(eintrag.datum, style: .date)
+                        }
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
                     if let code = eintrag.wetterCode {
                         Text("·").font(.caption).foregroundStyle(.secondary)
                         Image(systemName: WetterSnapshot.symbolFuerCode(code))
@@ -204,12 +220,14 @@ private struct PainEntryZeile: View {
                 }
             }
             Spacer()
-            HStack(spacing: 1) {
-                ForEach(1...5, id: \.self) { i in
-                    Image(systemName: i <= eintrag.stimmung ? "heart.fill" : "heart")
-                        .font(.system(size: 8))
-                        .foregroundStyle(i <= eintrag.stimmung ? .red : .secondary.opacity(0.3))
+            if eintrag.stimmung > 0 {
+                HStack(spacing: 2) {
+                    Image(systemName: "heart.fill")
+                        .font(.caption2)
+                    Text("\(eintrag.stimmung)")
+                        .font(.caption2.bold())
                 }
+                .foregroundStyle(stimmungFarbe(eintrag.stimmung))
             }
         }
         .padding(.vertical, 4)
