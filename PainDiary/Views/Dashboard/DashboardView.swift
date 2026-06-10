@@ -114,10 +114,9 @@ struct DashboardView: View {
         case .midasKachel:         MidasKachel(bewertungen: Array(midasBewertungen))
         case .konfigKorrelation:
             KonfigKorrelationsKachel(
+                kachel: kachel,
                 eintraege: Array(eintraege),
-                xVariable: kachel.xVariable,
-                yVariable: kachel.yVariable,
-                titel: kachel.benutzertitel
+                einnahmeLogs: Array(einnahmeLogs)
             )
         }
     }

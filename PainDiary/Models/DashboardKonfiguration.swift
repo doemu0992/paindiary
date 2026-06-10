@@ -96,6 +96,13 @@ struct KachelKonfiguration: Codable, Identifiable, Hashable, Equatable {
     var xVariable: String = ""
     var yVariable: String = "schmerzstaerke"
     var benutzertitel: String = ""
+    // Korrelations-Filter
+    var filterRegionen: [String] = []
+    var filterSchmerzarten: [String] = []
+    var filterMedikament: String = ""
+    var filterZeitraum: Int = 0       // 0 = alles, 7 / 30 / 90 Tage
+    var filterMinStaerke: Int = 0     // 0 = kein Filter
+    var diagrammTyp: String = "auto"  // "auto" | "balken" | "scatter"
 
     var anzeigeTitel: String {
         benutzertitel.isEmpty ? typ.titel : benutzertitel

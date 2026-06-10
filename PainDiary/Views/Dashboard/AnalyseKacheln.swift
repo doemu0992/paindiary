@@ -370,15 +370,22 @@ struct MidasKachel: View {
 // MARK: - Konfigurierte Korrelation
 
 struct KonfigKorrelationsKachel: View {
+    let kachel: KachelKonfiguration
     let eintraege: [PainEntry]
-    let xVariable: String
-    let yVariable: String
-    let titel: String
+    let einnahmeLogs: [EinnahmeLog]
 
-    private var anzeigeTitel: String { titel.isEmpty ? "Korrelation" : titel }
+    private var xVariable: String { kachel.xVariable }
+    private var yVariable: String { kachel.yVariable }
+    private var anzeigeTitel: String { kachel.anzeigeTitel.isEmpty ? "Korrelation" : kachel.anzeigeTitel }
 
     private var infoText: String {
-        "Benutzerdefinierte Korrelation: \(xLabel) auf der X-Achse, \(yLabel) auf der Y-Achse."
+        var teile = ["Benutzerdefinierte Korrelation: \(xLabel) → \(yLabel)."]
+        if !kachel.filterRegionen.isEmpty { teile.append("Region: \(kachel.filterRegionen.joined(separator: ", ")).") }
+        if !kachel.filterSchmerzarten.isEmpty { teile.append("Art: \(kachel.filterSchmerzarten.joined(separator: ", ")).") }
+        if !kachel.filterMedikament.isEmpty { teile.append("Medikament: \(kachel.filterMedikament).") }
+        if kachel.filterZeitraum > 0 { teile.append("Zeitraum: letzte \(kachel.filterZeitraum) Tage.") }
+        if kachel.filterMinStaerke > 0 { teile.append("Nur Einträge ≥ \(kachel.filterMinStaerke).") }
+        return teile.joined(separator: " ")
     }
 
     var body: some View {
@@ -387,22 +394,78 @@ struct KonfigKorrelationsKachel: View {
         }
     }
 
+    // MARK: - Gefilterte Einträge
+
+    private var gefilterteEintraege: [PainEntry] {
+        var result = eintraege.filter { !$0.istHautEintrag }
+
+        if kachel.filterZeitraum > 0 {
+            let cutoff = Calendar.current.date(byAdding: .day, value: -kachel.filterZeitraum, to: Date()) ?? Date()
+            result = result.filter { $0.datum >= cutoff }
+        }
+        if !kachel.filterRegionen.isEmpty {
+            result = result.filter { entry in
+                let regionen = entry.koerperstelle.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                return kachel.filterRegionen.contains(where: { regionen.contains($0) })
+            }
+        }
+        if !kachel.filterSchmerzarten.isEmpty {
+            result = result.filter { kachel.filterSchmerzarten.contains($0.schmerzart) }
+        }
+        if !kachel.filterMedikament.isEmpty {
+            let kal = Calendar.current
+            let medName = kachel.filterMedikament
+            let medTage = Set(einnahmeLogs
+                .filter { $0.medikamentName == medName && $0.eingenommen }
+                .map { kal.startOfDay(for: $0.datum) })
+            result = result.filter { medTage.contains(kal.startOfDay(for: $0.datum)) }
+        }
+        if kachel.filterMinStaerke > 0 {
+            result = result.filter { $0.schmerzstaerke >= kachel.filterMinStaerke }
+        }
+        return result
+    }
+
+    // MARK: - Diagramm-Typ
+
+    private var effektiverDiagrammTyp: String {
+        if kachel.diagrammTyp != "auto" { return kachel.diagrammTyp }
+        return xVariable == "schlaf" ? "scatter" : "balken"
+    }
+
+    // MARK: - Body
+
     @ViewBuilder
     private var kachelInhalt: some View {
-        let valid = eintraege.filter { !$0.istHautEintrag }
-        let balken = xKategorien(valid)
+        let entries = gefilterteEintraege
+        if effektiverDiagrammTyp == "scatter" {
+            scatterDiagramm(entries)
+        } else {
+            balkenDiagramm(entries)
+        }
+    }
 
+    // MARK: - Balken
+
+    private struct Balken: Identifiable {
+        var id: String { kategorie }
+        let kategorie: String; let avg: Double; let anzahl: Int
+    }
+
+    @ViewBuilder
+    private func balkenDiagramm(_ entries: [PainEntry]) -> some View {
+        let balken = xKategorien(entries)
         if balken.isEmpty {
             leer("Noch nicht genug Daten für diese Korrelation.")
         } else {
             Chart(balken) { p in
-                BarMark(x: .value("Anzahl", p.avg), y: .value(xLabel, p.kategorie))
+                BarMark(x: .value(yLabel, p.avg), y: .value(xLabel, p.kategorie))
                     .foregroundStyle(yFarbe(p.avg).gradient)
                     .cornerRadius(4)
-                .annotation(position: .trailing) {
-                    Text(String(format: "%.1f", p.avg))
-                        .font(.caption2.bold()).foregroundStyle(.secondary)
-                }
+                    .annotation(position: .trailing) {
+                        Text(String(format: "%.1f", p.avg))
+                            .font(.caption2.bold()).foregroundStyle(.secondary)
+                    }
             }
             .chartXScale(domain: 0...yMaxWert)
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
@@ -410,10 +473,36 @@ struct KonfigKorrelationsKachel: View {
         }
     }
 
-    private struct Balken: Identifiable {
-        var id: String { kategorie }
-        let kategorie: String; let avg: Double; let anzahl: Int
+    // MARK: - Scatter
+
+    private struct ScatterPunkt: Identifiable {
+        let id = UUID()
+        let x: Double; let y: Double
     }
+
+    @ViewBuilder
+    private func scatterDiagramm(_ entries: [PainEntry]) -> some View {
+        let punkte: [ScatterPunkt] = entries
+            .filter { $0.schlafStunden > 0 }
+            .map { ScatterPunkt(x: $0.schlafStunden, y: yWert($0)) }
+
+        if punkte.isEmpty {
+            leer("Noch nicht genug Daten für dieses Diagramm.")
+        } else {
+            Chart(punkte) { p in
+                PointMark(x: .value("Schlaf (h)", p.x), y: .value(yLabel, p.y))
+                    .foregroundStyle(yFarbe(p.y).opacity(0.75))
+                    .symbolSize(55)
+            }
+            .chartXScale(domain: 0...12)
+            .chartYScale(domain: 0...yMaxWert)
+            .chartXAxisLabel("Schlaf (h)")
+            .chartYAxisLabel(yLabel)
+            .frame(height: 180)
+        }
+    }
+
+    // MARK: - X-Kategorien
 
     private func xKategorien(_ entries: [PainEntry]) -> [Balken] {
         var gruppen: [(String, [PainEntry])] = []
@@ -452,13 +541,34 @@ struct KonfigKorrelationsKachel: View {
                 let g = entries.filter { Calendar.current.component(.weekday, from: $0.datum) == i }
                 return g.isEmpty ? nil : (tage[i - 1], g)
             }
+        case "medikament":
+            let kal = Calendar.current
+            let uniqueMeds = Array(Set(einnahmeLogs.filter(\.eingenommen).map(\.medikamentName))).sorted()
+            gruppen = uniqueMeds.compactMap { medName in
+                let medTage = Set(einnahmeLogs
+                    .filter { $0.medikamentName == medName && $0.eingenommen }
+                    .map { kal.startOfDay(for: $0.datum) })
+                let g = entries.filter { medTage.contains(kal.startOfDay(for: $0.datum)) }
+                return g.count >= 2 ? (medName, g) : nil
+            }
         default:
             return []
         }
 
         return gruppen.map { name, gruppe in
-            let avg = yDurchschnitt(gruppe)
-            return Balken(kategorie: name, avg: avg, anzahl: gruppe.count)
+            Balken(kategorie: name, avg: yDurchschnitt(gruppe), anzahl: gruppe.count)
+        }
+    }
+
+    // MARK: - Y-Werte
+
+    private func yWert(_ entry: PainEntry) -> Double {
+        switch yVariable {
+        case "schmerzstaerke": return Double(entry.schmerzstaerke)
+        case "stimmung":       return Double(entry.stimmung)
+        case "stress":         return Double(entry.stressLevel)
+        case "schlafstunden":  return entry.schlafStunden
+        default:               return Double(entry.schmerzstaerke)
         }
     }
 
@@ -468,19 +578,25 @@ struct KonfigKorrelationsKachel: View {
         case "schmerzstaerke": values = entries.map { Double($0.schmerzstaerke) }
         case "stimmung":       values = entries.filter { $0.stimmung > 0 }.map { Double($0.stimmung) }
         case "stress":         values = entries.filter { $0.stressLevel > 0 }.map { Double($0.stressLevel) }
+        case "schlafstunden":  values = entries.filter { $0.schlafStunden > 0 }.map(\.schlafStunden)
         default:               values = entries.map { Double($0.schmerzstaerke) }
         }
         return values.isEmpty ? 0 : values.reduce(0, +) / Double(values.count)
     }
 
     private var yMaxWert: Double {
-        switch yVariable { case "stimmung", "stress": return 5; default: return 10 }
+        switch yVariable {
+        case "stimmung", "stress": return 5
+        case "schlafstunden":      return 12
+        default:                   return 10
+        }
     }
 
     private var xLabel: String {
         switch xVariable {
         case "wetter": "Wetter"; case "stress": "Stress"; case "schlaf": "Schlaf"
         case "stimmung": "Stimmung"; case "tageszeit": "Tageszeit"; case "wochentag": "Wochentag"
+        case "medikament": "Medikament"
         default: xVariable
         }
     }
@@ -488,7 +604,8 @@ struct KonfigKorrelationsKachel: View {
     private var yLabel: String {
         switch yVariable {
         case "schmerzstaerke": "Schmerzstärke"; case "stimmung": "Stimmung"
-        case "stress": "Stress"; default: yVariable
+        case "stress": "Stress"; case "schlafstunden": "Schlaf (h)"
+        default: yVariable
         }
     }
 
@@ -498,6 +615,8 @@ struct KonfigKorrelationsKachel: View {
             switch Int(avg.rounded()) { case 1: return .red; case 2: return .orange; case 3: return .yellow; case 4: return .mint; default: return .green }
         case "stress":
             switch Int(avg.rounded()) { case 1: return .green; case 2: return .mint; case 3: return .yellow; case 4: return .orange; default: return .red }
+        case "schlafstunden":
+            return avg >= 7 ? .green : avg >= 5 ? .orange : .red
         default:
             return SchmerzBadge.farbe(fuer: Int(avg.rounded()))
         }
