@@ -6,6 +6,9 @@ struct BegleitschmerzStepView: View {
 
     @State private var ausgewaehlt: Set<String> = []
     @State private var freitext = ""
+    @State private var eigeneChips: [String] = []
+
+    private static let chipKey = "chipEigeneBegleiterscheinungen"
 
     private var vorschlaege: [String] {
         SchmerzLexikon.db[koerperstelle]?.symptome ?? [
@@ -33,10 +36,31 @@ struct BegleitschmerzStepView: View {
                         aktualisiereBinding()
                     }
                 }
+                if !eigeneChips.isEmpty {
+                    FlowLayout(eigeneChips) { chip in
+                        ChipButton(label: chip, ausgewaehlt: ausgewaehlt.contains(chip), farbe: .indigo) {
+                            if ausgewaehlt.contains(chip) { ausgewaehlt.remove(chip) }
+                            else { ausgewaehlt.insert(chip) }
+                            aktualisiereBinding()
+                        }
+                    }
+                }
                 HStack(spacing: 8) {
                     TextField("Eigene Angaben…", text: $freitext)
                         .textFieldStyle(.roundedBorder)
-                        .onChange(of: freitext) { _, _ in aktualisiereBinding() }
+                    if !freitext.isEmpty {
+                        Button {
+                            let wert = freitext.trimmingCharacters(in: .whitespaces)
+                            ausgewaehlt.insert(wert)
+                            ChipSpeicher.hinzufuegen(wert, schluessel: Self.chipKey)
+                            eigeneChips = ChipSpeicher.laden(schluessel: Self.chipKey)
+                            freitext = ""
+                            aktualisiereBinding()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(Color.indigo)
+                        }
+                    }
                 }
             }
             .padding()
@@ -48,14 +72,14 @@ struct BegleitschmerzStepView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal)
-        .onAppear { ladeAuswahlAusBinding() }
+        .onAppear {
+            eigeneChips = ChipSpeicher.laden(schluessel: Self.chipKey)
+            ladeAuswahlAusBinding()
+        }
     }
 
     private func aktualisiereBinding() {
-        var teile = ausgewaehlt.sorted()
-        let trimmed = freitext.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty { teile.append(trimmed) }
-        begleiterscheinungen = teile.joined(separator: ", ")
+        begleiterscheinungen = ausgewaehlt.sorted().joined(separator: ", ")
     }
 
     private func ladeAuswahlAusBinding() {
@@ -63,8 +87,6 @@ struct BegleitschmerzStepView: View {
             .components(separatedBy: ", ")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        ausgewaehlt = Set(teile.filter { vorschlaege.contains($0) })
-        let custom = teile.filter { !vorschlaege.contains($0) }
-        freitext = custom.joined(separator: ", ")
+        ausgewaehlt = Set(teile.filter { vorschlaege.contains($0) || eigeneChips.contains($0) })
     }
 }

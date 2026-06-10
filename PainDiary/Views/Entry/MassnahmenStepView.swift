@@ -14,6 +14,9 @@ struct MassnahmenStepView: View {
 
     @State private var ausgewaehlt: Set<String> = []
     @State private var eigenerText = ""
+    @State private var eigeneChips: [String] = []
+
+    private static let chipKey = "chipEigeneMassnahmen"
 
     private var eingenommeneHeute: [EinnahmeLog] {
         let cal = Calendar.current
@@ -28,7 +31,6 @@ struct MassnahmenStepView: View {
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
 
-            // Read-only info: Dauermedikamente are tracked separately in adherence analysis
             if !eingenommeneHeute.isEmpty {
                 HStack(spacing: 6) {
                     Image(systemName: "info.circle")
@@ -58,17 +60,29 @@ struct MassnahmenStepView: View {
                         aktualisiereBinding()
                     }
                 }
+                if !eigeneChips.isEmpty {
+                    FlowLayout(eigeneChips) { chip in
+                        ChipButton(label: chip, ausgewaehlt: ausgewaehlt.contains(chip), farbe: .indigo) {
+                            if ausgewaehlt.contains(chip) { ausgewaehlt.remove(chip) }
+                            else { ausgewaehlt.insert(chip) }
+                            aktualisiereBinding()
+                        }
+                    }
+                }
                 HStack(spacing: 8) {
                     TextField("Weitere Massnahme…", text: $eigenerText)
                         .textFieldStyle(.roundedBorder)
                     if !eigenerText.isEmpty {
                         Button {
-                            ausgewaehlt.insert(eigenerText)
+                            let wert = eigenerText.trimmingCharacters(in: .whitespaces)
+                            ausgewaehlt.insert(wert)
+                            ChipSpeicher.hinzufuegen(wert, schluessel: Self.chipKey)
+                            eigeneChips = ChipSpeicher.laden(schluessel: Self.chipKey)
                             eigenerText = ""
                             aktualisiereBinding()
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(Color.accentColor)
+                                .foregroundStyle(Color.indigo)
                         }
                     }
                 }
@@ -83,16 +97,21 @@ struct MassnahmenStepView: View {
         }
         .padding(.horizontal)
         .onAppear {
-            let teile = massnahmen.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
-            ausgewaehlt = Set(teile.filter { !$0.isEmpty })
+            eigeneChips = ChipSpeicher.laden(schluessel: Self.chipKey)
+            ladeAuswahlAusBinding()
         }
-    }
-
-    private func medLabel(_ log: EinnahmeLog) -> String {
-        log.dosierung.isEmpty ? log.medikamentName : "\(log.medikamentName) \(log.dosierung)"
     }
 
     private func aktualisiereBinding() {
         massnahmen = ausgewaehlt.sorted().joined(separator: ", ")
+    }
+
+    private func ladeAuswahlAusBinding() {
+        let teile = massnahmen.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }
+        ausgewaehlt = Set(teile.filter { !$0.isEmpty })
+    }
+
+    private func medLabel(_ log: EinnahmeLog) -> String {
+        log.dosierung.isEmpty ? log.medikamentName : "\(log.medikamentName) \(log.dosierung)"
     }
 }

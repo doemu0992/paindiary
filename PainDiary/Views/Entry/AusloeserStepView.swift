@@ -6,6 +6,9 @@ struct AusloeserStepView: View {
 
     @State private var ausgewaehlt: Set<String> = []
     @State private var eigenerText = ""
+    @State private var eigeneChips: [String] = []
+
+    private static let chipKey = "chipEigeneAusloeser"
 
     private var vorschlaege: [String] {
         SchmerzLexikon.db[koerperstelle]?.ausloeser ?? [
@@ -30,17 +33,29 @@ struct AusloeserStepView: View {
                         aktualisiereBinding()
                     }
                 }
+                if !eigeneChips.isEmpty {
+                    FlowLayout(eigeneChips) { chip in
+                        ChipButton(label: chip, ausgewaehlt: ausgewaehlt.contains(chip), farbe: .indigo) {
+                            if ausgewaehlt.contains(chip) { ausgewaehlt.remove(chip) }
+                            else { ausgewaehlt.insert(chip) }
+                            aktualisiereBinding()
+                        }
+                    }
+                }
                 HStack(spacing: 8) {
                     TextField("Eigener Auslöser…", text: $eigenerText)
                         .textFieldStyle(.roundedBorder)
                     if !eigenerText.isEmpty {
                         Button {
-                            ausgewaehlt.insert(eigenerText)
+                            let wert = eigenerText.trimmingCharacters(in: .whitespaces)
+                            ausgewaehlt.insert(wert)
+                            ChipSpeicher.hinzufuegen(wert, schluessel: Self.chipKey)
+                            eigeneChips = ChipSpeicher.laden(schluessel: Self.chipKey)
                             eigenerText = ""
                             aktualisiereBinding()
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(Color.accentColor)
+                                .foregroundStyle(Color.indigo)
                         }
                     }
                 }
@@ -54,7 +69,10 @@ struct AusloeserStepView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal)
-        .onAppear { ladeAuswahlAusBinding() }
+        .onAppear {
+            eigeneChips = ChipSpeicher.laden(schluessel: Self.chipKey)
+            ladeAuswahlAusBinding()
+        }
     }
 
     private func aktualisiereBinding() {

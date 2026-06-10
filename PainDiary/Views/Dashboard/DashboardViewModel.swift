@@ -39,4 +39,25 @@ class DashboardViewModel {
         guard !punkte.isEmpty else { return 0 }
         return punkte.map(\.schmerz).reduce(0, +) / Double(punkte.count)
     }
+
+    var vorwochenschmerz: Double? {
+        let kalender = Calendar.current
+        let heute = Date()
+        var punkte: [Double] = []
+        for versatz in 7..<14 {
+            guard let tag = kalender.date(byAdding: .day, value: -versatz, to: heute) else { continue }
+            let tagesEintraege = eintraege.filter { kalender.isDate($0.datum, inSameDayAs: tag) }
+            guard !tagesEintraege.isEmpty else { continue }
+            let schnitt = Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
+            punkte.append(schnitt)
+        }
+        guard !punkte.isEmpty else { return nil }
+        return punkte.reduce(0, +) / Double(punkte.count)
+    }
+
+    // positive = Schmerz gestiegen (schlechter), negative = gesunken (besser)
+    var trendVorwoche: Double? {
+        guard let vorwoche = vorwochenschmerz else { return nil }
+        return wochenschmerz - vorwoche
+    }
 }

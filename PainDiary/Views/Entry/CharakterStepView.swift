@@ -113,6 +113,7 @@ struct FlowLayout<Data: RandomAccessCollection, Content: View>: View where Data.
 struct ChipButton: View {
     let label: String
     let ausgewaehlt: Bool
+    var farbe: Color = .accentColor
     let action: () -> Void
 
     var body: some View {
@@ -127,7 +128,7 @@ struct ChipButton: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
-            .background(ausgewaehlt ? Color.accentColor : Color.secondary.opacity(0.15))
+            .background(ausgewaehlt ? farbe : Color.secondary.opacity(0.15))
             .foregroundStyle(ausgewaehlt ? .white : .primary)
             .clipShape(Capsule())
         }

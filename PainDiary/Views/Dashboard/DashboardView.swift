@@ -156,17 +156,17 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var trendBadge: some View {
-        if let trend = trendVorwoche {
-            let symbol: String = trend > 0.2 ? "arrow.up" : trend < -0.2 ? "arrow.down" : "minus"
-            let farbe: Color  = trend > 0.2 ? .red    : trend < -0.2 ? .green    : .secondary
-            HStack(spacing: 4) {
-                Image(systemName: symbol).font(.caption.bold())
-                Text(String(format: "%+.1f", trend)).font(.caption.bold())
-            }
-            .foregroundStyle(farbe)
-            .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(farbe.opacity(0.12), in: Capsule())
+        let t = trendVorwoche
+        let sym: String = t.map { $0 > 0.2 ? "arrow.up" : $0 < -0.2 ? "arrow.down" : "minus" } ?? "minus"
+        let farbe: Color = t.map { $0 > 0.2 ? Color.red : $0 < -0.2 ? Color.green : Color.secondary } ?? .secondary
+        let label = t.map { String(format: "%+.1f", $0) } ?? "–"
+        HStack(spacing: 4) {
+            Image(systemName: sym).font(.caption.bold())
+            Text(label).font(.caption.bold())
         }
+        .foregroundStyle(farbe)
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(farbe.opacity(0.12), in: Capsule())
     }
 
     // MARK: - Greeting
