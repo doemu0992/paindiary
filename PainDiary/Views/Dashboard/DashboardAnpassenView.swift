@@ -34,7 +34,7 @@ struct DashboardAnpassenView: View {
                                 withAnimation { kachel.sichtbar.toggle() }
                             } label: {
                                 Image(systemName: kachel.sichtbar ? "eye.fill" : "eye.slash")
-                                    .foregroundStyle(kachel.sichtbar ? .primary : .secondary.opacity(0.4))
+                                    .foregroundStyle(kachel.sichtbar ? Color.primary : Color.secondary.opacity(0.4))
                             }
                             .buttonStyle(.plain)
                         }
