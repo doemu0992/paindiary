@@ -80,7 +80,7 @@ struct OnboardingView: View {
         case 2: return ausgewaehlteSchmerztypen.isEmpty ? .gray : .blue
         case 3: return .teal
         case 4: return datenschutzAkzeptiert ? .green : .gray
-        default: return .accentColor
+        default: return Color.accentColor
         }
     }
 
@@ -411,7 +411,7 @@ private struct DashboardVorschauSchritt: View {
         case .schmerzarten: return .blue
         case .stimmungsTrend: return .pink
         case .midasKachel: return .purple
-        default: return .accentColor
+        default: return Color.accentColor
         }
     }
 }
@@ -456,7 +456,7 @@ private struct DatenschutzSchritt: View {
             } label: {
                 Text("Vollständige Datenschutzerklärung lesen")
                     .font(.subheadline)
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                     .underline()
             }
 
