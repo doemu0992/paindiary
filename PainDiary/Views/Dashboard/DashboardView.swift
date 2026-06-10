@@ -16,35 +16,38 @@ struct DashboardView: View {
     @State private var exportOptionen = ExportOptionen()
     @State private var istAmExportieren = false
     @State private var tagesstart = Calendar.current.startOfDay(for: Date())
+    @State private var kachelKonfig: [KachelKonfiguration] = .laden()
+    @State private var anpassenAnzeigen = false
     @Environment(\.scenePhase) private var scenePhase
+
+    // MARK: - Body
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 begrüssungsHeader
 
-                abschnittTitel("Heute")
-                heuteKarte
-                if profile.first?.zyklusTrackingAktiv == true { zyklusKarte }
-                if !medikamente.filter(\.aktiv).isEmpty { medikamentenKarte }
-                hautVeraenderungKarte
-
-                abschnittTitel("Verlauf")
-                schmerzVerlaufChart
-
-                abschnittTitel("Zuletzt")
-                stimmungStressKarte
-                schnellLinks
+                ForEach(Array(sichtbareKacheln.enumerated()), id: \.element.id) { index, kachel in
+                    let prevAbschnitt: String? = index > 0 ? sichtbareKacheln[index - 1].typ.abschnitt : nil
+                    if kachel.typ.abschnitt != prevAbschnitt {
+                        abschnittTitel(kachel.typ.abschnitt)
+                    }
+                    kachelView(kachel)
+                }
             }
             .padding()
         }
         .navigationTitle("Übersicht")
-        .onChange(of: eintraege) { _, neu in viewModel.eintraege = neu }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { tagesstart = Calendar.current.startOfDay(for: Date()) }
-        }
+        .onChange(of: eintraege)    { _, neu in viewModel.eintraege = neu }
+        .onChange(of: scenePhase)   { _, phase in if phase == .active { tagesstart = Calendar.current.startOfDay(for: Date()) } }
+        .onChange(of: kachelKonfig) { _, neu in neu.speichern() }
         .onAppear { viewModel.eintraege = eintraege }
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button { anpassenAnzeigen = true } label: {
+                    Label("Anpassen", systemImage: "slider.horizontal.3")
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Group {
                     if istAmExportieren {
@@ -57,6 +60,9 @@ struct DashboardView: View {
                     }
                 }
             }
+        }
+        .sheet(isPresented: $anpassenAnzeigen) {
+            DashboardAnpassenView(kacheln: $kachelKonfig)
         }
 #if os(iOS)
         .sheet(isPresented: $exportOptionsAnzeigen) {
@@ -74,13 +80,53 @@ struct DashboardView: View {
 #endif
     }
 
+    // MARK: - Kachel-System
+
+    private var sichtbareKacheln: [KachelKonfiguration] {
+        kachelKonfig.filter { kachel in
+            guard kachel.sichtbar else { return false }
+            switch kachel.typ {
+            case .medikamente:      return !medikamente.filter(\.aktiv).isEmpty
+            case .zyklus:           return profile.first?.zyklusTrackingAktiv == true
+            case .hautveraenderung: return !eintraege.filter(\.istHautEintrag).isEmpty
+            default:                return true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func kachelView(_ kachel: KachelKonfiguration) -> some View {
+        switch kachel.typ {
+        case .schmerzUebersicht:   heuteKarte
+        case .schmerzverlauf:      schmerzVerlaufChart
+        case .stimmungStress:      stimmungStressKarte
+        case .medikamente:         medikamentenKarte
+        case .zyklus:              zyklusKarte
+        case .hautveraenderung:    hautVeraenderungKarte
+        case .schnellLinks:        schnellLinks
+        case .wetterSchmerz:       WetterSchmerzKachel(eintraege: Array(eintraege))
+        case .stressSchmerz:       StressSchmerzKachel(eintraege: Array(eintraege))
+        case .schlafSchmerz:       SchlafSchmerzKachel(eintraege: Array(eintraege))
+        case .tageszeitVerteilung: TageszeitKachel(eintraege: Array(eintraege))
+        case .koerperstellen:      KoerperstellenKachel(eintraege: Array(eintraege))
+        case .schmerzarten:        SchmerzartenKachel(eintraege: Array(eintraege))
+        case .stimmungsTrend:      StimmungsTrendKachel(eintraege: Array(eintraege))
+        case .midasKachel:         MidasKachel(bewertungen: Array(midasBewertungen))
+        case .konfigKorrelation:
+            KonfigKorrelationsKachel(
+                eintraege: Array(eintraege),
+                xVariable: kachel.xVariable,
+                yVariable: kachel.yVariable,
+                titel: kachel.benutzertitel
+            )
+        }
+    }
+
     // MARK: - Helpers
 
     private func abschnittTitel(_ titel: String) -> some View {
         HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.indigo)
-                .frame(width: 3, height: 18)
+            RoundedRectangle(cornerRadius: 2).fill(Color.indigo).frame(width: 3, height: 18)
             Text(titel).font(.title3.bold())
             Spacer()
         }
@@ -90,29 +136,22 @@ struct DashboardView: View {
     @ViewBuilder
     private func miniStat(_ label: String, wert: String, farbe: Color) -> some View {
         VStack(spacing: 3) {
-            Text(wert)
-                .font(.subheadline.bold())
-                .foregroundStyle(farbe)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            Text(wert).font(.subheadline.bold()).foregroundStyle(farbe)
+                .lineLimit(1).minimumScaleFactor(0.7)
+            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
     }
 
     private var trendVorwoche: Double? {
-        let kal = Calendar.current
-        let jetzt = Date()
-        guard let wocheStart = kal.date(byAdding: .day, value: -7, to: jetzt),
-              let vorwocheStart = kal.date(byAdding: .day, value: -14, to: jetzt) else { return nil }
-        let dieseWoche = eintraege.filter { $0.datum >= wocheStart }
-        let vorwoche = eintraege.filter { $0.datum >= vorwocheStart && $0.datum < wocheStart }
-        guard !dieseWoche.isEmpty && !vorwoche.isEmpty else { return nil }
-        let a = Double(dieseWoche.map(\.schmerzstaerke).reduce(0, +)) / Double(dieseWoche.count)
-        let b = Double(vorwoche.map(\.schmerzstaerke).reduce(0, +)) / Double(vorwoche.count)
+        let kal = Calendar.current; let jetzt = Date()
+        guard let wStart = kal.date(byAdding: .day, value: -7, to: jetzt),
+              let vwStart = kal.date(byAdding: .day, value: -14, to: jetzt) else { return nil }
+        let diese = eintraege.filter { $0.datum >= wStart && !$0.istHautEintrag }
+        let vorw  = eintraege.filter { $0.datum >= vwStart && $0.datum < wStart && !$0.istHautEintrag }
+        guard !diese.isEmpty && !vorw.isEmpty else { return nil }
+        let a = Double(diese.map(\.schmerzstaerke).reduce(0, +)) / Double(diese.count)
+        let b = Double(vorw.map(\.schmerzstaerke).reduce(0, +)) / Double(vorw.count)
         return a - b
     }
 
@@ -131,16 +170,14 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - Greeting
 
     private var begrüssungsHeader: some View {
         let stunde = Calendar.current.component(.hour, from: Date())
         let grussBase = stunde < 12 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend"
         let vorname = profile.first?.vorname.trimmingCharacters(in: .whitespaces) ?? ""
         let gruss = vorname.isEmpty ? grussBase : "\(grussBase), \(vorname)"
-        let df = DateFormatter()
-        df.dateFormat = "EEEE, d. MMMM"
-        df.locale = Locale(identifier: "de_CH")
+        let df = DateFormatter(); df.dateFormat = "EEEE, d. MMMM"; df.locale = Locale(identifier: "de_CH")
         return HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(gruss).font(.title2.bold())
@@ -150,7 +187,7 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - Heute-Karte (ersetzt 2×2 Grid)
+    // MARK: - Heute-Karte
 
     private var heuteKarte: some View {
         let avg = viewModel.durchschnittsSchmerz
@@ -159,38 +196,30 @@ struct DashboardView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
-                        Text("Ø Schmerzstärke")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Text("Ø Schmerzstärke").font(.caption).foregroundStyle(.secondary)
                         InfoButton(
                             titel: "Ø Schmerzstärke",
-                            text: "Der Gesamtdurchschnitt aller erfassten Schmerzeinträge. Der Trend-Badge (↑/↓) vergleicht diese Woche mit der Vorwoche – grün bedeutet Verbesserung, rot eine Verschlechterung."
+                            text: "Gesamtdurchschnitt aller Schmerzeinträge. Der Trend-Badge (↑/↓) vergleicht diese Woche mit der Vorwoche – grün = Verbesserung, rot = Verschlechterung."
                         )
                     }
                     HStack(alignment: .lastTextBaseline, spacing: 6) {
                         Text(String(format: "%.1f", avg))
                             .font(.system(size: 48, weight: .bold, design: .rounded))
                             .foregroundStyle(farbe)
-                        Text("/ 10")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
+                        Text("/ 10").font(.title3).foregroundStyle(.secondary)
                     }
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 6) {
                     trendBadge
-                    Text("vs. Vorwoche")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    Text("vs. Vorwoche").font(.caption2).foregroundStyle(.secondary)
                 }
             }
-
             Divider()
-
             HStack(spacing: 0) {
                 miniStat("Diese Woche", wert: String(format: "%.1f", viewModel.wochenschmerz), farbe: .blue)
                 Divider().frame(height: 36)
-                miniStat("Einträge", wert: "\(eintraege.count)", farbe: .indigo)
+                miniStat("Einträge", wert: "\(eintraege.filter { !$0.istHautEintrag }.count)", farbe: .indigo)
                 Divider().frame(height: 36)
                 miniStat("Top Auslöser", wert: viewModel.haeufigsterAusloeser ?? "–", farbe: .orange)
             }
@@ -200,7 +229,7 @@ struct DashboardView: View {
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
-    // MARK: - Karten
+    // MARK: - Medikamente
 
     private var medikamentenKarte: some View {
         let aktive = medikamente.filter(\.aktiv)
@@ -214,7 +243,7 @@ struct DashboardView: View {
                         .font(.headline).foregroundStyle(.blue)
                     InfoButton(
                         titel: "Medikamente heute",
-                        text: "Zeigt deine aktiven Dauermedikamente und deren heutigen Einnahmestatus. Hake Einnahmen im Medikamenten-Tab ab."
+                        text: "Deine aktiven Dauermedikamente und deren heutiger Einnahmestatus. Hake Einnahmen im Medikamenten-Tab ab."
                     )
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
@@ -226,22 +255,65 @@ struct DashboardView: View {
                     HStack(spacing: 10) {
                         Image(systemName: fertig ? "checkmark.circle.fill" : "circle")
                             .foregroundStyle(fertig ? .green : .secondary).font(.body)
-                        Text(med.name).font(.subheadline)
-                            .foregroundStyle(fertig ? .secondary : .primary)
-                        if !med.dosierung.isEmpty {
-                            Text(med.dosierung).font(.caption).foregroundStyle(.secondary)
-                        }
+                        Text(med.name).font(.subheadline).foregroundStyle(fertig ? .secondary : .primary)
+                        if !med.dosierung.isEmpty { Text(med.dosierung).font(.caption).foregroundStyle(.secondary) }
                         Spacer()
                         if erwartet > 1 {
-                            Text("\(eingenommen)/\(erwartet)").font(.caption)
-                                .foregroundStyle(fertig ? .green : .secondary)
+                            Text("\(eingenommen)/\(erwartet)").font(.caption).foregroundStyle(fertig ? .green : .secondary)
                         } else if erwartet == 0 && eingenommen > 0 {
                             Text("\(eingenommen)×").font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
-                if aktive.count > 3 {
-                    Text("+ \(aktive.count - 3) weitere").font(.caption).foregroundStyle(.secondary)
+                if aktive.count > 3 { Text("+ \(aktive.count - 3) weitere").font(.caption).foregroundStyle(.secondary) }
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Zyklus
+
+    private var zyklusKarte: some View {
+        let analyse = ZyklusRechner.analyse(eintraege: Array(zyklusEintraege))
+        let kal = Calendar.current; let heute = kal.startOfDay(for: Date())
+        let tageZylus: String = { if let t = analyse.aktuellerZyklustag { return "Tag \(t)" }; return "–" }()
+        let tageZuPeriode: String = {
+            guard let np = analyse.naechstePeriodeStart else { return "–" }
+            let diff = kal.dateComponents([.day], from: heute, to: np).day ?? 0
+            return diff <= 0 ? "Heute" : "in \(diff) Tagen"
+        }()
+        let fruchtbarFenster: String = {
+            let sorted = analyse.fruchtbareTageSet.filter { $0 >= heute }.sorted()
+            guard let first = sorted.first else { return "–" }
+            var last = first
+            for tag in sorted.dropFirst() {
+                if (kal.dateComponents([.day], from: last, to: tag).day ?? 99) <= 1 { last = tag } else { break }
+            }
+            let fmt = DateFormatter(); fmt.dateFormat = "d. MMM"
+            return kal.isDate(first, inSameDayAs: last) ? fmt.string(from: first) : "\(fmt.string(from: first)) – \(fmt.string(from: last))"
+        }()
+
+        return NavigationLink(destination: ZyklusView()) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Zyklus-Tracker", systemImage: "drop.circle.fill")
+                        .font(.headline).foregroundStyle(.pink)
+                    InfoButton(
+                        titel: "Zyklus-Tracker",
+                        text: "Aktueller Zyklustag, voraussichtliche nächste Periode und fruchtbares Fenster basierend auf deinen Einträgen."
+                    )
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                }
+                HStack(spacing: 0) {
+                    ZyklusStatSpalte(titel: "Zyklustag",           wert: tageZylus,       farbe: .pink)
+                    Divider().frame(height: 36)
+                    ZyklusStatSpalte(titel: "Nächste Periode",     wert: tageZuPeriode,   farbe: .red)
+                    Divider().frame(height: 36)
+                    ZyklusStatSpalte(titel: "Fruchtbares Fenster", wert: fruchtbarFenster, farbe: .teal)
                 }
             }
             .padding()
@@ -251,13 +323,14 @@ struct DashboardView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Hautveränderungen
+
     @ViewBuilder
     private var hautVeraenderungKarte: some View {
         let hautEintraege = eintraege.filter { $0.istHautEintrag }
         if !hautEintraege.isEmpty {
-            let kal = Calendar.current
-            let wocheStart = kal.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-            let dieseWoche = hautEintraege.filter { $0.datum >= wocheStart }
+            let wStart = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+            let dieseWoche = hautEintraege.filter { $0.datum >= wStart }
             let alleArten = hautEintraege.flatMap { $0.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty } }
             let topArt = Dictionary(grouping: alleArten, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key
             let alleStellen = hautEintraege.flatMap { $0.hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty } }
@@ -270,27 +343,25 @@ struct DashboardView: View {
                         .font(.headline).foregroundStyle(.orange)
                     InfoButton(
                         titel: "Hautveränderungen",
-                        text: "Zeigt eine Zusammenfassung deiner erfassten Hautveränderungen. Häufig betroffene Stellen und Arten helfen dir und deinem Arzt, Muster und Zusammenhänge zu erkennen."
+                        text: "Zusammenfassung deiner Hautveränderungs-Einträge. Häufig betroffene Stellen und Arten helfen Muster und Zusammenhänge zu erkennen."
                     )
                     Spacer()
                 }
                 Divider()
                 HStack(spacing: 0) {
-                    miniStat("Diese Woche", wert: "\(dieseWoche.count)", farbe: .orange)
+                    miniStat("Diese Woche", wert: "\(dieseWoche.count)",    farbe: .orange)
                     Divider().frame(height: 36)
-                    miniStat("Gesamt", wert: "\(hautEintraege.count)", farbe: .orange)
+                    miniStat("Gesamt",      wert: "\(hautEintraege.count)", farbe: .orange)
                     Divider().frame(height: 36)
-                    miniStat("Häufigste Art", wert: topArt ?? "–", farbe: .orange)
+                    miniStat("Häufigste Art", wert: topArt ?? "–",          farbe: .orange)
                 }
                 if !topStellen.isEmpty {
                     Divider()
-                    Text("Häufig betroffene Stellen")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text("Häufig betroffene Stellen").font(.caption).foregroundStyle(.secondary)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
                             ForEach(topStellen, id: \.self) { stelle in
-                                Text(stelle)
-                                    .font(.caption)
+                                Text(stelle).font(.caption)
                                     .padding(.horizontal, 10).padding(.vertical, 5)
                                     .background(Color.orange.opacity(0.12), in: Capsule())
                                     .foregroundStyle(.orange)
@@ -305,103 +376,24 @@ struct DashboardView: View {
         }
     }
 
-    private var zyklusKarte: some View {
-        let analyse = ZyklusRechner.analyse(eintraege: Array(zyklusEintraege))
-        let kal = Calendar.current
-        let heute = kal.startOfDay(for: Date())
-
-        let tageZylus: String = {
-            if let t = analyse.aktuellerZyklustag { return "Tag \(t)" }
-            return "–"
-        }()
-        let tageZuPeriode: String = {
-            guard let np = analyse.naechstePeriodeStart else { return "–" }
-            let diff = kal.dateComponents([.day], from: heute, to: np).day ?? 0
-            return diff <= 0 ? "Heute" : "in \(diff) Tagen"
-        }()
-        let fruchtbarFenster: String = {
-            let sorted = analyse.fruchtbareTageSet.filter { $0 >= heute }.sorted()
-            guard let first = sorted.first else { return "–" }
-            var last = first
-            for tag in sorted.dropFirst() {
-                if (kal.dateComponents([.day], from: last, to: tag).day ?? 99) <= 1 { last = tag } else { break }
-            }
-            let fmt = DateFormatter(); fmt.dateFormat = "d. MMM"
-            if kal.isDate(first, inSameDayAs: last) { return fmt.string(from: first) }
-            return "\(fmt.string(from: first)) – \(fmt.string(from: last))"
-        }()
-
-        return NavigationLink(destination: ZyklusView()) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("Zyklus-Tracker", systemImage: "drop.circle.fill")
-                        .font(.headline).foregroundStyle(.pink)
-                    InfoButton(
-                        titel: "Zyklus-Tracker",
-                        text: "Zeigt deinen aktuellen Zyklustag, die voraussichtliche nächste Periode und das fruchtbare Fenster basierend auf deinen bisherigen Einträgen."
-                    )
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                }
-                HStack(spacing: 0) {
-                    ZyklusStatSpalte(titel: "Zyklustag", wert: tageZylus, farbe: .pink)
-                    Divider().frame(height: 36)
-                    ZyklusStatSpalte(titel: "Nächste Periode", wert: tageZuPeriode, farbe: .red)
-                    Divider().frame(height: 36)
-                    ZyklusStatSpalte(titel: "Fruchtbares Fenster", wert: fruchtbarFenster, farbe: .teal)
-                }
-            }
-            .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var schnellLinks: some View {
-        HStack(spacing: 12) {
-            NavigationLink(destination: MIDASView()) {
-                HStack {
-                    Image(systemName: "brain.head.profile").foregroundStyle(.purple)
-                    Text("MIDAS-Score").font(.subheadline).fontWeight(.medium)
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                }
-                .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
-            }
-            .buttonStyle(.plain)
-
-            NavigationLink(destination: KorrelationsView()) {
-                HStack {
-                    Image(systemName: "chart.xyaxis.line").foregroundStyle(.teal)
-                    Text("Analysen").font(.subheadline).fontWeight(.medium)
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                }
-                .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
-            }
-            .buttonStyle(.plain)
-        }
-    }
+    // MARK: - Schmerzverlauf
 
     private var schmerzVerlaufChart: some View {
         SchmerzVerlaufKarte(eintraege: Array(eintraege))
     }
 
+    // MARK: - Stimmung & Stress
+
     private var stimmungStressKarte: some View {
         let kal = Calendar.current
-        let wocheStart = kal.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        let wochenEintraege = eintraege.filter { $0.datum >= wocheStart && !$0.istHautEintrag }
-        let stimmungWerte = wochenEintraege.filter { $0.stimmung > 0 }.map(\.stimmung)
-        let avgStimmung = stimmungWerte.isEmpty ? 0.0 : Double(stimmungWerte.reduce(0, +)) / Double(stimmungWerte.count)
-        let stressWerte = wochenEintraege.filter { $0.stressLevel > 0 }.map(\.stressLevel)
-        let avgStress = stressWerte.isEmpty ? 0.0 : Double(stressWerte.reduce(0, +)) / Double(stressWerte.count)
-        let schlafWerte = wochenEintraege.filter { $0.schlafStunden > 0 }.map(\.schlafStunden)
-        let avgSchlaf = schlafWerte.isEmpty ? 0.0 : schlafWerte.reduce(0, +) / Double(schlafWerte.count)
+        let wStart = kal.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let woche = eintraege.filter { $0.datum >= wStart && !$0.istHautEintrag }
+        let stimmungW = woche.filter { $0.stimmung > 0 }.map(\.stimmung)
+        let avgStimmung = stimmungW.isEmpty ? 0.0 : Double(stimmungW.reduce(0, +)) / Double(stimmungW.count)
+        let stressW = woche.filter { $0.stressLevel > 0 }.map(\.stressLevel)
+        let avgStress = stressW.isEmpty ? 0.0 : Double(stressW.reduce(0, +)) / Double(stressW.count)
+        let schlafW = woche.filter { $0.schlafStunden > 0 }.map(\.schlafStunden)
+        let avgSchlaf = schlafW.isEmpty ? 0.0 : schlafW.reduce(0, +) / Double(schlafW.count)
         let schlafFarbe: Color = avgSchlaf >= 7 ? .green : avgSchlaf >= 5 ? .orange : .red
 
         return VStack(alignment: .leading, spacing: 12) {
@@ -410,16 +402,14 @@ struct DashboardView: View {
                     .font(.headline).foregroundStyle(.pink)
                 InfoButton(
                     titel: "Stimmung & Stress",
-                    text: "Zeigt den Wochen-Durchschnitt deiner Stimmung (1 = Schlecht, 5 = Super), deines Stresslevels (1 = Entspannt, 5 = Extrem) und deiner Schlafdauer – alles aus den Einträgen der letzten 7 Tage."
+                    text: "Wochen-Ø deiner Stimmung (1 = Schlecht, 5 = Super), deines Stresslevels (1 = Entspannt, 5 = Extrem) und Schlafdauer – aus den Einträgen der letzten 7 Tage."
                 )
                 Spacer()
             }
             Divider()
-
-            if stimmungWerte.isEmpty && stressWerte.isEmpty && schlafWerte.isEmpty {
+            if stimmungW.isEmpty && stressW.isEmpty && schlafW.isEmpty {
                 Text("Noch keine Wohlbefindens-Daten diese Woche.")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 8)
             } else {
                 HStack(spacing: 0) {
                     VStack(spacing: 6) {
@@ -431,9 +421,7 @@ struct DashboardView: View {
                         Text("Stimmung").font(.caption2).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
-
                     Divider().frame(height: 56)
-
                     VStack(spacing: 6) {
                         Text(avgStress > 0 ? stressLabel(Int(avgStress.rounded())) : "–")
                             .font(.subheadline.bold())
@@ -441,18 +429,14 @@ struct DashboardView: View {
                         HStack(spacing: 3) {
                             ForEach(1...5, id: \.self) { i in
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(Double(i) <= avgStress
-                                          ? stressFarbe(Int(avgStress.rounded()))
-                                          : Color.secondary.opacity(0.2))
+                                    .fill(Double(i) <= avgStress ? stressFarbe(Int(avgStress.rounded())) : Color.secondary.opacity(0.2))
                                     .frame(width: 8, height: 12)
                             }
                         }
                         Text("Stress").font(.caption2).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
-
                     Divider().frame(height: 56)
-
                     VStack(spacing: 6) {
                         Text(avgSchlaf > 0 ? String(format: "%.1fh", avgSchlaf) : "–")
                             .font(.subheadline.bold()).foregroundStyle(avgSchlaf > 0 ? schlafFarbe : .secondary)
@@ -468,6 +452,39 @@ struct DashboardView: View {
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
+
+    // MARK: - Schnelllinks
+
+    private var schnellLinks: some View {
+        HStack(spacing: 12) {
+            NavigationLink(destination: MIDASView()) {
+                HStack {
+                    Image(systemName: "brain.head.profile").foregroundStyle(.purple)
+                    Text("MIDAS-Score").font(.subheadline).fontWeight(.medium)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+            }
+            .buttonStyle(.plain)
+            NavigationLink(destination: KorrelationsView()) {
+                HStack {
+                    Image(systemName: "chart.xyaxis.line").foregroundStyle(.teal)
+                    Text("Analysen").font(.subheadline).fontWeight(.medium)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Label helpers
 
     private func stimmungLabel(_ s: Int) -> String {
         switch s { case 1: "Schlecht"; case 2: "Mässig"; case 3: "Okay"; case 4: "Gut"; default: "Super" }
@@ -503,6 +520,8 @@ struct DashboardView: View {
     }
 }
 
+// MARK: - Export Sheet
+
 #if os(iOS)
 private struct ExportOptionsSheet: View {
     @Binding var optionen: ExportOptionen
@@ -520,11 +539,11 @@ private struct ExportOptionsSheet: View {
                     .pickerStyle(.inline).labelsHidden()
                 }
                 Section("Abschnitte") {
-                    Toggle("Zusammenfassung", isOn: $optionen.mitZusammenfassung)
-                    Toggle("Medikamente", isOn: $optionen.mitMedikamente)
+                    Toggle("Zusammenfassung",      isOn: $optionen.mitZusammenfassung)
+                    Toggle("Medikamente",          isOn: $optionen.mitMedikamente)
                     Toggle("Medikamenten-Dossier", isOn: $optionen.mitMedikamentDossier)
                     if hatZyklusDaten { Toggle("Zyklus", isOn: $optionen.mitZyklus) }
-                    Toggle("Alle Einträge", isOn: $optionen.mitEintraege)
+                    Toggle("Alle Einträge",        isOn: $optionen.mitEintraege)
                 }
             }
             .navigationTitle("PDF exportieren")
@@ -539,12 +558,13 @@ private struct ExportOptionsSheet: View {
 }
 #endif
 
+// MARK: - Supporting Views
+
 private struct ZyklusStatSpalte: View {
     let titel: String; let wert: String; let farbe: Color
     var body: some View {
         VStack(spacing: 4) {
-            Text(wert).font(.subheadline.bold()).foregroundStyle(farbe)
-                .lineLimit(1).minimumScaleFactor(0.7)
+            Text(wert).font(.subheadline.bold()).foregroundStyle(farbe).lineLimit(1).minimumScaleFactor(0.7)
             Text(titel).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
