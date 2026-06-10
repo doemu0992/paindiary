@@ -69,12 +69,14 @@ enum KachelTyp: String, Codable, CaseIterable {
         switch self {
         case .schmerzUebersicht, .medikamente, .zyklus, .hautveraenderung:
             return "Heute"
-        case .schmerzverlauf, .wetterSchmerz, .stressSchmerz, .schlafSchmerz,
+        case .schmerzverlauf:
+            return "Verlauf"
+        case .stimmungStress, .schnellLinks:
+            return "Zuletzt"
+        case .wetterSchmerz, .stressSchmerz, .schlafSchmerz,
              .tageszeitVerteilung, .koerperstellen, .schmerzarten,
              .stimmungsTrend, .midasKachel, .konfigKorrelation:
             return "Analyse"
-        case .stimmungStress, .schnellLinks:
-            return "Wohlbefinden"
         }
     }
 
@@ -101,11 +103,11 @@ struct KachelKonfiguration: Codable, Identifiable, Hashable, Equatable {
 
     static let standard: [KachelKonfiguration] = [
         KachelKonfiguration(id: KachelTyp.schmerzUebersicht.rawValue,  typ: .schmerzUebersicht),
-        KachelKonfiguration(id: KachelTyp.schmerzverlauf.rawValue,     typ: .schmerzverlauf),
-        KachelKonfiguration(id: KachelTyp.stimmungStress.rawValue,     typ: .stimmungStress),
         KachelKonfiguration(id: KachelTyp.medikamente.rawValue,        typ: .medikamente),
         KachelKonfiguration(id: KachelTyp.zyklus.rawValue,             typ: .zyklus),
         KachelKonfiguration(id: KachelTyp.hautveraenderung.rawValue,   typ: .hautveraenderung),
+        KachelKonfiguration(id: KachelTyp.schmerzverlauf.rawValue,     typ: .schmerzverlauf),
+        KachelKonfiguration(id: KachelTyp.stimmungStress.rawValue,     typ: .stimmungStress),
         KachelKonfiguration(id: KachelTyp.schnellLinks.rawValue,       typ: .schnellLinks),
     ]
 }
