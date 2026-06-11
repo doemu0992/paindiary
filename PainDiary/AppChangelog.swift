@@ -16,7 +16,7 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// version muss exakt mit CFBundleShortVersionString übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
-    WhatsNewVersion(version: "1.3", aenderungen: [
+    WhatsNewVersion(version: "1.0", aenderungen: [
         WhatsNewAenderung(icon: "doc.richtext.fill",  farbe: .blue,
                           titel: "Arztbesuch-PDF verbessert",
                           beschreibung: "Vollständiges Einnahme-Protokoll mit allen Logs, unbegrenzt viele Seiten."),
