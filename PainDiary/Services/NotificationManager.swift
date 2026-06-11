@@ -2,11 +2,20 @@ import Foundation
 import UserNotifications
 import Observation
 
+// MARK: - Deep Link
+
+enum DeepLink: Equatable {
+    case neuerSchmerzEintrag
+    case medikamentErfassen(name: String, dosierung: String)
+    case einnahmeVerlauf
+}
+
 @Observable
 class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
 
     var status: UNAuthorizationStatus = .notDetermined
+    var pendingDeepLink: DeepLink? = nil
 
     override init() {
         super.init()
@@ -14,13 +23,43 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         Task { await aktualisiereStatus() }
     }
 
-    // Show notifications (banner + sound) even when app is in foreground
+    // Show notifications even when app is in foreground
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .sound, .badge])
+    }
+
+    // Deep link when user taps a notification
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let info = response.notification.request.content.userInfo
+        let id   = response.notification.request.identifier
+        DispatchQueue.main.async {
+            if let type = info["type"] as? String {
+                switch type {
+                case "schmerz":
+                    self.pendingDeepLink = .neuerSchmerzEintrag
+                case "medikament":
+                    let name = info["name"] as? String ?? ""
+                    let dos  = info["dosierung"] as? String ?? ""
+                    self.pendingDeepLink = .medikamentErfassen(name: name, dosierung: dos)
+                case "wirkung":
+                    self.pendingDeepLink = .einnahmeVerlauf
+                default: break
+                }
+            } else if id == "tages-erinnerung" {
+                self.pendingDeepLink = .neuerSchmerzEintrag
+            } else if id.hasPrefix("wirkung-") {
+                self.pendingDeepLink = .einnahmeVerlauf
+            }
+        }
+        completionHandler()
     }
 
     func berechtigungAnfordern() async -> Bool {
@@ -56,7 +95,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 titel: "💊 \(med.name)",
                 body: body,
                 stunde: zeit.stunde,
-                minute: zeit.minute
+                minute: zeit.minute,
+                userInfo: ["type": "medikament", "name": med.name, "dosierung": med.dosierung]
             )
         }
     }
@@ -134,7 +174,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             titel: "📊 PainDiary",
             body: "Wie geht es dir heute? Erfasse deinen Schmerz.",
             stunde: stunde,
-            minute: minute
+            minute: minute,
+            userInfo: ["type": "schmerz"]
         )
     }
 
@@ -255,6 +296,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         content.title = "💊 Hat \(log.medikamentName) gewirkt?"
         content.body = "Tippe um deine Einnahme zu bewerten."
         content.sound = .default
+        content.userInfo = ["type": "wirkung"]
         if #available(iOS 15.0, *) { content.interruptionLevel = .passive }
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: Double(stunden) * 3600, repeats: false)
         let id = "wirkung-\(Int(log.datum.timeIntervalSince1970))"
@@ -277,11 +319,12 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
     }
 
-    private func scheduleNotification(id: String, titel: String, body: String, stunde: Int, minute: Int) {
+    private func scheduleNotification(id: String, titel: String, body: String, stunde: Int, minute: Int, userInfo: [AnyHashable: Any] = [:]) {
         let content = UNMutableNotificationContent()
         content.title = titel
         content.body = body
         content.sound = .default
+        content.userInfo = userInfo
         if #available(iOS 15.0, *) { content.interruptionLevel = .timeSensitive }
 
         var dc = DateComponents()

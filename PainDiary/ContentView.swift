@@ -11,6 +11,9 @@ struct ContentView: View {
     @State private var neuerEintragAnzeigen = false
     @State private var entsperrt = false
     @State private var zeigeWhatsNew = false
+    @State private var deepLinkMedikamentName: String? = nil
+    @State private var zeigeEinnahmeVerlauf = false
+    @Query(sort: \Dauermedikation.name) private var medikamente: [Dauermedikation]
     @Environment(\.scenePhase) private var scenePhase
 
     private var biometriAktiv: Bool { biometriAktivCache }
@@ -58,6 +61,31 @@ struct ContentView: View {
                 zeigeWhatsNew = false
             }
             .interactiveDismissDisabled()
+        }
+        .sheet(isPresented: Binding(
+            get: { deepLinkMedikamentName != nil },
+            set: { if !$0 { deepLinkMedikamentName = nil } }
+        )) {
+            if let name = deepLinkMedikamentName,
+               let med = medikamente.first(where: { $0.name == name }) {
+                EinnahmeLogSheet(med: med)
+            }
+        }
+        .sheet(isPresented: $zeigeEinnahmeVerlauf) {
+            NavigationStack { EinnahmeLogView() }
+        }
+        .onChange(of: NotificationManager.shared.pendingDeepLink) { _, link in
+            guard let link else { return }
+            NotificationManager.shared.pendingDeepLink = nil
+            switch link {
+            case .neuerSchmerzEintrag:
+                neuerEintragAnzeigen = true
+            case .medikamentErfassen(let name, _):
+                deepLinkMedikamentName = name
+            case .einnahmeVerlauf:
+                ausgewaehlterTab = 4
+                zeigeEinnahmeVerlauf = true
+            }
         }
         .onAppear {
             pruefWhatsNew()

@@ -706,7 +706,7 @@ struct MedikamentFormView: View {
 
 // MARK: - Einnahme-Log Sheet
 
-private struct EinnahmeLogSheet: View {
+struct EinnahmeLogSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var logs: [EinnahmeLog]
