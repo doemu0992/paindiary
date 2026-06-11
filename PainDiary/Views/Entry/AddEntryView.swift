@@ -429,31 +429,16 @@ struct AddEntryView: View {
         }
     }
 
-    private static let schlafDatumKey = "schlafStunden_datum"
-    private static let schlafWertKey  = "schlafStunden_wert"
-
     private func ladeTagesSchlaf() {
-        let heute = tagesSchluessel(for: Date())
-        guard UserDefaults.standard.string(forKey: Self.schlafDatumKey) == heute else { return }
-        let gespeichert = UserDefaults.standard.double(forKey: Self.schlafWertKey)
-        if gespeichert > 0 { schlafStunden = gespeichert }
-    }
-
-    private func speichereTagesSchlaf() {
-        let heute = tagesSchluessel(for: Date())
-        guard UserDefaults.standard.string(forKey: Self.schlafDatumKey) != heute else { return }
-        UserDefaults.standard.set(schlafStunden, forKey: Self.schlafWertKey)
-        UserDefaults.standard.set(heute, forKey: Self.schlafDatumKey)
-    }
-
-    private func tagesSchluessel(for date: Date) -> String {
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd"
-        return df.string(from: date)
+        let heute = Calendar.current.startOfDay(for: Date())
+        guard let morgen = Calendar.current.date(byAdding: .day, value: 1, to: heute) else { return }
+        if let heutigerEintrag = alleEintraege.first(where: { $0.datum >= heute && $0.datum < morgen }),
+           heutigerEintrag.schlafStunden > 0 {
+            schlafStunden = heutigerEintrag.schlafStunden
+        }
     }
 
     private func speichern() {
-        if eintrag == nil { speichereTagesSchlaf() }
         let wetterSnap = wetter.aktuell
         if let e = eintrag {
             // Editing existing entry

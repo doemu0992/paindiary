@@ -21,10 +21,20 @@ struct KoerperKarte3DView: UIViewRepresentable {
                                          action: #selector(Coordinator.handlePan(_:)))
         v.addGestureRecognizer(pan)
 
+        let pinch = UIPinchGestureRecognizer(target: context.coordinator,
+                                              action: #selector(Coordinator.handlePinch(_:)))
+        v.addGestureRecognizer(pinch)
+
         let tap = UITapGestureRecognizer(target: context.coordinator,
                                           action: #selector(Coordinator.handleTap(_:)))
         tap.require(toFail: pan)
         v.addGestureRecognizer(tap)
+
+        let doubleTap = UITapGestureRecognizer(target: context.coordinator,
+                                                action: #selector(Coordinator.handleDoubleTap(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        tap.require(toFail: doubleTap)
+        v.addGestureRecognizer(doubleTap)
 
         context.coordinator.scnView = v
         return v
@@ -63,6 +73,23 @@ struct KoerperKarte3DView: UIViewRepresentable {
             else { return }
             body.eulerAngles.y += Float(g.translation(in: v).x) * 0.013
             g.setTranslation(.zero, in: v)
+        }
+
+        @objc func handlePinch(_ g: UIPinchGestureRecognizer) {
+            guard let cam = scnView?.scene?.rootNode
+                    .childNodes.first(where: { $0.camera != nil })?.camera else { return }
+            let newFOV = cam.fieldOfView / CGFloat(g.scale)
+            cam.fieldOfView = max(12, min(55, newFOV))
+            g.scale = 1
+        }
+
+        @objc func handleDoubleTap(_ g: UITapGestureRecognizer) {
+            guard let cam = scnView?.scene?.rootNode
+                    .childNodes.first(where: { $0.camera != nil })?.camera else { return }
+            SCNTransaction.begin()
+            SCNTransaction.animationDuration = 0.35
+            cam.fieldOfView = 44
+            SCNTransaction.commit()
         }
 
         @objc func handleTap(_ g: UITapGestureRecognizer) {
