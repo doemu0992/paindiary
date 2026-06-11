@@ -922,7 +922,7 @@ struct EinnahmeLogView: View {
         }
         .sheet(isPresented: $zeigePDFShare) {
             if let url = pdfURL {
-                ShareSheet(url: url)
+                PDFPreviewView(url: url)
             }
         }
     }

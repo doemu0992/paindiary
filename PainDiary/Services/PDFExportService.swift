@@ -233,6 +233,8 @@ class PDFExportService: @unchecked Sendable {
 
     private let blau     = UIColor(red: 0.13, green: 0.40, blue: 0.78, alpha: 1)
     private let hellBlau = UIColor(red: 0.88, green: 0.93, blue: 0.99, alpha: 1)
+    private let lt = UITraitCollection(userInterfaceStyle: .light)
+    private func c(_ color: UIColor) -> UIColor { color.resolvedColor(with: lt) }
 
     /// Must be called on the main thread. Copies all SwiftData objects into plain
     /// structs here, then dispatches PDF rendering to a background queue.
@@ -314,9 +316,9 @@ class PDFExportService: @unchecked Sendable {
                     }
 
                     if optionen.mitMedikamentDossier && (!medikamente.isEmpty || !einnahmeLogs.isEmpty) {
-                        seite += 1; ctx.beginPage()
-                        medikamentDossierSeite(ctx: ctx.cgContext, medikamente: medikamente,
-                                               einnahmeLogs: einnahmeLogs, eintraege: eintraege, seite: seite)
+                        seite = medikamentDossierSeiten(ctx: ctx, medikamente: medikamente,
+                                                        einnahmeLogs: einnahmeLogs, eintraege: eintraege,
+                                                        startSeite: seite + 1)
                     }
 
                     if optionen.mitZyklus && !zyklus.isEmpty {
@@ -695,61 +697,90 @@ class PDFExportService: @unchecked Sendable {
 
     // MARK: - Medication Dossier page (Feature F)
 
-    private func medikamentDossierSeite(ctx: CGContext, medikamente: [PDFMedikament],
-                                         einnahmeLogs: [PDFEinnahmeLog],
-                                         eintraege: [PDFEintrag], seite: Int) {
-        seitenKopf(ctx: ctx, titel: "Medikamenten-Dossier", seite: seite)
+    @discardableResult
+    private func medikamentDossierSeiten(
+        ctx: UIGraphicsPDFRendererContext,
+        medikamente: [PDFMedikament],
+        einnahmeLogs: [PDFEinnahmeLog],
+        eintraege: [PDFEintrag],
+        startSeite: Int
+    ) -> Int {
+        var seite = startSeite
+        let gc = ctx.cgContext
+        ctx.beginPage()
+        seitenKopf(ctx: gc, titel: "Medikamenten-Dossier", seite: seite)
         var y: CGFloat = rand + 52
+
+        func newPage() {
+            fusszeile(ctx: gc, seite: seite)
+            seite += 1
+            ctx.beginPage()
+            seitenKopf(ctx: gc, titel: "Medikamenten-Dossier (Forts.)", seite: seite)
+            y = rand + 52
+        }
 
         let kal = Calendar.current
         let heute = kal.startOfDay(for: Date())
         let aktive = medikamente.filter { $0.aktiv }
 
-        draw("Einnahmetreue (letzte 30 Tage)", at: CGPoint(x: rand, y: y),
-             font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
-        y += 20
-
-        let cols: [CGFloat] = [rand, rand + 160, rand + 270, rand + 355, rand + 430]
-        tabellenKopf(ctx: ctx, y: y, cols: cols,
-                     headers: ["Medikament", "Dosierung", "Hinweis", "Treue", "Einnahmen"])
-        y += 26
-
-        for med in aktive {
-            if y > H - rand - 30 { break }
-            let fensterStart = kal.date(byAdding: .day, value: -30, to: heute)!
-            let tageSeitStart = max(1, kal.dateComponents([.day],
-                from: kal.startOfDay(for: med.startDatum), to: heute).day ?? 1)
-            let fensterTage = min(30, tageSeitStart)
-            let einnahmenImFenster = einnahmeLogs.filter {
-                $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
-                $0.eingenommen && $0.datum >= fensterStart
-            }
-            let einnahmenTage = Set(einnahmenImFenster.map { kal.startOfDay(for: $0.datum) }).count
-            let treue = fensterTage > 0 ? min(100, Int(Double(einnahmenTage) / Double(fensterTage) * 100)) : 0
-            let hinweis = med.einnahmeHinweis.isEmpty ? "–" : med.einnahmeHinweis
-            tabellenZeile(ctx: ctx, y: y, cols: cols,
-                          werte: [med.name, med.dosierung, hinweis, "\(treue)%", "\(einnahmenTage) Tage"],
-                          fett: [true, false, false, true, false])
+        // --- Einnahmetreue ---
+        if !aktive.isEmpty {
+            draw("Einnahmetreue (letzte 30 Tage)", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .black)
             y += 20
-            trennlinie(ctx: ctx, y: y - 1, alpha: 0.12)
+            let cols: [CGFloat] = [rand, rand + 160, rand + 270, rand + 355, rand + 430]
+            tabellenKopf(ctx: gc, y: y, cols: cols,
+                         headers: ["Medikament", "Dosierung", "Hinweis", "Treue", "Einnahmen"])
+            y += 26
+            for med in aktive {
+                if y + 20 > H - rand - 30 {
+                    newPage()
+                    tabellenKopf(ctx: gc, y: y, cols: cols,
+                                 headers: ["Medikament", "Dosierung", "Hinweis", "Treue", "Einnahmen"])
+                    y += 26
+                }
+                let fensterStart = kal.date(byAdding: .day, value: -30, to: heute)!
+                let tageSeitStart = max(1, kal.dateComponents([.day],
+                    from: kal.startOfDay(for: med.startDatum), to: heute).day ?? 1)
+                let fensterTage = min(30, tageSeitStart)
+                let einnahmenImFenster = einnahmeLogs.filter {
+                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.eingenommen && $0.datum >= fensterStart
+                }
+                let einnahmenTage = Set(einnahmenImFenster.map { kal.startOfDay(for: $0.datum) }).count
+                let treue = fensterTage > 0 ? min(100, Int(Double(einnahmenTage) / Double(fensterTage) * 100)) : 0
+                let hinweis = med.einnahmeHinweis.isEmpty ? "–" : med.einnahmeHinweis
+                tabellenZeile(ctx: gc, y: y, cols: cols,
+                              werte: [med.name, med.dosierung, hinweis, "\(treue)%", "\(einnahmenTage) Tage"],
+                              fett: [true, false, false, true, false])
+                y += 20
+                trennlinie(ctx: gc, y: y - 1, alpha: 0.12)
+            }
+            y += 12
         }
-        y += 12
 
-        // Full log history table — always shown when logs exist
+        // --- Einnahme-Protokoll (alle Logs) ---
         if !einnahmeLogs.isEmpty {
-            trennlinie(ctx: ctx, y: y); y += 14
+            if y + 60 > H - rand - 30 { newPage() }
+            trennlinie(ctx: gc, y: y); y += 14
             draw("Einnahme-Protokoll", at: CGPoint(x: rand, y: y),
-                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .black)
             y += 20
             let logCols: [CGFloat] = [rand, rand + 85, rand + 280, rand + 360, rand + 420]
-            tabellenKopf(ctx: ctx, y: y, cols: logCols,
+            tabellenKopf(ctx: gc, y: y, cols: logCols,
                          headers: ["Datum", "Medikament / Dosierung", "Eingenommen", "Wirkung", "Notizen"])
             y += 26
-            let sichtbareLogs = einnahmeLogs.prefix(30)
-            for log in sichtbareLogs {
-                if y > H - rand - 30 { break }
+            for log in einnahmeLogs {
+                if y + 20 > H - rand - 30 {
+                    newPage()
+                    tabellenKopf(ctx: gc, y: y, cols: logCols,
+                                 headers: ["Datum", "Medikament / Dosierung", "Eingenommen", "Wirkung", "Notizen"])
+                    y += 26
+                }
                 let status = log.eingenommen ? "✓ Ja" : "✗ Nein"
-                let statusFarbe: UIColor = log.eingenommen ? .systemGreen : .systemRed
+                let statusFarbe: UIColor = log.eingenommen
+                    ? UIColor(red: 0.17, green: 0.70, blue: 0.37, alpha: 1)
+                    : UIColor(red: 0.96, green: 0.23, blue: 0.19, alpha: 1)
                 let medName = log.dosierung.isEmpty ? log.medikamentName : "\(log.medikamentName) \(log.dosierung)"
                 let wirkungText: String = {
                     switch log.wirkung {
@@ -761,39 +792,34 @@ class PDFExportService: @unchecked Sendable {
                 }()
                 let notizKurz = log.notizen.isEmpty ? "–" : String(log.notizen.prefix(25))
                 draw(fmtKurz(log.datum), at: CGPoint(x: logCols[0] + 4, y: y + 4),
-                     font: .systemFont(ofSize: 9.5), color: .label)
+                     font: .systemFont(ofSize: 9.5), color: .black)
                 drawClamped(medName, at: CGPoint(x: logCols[1] + 4, y: y + 4),
-                            font: .systemFont(ofSize: 9.5, weight: .medium), color: .label,
+                            font: .systemFont(ofSize: 9.5, weight: .medium), color: .black,
                             maxW: logCols[2] - logCols[1] - 8)
                 draw(status, at: CGPoint(x: logCols[2] + 4, y: y + 4),
                      font: .systemFont(ofSize: 9.5, weight: .semibold), color: statusFarbe)
                 draw(wirkungText, at: CGPoint(x: logCols[3] + 4, y: y + 4),
-                     font: .systemFont(ofSize: 9.5), color: .label)
+                     font: .systemFont(ofSize: 9.5), color: .black)
                 drawClamped(notizKurz, at: CGPoint(x: logCols[4] + 4, y: y + 4),
-                            font: .systemFont(ofSize: 9), color: .secondaryLabel,
+                            font: .systemFont(ofSize: 9), color: UIColor(white: 0.45, alpha: 1),
                             maxW: W - rand - logCols[4] - 8)
                 y += 20
-                trennlinie(ctx: ctx, y: y - 1, alpha: 0.12)
-            }
-            if einnahmeLogs.count > 30 {
-                draw("… und \(einnahmeLogs.count - 30) weitere Einträge",
-                     at: CGPoint(x: rand + 4, y: y + 4),
-                     font: .italicSystemFont(ofSize: 9), color: .secondaryLabel)
-                y += 18
+                trennlinie(ctx: gc, y: y - 1, alpha: 0.12)
             }
             y += 8
         }
 
+        // --- Wirksamkeit ---
         let bewertet = einnahmeLogs.filter { !$0.wirkung.isEmpty }
         if !bewertet.isEmpty {
-            trennlinie(ctx: ctx, y: y); y += 14
+            if y + 60 > H - rand - 30 { newPage() }
+            trennlinie(ctx: gc, y: y); y += 14
             draw("Wirksamkeit Bedarfsmedikation", at: CGPoint(x: rand, y: y),
-                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .black)
             y += 20
-
             let grouped = Dictionary(grouping: bewertet) { "\($0.medikamentName)|\($0.dosierung)" }
             for (_, logs) in grouped.sorted(by: { $0.key < $1.key }) {
-                if y > H - rand - 40 { break }
+                if y + 22 > H - rand - 30 { newPage() }
                 guard let erster = logs.first else { continue }
                 let name = erster.dosierung.isEmpty ? erster.medikamentName : "\(erster.medikamentName) \(erster.dosierung)"
                 let gut = logs.filter { $0.wirkung == "gut" }.count
@@ -802,35 +828,36 @@ class PDFExportService: @unchecked Sendable {
                 let gesamt = gut + teilw + nicht
                 let gutPct = gesamt > 0 ? Int(Double(gut) / Double(gesamt) * 100) : 0
                 draw(name, at: CGPoint(x: rand, y: y),
-                     font: .systemFont(ofSize: 11, weight: .semibold), color: .label)
+                     font: .systemFont(ofSize: 11, weight: .semibold), color: .black)
                 let barMaxW: CGFloat = iw - 220
                 let barStart: CGFloat = rand + 200
-                let gutW  = barMaxW * CGFloat(gut)  / CGFloat(max(1, gesamt))
-                let teilwW = barMaxW * CGFloat(teilw) / CGFloat(max(1, gesamt))
-                let nichtW = barMaxW * CGFloat(nicht) / CGFloat(max(1, gesamt))
-                ctx.setFillColor(UIColor.systemGreen.withAlphaComponent(0.65).cgColor)
-                ctx.fill(CGRect(x: barStart, y: y + 2, width: gutW, height: 12))
-                ctx.setFillColor(UIColor.systemOrange.withAlphaComponent(0.65).cgColor)
-                ctx.fill(CGRect(x: barStart + gutW, y: y + 2, width: teilwW, height: 12))
-                ctx.setFillColor(UIColor.systemRed.withAlphaComponent(0.65).cgColor)
-                ctx.fill(CGRect(x: barStart + gutW + teilwW, y: y + 2, width: nichtW, height: 12))
+                let gutW   = barMaxW * CGFloat(gut)   / CGFloat(max(1, gesamt))
+                let teilwW = barMaxW * CGFloat(teilw)  / CGFloat(max(1, gesamt))
+                let nichtW = barMaxW * CGFloat(nicht)  / CGFloat(max(1, gesamt))
+                gc.setFillColor(UIColor(red: 0.17, green: 0.70, blue: 0.37, alpha: 0.65).cgColor)
+                gc.fill(CGRect(x: barStart, y: y + 2, width: gutW, height: 12))
+                gc.setFillColor(UIColor(red: 1.00, green: 0.60, blue: 0.00, alpha: 0.65).cgColor)
+                gc.fill(CGRect(x: barStart + gutW, y: y + 2, width: teilwW, height: 12))
+                gc.setFillColor(UIColor(red: 0.96, green: 0.23, blue: 0.19, alpha: 0.65).cgColor)
+                gc.fill(CGRect(x: barStart + gutW + teilwW, y: y + 2, width: nichtW, height: 12))
                 draw("\(gutPct)% gut  (\(gut)/\(teilw)/\(nicht))",
                      at: CGPoint(x: barStart + barMaxW + 6, y: y + 2),
-                     font: .systemFont(ofSize: 9), color: .secondaryLabel)
+                     font: .systemFont(ofSize: 9), color: UIColor(white: 0.45, alpha: 1))
                 y += 22
             }
         }
 
+        // --- Wochenverlauf Bedarfsmedikation ---
         let bedarfsMeds = medikamente.filter { $0.frequenz == "Bei Bedarf" || $0.frequenz.isEmpty }
         let bedarfsLogs = einnahmeLogs.filter { log in
             bedarfsMeds.contains { $0.name == log.medikamentName } && log.eingenommen
         }
         if !bedarfsLogs.isEmpty {
-            trennlinie(ctx: ctx, y: y); y += 14
+            if y + 160 > H - rand - 30 { newPage() }
+            trennlinie(ctx: gc, y: y); y += 14
             draw("Bedarfsmedikation – Wochenverlauf (letzte 8 Wochen)", at: CGPoint(x: rand, y: y),
-                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .black)
             y += 20
-
             let wochen = (0..<8).reversed().map { wocheVor -> (label: String, anzahl: Int) in
                 guard let wocheEnde = kal.date(byAdding: .weekOfYear, value: -wocheVor, to: heute),
                       let wocheStart = kal.date(byAdding: .day, value: -6, to: wocheEnde) else {
@@ -842,49 +869,58 @@ class PDFExportService: @unchecked Sendable {
             let maxAnzahl = max(1, wochen.map(\.anzahl).max() ?? 1)
             let barMaxW: CGFloat = iw - 80
             let barH: CGFloat = 14
-
             for (label, anzahl) in wochen {
-                if y > H - rand - 30 { break }
+                if y + barH + 2 > H - rand - 30 { break }
                 let bw = CGFloat(anzahl) / CGFloat(maxAnzahl) * barMaxW
-                draw(label, at: CGPoint(x: rand, y: y), font: .systemFont(ofSize: 9), color: .secondaryLabel)
-                let farbe = anzahl > 2 ? UIColor.systemOrange : UIColor.systemBlue
+                draw(label, at: CGPoint(x: rand, y: y), font: .systemFont(ofSize: 9),
+                     color: UIColor(white: 0.45, alpha: 1))
+                let barFarbe = anzahl > 2
+                    ? UIColor(red: 1.00, green: 0.60, blue: 0.00, alpha: 0.55)
+                    : UIColor(red: 0.00, green: 0.48, blue: 1.00, alpha: 0.55)
                 if bw > 0 {
-                    ctx.setFillColor(farbe.withAlphaComponent(0.55).cgColor)
-                    ctx.fill(CGRect(x: rand + 72, y: y + 1, width: bw, height: barH - 3))
+                    gc.setFillColor(barFarbe.cgColor)
+                    gc.fill(CGRect(x: rand + 72, y: y + 1, width: bw, height: barH - 3))
                 }
+                let anzahlFarbe = anzahl > 2
+                    ? UIColor(red: 1.00, green: 0.60, blue: 0.00, alpha: 1)
+                    : UIColor(white: 0.45, alpha: 1)
                 draw("\(anzahl)×", at: CGPoint(x: rand + 72 + bw + 4, y: y),
                      font: .systemFont(ofSize: 9, weight: anzahl > 2 ? .bold : .regular),
-                     color: anzahl > 2 ? .systemOrange : .secondaryLabel)
+                     color: anzahlFarbe)
                 y += barH + 2
             }
             draw("⚠︎ Grenze: >2.5× pro Woche = Übergebrauchsrisiko (MOH)",
-                 at: CGPoint(x: rand, y: y + 2), font: .systemFont(ofSize: 8), color: .systemOrange)
+                 at: CGPoint(x: rand, y: y + 2), font: .systemFont(ofSize: 8),
+                 color: UIColor(red: 1.00, green: 0.60, blue: 0.00, alpha: 1))
             y += 16
         }
 
-        // Notizen aus Einnahme-Logs (letzte 30 Tage)
+        // --- Einnahme-Notizen ---
         let notizLogs = einnahmeLogs.filter { !$0.notizen.isEmpty }
-        if !notizLogs.isEmpty && y < H - rand - 80 {
-            trennlinie(ctx: ctx, y: y); y += 14
+        if !notizLogs.isEmpty {
+            if y + 60 > H - rand - 30 { newPage() }
+            trennlinie(ctx: gc, y: y); y += 14
             draw("Einnahme-Notizen", at: CGPoint(x: rand, y: y),
-                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .black)
             y += 20
-            for log in notizLogs.prefix(8) {
-                if y > H - rand - 30 { break }
+            for log in notizLogs {
+                if y + 34 > H - rand - 30 { newPage() }
                 let kopf = "\(fmtKurz(log.datum))  \(log.medikamentName)\(log.dosierung.isEmpty ? "" : " \(log.dosierung)")"
                 draw(kopf, at: CGPoint(x: rand, y: y),
-                     font: .systemFont(ofSize: 10, weight: .semibold), color: .label)
+                     font: .systemFont(ofSize: 10, weight: .semibold), color: .black)
                 y += 14
                 let notizText = log.notizen.replacingOccurrences(of: "\n", with: " ")
                 drawClamped(notizText, at: CGPoint(x: rand + 10, y: y),
-                            font: .systemFont(ofSize: 9.5), color: .darkGray, maxW: iw - 10)
+                            font: .systemFont(ofSize: 9.5), color: UIColor(white: 0.3, alpha: 1),
+                            maxW: iw - 10)
                 y += 14
-                trennlinie(ctx: ctx, y: y, alpha: 0.08)
+                trennlinie(ctx: gc, y: y, alpha: 0.08)
                 y += 6
             }
         }
 
-        fusszeile(ctx: ctx, seite: seite)
+        fusszeile(ctx: gc, seite: seite)
+        return seite
     }
 
     // MARK: - Zyklus page
@@ -980,7 +1016,7 @@ class PDFExportService: @unchecked Sendable {
             let barW = CGFloat(count) / CGFloat(maxS) * (iw - 140)
             draw(symptom, at: CGPoint(x: rand, y: y + 2),
                  font: .systemFont(ofSize: 10), color: .label)
-            ctx.setFillColor(UIColor.systemPink.withAlphaComponent(0.5).cgColor)
+            ctx.setFillColor(c(.systemPink).withAlphaComponent(0.5).cgColor)
             ctx.fill(CGRect(x: rand + 130, y: y + 2, width: barW, height: 12))
             draw("\(count)×", at: CGPoint(x: rand + 130 + barW + 4, y: y + 2),
                  font: .systemFont(ofSize: 9), color: .secondaryLabel)
@@ -1308,14 +1344,14 @@ class PDFExportService: @unchecked Sendable {
                               fill: UIColor, stroke: UIColor) {
         let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
         ctx.saveGState()
-        ctx.addPath(path.cgPath); ctx.setFillColor(fill.cgColor); ctx.fillPath()
-        ctx.addPath(path.cgPath); ctx.setStrokeColor(stroke.cgColor)
+        ctx.addPath(path.cgPath); ctx.setFillColor(c(fill).cgColor); ctx.fillPath()
+        ctx.addPath(path.cgPath); ctx.setStrokeColor(c(stroke).cgColor)
         ctx.setLineWidth(0.5); ctx.strokePath()
         ctx.restoreGState()
     }
 
     private func trennlinie(ctx: CGContext, y: CGFloat, alpha: CGFloat = 0.3) {
-        ctx.setStrokeColor(UIColor.separator.withAlphaComponent(alpha).cgColor)
+        ctx.setStrokeColor(c(UIColor.separator).withAlphaComponent(alpha).cgColor)
         ctx.setLineWidth(0.5)
         ctx.move(to: CGPoint(x: rand, y: y))
         ctx.addLine(to: CGPoint(x: W - rand, y: y))
@@ -1323,11 +1359,11 @@ class PDFExportService: @unchecked Sendable {
     }
 
     private func draw(_ text: String, at point: CGPoint, font: UIFont, color: UIColor) {
-        (text as NSString).draw(at: point, withAttributes: [.font: font, .foregroundColor: color])
+        (text as NSString).draw(at: point, withAttributes: [.font: font, .foregroundColor: c(color)])
     }
 
     private func drawRight(_ text: String, rightX: CGFloat, y: CGFloat, font: UIFont, color: UIColor) {
-        let attr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
+        let attr: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: c(color)]
         let sz = (text as NSString).size(withAttributes: attr)
         (text as NSString).draw(at: CGPoint(x: rightX - sz.width, y: y), withAttributes: attr)
     }
@@ -1336,7 +1372,7 @@ class PDFExportService: @unchecked Sendable {
         let style = NSMutableParagraphStyle()
         style.lineBreakMode = .byTruncatingTail
         (text as NSString).draw(in: CGRect(x: p.x, y: p.y, width: maxW, height: 14),
-                                withAttributes: [.font: font, .foregroundColor: color, .paragraphStyle: style])
+                                withAttributes: [.font: font, .foregroundColor: c(color), .paragraphStyle: style])
     }
 
     // MARK: - Data helpers
