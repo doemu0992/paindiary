@@ -1168,9 +1168,10 @@ class PDFExportService: @unchecked Sendable {
     @MainActor
     func erstelleMedikamentenZusammenfassung(
         medikamente: [Dauermedikation],
-        logs: [EinnahmeLog]
+        logs: [EinnahmeLog],
+        profil: Benutzerprofil? = nil
     ) -> URL? {
-        let patient  = PDFPatientenDaten()
+        let patient  = PDFPatientenDaten.aus(profil: profil)
         let meds     = medikamente.map(PDFMedikament.aus)
         let pdfLogs  = logs.sorted { $0.datum > $1.datum }.map(PDFEinnahmeLog.aus)
         let optionen = ExportOptionen(

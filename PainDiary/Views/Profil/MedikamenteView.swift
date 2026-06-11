@@ -864,6 +864,7 @@ private func defaultZeit(_ stunde: Int) -> Date {
 struct EinnahmeLogView: View {
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var logs: [EinnahmeLog]
     @Query(sort: \Dauermedikation.name) private var medikamente: [Dauermedikation]
+    @Query private var profile: [Benutzerprofil]
     @Environment(\.modelContext) private var modelContext
     @State private var zeigePDFShare = false
     @State private var pdfURL: URL? = nil
@@ -908,7 +909,8 @@ struct EinnahmeLogView: View {
                 Button {
                     Task { @MainActor in
                         if let url = PDFExportService.shared.erstelleMedikamentenZusammenfassung(
-                            medikamente: Array(medikamente), logs: Array(logs)) {
+                            medikamente: Array(medikamente), logs: Array(logs),
+                            profil: profile.first) {
                             pdfURL = url
                             zeigePDFShare = true
                         }
