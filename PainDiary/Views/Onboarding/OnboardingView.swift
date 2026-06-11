@@ -90,6 +90,7 @@ struct OnboardingView: View {
             guard !name.isEmpty else { return }
         }
         if schritt == 2, ausgewaehlteSchmerztypen.isEmpty { return }
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         if schritt < gesamtSchritte - 1 {
             withAnimation { schritt += 1 }
         } else {
@@ -173,13 +174,16 @@ private struct NameSchritt: View {
     @FocusState private var fokus: Bool
 
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: fokus ? 16 : 32) {
             Spacer()
-            ZStack {
-                Circle().fill(Color.orange.opacity(0.12)).frame(width: 160, height: 160)
-                Image(systemName: "person.fill")
-                    .font(.system(size: 68))
-                    .foregroundStyle(.orange)
+            if !fokus {
+                ZStack {
+                    Circle().fill(Color.orange.opacity(0.12)).frame(width: 160, height: 160)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 68))
+                        .foregroundStyle(.orange)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .top)))
             }
             VStack(spacing: 16) {
                 Text("Wie heisst du?")
@@ -204,10 +208,13 @@ private struct NameSchritt: View {
                     .padding(.top, 8)
             }
             Spacer()
-            Spacer()
+            if !fokus { Spacer() }
         }
         .padding(.horizontal, 24)
-        .onAppear { fokus = true }
+        .animation(.easeInOut(duration: 0.22), value: fokus)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { fokus = true }
+        }
     }
 }
 
