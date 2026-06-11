@@ -50,7 +50,10 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                     let dos  = info["dosierung"] as? String ?? ""
                     self.pendingDeepLink = .medikamentErfassen(name: name, dosierung: dos)
                 case "wirkung":
-                    self.pendingDeepLink = .einnahmeVerlauf
+                    let name = info["name"] as? String ?? ""
+                    self.pendingDeepLink = name.isEmpty
+                        ? .einnahmeVerlauf
+                        : .medikamentErfassen(name: name, dosierung: "")
                 default: break
                 }
             } else if id == "tages-erinnerung" {
@@ -296,7 +299,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         content.title = "💊 Hat \(log.medikamentName) gewirkt?"
         content.body = "Tippe um deine Einnahme zu bewerten."
         content.sound = .default
-        content.userInfo = ["type": "wirkung"]
+        content.userInfo = ["type": "wirkung", "name": log.medikamentName]
         if #available(iOS 15.0, *) { content.interruptionLevel = .passive }
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: Double(stunden) * 3600, repeats: false)
         let id = "wirkung-\(Int(log.datum.timeIntervalSince1970))"

@@ -74,21 +74,29 @@ struct ContentView: View {
         .sheet(isPresented: $zeigeEinnahmeVerlauf) {
             NavigationStack { EinnahmeLogView() }
         }
-        .onChange(of: NotificationManager.shared.pendingDeepLink) { _, link in
-            guard let link else { return }
-            NotificationManager.shared.pendingDeepLink = nil
-            switch link {
-            case .neuerSchmerzEintrag:
-                neuerEintragAnzeigen = true
-            case .medikamentErfassen(let name, _):
-                deepLinkMedikamentName = name
-            case .einnahmeVerlauf:
-                ausgewaehlterTab = 4
-                zeigeEinnahmeVerlauf = true
-            }
+        .onChange(of: NotificationManager.shared.pendingDeepLink) { _, _ in
+            verarbeiteDeepLink()
         }
         .onAppear {
             pruefWhatsNew()
+            // Cold launch: pendingDeepLink kann schon gesetzt sein bevor ContentView erscheint
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                verarbeiteDeepLink()
+            }
+        }
+    }
+
+    private func verarbeiteDeepLink() {
+        guard let link = NotificationManager.shared.pendingDeepLink else { return }
+        NotificationManager.shared.pendingDeepLink = nil
+        switch link {
+        case .neuerSchmerzEintrag:
+            neuerEintragAnzeigen = true
+        case .medikamentErfassen(let name, _):
+            deepLinkMedikamentName = name
+        case .einnahmeVerlauf:
+            ausgewaehlterTab = 4
+            zeigeEinnahmeVerlauf = true
         }
     }
 
