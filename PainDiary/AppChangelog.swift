@@ -9,14 +9,15 @@ struct WhatsNewAenderung: Identifiable {
 }
 
 struct WhatsNewVersion {
-    let version: String
+    let version: String  // Anzeige in der UI, z.B. "2.0"
+    let build: String    // Matching gegen CFBundleVersion, z.B. "5"
     let aenderungen: [WhatsNewAenderung]
 }
 
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
-/// version muss exakt mit CFBundleShortVersionString übereinstimmen.
+/// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
-    WhatsNewVersion(version: "2.0", aenderungen: [
+    WhatsNewVersion(version: "2.0", build: "5", aenderungen: [
         WhatsNewAenderung(icon: "doc.richtext.fill",  farbe: .blue,
                           titel: "Arztbesuch-PDF verbessert",
                           beschreibung: "Vollständiges Einnahme-Protokoll mit allen Logs, unbegrenzt viele Seiten."),
@@ -35,8 +36,8 @@ let appChangelog: [WhatsNewVersion] = [
     ]),
 ]
 
-/// Gibt die Einträge für die aktuell installierte App-Version zurück.
+/// Gibt den Changelog-Eintrag für den aktuell installierten Build zurück.
 func whatsNewFuerAktuelleVersion() -> WhatsNewVersion? {
-    let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-    return appChangelog.first { $0.version == version }
+    let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
+    return appChangelog.first { $0.build == build }
 }

@@ -4,12 +4,11 @@ struct WhatsNewView: View {
     let onDismiss: () -> Void
     @Environment(\.colorScheme) private var scheme
 
-    private var version: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-    }
+    private var eintrag: WhatsNewVersion? { whatsNewFuerAktuelleVersion() }
 
-    private var eintrag: WhatsNewVersion? {
-        whatsNewFuerAktuelleVersion()
+    private var versionAnzeige: String {
+        guard let e = eintrag else { return "" }
+        return "Version \(e.version) (\(e.build))"
     }
 
     var body: some View {
@@ -45,7 +44,7 @@ struct WhatsNewView: View {
                 Text("Was ist neu")
                     .font(.title.bold())
                     .foregroundStyle(.white)
-                Text("Version \(version)")
+                Text(versionAnzeige)
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.8))
             }

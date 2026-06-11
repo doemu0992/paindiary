@@ -14,8 +14,8 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private var biometriAktiv: Bool { biometriAktivCache }
-    private var aktuelleVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    private var aktuelleBuild: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
     }
 
 #if os(macOS)
@@ -54,7 +54,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $zeigeWhatsNew) {
             WhatsNewView {
-                whatsNewGezeigteVersion = aktuelleVersion
+                whatsNewGezeigteVersion = aktuelleBuild
                 zeigeWhatsNew = false
             }
             .interactiveDismissDisabled()
@@ -67,8 +67,7 @@ struct ContentView: View {
     private func pruefWhatsNew() {
         guard onboardingAbgeschlossen,
               whatsNewFuerAktuelleVersion() != nil,
-              aktuelleVersion != whatsNewGezeigteVersion else { return }
-        // Kurze Verzögerung damit das Onboarding-Cover nicht kollidiert
+              aktuelleBuild != whatsNewGezeigteVersion else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             zeigeWhatsNew = true
         }
