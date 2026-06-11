@@ -11,17 +11,34 @@ struct CharakterAusloeserStepView: View {
     @State private var ausloeserAusgewaehlt: Set<String> = []
     @State private var ausloeserFreitext = ""
 
+    @AppStorage("customCharakter") private var customCharakterRaw = ""
+    @AppStorage("customAusloeser") private var customAusloeserRaw = ""
+
+    private var customCharakter: [String] {
+        customCharakterRaw.split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
+    private var customAusloeser: [String] {
+        customAusloeserRaw.split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
     private var charakterVorschlaege: [String] {
-        SchmerzLexikon.db[koerperstelle]?.charakter ?? [
+        let basis = SchmerzLexikon.db[koerperstelle]?.charakter ?? [
             "Stechend", "Ziehend", "Dumpf", "Brennend", "Krampfartig", "Pulsierend", "Drückend"
         ]
+        return basis + customCharakter.filter { !basis.contains($0) }
     }
 
     private var ausloeserVorschlaege: [String] {
-        SchmerzLexikon.db[koerperstelle]?.ausloeser ?? [
+        let basis = SchmerzLexikon.db[koerperstelle]?.ausloeser ?? [
             "Stress", "Bewegung", "Wetter", "Schlafmangel", "Essen",
             "Alkohol", "Bildschirmarbeit", "Kälte", "Unbekannt"
         ]
+        return basis + customAusloeser.filter { !basis.contains($0) }
     }
 
     var body: some View {
@@ -52,9 +69,14 @@ struct CharakterAusloeserStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !charFreitext.isEmpty {
                         Button {
-                            charAusgewaehlt.insert(charFreitext.trimmingCharacters(in: .whitespaces))
+                            let term = charFreitext.trimmingCharacters(in: .whitespaces)
+                            guard !term.isEmpty else { return }
+                            charAusgewaehlt.insert(term)
                             charFreitext = ""
                             aktualisiereSchmerzart()
+                            if !charakterVorschlaege.contains(term) {
+                                customCharakterRaw = (customCharakter + [term]).joined(separator: ",")
+                            }
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)
@@ -105,9 +127,14 @@ struct CharakterAusloeserStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !ausloeserFreitext.isEmpty {
                         Button {
-                            ausloeserAusgewaehlt.insert(ausloeserFreitext.trimmingCharacters(in: .whitespaces))
+                            let term = ausloeserFreitext.trimmingCharacters(in: .whitespaces)
+                            guard !term.isEmpty else { return }
+                            ausloeserAusgewaehlt.insert(term)
                             ausloeserFreitext = ""
                             aktualisiereAusloeser()
+                            if !ausloeserVorschlaege.contains(term) {
+                                customAusloeserRaw = (customAusloeser + [term]).joined(separator: ",")
+                            }
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)

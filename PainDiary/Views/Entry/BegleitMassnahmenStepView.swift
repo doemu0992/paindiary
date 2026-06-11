@@ -14,16 +14,35 @@ struct BegleitMassnahmenStepView: View {
     @State private var massnahmenAusgewaehlt: Set<String> = []
     @State private var massnahmenFreitext = ""
 
-    private let massnahmenVorschlaege = [
-        "Schmerzmittel", "Wärme", "Kälte", "Ruhe", "Massage",
-        "Dehnung", "Sport", "Meditation", "Arzt besucht", "Schlaf"
-    ]
+    @AppStorage("customBegleit")    private var customBegleitRaw    = ""
+    @AppStorage("customMassnahmen") private var customMassnahmenRaw = ""
+
+    private var customBegleit: [String] {
+        customBegleitRaw.split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
+    private var customMassnahmen: [String] {
+        customMassnahmenRaw.split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
 
     private var begleitVorschlaege: [String] {
-        SchmerzLexikon.db[koerperstelle]?.symptome ?? [
+        let basis = SchmerzLexikon.db[koerperstelle]?.symptome ?? [
             "Übelkeit", "Schwindel", "Müdigkeit", "Schlafstörungen",
             "Appetitlosigkeit", "Stimmungsschwankungen", "Konzentrationsprobleme"
         ]
+        return basis + customBegleit.filter { !basis.contains($0) }
+    }
+
+    private var massnahmenVorschlaege: [String] {
+        let basis = [
+            "Schmerzmittel", "Wärme", "Kälte", "Ruhe", "Massage",
+            "Dehnung", "Sport", "Meditation", "Arzt besucht", "Schlaf"
+        ]
+        return basis + customMassnahmen.filter { !basis.contains($0) }
     }
 
     private var eingenommeneHeute: [EinnahmeLog] {
@@ -60,9 +79,14 @@ struct BegleitMassnahmenStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !begleitFreitext.isEmpty {
                         Button {
-                            begleitAusgewaehlt.insert(begleitFreitext.trimmingCharacters(in: .whitespaces))
+                            let term = begleitFreitext.trimmingCharacters(in: .whitespaces)
+                            guard !term.isEmpty else { return }
+                            begleitAusgewaehlt.insert(term)
                             begleitFreitext = ""
                             aktualisiereBegleiter()
+                            if !begleitVorschlaege.contains(term) {
+                                customBegleitRaw = (customBegleit + [term]).joined(separator: ",")
+                            }
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)
@@ -105,9 +129,14 @@ struct BegleitMassnahmenStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !massnahmenFreitext.isEmpty {
                         Button {
-                            massnahmenAusgewaehlt.insert(massnahmenFreitext.trimmingCharacters(in: .whitespaces))
+                            let term = massnahmenFreitext.trimmingCharacters(in: .whitespaces)
+                            guard !term.isEmpty else { return }
+                            massnahmenAusgewaehlt.insert(term)
                             massnahmenFreitext = ""
                             aktualisiereMassnahmen()
+                            if !massnahmenVorschlaege.contains(term) {
+                                customMassnahmenRaw = (customMassnahmen + [term]).joined(separator: ",")
+                            }
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)
@@ -124,17 +153,11 @@ struct BegleitMassnahmenStepView: View {
     }
 
     private func aktualisiereBegleiter() {
-        var teile = begleitAusgewaehlt.sorted()
-        let trimmed = begleitFreitext.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty { teile.append(trimmed) }
-        begleiterscheinungen = teile.joined(separator: ", ")
+        begleiterscheinungen = begleitAusgewaehlt.sorted().joined(separator: ", ")
     }
 
     private func aktualisiereMassnahmen() {
-        var teile = massnahmenAusgewaehlt.sorted()
-        let trimmed = massnahmenFreitext.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty { teile.append(trimmed) }
-        massnahmen = teile.joined(separator: ", ")
+        massnahmen = massnahmenAusgewaehlt.sorted().joined(separator: ", ")
     }
 
     private func ladeWerte() {
@@ -142,15 +165,13 @@ struct BegleitMassnahmenStepView: View {
             .components(separatedBy: ", ")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        begleitAusgewaehlt = Set(begleitTeile.filter { begleitVorschlaege.contains($0) })
-        let customBegleit = begleitTeile.filter { !begleitVorschlaege.contains($0) }
-        begleitFreitext = customBegleit.joined(separator: ", ")
+        begleitAusgewaehlt = Set(begleitTeile)
 
         let massnahmenTeile = massnahmen
             .components(separatedBy: ", ")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        massnahmenAusgewaehlt = Set(massnahmenTeile.filter { massnahmenVorschlaege.contains($0) })
+        massnahmenAusgewaehlt = Set(massnahmenTeile)
     }
 
     private func medLabel(_ log: EinnahmeLog) -> String {
