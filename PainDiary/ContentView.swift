@@ -6,12 +6,17 @@ struct ContentView: View {
     @AppStorage("onboardingAbgeschlossen") private var onboardingAbgeschlossen = false
     @AppStorage("akzentFarbe") private var akzentFarbe = "blau"
     @AppStorage("biometrischesLockAktiv") private var biometriAktivCache = false
+    @AppStorage("whatsNewGezeigteVersion") private var whatsNewGezeigteVersion = ""
     @State private var ausgewaehlterTab = 0
     @State private var neuerEintragAnzeigen = false
     @State private var entsperrt = false
+    @State private var zeigeWhatsNew = false
     @Environment(\.scenePhase) private var scenePhase
 
     private var biometriAktiv: Bool { biometriAktivCache }
+    private var aktuelleVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
 
 #if os(macOS)
     var body: some View {
@@ -46,6 +51,26 @@ struct ContentView: View {
         .tint(akzentFarbe.alsAkzentFarbe)
         .fullScreenCover(isPresented: .constant(!onboardingAbgeschlossen)) {
             OnboardingView()
+        }
+        .sheet(isPresented: $zeigeWhatsNew) {
+            WhatsNewView {
+                whatsNewGezeigteVersion = aktuelleVersion
+                zeigeWhatsNew = false
+            }
+            .interactiveDismissDisabled()
+        }
+        .onAppear {
+            pruefWhatsNew()
+        }
+    }
+
+    private func pruefWhatsNew() {
+        guard onboardingAbgeschlossen,
+              whatsNewFuerAktuelleVersion() != nil,
+              aktuelleVersion != whatsNewGezeigteVersion else { return }
+        // Kurze Verzögerung damit das Onboarding-Cover nicht kollidiert
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            zeigeWhatsNew = true
         }
     }
 

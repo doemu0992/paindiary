@@ -20,6 +20,8 @@ struct PDFPreviewView: UIViewControllerRepresentable {
         preview.navigationItem.rightBarButtonItem = shareBtn
 
         let nav = UINavigationController(rootViewController: preview)
+        // Force light mode so PDF colors always render correctly
+        nav.overrideUserInterfaceStyle = .light
         context.coordinator.navController = nav
         return nav
     }

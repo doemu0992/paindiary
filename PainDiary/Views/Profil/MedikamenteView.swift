@@ -868,6 +868,7 @@ struct EinnahmeLogView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var zeigePDFShare = false
     @State private var pdfURL: URL? = nil
+    @State private var erstellePDF = false
 
     var body: some View {
         List {
@@ -906,17 +907,25 @@ struct EinnahmeLogView: View {
         .navigationTitle("Einnahme-Verlauf")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    Task { @MainActor in
-                        if let url = PDFExportService.shared.erstelleMedikamentenZusammenfassung(
-                            medikamente: Array(medikamente), logs: Array(logs),
-                            profil: profile.first) {
-                            pdfURL = url
-                            zeigePDFShare = true
+                if erstellePDF {
+                    ProgressView()
+                } else {
+                    Button {
+                        erstellePDF = true
+                        PDFExportService.shared.erstelleMedikamentenZusammenfassung(
+                            medikamente: Array(medikamente),
+                            logs: Array(logs),
+                            profil: profile.first
+                        ) { url in
+                            erstellePDF = false
+                            if let url {
+                                pdfURL = url
+                                zeigePDFShare = true
+                            }
                         }
+                    } label: {
+                        Label("Arztbesuch-PDF", systemImage: "doc.richtext")
                     }
-                } label: {
-                    Label("Arztbesuch-PDF", systemImage: "doc.richtext")
                 }
             }
         }

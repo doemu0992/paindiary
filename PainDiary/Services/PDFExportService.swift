@@ -1250,12 +1250,14 @@ class PDFExportService: @unchecked Sendable {
 
     // MARK: - Medication summary (called from EinnahmeLogView)
 
+    /// Copies SwiftData objects on the main thread, then renders on a background thread.
     @MainActor
     func erstelleMedikamentenZusammenfassung(
         medikamente: [Dauermedikation],
         logs: [EinnahmeLog],
-        profil: Benutzerprofil? = nil
-    ) -> URL? {
+        profil: Benutzerprofil? = nil,
+        completion: @escaping @MainActor @Sendable (URL?) -> Void
+    ) {
         let patient  = PDFPatientenDaten.aus(profil: profil)
         let meds     = medikamente.map(PDFMedikament.aus)
         let pdfLogs  = logs.sorted { $0.datum > $1.datum }.map(PDFEinnahmeLog.aus)
@@ -1264,11 +1266,13 @@ class PDFExportService: @unchecked Sendable {
             mitMedikamente: true, mitMedikamentDossier: true,
             mitEintraege: false, mitZyklus: false, mitErnaehrung: false
         )
-        let url = renderPDF(patient: patient, eintraege: [], medikamente: meds,
-                            einnahmeLogs: pdfLogs, midas: [], zyklus: [],
-                            analyse: ZyklusRechner.analyse(eintraege: []),
-                            ernaehrung: [], optionen: optionen)
-        return url
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            let url = self.renderPDF(patient: patient, eintraege: [], medikamente: meds,
+                                     einnahmeLogs: pdfLogs, midas: [], zyklus: [],
+                                     analyse: ZyklusRechner.analyse(eintraege: []),
+                                     ernaehrung: [], optionen: optionen)
+            Task { @MainActor in completion(url) }
+        }
     }
 
     // MARK: - Drawing helpers
