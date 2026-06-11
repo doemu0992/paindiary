@@ -50,6 +50,10 @@ struct ContentView: View {
             } else if phase == .active && biometriAktiv && !entsperrt {
                 authentifizieren()
             }
+            // Pfad 2: Background → Foreground (App war im Hintergrund)
+            if phase == .active {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { verarbeiteDeepLink() }
+            }
         }
         .tint(akzentFarbe.alsAkzentFarbe)
         .fullScreenCover(isPresented: .constant(!onboardingAbgeschlossen)) {
@@ -74,15 +78,14 @@ struct ContentView: View {
         .sheet(isPresented: $zeigeEinnahmeVerlauf) {
             NavigationStack { EinnahmeLogView() }
         }
+        // Pfad 1: App aktiv im Vordergrund — sofort reagieren
         .onChange(of: NotificationManager.shared.pendingDeepLink) { _, _ in
             verarbeiteDeepLink()
         }
         .onAppear {
             pruefWhatsNew()
-            // Cold launch: pendingDeepLink kann schon gesetzt sein bevor ContentView erscheint
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                verarbeiteDeepLink()
-            }
+            // Pfad 3: Cold Launch — pendingDeepLink wurde gesetzt bevor ContentView erschien
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { verarbeiteDeepLink() }
         }
     }
 

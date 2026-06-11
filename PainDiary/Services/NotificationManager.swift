@@ -40,28 +40,29 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     ) {
         let info = response.notification.request.content.userInfo
         let id   = response.notification.request.identifier
-        DispatchQueue.main.async {
-            if let type = info["type"] as? String {
-                switch type {
-                case "schmerz":
-                    self.pendingDeepLink = .neuerSchmerzEintrag
-                case "medikament":
-                    let name = info["name"] as? String ?? ""
-                    let dos  = info["dosierung"] as? String ?? ""
-                    self.pendingDeepLink = .medikamentErfassen(name: name, dosierung: dos)
-                case "wirkung":
-                    let name = info["name"] as? String ?? ""
-                    self.pendingDeepLink = name.isEmpty
-                        ? .einnahmeVerlauf
-                        : .medikamentErfassen(name: name, dosierung: "")
-                default: break
-                }
-            } else if id == "tages-erinnerung" {
-                self.pendingDeepLink = .neuerSchmerzEintrag
-            } else if id.hasPrefix("wirkung-") {
-                self.pendingDeepLink = .einnahmeVerlauf
+
+        // Called on main thread — set directly so @Observable fires immediately
+        if let type = info["type"] as? String {
+            switch type {
+            case "schmerz":
+                pendingDeepLink = .neuerSchmerzEintrag
+            case "medikament":
+                let name = info["name"] as? String ?? ""
+                let dos  = info["dosierung"] as? String ?? ""
+                pendingDeepLink = .medikamentErfassen(name: name, dosierung: dos)
+            case "wirkung":
+                let name = info["name"] as? String ?? ""
+                pendingDeepLink = name.isEmpty
+                    ? .einnahmeVerlauf
+                    : .medikamentErfassen(name: name, dosierung: "")
+            default: break
             }
+        } else if id == "tages-erinnerung" {
+            pendingDeepLink = .neuerSchmerzEintrag
+        } else if id.hasPrefix("wirkung-") {
+            pendingDeepLink = .einnahmeVerlauf
         }
+
         completionHandler()
     }
 
