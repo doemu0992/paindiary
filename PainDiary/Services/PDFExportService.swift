@@ -735,6 +735,55 @@ class PDFExportService: @unchecked Sendable {
         }
         y += 12
 
+        // Full log history table — always shown when logs exist
+        if !einnahmeLogs.isEmpty {
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Einnahme-Protokoll", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+            let logCols: [CGFloat] = [rand, rand + 85, rand + 280, rand + 360, rand + 420]
+            tabellenKopf(ctx: ctx, y: y, cols: logCols,
+                         headers: ["Datum", "Medikament / Dosierung", "Eingenommen", "Wirkung", "Notizen"])
+            y += 26
+            let sichtbareLogs = einnahmeLogs.prefix(30)
+            for log in sichtbareLogs {
+                if y > H - rand - 30 { break }
+                let status = log.eingenommen ? "✓ Ja" : "✗ Nein"
+                let statusFarbe: UIColor = log.eingenommen ? .systemGreen : .systemRed
+                let medName = log.dosierung.isEmpty ? log.medikamentName : "\(log.medikamentName) \(log.dosierung)"
+                let wirkungText: String = {
+                    switch log.wirkung {
+                    case "gut":       return "Gut"
+                    case "teilweise": return "Teilw."
+                    case "nicht":     return "Nicht"
+                    default:          return log.wirkung.isEmpty ? "–" : log.wirkung
+                    }
+                }()
+                let notizKurz = log.notizen.isEmpty ? "–" : String(log.notizen.prefix(25))
+                draw(fmtKurz(log.datum), at: CGPoint(x: logCols[0] + 4, y: y + 4),
+                     font: .systemFont(ofSize: 9.5), color: .label)
+                drawClamped(medName, at: CGPoint(x: logCols[1] + 4, y: y + 4),
+                            font: .systemFont(ofSize: 9.5, weight: .medium), color: .label,
+                            maxW: logCols[2] - logCols[1] - 8)
+                draw(status, at: CGPoint(x: logCols[2] + 4, y: y + 4),
+                     font: .systemFont(ofSize: 9.5, weight: .semibold), color: statusFarbe)
+                draw(wirkungText, at: CGPoint(x: logCols[3] + 4, y: y + 4),
+                     font: .systemFont(ofSize: 9.5), color: .label)
+                drawClamped(notizKurz, at: CGPoint(x: logCols[4] + 4, y: y + 4),
+                            font: .systemFont(ofSize: 9), color: .secondaryLabel,
+                            maxW: W - rand - logCols[4] - 8)
+                y += 20
+                trennlinie(ctx: ctx, y: y - 1, alpha: 0.12)
+            }
+            if einnahmeLogs.count > 30 {
+                draw("… und \(einnahmeLogs.count - 30) weitere Einträge",
+                     at: CGPoint(x: rand + 4, y: y + 4),
+                     font: .italicSystemFont(ofSize: 9), color: .secondaryLabel)
+                y += 18
+            }
+            y += 8
+        }
+
         let bewertet = einnahmeLogs.filter { !$0.wirkung.isEmpty }
         if !bewertet.isEmpty {
             trennlinie(ctx: ctx, y: y); y += 14
