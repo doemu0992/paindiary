@@ -46,6 +46,7 @@ struct AddEntryView: View {
 
     // Vorlage
     @State private var vorlageAngewendet = false
+    @State private var zeigeErfolg = false
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
 
     private let wetter = WetterService.shared
@@ -150,6 +151,32 @@ struct AddEntryView: View {
                     wetter.laden()
                     Task { healthSchlaf = await health.schlafStundenLetztteNacht() }
                 }
+            }
+        }
+        .overlay {
+            if zeigeErfolg {
+                ZStack {
+                    Color.black.opacity(0.25).ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 72, height: 72)
+                                .shadow(color: .green.opacity(0.4), radius: 16, y: 4)
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .scaleEffect(zeigeErfolg ? 1 : 0.3)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.55), value: zeigeErfolg)
+                        Text("Gespeichert")
+                            .font(.headline.bold())
+                            .foregroundStyle(.white)
+                            .opacity(zeigeErfolg ? 1 : 0)
+                            .animation(.easeIn.delay(0.1), value: zeigeErfolg)
+                    }
+                }
+                .transition(.opacity)
             }
         }
     }
@@ -491,7 +518,11 @@ struct AddEntryView: View {
             neu.istHautEintrag = (eintragTyp == .haut)
             modelContext.insert(neu)
         }
-        dismiss()
+#if os(iOS)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+#endif
+        zeigeErfolg = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
     }
 }
 

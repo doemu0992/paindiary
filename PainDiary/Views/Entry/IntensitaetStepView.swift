@@ -31,6 +31,11 @@ struct IntensitaetStepView: View {
                     set: { schmerzstaerke = Int($0) }
                 ), in: 0...10, step: 1)
                 .tint(SchmerzBadge.farbe(fuer: schmerzstaerke))
+                .onChange(of: schmerzstaerke) { _, _ in
+#if os(iOS)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+#endif
+                }
 
                 HStack {
                     ForEach(0...10, id: \.self) { i in
