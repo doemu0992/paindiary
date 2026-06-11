@@ -7,6 +7,7 @@ struct EinstellungenView: View {
     @AppStorage("tagesErinnerungZeit") private var tagesErinnerungZeitSek = 28800.0 // 08:00
 
     @Environment(\.modelContext) private var modelContext
+    @Query private var profile: [Benutzerprofil]
     @Query private var eintraege: [PainEntry]
     @Query private var medikamente: [Dauermedikation]
     @Query private var logs: [EinnahmeLog]
@@ -119,6 +120,15 @@ struct EinstellungenView: View {
                 Text("Daten")
             } footer: {
                 Text("CSV-Dateien enthalten Schmerzeinträge, Medikamente und Einnahme-Logs.")
+            }
+
+            Section("Sicherheit") {
+                if let profil = profile.first {
+                    Toggle("Biometrische Sperre", isOn: Bindable(profil).biometrischesLockAktiv)
+                        .onChange(of: profil.biometrischesLockAktiv) { _, neu in
+                            UserDefaults.standard.set(neu, forKey: "biometrischesLockAktiv")
+                        }
+                }
             }
 
             Section("App") {

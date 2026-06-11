@@ -126,14 +126,14 @@ private struct ProfilInhaltView: View {
     private var heroHeader: some View {
         Section {
             Button { stammdatenAnzeigen = true } label: {
-                VStack(spacing: 16) {
+                HStack(spacing: 14) {
                     profilBildKlein
-                    VStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 5) {
                         let name = "\(profil.vorname) \(profil.nachname)".trimmingCharacters(in: .whitespaces)
                         Text(name.isEmpty ? "Profil einrichten" : name)
-                            .font(.title2.bold())
+                            .font(.title3.bold())
                             .foregroundStyle(.primary)
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             if let geb = profil.geburtsdatum {
                                 let alter = Calendar.current.dateComponents([.year], from: geb, to: Date()).year ?? 0
                                 infoBadge("\(alter) J.", symbol: "person.fill", farbe: .blue)
@@ -146,20 +146,15 @@ private struct ProfilInhaltView: View {
                             }
                         }
                     }
-                    HStack(spacing: 4) {
-                        Image(systemName: "pencil")
-                        Text("Stammdaten bearbeiten")
-                    }
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.tertiary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
+                .padding(.vertical, 6)
             }
             .buttonStyle(.plain)
         }
-        .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets())
     }
 
     @ViewBuilder
@@ -168,21 +163,21 @@ private struct ProfilInhaltView: View {
         if let data = profil.fotoData, let uiImage = UIImage(data: data) {
             Image(uiImage: uiImage)
                 .resizable().scaledToFill()
-                .frame(width: 96, height: 96)
+                .frame(width: 60, height: 60)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.secondary.opacity(0.3), lineWidth: 1))
         } else {
             ZStack {
-                Circle().fill(Color.secondary.opacity(0.15)).frame(width: 96, height: 96)
-                Image(systemName: "person.fill").font(.system(size: 44)).foregroundStyle(.secondary)
-                Circle().fill(Color.accentColor).frame(width: 28, height: 28)
-                    .overlay(Image(systemName: "pencil").font(.system(size: 12)).foregroundStyle(.white))
-                    .offset(x: 32, y: 32)
+                Circle().fill(Color.secondary.opacity(0.15)).frame(width: 60, height: 60)
+                Image(systemName: "person.fill").font(.system(size: 28)).foregroundStyle(.secondary)
+                Circle().fill(Color.accentColor).frame(width: 22, height: 22)
+                    .overlay(Image(systemName: "pencil").font(.system(size: 10)).foregroundStyle(.white))
+                    .offset(x: 20, y: 20)
             }
         }
 #else
         Image(systemName: "person.circle.fill")
-            .font(.system(size: 96))
+            .font(.system(size: 60))
             .foregroundStyle(.secondary)
 #endif
     }
@@ -346,10 +341,6 @@ private struct ProfilInhaltView: View {
     private var einstellungen: some View {
         Section("Einstellungen") {
             Toggle("Zyklus-Tracking", isOn: Bindable(profil).zyklusTrackingAktiv)
-            Toggle("Biometrische Sperre", isOn: Bindable(profil).biometrischesLockAktiv)
-                .onChange(of: profil.biometrischesLockAktiv) { _, neu in
-                    UserDefaults.standard.set(neu, forKey: "biometrischesLockAktiv")
-                }
             NavigationLink(destination: EinstellungenView()) {
                 Label("App-Einstellungen", systemImage: "gearshape")
             }
