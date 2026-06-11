@@ -48,18 +48,15 @@ private enum ProfilFormular: Identifiable {
 private struct ProfilInhaltView: View {
     let profil: Benutzerprofil
     @State private var aktivesFormular: ProfilFormular? = nil
+    @State private var stammdatenAnzeigen = false
 #if os(iOS)
     @State private var adressbuchAnzeigen = false
-    @State private var photoItem: PhotosPickerItem? = nil
 #endif
 
     var body: some View {
         List {
-            persoenlicheDaten
-            medizinischeDaten
-            medikamenteLink
-            midasLink
-            zyklusLink
+            heroHeader
+            gesundheitSektion
             diagnoseSektion
             allergienSektion
             aerzte
@@ -67,6 +64,9 @@ private struct ProfilInhaltView: View {
             einstellungen
         }
         .navigationTitle("Profil")
+        .sheet(isPresented: $stammdatenAnzeigen) {
+            StammdatenSheet(profil: profil)
+        }
         .sheet(item: $aktivesFormular) { formular in
             switch formular {
             case .diagnose(let existing):
@@ -114,13 +114,6 @@ private struct ProfilInhaltView: View {
                 }
             }
         }
-        .onChange(of: photoItem) { _, item in
-            Task {
-                if let data = try? await item?.loadTransferable(type: Data.self) {
-                    profil.fotoData = data
-                }
-            }
-        }
 #endif
         .onAppear {
             if profil.geschlecht == "Nicht angegeben" { profil.geschlecht = "" }
@@ -128,171 +121,107 @@ private struct ProfilInhaltView: View {
         }
     }
 
-    private var profilUntertitel: String {
-        var teile: [String] = []
-        if let geb = profil.geburtsdatum {
-            let jahre = Calendar.current.dateComponents([.year], from: geb, to: Date()).year ?? 0
-            teile.append("\(jahre) Jahre")
-        }
-        if let bmi = profil.bmi {
-            teile.append(String(format: "BMI %.1f", bmi))
-        }
-        if !profil.blutgruppe.isEmpty {
-            teile.append(profil.blutgruppe)
-        }
-        return teile.joined(separator: " · ")
-    }
+    // MARK: - Hero Header
 
-    // MARK: - Persönliche Daten
-
-    private var persoenlicheDaten: some View {
-        Section("Persönliche Daten") {
-            HStack {
-                Spacer()
-                VStack(spacing: 10) {
-#if os(iOS)
-                    PhotosPicker(selection: $photoItem, matching: .images) {
-                        profilBild
+    private var heroHeader: some View {
+        Section {
+            Button { stammdatenAnzeigen = true } label: {
+                VStack(spacing: 16) {
+                    profilBildKlein
+                    VStack(spacing: 8) {
+                        let name = "\(profil.vorname) \(profil.nachname)".trimmingCharacters(in: .whitespaces)
+                        Text(name.isEmpty ? "Profil einrichten" : name)
+                            .font(.title2.bold())
+                            .foregroundStyle(.primary)
+                        HStack(spacing: 8) {
+                            if let geb = profil.geburtsdatum {
+                                let alter = Calendar.current.dateComponents([.year], from: geb, to: Date()).year ?? 0
+                                infoBadge("\(alter) J.", symbol: "person.fill", farbe: .blue)
+                            }
+                            if !profil.blutgruppe.isEmpty {
+                                infoBadge(profil.blutgruppe, symbol: "drop.fill", farbe: .red)
+                            }
+                            if let bmi = profil.bmi {
+                                infoBadge(String(format: "BMI %.1f", bmi), symbol: nil, farbe: bmiTint(bmi))
+                            }
+                        }
                     }
-                    .buttonStyle(.plain)
-                    Text("Foto ändern")
-                        .font(.caption).foregroundStyle(.secondary)
-#else
-                    profilBild
-#endif
-                    Text("\(profil.vorname) \(profil.nachname)".trimmingCharacters(in: .whitespaces))
-                        .font(.title3.bold())
-                        .multilineTextAlignment(.center)
-                    let untertitel = profilUntertitel
-                    if !untertitel.isEmpty {
-                        Text(untertitel)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
+                    HStack(spacing: 4) {
+                        Image(systemName: "pencil")
+                        Text("Stammdaten bearbeiten")
                     }
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
                 }
-                Spacer()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
             }
-            .padding(.vertical, 8)
-            .listRowBackground(Color.clear)
-
-            LabeledContent("Vorname") {
-                TextField("Vorname", text: Bindable(profil).vorname)
-                    .multilineTextAlignment(.trailing)
-            }
-            LabeledContent("Nachname") {
-                TextField("Nachname", text: Bindable(profil).nachname)
-                    .multilineTextAlignment(.trailing)
-            }
-            DatePicker("Geburtsdatum",
-                selection: Binding(
-                    get: { profil.geburtsdatum ?? Date() },
-                    set: { profil.geburtsdatum = $0 }
-                ),
-                displayedComponents: .date
-            )
-            Picker("Geschlecht", selection: Bindable(profil).geschlecht) {
-                Text("Weiblich").tag("Weiblich")
-                Text("Männlich").tag("Männlich")
-                Text("Divers").tag("Divers")
-                Text("Keine Angabe").tag("")
-            }
-            LabeledContent("Wohnort") {
-                TextField("Wohnort", text: Bindable(profil).wohnort)
-                    .multilineTextAlignment(.trailing)
-            }
+            .buttonStyle(.plain)
         }
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets())
     }
 
     @ViewBuilder
-    private var profilBild: some View {
+    private var profilBildKlein: some View {
 #if os(iOS)
         if let data = profil.fotoData, let uiImage = UIImage(data: data) {
             Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 88, height: 88)
+                .resizable().scaledToFill()
+                .frame(width: 96, height: 96)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.secondary.opacity(0.3), lineWidth: 1))
         } else {
             ZStack {
-                Circle()
-                    .fill(Color.secondary.opacity(0.15))
-                    .frame(width: 88, height: 88)
-                Image(systemName: "person.fill")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.secondary)
-                Circle()
-                    .fill(Color.accentColor)
-                    .frame(width: 26, height: 26)
-                    .overlay(Image(systemName: "camera.fill").font(.system(size: 12)).foregroundStyle(.white))
-                    .offset(x: 28, y: 28)
+                Circle().fill(Color.secondary.opacity(0.15)).frame(width: 96, height: 96)
+                Image(systemName: "person.fill").font(.system(size: 44)).foregroundStyle(.secondary)
+                Circle().fill(Color.accentColor).frame(width: 28, height: 28)
+                    .overlay(Image(systemName: "pencil").font(.system(size: 12)).foregroundStyle(.white))
+                    .offset(x: 32, y: 32)
             }
         }
 #else
         Image(systemName: "person.circle.fill")
-            .font(.system(size: 80))
+            .font(.system(size: 96))
             .foregroundStyle(.secondary)
 #endif
     }
 
-    // MARK: - Medizinische Daten
+    private func infoBadge(_ text: String, symbol: String?, farbe: Color) -> some View {
+        HStack(spacing: 4) {
+            if let sym = symbol {
+                Image(systemName: sym).font(.caption2.bold())
+            }
+            Text(text).font(.caption.bold())
+        }
+        .foregroundStyle(farbe)
+        .padding(.horizontal, 10).padding(.vertical, 4)
+        .background(farbe.opacity(0.12), in: Capsule())
+    }
 
-    private var medizinischeDaten: some View {
-        Section("Medizinische Daten") {
-            LabeledContent("Versicherung") {
-                TextField("Krankenversicherung", text: Bindable(profil).versicherung)
-                    .multilineTextAlignment(.trailing)
-            }
-            LabeledContent("Versicherungs-Nr.") {
-                TextField("Nummer", text: Bindable(profil).versicherungsNummer)
-                    .multilineTextAlignment(.trailing)
-            }
-            Picker("Blutgruppe", selection: Bindable(profil).blutgruppe) {
-                ForEach(["", "A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-"], id: \.self) {
-                    Text($0.isEmpty ? "Unbekannt" : $0).tag($0)
-                }
-            }
-            LabeledContent("Gewicht (kg)") {
-                TextField("z.B. 70", value: Bindable(profil).gewichtKg, format: .number)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-            }
-            LabeledContent("Grösse (cm)") {
-                TextField("z.B. 170", value: Bindable(profil).groesseCm, format: .number)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-            }
-            if let bmi = profil.bmi {
-                LabeledContent("BMI", value: String(format: "%.1f – %@", bmi, profil.bmiKategorie ?? ""))
-            }
+    private func bmiTint(_ bmi: Double) -> Color {
+        switch bmi {
+        case ..<18.5: return .blue
+        case 18.5..<25: return .green
+        case 25..<30: return .orange
+        default: return .red
         }
     }
 
-    // MARK: - Navigation links
+    // MARK: - Gesundheit
 
-    private var medikamenteLink: some View {
-        Section {
+    private var gesundheitSektion: some View {
+        Section("Gesundheit") {
             NavigationLink(destination: MedikamenteView()) {
                 Label("Medikamente verwalten", systemImage: "pill.fill")
             }
-        } header: { Text("Dauermedikation") }
-    }
-
-    private var midasLink: some View {
-        Section {
             NavigationLink(destination: MIDASView()) {
                 Label("MIDAS-Fragebogen", systemImage: "brain.head.profile")
             }
-        } header: { Text("Kopfschmerz-Assessment") }
-    }
-
-    private var zyklusLink: some View {
-        Section {
             NavigationLink(destination: ZyklusView()) {
                 Label("Zyklus-Tracking", systemImage: "drop.fill")
             }
-        } header: { Text("Zyklus") }
+        }
     }
 
     // MARK: - Diagnosen
@@ -426,6 +355,128 @@ private struct ProfilInhaltView: View {
             }
         }
     }
+}
+
+// MARK: - Stammdaten Sheet
+
+private struct StammdatenSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let profil: Benutzerprofil
+#if os(iOS)
+    @State private var photoItem: PhotosPickerItem? = nil
+#endif
+
+    var body: some View {
+        NavigationStack {
+            Form {
+#if os(iOS)
+                Section {
+                    HStack {
+                        Spacer()
+                        PhotosPicker(selection: $photoItem, matching: .images) {
+                            profilBild
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
+                }
+                .listRowBackground(Color.clear)
+#endif
+                Section("Persönlich") {
+                    LabeledContent("Vorname") {
+                        TextField("Vorname", text: Bindable(profil).vorname)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Nachname") {
+                        TextField("Nachname", text: Bindable(profil).nachname)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    DatePicker("Geburtsdatum",
+                        selection: Binding(
+                            get: { profil.geburtsdatum ?? Date() },
+                            set: { profil.geburtsdatum = $0 }
+                        ),
+                        displayedComponents: .date
+                    )
+                    Picker("Geschlecht", selection: Bindable(profil).geschlecht) {
+                        Text("Weiblich").tag("Weiblich")
+                        Text("Männlich").tag("Männlich")
+                        Text("Divers").tag("Divers")
+                        Text("Keine Angabe").tag("")
+                    }
+                    LabeledContent("Wohnort") {
+                        TextField("Wohnort", text: Bindable(profil).wohnort)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                Section("Medizinisch") {
+                    LabeledContent("Versicherung") {
+                        TextField("Krankenversicherung", text: Bindable(profil).versicherung)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Versicherungs-Nr.") {
+                        TextField("Nummer", text: Bindable(profil).versicherungsNummer)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    Picker("Blutgruppe", selection: Bindable(profil).blutgruppe) {
+                        ForEach(["", "A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-"], id: \.self) {
+                            Text($0.isEmpty ? "Unbekannt" : $0).tag($0)
+                        }
+                    }
+                    LabeledContent("Gewicht (kg)") {
+                        TextField("z.B. 70", value: Bindable(profil).gewichtKg, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Grösse (cm)") {
+                        TextField("z.B. 170", value: Bindable(profil).groesseCm, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    if let bmi = profil.bmi {
+                        LabeledContent("BMI", value: String(format: "%.1f – %@", bmi, profil.bmiKategorie ?? ""))
+                    }
+                }
+            }
+            .navigationTitle("Stammdaten")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fertig") { dismiss() }
+                }
+            }
+#if os(iOS)
+            .onChange(of: photoItem) { _, item in
+                Task {
+                    if let data = try? await item?.loadTransferable(type: Data.self) {
+                        profil.fotoData = data
+                    }
+                }
+            }
+#endif
+        }
+    }
+
+#if os(iOS)
+    @ViewBuilder
+    private var profilBild: some View {
+        if let data = profil.fotoData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable().scaledToFill()
+                .frame(width: 88, height: 88)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.secondary.opacity(0.3), lineWidth: 1))
+        } else {
+            ZStack {
+                Circle().fill(Color.secondary.opacity(0.15)).frame(width: 88, height: 88)
+                Image(systemName: "person.fill").font(.system(size: 40)).foregroundStyle(.secondary)
+                Circle().fill(Color.accentColor).frame(width: 26, height: 26)
+                    .overlay(Image(systemName: "camera.fill").font(.system(size: 12)).foregroundStyle(.white))
+                    .offset(x: 28, y: 28)
+            }
+        }
+    }
+#endif
 }
 
 // MARK: - Form Views
