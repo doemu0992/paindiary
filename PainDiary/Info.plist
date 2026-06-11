@@ -39,7 +39,6 @@
 	<!-- Background Modes — explizit gesetzt damit CloudKit Push korrekt funktioniert -->
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>background-processing</string>
 		<string>remote-notification</string>
 	</array>
 
