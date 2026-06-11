@@ -151,7 +151,7 @@ private struct ProfilInhaltView: View {
                         .font(.caption.bold())
                         .foregroundStyle(.tertiary)
                 }
-                .padding(.vertical, 6)
+                .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
         }
@@ -163,21 +163,21 @@ private struct ProfilInhaltView: View {
         if let data = profil.fotoData, let uiImage = UIImage(data: data) {
             Image(uiImage: uiImage)
                 .resizable().scaledToFill()
-                .frame(width: 60, height: 60)
+                .frame(width: 72, height: 72)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.secondary.opacity(0.3), lineWidth: 1))
         } else {
             ZStack {
-                Circle().fill(Color.secondary.opacity(0.15)).frame(width: 60, height: 60)
-                Image(systemName: "person.fill").font(.system(size: 28)).foregroundStyle(.secondary)
-                Circle().fill(Color.accentColor).frame(width: 22, height: 22)
-                    .overlay(Image(systemName: "pencil").font(.system(size: 10)).foregroundStyle(.white))
-                    .offset(x: 20, y: 20)
+                Circle().fill(Color.secondary.opacity(0.15)).frame(width: 72, height: 72)
+                Image(systemName: "person.fill").font(.system(size: 34)).foregroundStyle(.secondary)
+                Circle().fill(Color.accentColor).frame(width: 24, height: 24)
+                    .overlay(Image(systemName: "pencil").font(.system(size: 11)).foregroundStyle(.white))
+                    .offset(x: 24, y: 24)
             }
         }
 #else
         Image(systemName: "person.circle.fill")
-            .font(.system(size: 60))
+            .font(.system(size: 72))
             .foregroundStyle(.secondary)
 #endif
     }
@@ -355,6 +355,7 @@ private struct StammdatenSheet: View {
     let profil: Benutzerprofil
 #if os(iOS)
     @State private var photoItem: PhotosPickerItem? = nil
+    @State private var zuschneidenBild: IdentifiableImage? = nil
 #endif
 
     var body: some View {
@@ -439,9 +440,15 @@ private struct StammdatenSheet: View {
 #if os(iOS)
             .onChange(of: photoItem) { _, item in
                 Task {
-                    if let data = try? await item?.loadTransferable(type: Data.self) {
-                        profil.fotoData = data
+                    if let data = try? await item?.loadTransferable(type: Data.self),
+                       let uiImage = UIImage(data: data) {
+                        zuschneidenBild = IdentifiableImage(image: uiImage)
                     }
+                }
+            }
+            .sheet(item: $zuschneidenBild) { wrapper in
+                FotoZuschneidenView(uiImage: wrapper.image) { data in
+                    profil.fotoData = data
                 }
             }
 #endif
@@ -644,6 +651,106 @@ private struct NotfallKontaktFormView: View {
         }
     }
 }
+
+// MARK: - Foto Zuschneiden
+
+#if os(iOS)
+private struct IdentifiableImage: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+private struct FotoZuschneidenView: View {
+    let uiImage: UIImage
+    let onSave: (Data) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var scale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+    @GestureState private var dragDelta: CGSize = .zero
+    @GestureState private var pinchDelta: CGFloat = 1.0
+
+    private let frameSize: CGFloat = 280
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                VStack(spacing: 24) {
+                    Spacer()
+                    ZStack {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .scaleEffect(scale * pinchDelta)
+                            .offset(
+                                x: offset.width + dragDelta.width,
+                                y: offset.height + dragDelta.height
+                            )
+                            .gesture(
+                                DragGesture()
+                                    .updating($dragDelta) { val, state, _ in state = val.translation }
+                                    .onEnded { val in
+                                        offset.width += val.translation.width
+                                        offset.height += val.translation.height
+                                    }
+                            )
+                            .simultaneousGesture(
+                                MagnificationGesture()
+                                    .updating($pinchDelta) { val, state, _ in state = val }
+                                    .onEnded { val in
+                                        scale = max(1.0, min(6.0, scale * val))
+                                    }
+                            )
+                    }
+                    .frame(width: frameSize, height: frameSize)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.white.opacity(0.6), lineWidth: 2))
+                    Spacer()
+                    Text("Verschieben und zoomen")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .padding(.bottom, 8)
+                }
+            }
+            .navigationTitle("Foto anpassen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(.black, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }.foregroundStyle(.white)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Verwenden") {
+                        if let data = renderCrop() { onSave(data) }
+                        dismiss()
+                    }.foregroundStyle(.white)
+                }
+            }
+        }
+    }
+
+    private func renderCrop() -> Data? {
+        let size = CGSize(width: frameSize, height: frameSize)
+        let imgW = uiImage.size.width
+        let imgH = uiImage.size.height
+        let fillScale = max(frameSize / imgW, frameSize / imgH)
+        let totalScale = fillScale * scale
+        let drawW = imgW * totalScale
+        let drawH = imgH * totalScale
+        let x = (frameSize - drawW) / 2 + offset.width
+        let y = (frameSize - drawH) / 2 + offset.height
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let result = renderer.image { _ in
+            UIBezierPath(ovalIn: CGRect(origin: .zero, size: size)).addClip()
+            uiImage.draw(in: CGRect(x: x, y: y, width: drawW, height: drawH))
+        }
+        return result.jpegData(compressionQuality: 0.85)
+    }
+}
+#endif
 
 // MARK: - Helper Views
 
