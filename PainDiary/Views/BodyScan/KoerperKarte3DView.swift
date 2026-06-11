@@ -138,10 +138,11 @@ enum BodySceneBuilder {
     private static func addCamera(to scene: SCNScene) {
         let cam = SCNNode()
         cam.camera = SCNCamera()
-        cam.camera!.fieldOfView = 38
+        cam.camera!.fieldOfView = 44
+        cam.camera!.projectionDirection = .vertical
         cam.camera!.zNear = 0.05
         cam.camera!.zFar  = 20
-        cam.position = SCNVector3(0, 0, 2.8)
+        cam.position = SCNVector3(0, 0, 3.0)
         scene.rootNode.addChildNode(cam)
     }
 
