@@ -198,7 +198,8 @@ private struct NameSchritt: View {
                     .padding()
                     .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
                     .focused($fokus)
-                    .submitLabel(.continue)
+                    .submitLabel(.done)
+                    .onSubmit { fokus = false }
                     .padding(.horizontal, 8)
                     .padding(.top, 8)
             }
@@ -423,63 +424,64 @@ private struct DatenschutzSchritt: View {
     @Binding var volltext: Bool
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            ZStack {
-                Circle().fill(Color.green.opacity(0.12)).frame(width: 120, height: 120)
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 52))
-                    .foregroundStyle(.green)
-            }
-            VStack(spacing: 12) {
-                Text("Deine Daten gehören dir")
-                    .font(.largeTitle.bold())
-                    .multilineTextAlignment(.center)
-                Text("PainDiary speichert alle Daten lokal auf deinem Gerät und optional in iCloud. Es werden keine Daten an Dritte verkauft oder für Werbung genutzt.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, 24)
-
-            VStack(alignment: .leading, spacing: 12) {
-                DatenschutzPunkt(symbol: "iphone",         farbe: .blue,   text: "Lokale Speicherung auf deinem Gerät")
-                DatenschutzPunkt(symbol: "icloud.fill",    farbe: .cyan,   text: "Optionale iCloud-Synchronisation")
-                DatenschutzPunkt(symbol: "eye.slash.fill", farbe: .indigo, text: "Keine Weitergabe an Dritte")
-                DatenschutzPunkt(symbol: "faceid",         farbe: .green,  text: "Face ID / Touch ID Schutz möglich")
-                DatenschutzPunkt(symbol: "square.and.arrow.up", farbe: .orange, text: "Datenexport jederzeit möglich")
-            }
-            .padding(.horizontal, 32)
-
-            Button {
-                volltext = true
-            } label: {
-                Text("Vollständige Datenschutzerklärung lesen")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.accentColor)
-                    .underline()
-            }
-
-            Button {
-                withAnimation { akzeptiert.toggle() }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: akzeptiert ? "checkmark.circle.fill" : "circle")
-                        .font(.title2)
-                        .foregroundStyle(akzeptiert ? .green : .secondary)
-                    Text("Ich habe die Datenschutzerklärung gelesen und akzeptiere sie.")
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.leading)
-                    Spacer()
+        ScrollView {
+            VStack(spacing: 24) {
+                ZStack {
+                    Circle().fill(Color.green.opacity(0.12)).frame(width: 120, height: 120)
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(.green)
                 }
-                .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 24)
+                VStack(spacing: 12) {
+                    Text("Deine Daten gehören dir")
+                        .font(.largeTitle.bold())
+                        .multilineTextAlignment(.center)
+                    Text("PainDiary speichert alle Daten lokal auf deinem Gerät und optional in iCloud. Es werden keine Daten an Dritte verkauft oder für Werbung genutzt.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 24)
 
-            Spacer()
+                VStack(alignment: .leading, spacing: 12) {
+                    DatenschutzPunkt(symbol: "iphone",         farbe: .blue,   text: "Lokale Speicherung auf deinem Gerät")
+                    DatenschutzPunkt(symbol: "icloud.fill",    farbe: .cyan,   text: "Optionale iCloud-Synchronisation")
+                    DatenschutzPunkt(symbol: "eye.slash.fill", farbe: .indigo, text: "Keine Weitergabe an Dritte")
+                    DatenschutzPunkt(symbol: "faceid",         farbe: .green,  text: "Face ID / Touch ID Schutz möglich")
+                    DatenschutzPunkt(symbol: "square.and.arrow.up", farbe: .orange, text: "Datenexport jederzeit möglich")
+                }
+                .padding(.horizontal, 32)
+
+                Button {
+                    volltext = true
+                } label: {
+                    Text("Vollständige Datenschutzerklärung lesen")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.accentColor)
+                        .underline()
+                }
+
+                Button {
+                    withAnimation { akzeptiert.toggle() }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: akzeptiert ? "checkmark.circle.fill" : "circle")
+                            .font(.title2)
+                            .foregroundStyle(akzeptiert ? .green : .secondary)
+                        Text("Ich habe die Datenschutzerklärung gelesen und akzeptiere sie.")
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 24)
+            }
+            .padding(.top, 32)
+            .padding(.bottom, 140)
         }
     }
 }

@@ -432,6 +432,7 @@ private struct StammdatenSheet: View {
             }
             .navigationTitle("Stammdaten")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollDismissesKeyboard(.interactively)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Fertig") { dismiss() }

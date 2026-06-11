@@ -127,6 +127,7 @@ struct AddEntryView: View {
                             schrittInhalt
                                 .padding(.vertical, 24)
                         }
+                        .scrollDismissesKeyboard(.interactively)
                     }
                 }
                 .id(schritt)
