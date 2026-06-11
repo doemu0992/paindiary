@@ -17,6 +17,14 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "8", aenderungen: [
+        WhatsNewAenderung(icon: "bell.badge.fill",        farbe: .blue,
+                          titel: "Push-Links immer zuverlässig",
+                          beschreibung: "Deep Links funktionieren jetzt in allen Situationen: App geschlossen, im Hintergrund oder aktiv. Wirksamkeits-Abfrage öffnet direkt die Medikamenten-Karte."),
+        WhatsNewAenderung(icon: "icloud.fill",            farbe: .cyan,
+                          titel: "iCloud-Sync stabiler",
+                          beschreibung: "UIBackgroundModes ist jetzt explizit in der Info.plist gesetzt – CloudKit kann Push-Benachrichtigungen für die Synchronisation zuverlässig empfangen."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "7", aenderungen: [
         WhatsNewAenderung(icon: "bell.badge.fill",        farbe: .blue,
                           titel: "Smarte Benachrichtigungen",
