@@ -30,6 +30,7 @@ struct PainDiaryApp: App {
     }
 
     // Re-schedules all notifications after install/update/relaunch
+    @MainActor
     private func planeAlleErinnerungen(container: ModelContainer) async {
         let notif = NotificationManager.shared
         guard notif.status == .authorized else { return }
