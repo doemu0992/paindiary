@@ -8,6 +8,7 @@ enum DeepLink: Equatable {
     case neuerSchmerzEintrag
     case medikamentErfassen(name: String, dosierung: String)
     case einnahmeVerlauf
+    case medikamenteAnzeigen
 }
 
 @Observable
@@ -51,16 +52,13 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 let dos  = info["dosierung"] as? String ?? ""
                 pendingDeepLink = .medikamentErfassen(name: name, dosierung: dos)
             case "wirkung":
-                let name = info["name"] as? String ?? ""
-                pendingDeepLink = name.isEmpty
-                    ? .einnahmeVerlauf
-                    : .medikamentErfassen(name: name, dosierung: "")
+                pendingDeepLink = .medikamenteAnzeigen
             default: break
             }
         } else if id == "tages-erinnerung" {
             pendingDeepLink = .neuerSchmerzEintrag
         } else if id.hasPrefix("wirkung-") {
-            pendingDeepLink = .einnahmeVerlauf
+            pendingDeepLink = .medikamenteAnzeigen
         }
 
         completionHandler()

@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var zeigeWhatsNew = false
     @State private var deepLinkMedikamentName: String? = nil
     @State private var zeigeEinnahmeVerlauf = false
+    @State private var zeigeMedikamente = false
     @Query(sort: \Dauermedikation.name) private var medikamente: [Dauermedikation]
     @Environment(\.scenePhase) private var scenePhase
 
@@ -78,6 +79,9 @@ struct ContentView: View {
         .sheet(isPresented: $zeigeEinnahmeVerlauf) {
             NavigationStack { EinnahmeLogView() }
         }
+        .sheet(isPresented: $zeigeMedikamente) {
+            NavigationStack { MedikamenteView() }
+        }
         // Pfad 1: App aktiv im Vordergrund — sofort reagieren
         .onChange(of: NotificationManager.shared.pendingDeepLink) { _, _ in
             verarbeiteDeepLink()
@@ -100,6 +104,8 @@ struct ContentView: View {
         case .einnahmeVerlauf:
             ausgewaehlterTab = 4
             zeigeEinnahmeVerlauf = true
+        case .medikamenteAnzeigen:
+            zeigeMedikamente = true
         }
     }
 
