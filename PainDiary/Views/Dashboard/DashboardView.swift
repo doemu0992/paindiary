@@ -234,7 +234,8 @@ struct DashboardView: View {
     private var medikamentenKarte: some View {
         let aktive = medikamente.filter(\.aktiv)
         let notif = NotificationManager.shared
-        let heuteLogs = einnahmeLogs.filter { $0.datum >= tagesstart && $0.eingenommen }
+        let tagesende = Calendar.current.date(byAdding: .day, value: 1, to: tagesstart) ?? tagesstart
+        let heuteLogs = einnahmeLogs.filter { $0.datum >= tagesstart && $0.datum < tagesende && $0.eingenommen }
 
         return NavigationLink(destination: MedikamenteView()) {
             VStack(alignment: .leading, spacing: 12) {

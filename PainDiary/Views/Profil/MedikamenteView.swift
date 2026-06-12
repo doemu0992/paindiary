@@ -122,8 +122,9 @@ struct MedikamenteView: View {
         if !ablaufWarnungen.isEmpty || !vorratWarnungen.isEmpty {
             Section {
                 ForEach(ablaufWarnungen) { med in
+                    guard let ablauf = med.ablaufDatum else { return }
                     let tage = kal.dateComponents([.day], from: heute,
-                        to: kal.startOfDay(for: med.ablaufDatum!)).day ?? 0
+                        to: kal.startOfDay(for: ablauf)).day ?? 0
                     HStack(spacing: 10) {
                         Image(systemName: tage <= 0 ? "xmark.circle.fill" : "exclamationmark.triangle.fill")
                             .foregroundStyle(tage <= 0 ? .red : .orange)
@@ -274,7 +275,7 @@ struct MedikamenteView: View {
     private func einnahmeKontrolle(med: Dauermedikation) -> some View {
         if med.frequenz == "Wöchentlich" {
             // Wöchentliche Injektion: Tage seit / bis zur nächsten
-            let letzteInjektion = logs.first { $0.medikamentName == med.name && $0.eingenommen }
+            let letzteInjektion = logs.first { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
             let tageSeit: Int? = letzteInjektion.map {
                 max(0, Calendar.current.dateComponents([.day], from: $0.datum, to: Date()).day ?? 0)
             }
