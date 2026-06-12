@@ -158,8 +158,8 @@ struct DashboardView: View {
     @ViewBuilder
     private var trendBadge: some View {
         let t = trendVorwoche
-        let sym: String = t.map { $0 > 0.2 ? "arrow.up" : $0 < -0.2 ? "arrow.down" : "minus" } ?? "minus"
-        let farbe: Color = t.map { $0 > 0.2 ? Color.red : $0 < -0.2 ? Color.green : Color.secondary } ?? .secondary
+        let sym: String = t.map { $0 > 0.05 ? "arrow.up" : $0 < -0.05 ? "arrow.down" : "minus" } ?? "minus"
+        let farbe: Color = t.map { $0 > 0.05 ? Color.red : $0 < -0.05 ? Color.green : Color.secondary } ?? .secondary
         let label = t.map { String(format: "%+.1f", $0) } ?? "–"
         HStack(spacing: 4) {
             Image(systemName: sym).font(.caption.bold())

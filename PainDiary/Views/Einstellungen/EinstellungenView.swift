@@ -98,15 +98,7 @@ struct EinstellungenView: View {
                         notif.planeTagesErinnerung(stunde: dc.hour ?? 8, minute: dc.minute ?? 0)
                     }
                 }
-            } header: {
-                Text("Erinnerungen")
-            } footer: {
-                if tagesErinnerungAktiv {
-                    Text("Du erhältst täglich eine Erinnerung, deinen Schmerz zu erfassen.")
-                }
-            }
 
-            Section {
                 Button {
                     notif.sendeTestBenachrichtigung()
                     testNotifGesendet = true
@@ -126,13 +118,15 @@ struct EinstellungenView: View {
                 }
                 .disabled(notif.status != .authorized)
             } header: {
-                Text("Benachrichtigungen testen")
+                Text("Erinnerungen")
             } footer: {
                 if notif.status != .authorized {
                     Text("Benachrichtigungen sind in den iOS-Einstellungen deaktiviert.")
                         .foregroundStyle(.orange)
+                } else if tagesErinnerungAktiv {
+                    Text("Du erhältst täglich eine Erinnerung, deinen Schmerz zu erfassen.")
                 } else {
-                    Text("Verlasse die App nach dem Tippen um den Push-Banner zu sehen.")
+                    Text("Tippe auf 'Test senden' und verlasse die App um den Push-Banner zu sehen.")
                 }
             }
 
