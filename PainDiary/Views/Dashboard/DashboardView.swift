@@ -143,11 +143,12 @@ struct DashboardView: View {
     }
 
     private var trendVorwoche: Double? {
-        let kal = Calendar.current; let jetzt = Date()
-        guard let wStart = kal.date(byAdding: .day, value: -7, to: jetzt),
-              let vwStart = kal.date(byAdding: .day, value: -14, to: jetzt) else { return nil }
-        let diese = eintraege.filter { $0.datum >= wStart && !$0.istHautEintrag }
-        let vorw  = eintraege.filter { $0.datum >= vwStart && $0.datum < wStart && !$0.istHautEintrag }
+        var kal = Calendar.current
+        kal.firstWeekday = 2  // Montag
+        guard let interval = kal.dateInterval(of: .weekOfYear, for: Date()),
+              let vorwocheStart = kal.date(byAdding: .weekOfYear, value: -1, to: interval.start) else { return nil }
+        let diese = eintraege.filter { $0.datum >= interval.start && $0.datum < interval.end && !$0.istHautEintrag }
+        let vorw  = eintraege.filter { $0.datum >= vorwocheStart && $0.datum < interval.start && !$0.istHautEintrag }
         guard !diese.isEmpty && !vorw.isEmpty else { return nil }
         let a = Double(diese.map(\.schmerzstaerke).reduce(0, +)) / Double(diese.count)
         let b = Double(vorw.map(\.schmerzstaerke).reduce(0, +)) / Double(vorw.count)
@@ -198,7 +199,7 @@ struct DashboardView: View {
                         Text("Ø Schmerzstärke").font(.caption).foregroundStyle(.secondary)
                         InfoButton(
                             titel: "Ø Schmerzstärke",
-                            text: "Gesamtdurchschnitt aller Schmerzeinträge. Der Trend-Badge (↑/↓) vergleicht diese Woche mit der Vorwoche – grün = Verbesserung, rot = Verschlechterung."
+                            text: "Gesamtdurchschnitt aller Schmerzeinträge. Der Trend-Badge (↑/↓) vergleicht die aktuelle Kalenderwoche (Mo–So) mit der Vorwoche – grün = Verbesserung, rot = Verschlechterung."
                         )
                     }
                     HStack(alignment: .lastTextBaseline, spacing: 6) {

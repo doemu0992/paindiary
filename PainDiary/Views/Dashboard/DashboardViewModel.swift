@@ -19,34 +19,41 @@ class DashboardViewModel {
         return zaehler.max(by: { $0.value < $1.value })?.key
     }
 
-    var letzten7TageEintraege: [(datum: Date, schmerz: Double)] {
-        let kalender = Calendar.current
-        let heute = Date()
-        return (0..<7).map { versatz -> (datum: Date, schmerz: Double) in
-            let tag = kalender.date(byAdding: .day, value: -versatz, to: heute) ?? heute
-            let tagesEintraege = eintraege.filter {
-                !$0.istHautEintrag && kalender.isDate($0.datum, inSameDayAs: tag)
-            }
-            let durchschnitt = tagesEintraege.isEmpty
-                ? 0.0
-                : Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
-            return (datum: tag, schmerz: durchschnitt)
-        }.reversed()
+    private var wochenKalender: Calendar {
+        var kal = Calendar.current
+        kal.firstWeekday = 2  // Montag
+        return kal
+    }
+
+    // Tage Mo–So der aktuellen Woche bis heute, nur Tage mit Einträgen
+    var dieseWocheEintraege: [(datum: Date, schmerz: Double)] {
+        let kal = wochenKalender
+        guard let interval = kal.dateInterval(of: .weekOfYear, for: Date()) else { return [] }
+        let heute = kal.startOfDay(for: Date())
+        return (0..<7).compactMap { versatz -> (datum: Date, schmerz: Double)? in
+            guard let tag = kal.date(byAdding: .day, value: versatz, to: interval.start),
+                  kal.startOfDay(for: tag) <= heute else { return nil }
+            let tagesEintraege = eintraege.filter { !$0.istHautEintrag && kal.isDate($0.datum, inSameDayAs: tag) }
+            guard !tagesEintraege.isEmpty else { return nil }
+            let schnitt = Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
+            return (datum: tag, schmerz: schnitt)
+        }
     }
 
     var wochenschmerz: Double {
-        let punkte = letzten7TageEintraege
+        let punkte = dieseWocheEintraege
         guard !punkte.isEmpty else { return 0 }
         return punkte.map(\.schmerz).reduce(0, +) / Double(punkte.count)
     }
 
     var vorwochenschmerz: Double? {
-        let kalender = Calendar.current
-        let heute = Date()
+        let kal = wochenKalender
+        guard let interval = kal.dateInterval(of: .weekOfYear, for: Date()),
+              let vorwocheStart = kal.date(byAdding: .weekOfYear, value: -1, to: interval.start) else { return nil }
         var punkte: [Double] = []
-        for versatz in 7..<14 {
-            guard let tag = kalender.date(byAdding: .day, value: -versatz, to: heute) else { continue }
-            let tagesEintraege = eintraege.filter { kalender.isDate($0.datum, inSameDayAs: tag) }
+        for versatz in 0..<7 {
+            guard let tag = kal.date(byAdding: .day, value: versatz, to: vorwocheStart) else { continue }
+            let tagesEintraege = eintraege.filter { !$0.istHautEintrag && kal.isDate($0.datum, inSameDayAs: tag) }
             guard !tagesEintraege.isEmpty else { continue }
             let schnitt = Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
             punkte.append(schnitt)
