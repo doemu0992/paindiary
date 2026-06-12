@@ -122,16 +122,17 @@ struct MedikamenteView: View {
         if !ablaufWarnungen.isEmpty || !vorratWarnungen.isEmpty {
             Section {
                 ForEach(ablaufWarnungen) { med in
-                    guard let ablauf = med.ablaufDatum else { return }
-                    let tage = kal.dateComponents([.day], from: heute,
-                        to: kal.startOfDay(for: ablauf)).day ?? 0
-                    HStack(spacing: 10) {
-                        Image(systemName: tage <= 0 ? "xmark.circle.fill" : "exclamationmark.triangle.fill")
-                            .foregroundStyle(tage <= 0 ? .red : .orange)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(med.name).font(.subheadline.bold())
-                            Text(tage <= 0 ? "Abgelaufen!" : "Läuft in \(tage) Tag\(tage == 1 ? "" : "en") ab")
-                                .font(.caption).foregroundStyle(.secondary)
+                    if let ablauf = med.ablaufDatum {
+                        let tage = kal.dateComponents([.day], from: heute,
+                            to: kal.startOfDay(for: ablauf)).day ?? 0
+                        HStack(spacing: 10) {
+                            Image(systemName: tage <= 0 ? "xmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .foregroundStyle(tage <= 0 ? .red : .orange)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(med.name).font(.subheadline.bold())
+                                Text(tage <= 0 ? "Abgelaufen!" : "Läuft in \(tage) Tag\(tage == 1 ? "" : "en") ab")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
