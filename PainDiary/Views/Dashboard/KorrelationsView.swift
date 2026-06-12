@@ -22,6 +22,12 @@ struct KorrelationsView: View {
                     zusammenfassungHeader
                     erkenntnisseKarte
 
+                    abschnittTitel("Vorhersage")
+                    VorhersageKarte(eintraege: Array(eintraege))
+
+                    abschnittTitel("Schmerzkalender")
+                    SchmerzHeatmapKachel(eintraege: Array(eintraege))
+
                     abschnittTitel("Schmerzverlauf")
                     SchmerzVerlaufKarte(eintraege: Array(eintraege))
 

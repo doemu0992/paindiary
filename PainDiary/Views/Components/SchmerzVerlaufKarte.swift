@@ -20,6 +20,7 @@ struct SchmerzVerlaufKarte: View {
     @State private var zeitBereich: ZeitBereich = .woche
     @State private var ausgewaehlt: Date? = nil
     @State private var scrollPosition: Date = .now
+    @State private var zeigeTagesDetail = false
 
     private var schmerzEintraege: [PainEntry] {
         eintraege.filter { !$0.istHautEintrag }
@@ -63,6 +64,11 @@ struct SchmerzVerlaufKarte: View {
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .onAppear { resetScroll() }
         .onChange(of: zeitBereich) { ausgewaehlt = nil; resetScroll() }
+        .sheet(isPresented: $zeigeTagesDetail) {
+            if let sel = ausgewaehlt {
+                TagesDetailSheet(datum: sel, eintraege: eintraege)
+            }
+        }
     }
 
     // MARK: - Header
@@ -79,8 +85,18 @@ struct SchmerzVerlaufKarte: View {
                             .contentTransition(.numericText())
                         Text("/ 10").font(.caption).foregroundStyle(.secondary)
                     }
-                    Text(p.datum.formatted(.dateTime.day().month(.wide)))
-                        .font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        Text(p.datum.formatted(.dateTime.day().month(.wide)))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button {
+                            zeigeTagesDetail = true
+                        } label: {
+                            Text("Details")
+                                .font(.caption.bold())
+                                .foregroundStyle(.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 } else {
                     HStack(alignment: .top, spacing: 6) {
                         VStack(alignment: .leading, spacing: 2) {
