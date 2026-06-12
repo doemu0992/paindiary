@@ -685,14 +685,38 @@ struct ZyklusEintragSheet: View {
     @AppStorage("zusatzSymptome") private var zusatzSymptomeRaw: String = ""
     @State private var neuesSymptom = ""
 
-    @State private var istPeriode = false
-    @State private var blutungsfluss = "mittel"
-    @State private var symptome: Set<String> = []
-    @State private var ovulationstest = ""
-    @State private var zervixschleim = ""
-    @State private var basaltemperatur = ""
-    @State private var sexuelleAktivitaet = ""
-    @State private var notizen = ""
+    @State private var istPeriode: Bool
+    @State private var blutungsfluss: String
+    @State private var symptome: Set<String>
+    @State private var ovulationstest: String
+    @State private var zervixschleim: String
+    @State private var basaltemperatur: String
+    @State private var sexuelleAktivitaet: String
+    @State private var notizen: String
+
+    init(datum: Date, bestehend: ZyklusEintrag?) {
+        self.datum = datum
+        self.bestehend = bestehend
+        if let e = bestehend {
+            _istPeriode = State(initialValue: e.istPeriode)
+            _blutungsfluss = State(initialValue: e.blutungsfluss.isEmpty ? "mittel" : e.blutungsfluss)
+            _symptome = State(initialValue: Set(e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty }))
+            _ovulationstest = State(initialValue: e.ovulationstest)
+            _zervixschleim = State(initialValue: e.zervixschleim)
+            _basaltemperatur = State(initialValue: e.basaltemperatur > 0 ? String(format: "%.1f", e.basaltemperatur) : "")
+            _sexuelleAktivitaet = State(initialValue: e.sexuelleAktivitaet)
+            _notizen = State(initialValue: e.notizen)
+        } else {
+            _istPeriode = State(initialValue: false)
+            _blutungsfluss = State(initialValue: "mittel")
+            _symptome = State(initialValue: [])
+            _ovulationstest = State(initialValue: "")
+            _zervixschleim = State(initialValue: "")
+            _basaltemperatur = State(initialValue: "")
+            _sexuelleAktivitaet = State(initialValue: "")
+            _notizen = State(initialValue: "")
+        }
+    }
 
     private let flussOptionen = ["schmierblutung", "leicht", "mittel", "stark"]
     private let basisSymptome = [
@@ -826,20 +850,7 @@ struct ZyklusEintragSheet: View {
                     }
                 }
             }
-            .onAppear { laden() }
         }
-    }
-
-    private func laden() {
-        guard let e = bestehend else { return }
-        istPeriode = e.istPeriode
-        blutungsfluss = e.blutungsfluss.isEmpty ? "mittel" : e.blutungsfluss
-        symptome = Set(e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty })
-        ovulationstest = e.ovulationstest
-        zervixschleim = e.zervixschleim
-        basaltemperatur = e.basaltemperatur > 0 ? String(format: "%.1f", e.basaltemperatur) : ""
-        sexuelleAktivitaet = e.sexuelleAktivitaet
-        notizen = e.notizen
     }
 
     private func symptomHinzufuegen() {
