@@ -16,6 +16,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
 
     var status: UNAuthorizationStatus = .notDetermined
+    var timeSensitiveAktiv: Bool = false
     var pendingDeepLink: DeepLink? = nil
 
     override init() {
@@ -67,7 +68,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func berechtigungAnfordern() async -> Bool {
         do {
             let granted = try await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert, .badge, .sound])
+                .requestAuthorization(options: [.alert, .badge, .sound, .timeSensitive])
             await aktualisiereStatus()
             return granted
         } catch {
@@ -77,7 +78,14 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func aktualisiereStatus() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
-        await MainActor.run { status = settings.authorizationStatus }
+        await MainActor.run {
+            status = settings.authorizationStatus
+            if #available(iOS 15.0, *) {
+                timeSensitiveAktiv = settings.timeSensitiveSetting == .enabled
+            } else {
+                timeSensitiveAktiv = true
+            }
+        }
     }
 
     // MARK: - Medikament-Erinnerungen

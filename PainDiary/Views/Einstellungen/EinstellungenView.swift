@@ -118,14 +118,43 @@ struct EinstellungenView: View {
                     }
                 }
                 .disabled(notif.status != .authorized)
+
+                if notif.status == .authorized && !notif.timeSensitiveAktiv {
+                    Button {
+                        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Fokus-Modus ignoriert Erinnerungen")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.primary)
+                                Text("Zeitkritische Mitteilungen in iOS-Einstellungen aktivieren")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
             } header: {
                 Text("Erinnerungen")
             } footer: {
                 if notif.status != .authorized {
                     Text("Benachrichtigungen sind in den iOS-Einstellungen deaktiviert.")
                         .foregroundStyle(.orange)
+                } else if !notif.timeSensitiveAktiv {
+                    Text("Aktiviere 'Zeitkritische Mitteilungen' in den iOS-Einstellungen damit Erinnerungen auch bei aktivem Fokus-Modus (Nicht stören) ankommen.")
+                        .foregroundStyle(.orange)
                 } else if tagesErinnerungAktiv {
-                    Text("Du erhältst täglich eine Erinnerung, deinen Schmerz zu erfassen.")
+                    Text("Erinnerungen kommen auch bei aktivem Fokus-Modus durch.")
                 } else {
                     Text("Tippe auf 'Test senden' und verlasse die App um den Push-Banner zu sehen.")
                 }
