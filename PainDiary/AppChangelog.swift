@@ -17,6 +17,17 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "10", aenderungen: [
+        WhatsNewAenderung(icon: "bell.badge.fill",          farbe: .blue,
+                          titel: "Erinnerungen nach Update zuverlässig",
+                          beschreibung: "Nach einer Neuinstallation oder einem App-Update werden alle Medikamenten-Erinnerungen, Tages- und Wasser-Erinnerungen automatisch neu geplant."),
+        WhatsNewAenderung(icon: "bell.and.waves.left.and.right", farbe: .indigo,
+                          titel: "Benachrichtigung testen",
+                          beschreibung: "In den Einstellungen unter 'Erinnerungen' gibt es jetzt einen Test-Button – Push kommt nach 5 Sekunden, funktioniert auch wenn die App geöffnet ist."),
+        WhatsNewAenderung(icon: "arrow.up.arrow.down",      farbe: .green,
+                          titel: "Wochentend sensibler",
+                          beschreibung: "Der Trend-Badge zeigt bereits ab einer Veränderung von ±0.05 Farbe – kleine Verbesserungen oder Verschlechterungen werden jetzt sichtbar."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "9", aenderungen: [
         WhatsNewAenderung(icon: "calendar.badge.checkmark", farbe: .blue,
                           titel: "Wochenvergleich Mo–So",
