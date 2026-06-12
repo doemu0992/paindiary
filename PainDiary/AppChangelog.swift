@@ -17,6 +17,17 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "9", aenderungen: [
+        WhatsNewAenderung(icon: "calendar.badge.checkmark", farbe: .blue,
+                          titel: "Wochenvergleich Mo–So",
+                          beschreibung: "Der Trend-Badge und 'Diese Woche' basieren jetzt auf echten Kalenderwochen (Montag bis Sonntag) statt einem rollenden 7-Tage-Fenster."),
+        WhatsNewAenderung(icon: "pill.fill",               farbe: .green,
+                          titel: "Bewertungs-Push öffnet Medikamente",
+                          beschreibung: "Tippe auf 'Hat X gewirkt?' – die Medikamenten-Ansicht öffnet sich direkt mit der Bewertungssektion."),
+        WhatsNewAenderung(icon: "wrench.and.screwdriver.fill", farbe: .orange,
+                          titel: "Kleinere Bugfixes",
+                          beschreibung: "Wöchentliche Injektionen werden korrekt nach Dosierung gefiltert. Ablaufdatum-Anzeige und Einnahme-Zählung im Dashboard präzisiert."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "8", aenderungen: [
         WhatsNewAenderung(icon: "bell.badge.fill",        farbe: .blue,
                           titel: "Push-Links immer zuverlässig",
