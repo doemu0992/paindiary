@@ -17,14 +17,47 @@ struct PainDiaryApp: App {
             }
             .task {
                 guard container == nil else { return }
-                container = makeContainer()
+                let c = makeContainer()
+                container = c
                 await berechtigungenAnfordern()
+                await planeAlleErinnerungen(container: c)
             }
         }
     }
 
     private func berechtigungenAnfordern() async {
         _ = await NotificationManager.shared.berechtigungAnfordern()
+    }
+
+    // Re-schedules all notifications after install/update/relaunch
+    private func planeAlleErinnerungen(container: ModelContainer) async {
+        let notif = NotificationManager.shared
+        guard notif.status == .authorized else { return }
+
+        // Medikament-Erinnerungen
+        let context = ModelContext(container)
+        let medikamente = (try? context.fetch(FetchDescriptor<Dauermedikation>())) ?? []
+        for med in medikamente {
+            notif.planeErinnerungen(fuer: med)
+            notif.planeAblaufWarnung(fuer: med)
+        }
+
+        // Tages-Erinnerung
+        let defaults = UserDefaults.standard
+        if defaults.bool(forKey: "tagesErinnerungAktiv") {
+            let sek = defaults.double(forKey: "tagesErinnerungZeit")
+            let zeit = Date(timeIntervalSinceReferenceDate: sek > 0 ? sek : 28800)
+            let dc = Calendar.current.dateComponents([.hour, .minute], from: zeit)
+            notif.planeTagesErinnerung(stunde: dc.hour ?? 8, minute: dc.minute ?? 0)
+        }
+
+        // Wasser-Erinnerung
+        if defaults.bool(forKey: "wasserErinnerungAktiv") {
+            let sek = defaults.double(forKey: "wasserErinnerungZeit")
+            let zeit = Date(timeIntervalSinceReferenceDate: sek > 0 ? sek : 54000)
+            let dc = Calendar.current.dateComponents([.hour, .minute], from: zeit)
+            notif.planeWasserErinnerung(stunde: dc.hour ?? 15, minute: dc.minute ?? 0)
+        }
     }
 }
 
