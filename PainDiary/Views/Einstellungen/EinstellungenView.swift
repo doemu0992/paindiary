@@ -19,6 +19,7 @@ struct EinstellungenView: View {
     @State private var zeigeLoeschenBestaetigung = false
 
     @State private var testNotifGesendet = false
+    @State private var zeigeWhatsNew = false
 
     private let notif = NotificationManager.shared
 
@@ -162,6 +163,12 @@ struct EinstellungenView: View {
                     Label("Datenschutz", systemImage: "lock.shield")
                 }
 
+                Button {
+                    zeigeWhatsNew = true
+                } label: {
+                    Label("Was ist neu", systemImage: "sparkles")
+                }
+
                 Button("Onboarding erneut anzeigen") {
                     UserDefaults.standard.set(false, forKey: "onboardingAbgeschlossen")
                 }
@@ -171,6 +178,9 @@ struct EinstellungenView: View {
         .navigationTitle("Einstellungen")
         .sheet(isPresented: $zeigeShareSheet) {
             ShareSheet(urls: exportURLs)
+        }
+        .sheet(isPresented: $zeigeWhatsNew) {
+            WhatsNewView { zeigeWhatsNew = false }
         }
         .alert("Export fehlgeschlagen", isPresented: $zeigeExportFehler) {
             Button("OK", role: .cancel) {}
