@@ -29,9 +29,22 @@
 		B581A9042FCD567300E82648 /* PainDiaryUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PainDiaryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		CD17BF8D344A414BAEC793C7 /* Info.plist not in Copy Bundle Resources */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Info.plist",
+			);
+			target = B581A8EA2FCD567100E82648 /* PainDiary */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B581A8ED2FCD567100E82648 /* PainDiary */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CD17BF8D344A414BAEC793C7 /* Info.plist not in Copy Bundle Resources */,
+			);
 			path = PainDiary;
 			sourceTree = "<group>";
 		};
