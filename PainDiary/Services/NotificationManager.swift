@@ -147,6 +147,17 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         )
     }
 
+    func sendeTestBenachrichtigung() {
+        let content = UNMutableNotificationContent()
+        content.title = "✅ PainDiary Benachrichtigungen"
+        content.body = "Benachrichtigungen funktionieren korrekt – im Vordergrund und Hintergrund."
+        content.sound = .default
+        if #available(iOS 15.0, *) { content.interruptionLevel = .timeSensitive }
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: "test-benachrichtigung", content: content, trigger: trigger))
+    }
+
     // MARK: - Wasser-Erinnerung
 
     func planeWasserErinnerung(stunde: Int, minute: Int) {

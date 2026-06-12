@@ -18,6 +18,8 @@ struct EinstellungenView: View {
     @State private var zeigeExportFehler = false
     @State private var zeigeLoeschenBestaetigung = false
 
+    @State private var testNotifGesendet = false
+
     private let notif = NotificationManager.shared
 
     private var tagesErinnerungZeit: Binding<Date> {
@@ -101,6 +103,36 @@ struct EinstellungenView: View {
             } footer: {
                 if tagesErinnerungAktiv {
                     Text("Du erhältst täglich eine Erinnerung, deinen Schmerz zu erfassen.")
+                }
+            }
+
+            Section {
+                Button {
+                    notif.sendeTestBenachrichtigung()
+                    testNotifGesendet = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                        testNotifGesendet = false
+                    }
+                } label: {
+                    HStack {
+                        Label("Testbenachrichtigung senden", systemImage: "bell.badge")
+                        Spacer()
+                        if testNotifGesendet {
+                            Text("Kommt in 5 Sek…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .disabled(notif.status != .authorized)
+            } header: {
+                Text("Benachrichtigungen testen")
+            } footer: {
+                if notif.status != .authorized {
+                    Text("Benachrichtigungen sind in den iOS-Einstellungen deaktiviert.")
+                        .foregroundStyle(.orange)
+                } else {
+                    Text("Verlasse die App nach dem Tippen um den Push-Banner zu sehen.")
                 }
             }
 
