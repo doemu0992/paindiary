@@ -3,16 +3,35 @@ import SwiftData
 import Charts
 
 struct KorrelationsView: View {
-    @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
+    @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var einnahmeLogs: [EinnahmeLog]
     @Query(filter: #Predicate<Dauermedikation> { $0.aktiv }) private var dauermedikationen: [Dauermedikation]
     @Query(sort: \Dauermedikation.name) private var alleDauermedikationen: [Dauermedikation]
 
+    @State private var zeitfilter: Zeitfilter = .alle
+
+    private enum Zeitfilter: String, CaseIterable {
+        case monat = "30 T"; case dreiMonate = "90 T"; case alle = "Alle"
+        var tage: Int? {
+            switch self { case .monat: return 30; case .dreiMonate: return 90; case .alle: return nil }
+        }
+    }
+
+    // Zeitgefilterte Einträge – alle Chart-Daten basieren automatisch darauf.
+    // Heatmap, Schmerzverlauf und Vorhersage bekommen alleEintraege (eigene Zeitachse).
+    private var eintraege: [PainEntry] {
+        guard let tage = zeitfilter.tage,
+              let cutoff = Calendar.current.date(byAdding: .day, value: -tage, to: Date()) else {
+            return Array(alleEintraege)
+        }
+        return alleEintraege.filter { $0.datum >= cutoff }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                if eintraege.count < 5 {
+                if alleEintraege.count < 5 {
                     ContentUnavailableView(
                         "Zu wenig Daten",
                         systemImage: "chart.xyaxis.line",
@@ -20,35 +39,42 @@ struct KorrelationsView: View {
                     )
                 } else {
                     zusammenfassungHeader
+                    zeitfilterPicker
                     erkenntnisseKarte
 
                     abschnittTitel("Vorhersage")
-                    VorhersageKarte(eintraege: Array(eintraege))
+                    VorhersageKarte(eintraege: Array(alleEintraege))
 
                     abschnittTitel("Schmerzkalender")
-                    SchmerzHeatmapKachel(eintraege: Array(eintraege))
+                    SchmerzHeatmapKachel(eintraege: Array(alleEintraege))
 
                     abschnittTitel("Schmerzverlauf")
-                    SchmerzVerlaufKarte(eintraege: Array(eintraege))
+                    SchmerzVerlaufKarte(eintraege: Array(alleEintraege))
 
-                    abschnittTitel("Schmerzmuster")
-                    wochentagChart
-                    ausloeserChart
-                    koerperstellenChart
-                    schmerzartChart
+                    if !wochentagDaten.isEmpty || !topAusloeser.isEmpty || !koerperstellenDaten.isEmpty || !schmerzartDaten.isEmpty {
+                        abschnittTitel("Schmerzmuster")
+                        if !wochentagDaten.isEmpty { wochentagChart }
+                        if !topAusloeser.isEmpty { ausloeserChart }
+                        if !koerperstellenDaten.isEmpty { koerperstellenChart }
+                        if !schmerzartDaten.isEmpty { schmerzartChart }
+                    }
 
-                    abschnittTitel("Körper & Geist")
-                    schlafSchmerzChart
-                    stressSchmerzChart
-                    stimmungSchmerzChart
-                    begleiterscheinungenChart
-                    massnahmenChart
+                    if schlafDaten.count >= 3 || stressPegelDaten.count >= 2 || stimmungPegelDaten.count >= 2 || !begleitDaten.isEmpty || !massnahmenDaten.isEmpty {
+                        abschnittTitel("Körper & Geist")
+                        if schlafDaten.count >= 3 { schlafSchmerzChart }
+                        if stressPegelDaten.count >= 2 { stressSchmerzChart }
+                        if stimmungPegelDaten.count >= 2 { stimmungSchmerzChart }
+                        if !begleitDaten.isEmpty { begleiterscheinungenChart }
+                        if !massnahmenDaten.isEmpty { massnahmenChart }
+                    }
 
-                    abschnittTitel("Ernährung & Wetter")
-                    koffeinSchmerzChart
-                    wetterSchmerzChart
+                    if koffeinGruppenDaten.count >= 2 || !wetterDaten.isEmpty {
+                        abschnittTitel("Ernährung & Wetter")
+                        if koffeinGruppenDaten.count >= 2 { koffeinSchmerzChart }
+                        if !wetterDaten.isEmpty { wetterSchmerzChart }
+                    }
 
-                    if !zyklusEintraege.isEmpty {
+                    if !zyklusEintraege.isEmpty && zyklusPhasenDaten.count >= 2 {
                         abschnittTitel("Zyklus")
                         zyklusSchmerzChart
                     }
@@ -75,12 +101,13 @@ struct KorrelationsView: View {
     // MARK: - Zusammenfassung
 
     private var zusammenfassungHeader: some View {
-        let avg = eintraege.isEmpty ? 0.0 : Double(eintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(eintraege.count)
-        let tage = eintraege.last.map {
+        let eg = eintraege
+        let avg = eg.isEmpty ? 0.0 : Double(eg.map(\.schmerzstaerke).reduce(0, +)) / Double(eg.count)
+        let tage = alleEintraege.last.map {
             max(0, Calendar.current.dateComponents([.day], from: $0.datum, to: .now).day ?? 0)
         } ?? 0
         return HStack(spacing: 0) {
-            summaryPill("\(eintraege.count)", label: "Einträge",    symbol: "list.bullet.clipboard.fill", farbe: .indigo)
+            summaryPill("\(eg.count)", label: "Einträge",    symbol: "list.bullet.clipboard.fill", farbe: .indigo)
             Divider().frame(height: 40)
             summaryPill(String(format: "%.1f", avg), label: "Ø Schmerz", symbol: "waveform.path.ecg",      farbe: schmerzFarbeGlobal(avg))
             Divider().frame(height: 40)
@@ -89,6 +116,13 @@ struct KorrelationsView: View {
         .padding(.vertical, 10)
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    }
+
+    private var zeitfilterPicker: some View {
+        Picker("Zeitraum", selection: $zeitfilter) {
+            ForEach(Zeitfilter.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.segmented)
     }
 
     private func summaryPill(_ wert: String, label: String, symbol: String, farbe: Color) -> some View {
@@ -215,10 +249,10 @@ struct KorrelationsView: View {
     }
 
     private var erkenntnisseKarte: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        karte {
             HStack {
-                Label("Deine Erkenntnisse", systemImage: "lightbulb.fill")
-                    .font(.headline).foregroundStyle(.yellow)
+                Label("Deine Erkenntnisse", systemImage: "sparkle.magnifyingglass")
+                    .font(.headline)
                 Spacer()
                 InfoButton(
                     titel: "Deine Erkenntnisse",
@@ -227,24 +261,37 @@ struct KorrelationsView: View {
             }
 
             if alleErkenntnisse.isEmpty {
-                Text("Erfasse mehr Einträge um personalisierte Erkenntnisse zu erhalten.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(.title3).foregroundStyle(.secondary)
+                    Text("Erfasse mehr Einträge um personalisierte Erkenntnisse zu erhalten.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
             } else {
-                ForEach(alleErkenntnisse) { e in
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: e.symbol).font(.body)
-                            .foregroundStyle(e.farbe).frame(width: 22)
-                        Text(e.text).font(.subheadline)
-                            .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(alleErkenntnisse) { e in
+                        HStack(alignment: .top, spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(e.farbe.opacity(0.15))
+                                    .frame(width: 42, height: 42)
+                                Image(systemName: e.symbol)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(e.farbe)
+                            }
+                            Text(e.text)
+                                .font(.subheadline)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 4)
+                        }
+                        if e.id != alleErkenntnisse.last?.id {
+                            Divider().padding(.leading, 56)
+                        }
                     }
-                    if e.id != alleErkenntnisse.last?.id { Divider() }
                 }
             }
         }
-        .padding()
-        .background(Color.yellow.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.yellow.opacity(0.3), lineWidth: 1))
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
     // MARK: - Wochentag
@@ -685,7 +732,7 @@ struct KorrelationsView: View {
 
             var mitMed: [Double] = []
             var ohneMed: [Double] = []
-            for e in eintraege {
+            for e in alleEintraege {
                 let tag = kal.startOfDay(for: e.datum)
                 guard tag >= fenster else { continue }
                 let s = Double(e.schmerzstaerke)
@@ -880,7 +927,7 @@ struct KorrelationsView: View {
         var schmerzProTag: [Int: [Double]] = [:]
         for injektion in injektionsLogs {
             let injTag = kal.startOfDay(for: injektion.datum)
-            for e in eintraege {
+            for e in alleEintraege {
                 let eTag = kal.startOfDay(for: e.datum)
                 let diff = kal.dateComponents([.day], from: injTag, to: eTag).day ?? -1
                 if diff >= 0 && diff < 7 {
@@ -980,14 +1027,14 @@ struct KorrelationsView: View {
                     .filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
                     .map { kal.startOfDay(for: $0.datum) })
                 var mitMed: [Double] = []; var ohneMed: [Double] = []
-                for e in eintraege where e.schmerzstaerke > 0 {
+                for e in alleEintraege where e.schmerzstaerke > 0 {
                     if logTage.contains(kal.startOfDay(for: e.datum)) { mitMed.append(Double(e.schmerzstaerke)) }
                     else { ohneMed.append(Double(e.schmerzstaerke)) }
                 }
 
                 let startTag = kal.startOfDay(for: med.startDatum)
                 var vorStart: [Double] = []; var nachStart: [Double] = []
-                for e in eintraege where e.schmerzstaerke > 0 {
+                for e in alleEintraege where e.schmerzstaerke > 0 {
                     let tag = kal.startOfDay(for: e.datum)
                     if tag < startTag { vorStart.append(Double(e.schmerzstaerke)) }
                     else { nachStart.append(Double(e.schmerzstaerke)) }
