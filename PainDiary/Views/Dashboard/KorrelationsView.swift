@@ -10,6 +10,7 @@ struct KorrelationsView: View {
     @Query(sort: \Dauermedikation.name) private var alleDauermedikationen: [Dauermedikation]
 
     @State private var zeitfilter: Zeitfilter = .alle
+    @State private var aktiverTab: Int = 0
 
     private enum Zeitfilter: String, CaseIterable {
         case monat = "30 T"; case dreiMonate = "90 T"; case alle = "Alle"
@@ -29,73 +30,124 @@ struct KorrelationsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                if alleEintraege.count < 5 {
-                    ContentUnavailableView(
-                        "Zu wenig Daten",
-                        systemImage: "chart.xyaxis.line",
-                        description: Text("Erfasse mindestens 5 Einträge um Analysen zu sehen.")
-                    )
-                } else {
-                    zusammenfassungHeader
-                    zeitfilterPicker
-                    erkenntnisseKarte
+        VStack(spacing: 0) {
+            if alleEintraege.count >= 5 {
+                Picker("", selection: $aktiverTab) {
+                    Text("Überblick").tag(0)
+                    Text("Muster").tag(1)
+                    Text("Medikamente").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
 
-                    abschnittTitel("Vorhersage")
-                    VorhersageKarte(eintraege: Array(alleEintraege))
+                Divider()
+            }
 
-                    abschnittTitel("Schmerzkalender")
-                    SchmerzHeatmapKachel(eintraege: Array(alleEintraege))
-
-                    abschnittTitel("Schmerzverlauf")
-                    SchmerzVerlaufKarte(eintraege: Array(alleEintraege))
-
-                    if !wochentagDaten.isEmpty || !topAusloeser.isEmpty || !koerperstellenDaten.isEmpty || !schmerzartDaten.isEmpty {
-                        abschnittTitel("Schmerzmuster")
-                        if !wochentagDaten.isEmpty { wochentagChart }
-                        if !topAusloeser.isEmpty { ausloeserChart }
-                        if !koerperstellenDaten.isEmpty { koerperstellenChart }
-                        if !schmerzartDaten.isEmpty { schmerzartChart }
-                    }
-
-                    if schlafDaten.count >= 3 || stressPegelDaten.count >= 2 || stimmungPegelDaten.count >= 2 || !begleitDaten.isEmpty || !massnahmenDaten.isEmpty {
-                        abschnittTitel("Körper & Geist")
-                        if schlafDaten.count >= 3 { schlafSchmerzChart }
-                        if stressPegelDaten.count >= 2 { stressSchmerzChart }
-                        if stimmungPegelDaten.count >= 2 { stimmungSchmerzChart }
-                        if !begleitDaten.isEmpty { begleiterscheinungenChart }
-                        if !massnahmenDaten.isEmpty { massnahmenChart }
-                    }
-
-                    if koffeinGruppenDaten.count >= 2 || !wetterDaten.isEmpty {
-                        abschnittTitel("Ernährung & Wetter")
-                        if koffeinGruppenDaten.count >= 2 { koffeinSchmerzChart }
-                        if !wetterDaten.isEmpty { wetterSchmerzChart }
-                    }
-
-                    if !zyklusEintraege.isEmpty && zyklusPhasenDaten.count >= 2 {
-                        abschnittTitel("Zyklus")
-                        zyklusSchmerzChart
-                    }
-
-                    if !einnahmeLogs.isEmpty || !medAnalysen.isEmpty || !wöchentlicheMedikamente.isEmpty {
-                        abschnittTitel("Medikamente")
-                        if !einnahmeLogs.isEmpty { medikamentEffektChart }
-                        if !bedarfsTrendDaten.isEmpty { bedarfsTrendChart }
-                        if !wirksamkeitDaten.isEmpty { wirksamkeitsChart }
-                        injektionsZyklusChart
-                        ForEach(medAnalysen) { analyse in
-                            dauermedikamentKarte(analyse)
+            ScrollView {
+                VStack(spacing: 20) {
+                    if alleEintraege.count < 5 {
+                        ContentUnavailableView(
+                            "Zu wenig Daten",
+                            systemImage: "chart.xyaxis.line",
+                            description: Text("Erfasse mindestens 5 Einträge um Analysen zu sehen.")
+                        )
+                    } else {
+                        switch aktiverTab {
+                        case 1:  musterTabContent
+                        case 2:  medikamenteTabContent
+                        default: ueberblickTabContent
                         }
                     }
                 }
+                .padding()
+                .padding(.bottom, 20)
             }
-            .padding()
-            .padding(.bottom, 20)
         }
         .navigationTitle("Analysen")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    // MARK: - Tab: Überblick
+
+    @ViewBuilder
+    private var ueberblickTabContent: some View {
+        zusammenfassungHeader
+        zeitfilterPicker
+        erkenntnisseKarte
+        abschnittTitel("Vorhersage")
+        VorhersageKarte(eintraege: Array(alleEintraege))
+        abschnittTitel("Schmerzkalender")
+        SchmerzHeatmapKachel(eintraege: Array(alleEintraege))
+        abschnittTitel("Schmerzverlauf")
+        SchmerzVerlaufKarte(eintraege: Array(alleEintraege))
+    }
+
+    // MARK: - Tab: Muster
+
+    @ViewBuilder
+    private var musterTabContent: some View {
+        zeitfilterPicker
+
+        if !wochentagDaten.isEmpty || !topAusloeser.isEmpty || !koerperstellenDaten.isEmpty || !schmerzartDaten.isEmpty {
+            abschnittTitel("Schmerzmuster")
+            if !wochentagDaten.isEmpty { wochentagChart }
+            if !topAusloeser.isEmpty { ausloeserChart }
+            if !koerperstellenDaten.isEmpty { koerperstellenChart }
+            if !schmerzartDaten.isEmpty { schmerzartChart }
+        }
+
+        if schlafDaten.count >= 3 || stressPegelDaten.count >= 2 || stimmungPegelDaten.count >= 2 || !begleitDaten.isEmpty || !massnahmenDaten.isEmpty {
+            abschnittTitel("Körper & Geist")
+            if schlafDaten.count >= 3 { schlafSchmerzChart }
+            if stressPegelDaten.count >= 2 { stressSchmerzChart }
+            if stimmungPegelDaten.count >= 2 { stimmungSchmerzChart }
+            if !begleitDaten.isEmpty { begleiterscheinungenChart }
+            if !massnahmenDaten.isEmpty { massnahmenChart }
+        }
+
+        if koffeinGruppenDaten.count >= 2 || !wetterDaten.isEmpty {
+            abschnittTitel("Ernährung & Wetter")
+            if koffeinGruppenDaten.count >= 2 { koffeinSchmerzChart }
+            if !wetterDaten.isEmpty { wetterSchmerzChart }
+        }
+
+        if !zyklusEintraege.isEmpty && zyklusPhasenDaten.count >= 2 {
+            abschnittTitel("Zyklus")
+            zyklusSchmerzChart
+        }
+
+        if wochentagDaten.isEmpty && topAusloeser.isEmpty && koerperstellenDaten.isEmpty &&
+           schlafDaten.count < 3 && stressPegelDaten.count < 2 && begleitDaten.isEmpty &&
+           koffeinGruppenDaten.count < 2 && wetterDaten.isEmpty {
+            ContentUnavailableView(
+                "Noch nicht genug Daten",
+                systemImage: "chart.bar",
+                description: Text("Erfasse mehr Einträge um Muster zu erkennen.")
+            )
+        }
+    }
+
+    // MARK: - Tab: Medikamente
+
+    @ViewBuilder
+    private var medikamenteTabContent: some View {
+        if einnahmeLogs.isEmpty && medAnalysen.isEmpty && wöchentlicheMedikamente.isEmpty {
+            ContentUnavailableView(
+                "Keine Medikamentendaten",
+                systemImage: "pill",
+                description: Text("Erfasse Medikamente und Einnahmen um Analysen zu sehen.")
+            )
+        } else {
+            if !einnahmeLogs.isEmpty { medikamentEffektChart }
+            if !bedarfsTrendDaten.isEmpty { bedarfsTrendChart }
+            if !wirksamkeitDaten.isEmpty { wirksamkeitsChart }
+            injektionsZyklusChart
+            ForEach(medAnalysen) { analyse in
+                dauermedikamentKarte(analyse)
+            }
+        }
     }
 
     // MARK: - Zusammenfassung
