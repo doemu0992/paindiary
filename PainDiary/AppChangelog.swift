@@ -17,6 +17,20 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "12", aenderungen: [
+        WhatsNewAenderung(icon: "chart.bar.doc.horizontal.fill", farbe: .indigo,
+                          titel: "Analysen komplett neu strukturiert",
+                          beschreibung: "Der Analysen-Tab ist jetzt in drei Bereiche aufgeteilt: 'Überblick' mit Erkenntnissen, Vorhersage und Verlauf – 'Muster' mit allen Korrelations-Charts – 'Medikamente' mit Adherenz, Wirksamkeit und Injektionszyklus."),
+        WhatsNewAenderung(icon: "slider.horizontal.3",           farbe: .teal,
+                          titel: "Zeitfilter für Analysen",
+                          beschreibung: "Über den Filter 30 T / 90 T / Alle lassen sich alle Muster-Charts gleichzeitig auf einen bestimmten Zeitraum einschränken."),
+        WhatsNewAenderung(icon: "sparkle.magnifyingglass",       farbe: .orange,
+                          titel: "Erkenntnisse neu gestaltet",
+                          beschreibung: "Die Erkenntnisse-Karte hat ein frisches Design erhalten: farbige Icon-Quadrate statt gelbem Hintergrund – konsistent mit dem Rest der App."),
+        WhatsNewAenderung(icon: "eye.slash",                     farbe: .secondary,
+                          titel: "Leere Charts ausgeblendet",
+                          beschreibung: "Sektionen und Charts ohne ausreichend Daten werden nicht mehr angezeigt – die Ansicht bleibt übersichtlich und zeigt nur relevante Informationen."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "11", aenderungen: [
         WhatsNewAenderung(icon: "calendar.badge.clock",       farbe: .indigo,
                           titel: "Schmerzkalender",
