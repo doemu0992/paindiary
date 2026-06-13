@@ -73,8 +73,8 @@ struct KorrelationsView: View {
 
     @ViewBuilder
     private var ueberblickTabContent: some View {
-        zusammenfassungHeader
         zeitfilterPicker
+        zusammenfassungHeader
         erkenntnisseKarte
         abschnittTitel("Vorhersage")
         VorhersageKarte(eintraege: Array(alleEintraege))
