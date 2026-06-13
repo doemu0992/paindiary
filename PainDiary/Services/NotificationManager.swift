@@ -68,7 +68,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func berechtigungAnfordern() async -> Bool {
         do {
             let granted = try await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert, .badge, .sound, .timeSensitive])
+                .requestAuthorization(options: [.alert, .badge, .sound])
             await aktualisiereStatus()
             return granted
         } catch {
