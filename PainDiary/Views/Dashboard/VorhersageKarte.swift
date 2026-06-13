@@ -126,7 +126,7 @@ struct VorhersageKarte: View {
             }
             .chartXAxis {
                 AxisMarks(values: .automatic) {
-                    AxisValueLabel(format: .dateTime.weekday(.abbreviated))
+                    AxisValueLabel(format: .dateTime.weekday(.abbreviated).locale(Locale(identifier: "de_DE")))
                         .font(.caption)
                         .foregroundStyle(Color.secondary)
                 }
@@ -176,7 +176,7 @@ struct VorhersageKarte: View {
                 Text(label)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                Text(datum.formatted(.dateTime.weekday(.wide)))
+                Text(datum.formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "de_DE"))))
                     .font(.caption.bold())
                 Text(String(format: "Ø %.1f", wert))
                     .font(.caption2)

@@ -51,7 +51,7 @@ struct SchmerzHeatmapKachel: View {
     private func monatLabel(fuer woche: [Date?]) -> String? {
         guard let ersterTag = woche.compactMap({ $0 }).first,
               kal.component(.day, from: ersterTag) <= 7 else { return nil }
-        return ersterTag.formatted(.dateTime.month(.abbreviated))
+        return ersterTag.formatted(.dateTime.month(.abbreviated).locale(Locale(identifier: "de_DE")))
     }
 
     var body: some View {
@@ -164,7 +164,7 @@ struct SchmerzHeatmapKachel: View {
     private func auswahlInfo(fuer tag: Date) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(tag.formatted(.dateTime.day().month(.wide).year()))
+                Text(tag.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "de_DE"))))
                     .font(.caption.bold())
                 if let info = schmerzProTag[tag] {
                     Text("Ø \(String(format: "%.1f", info.schnitt)) · \(info.anzahl) \(info.anzahl == 1 ? "Eintrag" : "Einträge")")

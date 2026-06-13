@@ -31,7 +31,7 @@ struct TagesDetailSheet: View {
                     .listStyle(.insetGrouped)
                 }
             }
-            .navigationTitle(datum.formatted(.dateTime.day().month(.wide).year()))
+            .navigationTitle(datum.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "de_DE"))))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
