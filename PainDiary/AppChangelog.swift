@@ -17,6 +17,26 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "11", aenderungen: [
+        WhatsNewAenderung(icon: "calendar.badge.clock",       farbe: .indigo,
+                          titel: "Schmerzkalender",
+                          beschreibung: "Neue Heatmap-Ansicht der letzten 6 Monate: Jeder Tag ist nach Schmerzstärke eingefärbt. Antippen öffnet alle Einträge des Tages direkt."),
+        WhatsNewAenderung(icon: "wand.and.stars",             farbe: .purple,
+                          titel: "7-Tage-Vorhersage",
+                          beschreibung: "Prognostizierter Schmerzwert für die nächsten 7 Tage – basierend auf deinen Wochentagsmustern und dem aktuellen Trend. Zeigt deinen besten und schwierigsten Tag der Woche."),
+        WhatsNewAenderung(icon: "arrow.up.right.circle.fill", farbe: .teal,
+                          titel: "Tages-Drill-down",
+                          beschreibung: "Aus dem Schmerzverlauf-Chart und der Heatmap kannst du direkt in einen Tag einsteigen und alle Einträge mit Schmerz, Ort, Auslöser und Notizen sehen."),
+        WhatsNewAenderung(icon: "moon.zzz.fill",              farbe: .orange,
+                          titel: "Fokus-Modus & Nicht stören",
+                          beschreibung: "Erinnerungen kommen jetzt auch durch, wenn der Fokus-Modus oder 'Nicht stören' aktiv ist – sofern 'Zeitkritische Mitteilungen' in den iOS-Einstellungen erlaubt ist. Ein Hinweis in den App-Einstellungen führt dich direkt dorthin."),
+        WhatsNewAenderung(icon: "checkmark.circle.fill",      farbe: .green,
+                          titel: "Zyklus-Eintrag korrigiert",
+                          beschreibung: "Beim Bearbeiten eines bestehenden Zyklus-Eintrags wurde die sexuelle Aktivität nicht korrekt angezeigt. Das ist jetzt behoben."),
+        WhatsNewAenderung(icon: "sparkles",                   farbe: .blue,
+                          titel: "Was ist neu jederzeit abrufbar",
+                          beschreibung: "Unter Einstellungen → App gibt es jetzt einen 'Was ist neu'-Button, der den Changelog jederzeit öffnet."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "10", aenderungen: [
         WhatsNewAenderung(icon: "bell.badge.fill",          farbe: .blue,
                           titel: "Erinnerungen nach Update zuverlässig",
