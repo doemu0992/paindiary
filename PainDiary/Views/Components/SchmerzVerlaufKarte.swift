@@ -93,7 +93,7 @@ struct SchmerzVerlaufKarte: View {
                         } label: {
                             Text("Details")
                                 .font(.caption.bold())
-                                .foregroundStyle(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                         }
                         .buttonStyle(.plain)
                     }
