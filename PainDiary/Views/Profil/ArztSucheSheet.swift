@@ -97,18 +97,31 @@ struct ArztSucheSheet: View {
         ergebnisse = []
 
         Task {
-            // All four searches run in parallel
-            async let mk1 = mapKitSuche(query)
+            // Start all background queries immediately
             async let mk2 = mapKitSuche(query + " Arzt")
             async let mk3 = mapKitSuche(query + " Praxis")
             async let op  = overpassSuche(query)
 
-            let alle = await mk1 + mk2 + mk3 + op
-            let dedupliziert = dedupliziere(alle)
+            // Show first MapKit results as fast as possible
+            let erste = await mapKitSuche(query)
+            ergebnisse = erste
+            if !erste.isEmpty { sucht = false }
 
-            ergebnisse = dedupliziert
+            // Collect MapKit extras (likely already done)
+            let r2 = await mk2
+            let r3 = await mk3
+            var aktuell = dedupliziere(erste + r2 + r3)
+            ergebnisse = aktuell
             sucht = false
-            keineErgebnisse = dedupliziert.isEmpty
+            keineErgebnisse = aktuell.isEmpty
+
+            // OSM results trickle in silently — user already sees MapKit results
+            let r4 = await op
+            if !r4.isEmpty {
+                let mitOSM = dedupliziere(aktuell + r4)
+                ergebnisse = mitOSM
+                keineErgebnisse = mitOSM.isEmpty
+            }
         }
     }
 
