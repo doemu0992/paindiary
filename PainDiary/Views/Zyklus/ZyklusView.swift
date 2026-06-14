@@ -687,6 +687,7 @@ struct ZyklusEintragSheet: View {
 
     @State private var istPeriode: Bool
     @State private var blutungsfluss: String
+    @State private var nurHalberTag: Bool
     @State private var symptome: Set<String>
     @State private var ovulationstest: String
     @State private var zervixschleim: String
@@ -700,6 +701,7 @@ struct ZyklusEintragSheet: View {
         if let e = bestehend {
             _istPeriode = State(initialValue: e.istPeriode)
             _blutungsfluss = State(initialValue: e.blutungsfluss.isEmpty ? "mittel" : e.blutungsfluss)
+            _nurHalberTag = State(initialValue: e.nurHalberTag)
             _symptome = State(initialValue: Set(e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty }))
             _ovulationstest = State(initialValue: e.ovulationstest)
             _zervixschleim = State(initialValue: e.zervixschleim)
@@ -709,6 +711,7 @@ struct ZyklusEintragSheet: View {
         } else {
             _istPeriode = State(initialValue: false)
             _blutungsfluss = State(initialValue: "mittel")
+            _nurHalberTag = State(initialValue: false)
             _symptome = State(initialValue: [])
             _ovulationstest = State(initialValue: "")
             _zervixschleim = State(initialValue: "")
@@ -747,6 +750,7 @@ struct ZyklusEintragSheet: View {
                             ForEach(flussOptionen, id: \.self) { Text($0.capitalized).tag($0) }
                         }
                         .pickerStyle(.segmented)
+                        Toggle("Nur halber Tag", isOn: $nurHalberTag)
                     }
                 }
 
@@ -891,6 +895,7 @@ struct ZyklusEintragSheet: View {
         }
         eintrag.istPeriode = istPeriode
         eintrag.blutungsfluss = istPeriode ? blutungsfluss : ""
+        eintrag.nurHalberTag = istPeriode ? nurHalberTag : false
         eintrag.symptome = symptome.sorted().joined(separator: ", ")
         eintrag.ovulationstest = ovulationstest
         eintrag.zervixschleim = zervixschleim

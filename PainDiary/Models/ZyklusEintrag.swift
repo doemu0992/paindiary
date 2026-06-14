@@ -11,6 +11,7 @@ import SwiftData
     // Period
     var istPeriode: Bool = false
     var blutungsfluss: String = "" // "schmierblutung" | "leicht" | "mittel" | "stark"
+    var nurHalberTag: Bool = false
 
     // Symptoms (comma-separated)
     var symptome: String = ""

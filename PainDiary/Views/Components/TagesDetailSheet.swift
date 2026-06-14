@@ -74,6 +74,10 @@ struct TagesDetailSheet: View {
                 Label(e.massnahmen, systemImage: "cross.case")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            if e.morgensteifigkeit > 0 {
+                Label("\(e.morgensteifigkeit) Min Morgensteifigkeit", systemImage: "sunrise")
+                    .font(.caption).foregroundStyle(.orange)
+            }
             if !e.notizen.isEmpty {
                 Text(e.notizen)
                     .font(.caption)

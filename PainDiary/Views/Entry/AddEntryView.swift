@@ -42,6 +42,7 @@ struct AddEntryView: View {
     @State private var stimmung = 3
     @State private var stressLevel = 3
     @State private var schlafStunden = 7.0
+    @State private var morgensteifigkeit = 0
     @State private var healthSchlaf: Double? = nil
 
     // Vorlage
@@ -276,6 +277,7 @@ struct AddEntryView: View {
                     schlafStunden: $schlafStunden,
                     stressLevel: $stressLevel,
                     notizen: $notizen,
+                    morgensteifigkeit: $morgensteifigkeit,
                     healthSchlafVorschlag: healthSchlaf
                 )
             default:
@@ -417,6 +419,7 @@ struct AddEntryView: View {
         stimmung = e.stimmung
         stressLevel = e.stressLevel
         schlafStunden = e.schlafStunden
+        morgensteifigkeit = e.morgensteifigkeit
         notizen = e.notizen
         hautArt = e.hautArt
         fotoDateiname = e.fotoDateiname
@@ -462,6 +465,7 @@ struct AddEntryView: View {
             e.stimmung = stimmung
             e.schlafStunden = schlafStunden
             e.stressLevel = stressLevel
+            e.morgensteifigkeit = morgensteifigkeit
             e.notizen = notizen
             e.hautArt = hautArt
             e.fotoDateiname = fotoDateiname
@@ -493,6 +497,7 @@ struct AddEntryView: View {
                 stimmung: stimmung,
                 schlafStunden: schlafStunden,
                 stressLevel: stressLevel,
+                morgensteifigkeit: morgensteifigkeit,
                 wetterTemperatur: wetterSnap?.temperatur,
                 wetterCode: wetterSnap?.code,
                 wetterWind: wetterSnap?.windgeschwindigkeit,

@@ -5,6 +5,7 @@ struct WohlbefindenStepView: View {
     @Binding var schlafStunden: Double
     @Binding var stressLevel: Int
     @Binding var notizen: String
+    var morgensteifigkeit: Binding<Int>? = nil
     var healthSchlafVorschlag: Double? = nil
 
     var body: some View {
@@ -103,6 +104,44 @@ struct WohlbefindenStepView: View {
                         Spacer()
                         Text("12 Std.").font(.caption2).foregroundStyle(.secondary)
                     }
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            }
+
+            if let mgBinding = morgensteifigkeit {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Morgensteifigkeit")
+                            .font(.headline)
+                        Spacer()
+                        Text(mgBinding.wrappedValue == 0 ? "Keine" : "\(mgBinding.wrappedValue) Min")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(mgBinding.wrappedValue == 0 ? .secondary : .orange)
+                    }
+                    HStack(spacing: 6) {
+                        ForEach([(0, "–"), (15, "15'"), (30, "30'"), (60, "60'"), (90, "90'+'")], id: \.0) { wert, label in
+                            Button {
+                                mgBinding.wrappedValue = wert
+                            } label: {
+                                Text(label)
+                                    .font(.caption.bold())
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        mgBinding.wrappedValue == wert
+                                            ? Color.orange.opacity(0.2)
+                                            : Color.secondary.opacity(0.12),
+                                        in: RoundedRectangle(cornerRadius: 8)
+                                    )
+                                    .foregroundStyle(mgBinding.wrappedValue == wert ? .orange : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    Text("Wie lange dauerte die Steifigkeit nach dem Aufstehen?")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding()
                 .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
