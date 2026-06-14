@@ -1,11 +1,18 @@
 import SwiftUI
 import MapKit
 
+private struct ArztErgebnis: Identifiable {
+    let id = UUID()
+    let praxis: String
+    let adresse: String
+    let telefon: String
+}
+
 struct ArztSucheSheet: View {
     let onAuswahl: (String, String, String, String) -> Void // praxis, adresse, telefon, name
     @Environment(\.dismiss) private var dismiss
     @State private var suchtext = ""
-    @State private var ergebnisse: [MKMapItem] = []
+    @State private var ergebnisse: [ArztErgebnis] = []
     @State private var sucht = false
     @State private var keineErgebnisse = false
 
@@ -27,21 +34,22 @@ struct ArztSucheSheet: View {
                     )
                     .listRowBackground(Color.clear)
                 } else {
-                    ForEach(ergebnisse, id: \.self) { item in
+                    ForEach(ergebnisse) { item in
                         Button {
-                            waehle(item)
+                            onAuswahl(item.praxis, item.adresse, item.telefon, "")
+                            dismiss()
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(item.name ?? "")
+                                Text(item.praxis)
                                     .font(.headline)
                                     .foregroundStyle(.primary)
-                                if let adresse = formatAdresse(item.placemark) {
-                                    Text(adresse)
+                                if !item.adresse.isEmpty {
+                                    Text(item.adresse)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-                                if let tel = item.phoneNumber, !tel.isEmpty {
-                                    Label(tel, systemImage: "phone")
+                                if !item.telefon.isEmpty {
+                                    Label(item.telefon, systemImage: "phone")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -89,19 +97,17 @@ struct ArztSucheSheet: View {
         let req = MKLocalSearch.Request()
         req.naturalLanguageQuery = query
         MKLocalSearch(request: req).start { resp, _ in
+            // Extract all fields immediately so tap is instant (avoids lazy phoneNumber fetch on main thread)
+            let items = (resp?.mapItems ?? []).compactMap { item -> ArztErgebnis? in
+                guard let name = item.name, !name.isEmpty else { return nil }
+                let adresse = formatAdresse(item.placemark) ?? ""
+                let telefon = item.phoneNumber ?? ""
+                return ArztErgebnis(praxis: name, adresse: adresse, telefon: telefon)
+            }
             sucht = false
-            let items = resp?.mapItems ?? []
             ergebnisse = items
             keineErgebnisse = items.isEmpty
         }
-    }
-
-    private func waehle(_ item: MKMapItem) {
-        let praxis = item.name ?? ""
-        let adresse = formatAdresse(item.placemark) ?? ""
-        let telefon = item.phoneNumber ?? ""
-        onAuswahl(praxis, adresse, telefon, "")
-        dismiss()
     }
 
     private func formatAdresse(_ placemark: CLPlacemark) -> String? {
