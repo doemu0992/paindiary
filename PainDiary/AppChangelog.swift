@@ -17,6 +17,11 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "14", aenderungen: [
+        WhatsNewAenderung(icon: "bolt.fill", farbe: .yellow,
+                          titel: "Schnellerer App-Start",
+                          beschreibung: "Der Benachrichtigungs-Status wird jetzt im Hintergrund geladen – der App-Start ist dadurch spürbar flüssiger."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "13", aenderungen: [
         WhatsNewAenderung(icon: "bell.badge.fill",           farbe: .blue,
                           titel: "Benachrichtigungen beim Kaltstart",
