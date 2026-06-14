@@ -17,6 +17,14 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "16", aenderungen: [
+        WhatsNewAenderung(icon: "person.crop.circle.badge.plus", farbe: .blue,
+                          titel: "Arzt-Import verbessert",
+                          beschreibung: "Beim Import aus dem Adressbuch werden jetzt Praxisname, Arztname, Adresse, Telefon und E-Mail korrekt auf separate Felder verteilt – auch bei Praxis-Kontakten ohne persönlichen Namen."),
+        WhatsNewAenderung(icon: "building.2",                   farbe: .teal,
+                          titel: "Arzt-Felder neu strukturiert",
+                          beschreibung: "Das Arzt-Formular hat jetzt separate Felder für Praxis/Klinik, Name des Arztes, Fachgebiet und Adresse – übersichtlicher und vollständiger."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "15", aenderungen: [
         WhatsNewAenderung(icon: "sunrise",                   farbe: .orange,
                           titel: "Morgensteifigkeit erfassen",
