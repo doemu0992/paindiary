@@ -137,19 +137,17 @@ struct ArztSucheSheet: View {
     private func overpassSuche(_ query: String) async -> [ArztErgebnis] {
         // Escape regex metacharacters for Overpass QL
         let escaped = NSRegularExpression.escapedPattern(for: query)
-        // DACH bounding box covers CH, DE, AT without requiring device location
+        // Nodes only (ways are large/slow), max 50 results, DACH bounding box
         let ql = """
-        [out:json][timeout:25];
+        [out:json][timeout:15];
         (
           node["name"~"\(escaped)",i]["healthcare"](45.8,5.9,55.1,17.2);
           node["name"~"\(escaped)",i]["amenity"~"doctors|clinic|hospital|dentist"](45.8,5.9,55.1,17.2);
-          way["name"~"\(escaped)",i]["healthcare"](45.8,5.9,55.1,17.2);
-          way["name"~"\(escaped)",i]["amenity"~"doctors|clinic|hospital|dentist"](45.8,5.9,55.1,17.2);
         );
-        out center;
+        out 50;
         """
         guard let url = URL(string: "https://overpass-api.de/api/interpreter") else { return [] }
-        var req = URLRequest(url: url, timeoutInterval: 30)
+        var req = URLRequest(url: url, timeoutInterval: 20)
         req.httpMethod = "POST"
         let encoded = ql.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         req.httpBody = "data=\(encoded)".data(using: .utf8)
