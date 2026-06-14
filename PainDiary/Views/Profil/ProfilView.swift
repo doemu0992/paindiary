@@ -52,6 +52,7 @@ private struct ProfilInhaltView: View {
 #if os(iOS)
     @State private var adressbuchAnzeigen = false
     @State private var adressbuchArztAnzeigen = false
+    @State private var arztSucheAnzeigen = false
 #endif
 
     var body: some View {
@@ -121,6 +122,11 @@ private struct ProfilInhaltView: View {
                 for d in daten {
                     profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: d.name, praxis: d.praxis, fachgebiet: "", adresse: d.adresse, telefon: d.phone, email: d.email)]
                 }
+            }
+        }
+        .sheet(isPresented: $arztSucheAnzeigen) {
+            ArztSucheSheet { praxis, adresse, telefon, name in
+                profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: name, praxis: praxis, fachgebiet: "", adresse: adresse, telefon: telefon, email: "")]
             }
         }
 #endif
@@ -309,6 +315,11 @@ private struct ProfilInhaltView: View {
             }
             .onDelete { var a = profil.aerzte ?? []; a.remove(atOffsets: $0); profil.aerzte = a }
 #if os(iOS)
+            Button {
+                arztSucheAnzeigen = true
+            } label: {
+                Label("Suchen", systemImage: "magnifyingglass")
+            }
             Button {
                 adressbuchArztAnzeigen = true
             } label: {
