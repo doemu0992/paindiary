@@ -87,12 +87,13 @@ private struct ProfilInhaltView: View {
                     }
                 }
             case .arzt(let existing):
-                ArztFormView(existing: existing) { name, fachgebiet, praxis, telefon, email, istHausarzt, notizen in
+                ArztFormView(existing: existing) { name, praxis, fachgebiet, adresse, telefon, email, istHausarzt, notizen in
                     if let a = existing {
-                        a.name = name; a.fachgebiet = fachgebiet; a.praxis = praxis
+                        a.name = name; a.praxis = praxis; a.fachgebiet = fachgebiet; a.adresse = adresse
                         a.telefon = telefon; a.email = email; a.istHausarzt = istHausarzt; a.notizen = notizen
                     } else {
-                        profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: name, fachgebiet: fachgebiet, praxis: praxis,
+                        profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: name, praxis: praxis,
+                                                         fachgebiet: fachgebiet, adresse: adresse,
                                                          telefon: telefon, email: email,
                                                          istHausarzt: istHausarzt, notizen: notizen)]
                     }
@@ -118,7 +119,7 @@ private struct ProfilInhaltView: View {
         .sheet(isPresented: $adressbuchArztAnzeigen) {
             KontaktPickerView { daten in
                 for d in daten {
-                    profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: d.name, fachgebiet: "", praxis: d.adresse, telefon: d.phone, email: d.email)]
+                    profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: d.name, praxis: d.praxis, fachgebiet: "", adresse: d.adresse, telefon: d.phone, email: d.email)]
                 }
             }
         }
@@ -289,14 +290,15 @@ private struct ProfilInhaltView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
-                                Text(a.name).font(.headline).foregroundStyle(.primary)
+                                Text(a.name.isEmpty ? a.praxis : a.name).font(.headline).foregroundStyle(.primary)
                                 if a.istHausarzt {
                                     Label("Hausarzt", systemImage: "staroflife.fill")
                                         .font(.caption).foregroundStyle(.blue)
                                 }
                             }
-                            if !a.fachgebiet.isEmpty { Text(a.fachgebiet).font(.subheadline).foregroundStyle(.secondary) }
-                            if !a.praxis.isEmpty     { Text(a.praxis).font(.caption).foregroundStyle(.secondary) }
+                            if !a.name.isEmpty && !a.praxis.isEmpty { Text(a.praxis).font(.subheadline).foregroundStyle(.secondary) }
+                            if !a.fachgebiet.isEmpty { Text(a.fachgebiet).font(.caption).foregroundStyle(.secondary) }
+                            if !a.adresse.isEmpty    { Text(a.adresse).font(.caption).foregroundStyle(.secondary) }
                             if !a.telefon.isEmpty    { Label(a.telefon, systemImage: "phone").font(.caption).foregroundStyle(.secondary) }
                         }
                         Spacer()
@@ -587,21 +589,23 @@ private struct AllergieFormView: View {
 private struct ArztFormView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
-    @State private var fachgebiet: String
     @State private var praxis: String
+    @State private var fachgebiet: String
+    @State private var adresse: String
     @State private var telefon: String
     @State private var email: String
     @State private var istHausarzt: Bool
     @State private var notizen: String
     private let isEdit: Bool
-    let onSave: (String, String, String, String, String, Bool, String) -> Void
+    let onSave: (String, String, String, String, String, String, Bool, String) -> Void
 
-    init(existing: ArztKontakt? = nil, onSave: @escaping (String, String, String, String, String, Bool, String) -> Void) {
+    init(existing: ArztKontakt? = nil, onSave: @escaping (String, String, String, String, String, String, Bool, String) -> Void) {
         self.isEdit = existing != nil
         self.onSave = onSave
         _name        = State(initialValue: existing?.name ?? "")
-        _fachgebiet  = State(initialValue: existing?.fachgebiet ?? "")
         _praxis      = State(initialValue: existing?.praxis ?? "")
+        _fachgebiet  = State(initialValue: existing?.fachgebiet ?? "")
+        _adresse     = State(initialValue: existing?.adresse ?? "")
         _telefon     = State(initialValue: existing?.telefon ?? "")
         _email       = State(initialValue: existing?.email ?? "")
         _istHausarzt = State(initialValue: existing?.istHausarzt ?? false)
@@ -611,12 +615,17 @@ private struct ArztFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Fachgebiet", text: $fachgebiet)
-                TextField("Praxis / Adresse", text: $praxis)
-                TextField("Telefon", text: $telefon).keyboardType(.phonePad)
-                TextField("E-Mail", text: $email).keyboardType(.emailAddress)
-                Toggle("Hausarzt", isOn: $istHausarzt)
+                Section {
+                    TextField("Praxis / Klinik", text: $praxis)
+                    TextField("Name des Arztes", text: $name)
+                    TextField("Fachgebiet", text: $fachgebiet)
+                    TextField("Adresse", text: $adresse)
+                }
+                Section {
+                    TextField("Telefon", text: $telefon).keyboardType(.phonePad)
+                    TextField("E-Mail", text: $email).keyboardType(.emailAddress)
+                    Toggle("Hausarzt", isOn: $istHausarzt)
+                }
                 Section("Notizen") { TextEditor(text: $notizen).frame(minHeight: 60) }
             }
             .navigationTitle(isEdit ? "Arzt bearbeiten" : "Neuer Arzt")
@@ -624,8 +633,8 @@ private struct ArztFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { onSave(name, fachgebiet, praxis, telefon, email, istHausarzt, notizen); dismiss() }
-                        .disabled(name.isEmpty)
+                    Button("Speichern") { onSave(name, praxis, fachgebiet, adresse, telefon, email, istHausarzt, notizen); dismiss() }
+                        .disabled(name.isEmpty && praxis.isEmpty)
                 }
             }
         }

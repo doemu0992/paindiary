@@ -5,6 +5,7 @@ import Contacts
 #if os(iOS)
 struct KontaktDaten {
     let name: String
+    let praxis: String
     let phone: String
     let email: String
     let adresse: String
@@ -37,16 +38,15 @@ struct KontaktPickerView: UIViewControllerRepresentable {
 
         func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
             let daten = contacts.compactMap { kontakt -> KontaktDaten? in
-                // Person name first, fall back to organization name (e.g. practice contacts)
                 let personName = [kontakt.givenName, kontakt.familyName]
                     .filter { !$0.isEmpty }.joined(separator: " ")
-                let name = personName.isEmpty ? kontakt.organizationName : personName
-                guard !name.isEmpty else { return nil }
+                let praxis = kontakt.organizationName
+                // At least one of name or praxis must be present
+                guard !personName.isEmpty || !praxis.isEmpty else { return nil }
 
                 let phone = kontakt.phoneNumbers.first?.value.stringValue ?? ""
                 let email = kontakt.emailAddresses.first?.value as String? ?? ""
 
-                // Build address string from first postal address
                 let adresse: String
                 if let pa = kontakt.postalAddresses.first?.value {
                     let teile = [pa.street, [pa.postalCode, pa.city].filter { !$0.isEmpty }.joined(separator: " ")]
@@ -56,7 +56,7 @@ struct KontaktPickerView: UIViewControllerRepresentable {
                     adresse = ""
                 }
 
-                return KontaktDaten(name: name, phone: phone, email: email, adresse: adresse)
+                return KontaktDaten(name: personName, praxis: praxis, phone: phone, email: email, adresse: adresse)
             }
             onFertig(daten)
             dismiss()
