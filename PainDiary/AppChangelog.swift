@@ -17,6 +17,14 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "17", aenderungen: [
+        WhatsNewAenderung(icon: "magnifyingglass.circle.fill", farbe: .blue,
+                          titel: "Erweiterte Arztsuche",
+                          beschreibung: "Die Arztsuche kombiniert jetzt Apple Maps und OpenStreetMap: drei parallele Suchanfragen laufen gleichzeitig, erste Ergebnisse erscheinen sofort – weitere kommen lautlos nach."),
+        WhatsNewAenderung(icon: "bolt.fill",                   farbe: .yellow,
+                          titel: "Arztsuche deutlich schneller",
+                          beschreibung: "Ergebnisse werden jetzt schrittweise geladen statt erst nach Abschluss aller Quellen – die Liste erscheint bereits nach etwa einer Sekunde."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "16", aenderungen: [
         WhatsNewAenderung(icon: "person.crop.circle.badge.plus", farbe: .blue,
                           titel: "Arzt-Import verbessert",
