@@ -22,7 +22,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
-        Task { await aktualisiereStatus() }
+        Task.detached { [weak self] in await self?.aktualisiereStatus() }
     }
 
     // Show notifications even when app is in foreground
