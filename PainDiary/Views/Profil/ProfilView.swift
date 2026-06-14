@@ -51,6 +51,7 @@ private struct ProfilInhaltView: View {
     @State private var stammdatenAnzeigen = false
 #if os(iOS)
     @State private var adressbuchAnzeigen = false
+    @State private var adressbuchArztAnzeigen = false
 #endif
 
     var body: some View {
@@ -111,6 +112,13 @@ private struct ProfilInhaltView: View {
             KontaktPickerView { daten in
                 for d in daten {
                     profil.notfallkontakte = (profil.notfallkontakte ?? []) + [NotfallKontakt(name: d.name, phone: d.phone, beziehung: "")]
+                }
+            }
+        }
+        .sheet(isPresented: $adressbuchArztAnzeigen) {
+            KontaktPickerView { daten in
+                for d in daten {
+                    profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: d.name, fachgebiet: "", praxis: "", telefon: d.phone, email: d.email)]
                 }
             }
         }
@@ -298,7 +306,14 @@ private struct ProfilInhaltView: View {
                 .buttonStyle(.plain)
             }
             .onDelete { var a = profil.aerzte ?? []; a.remove(atOffsets: $0); profil.aerzte = a }
-            Button("Arzt hinzufügen") { aktivesFormular = .arzt(nil) }
+#if os(iOS)
+            Button {
+                adressbuchArztAnzeigen = true
+            } label: {
+                Label("Aus Adressbuch wählen", systemImage: "person.crop.circle.badge.plus")
+            }
+#endif
+            Button("Manuell hinzufügen") { aktivesFormular = .arzt(nil) }
         } header: { Text("Ärzte") }
     }
 
