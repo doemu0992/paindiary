@@ -274,22 +274,22 @@ struct MedikamenteView: View {
 
     @ViewBuilder
     private func einnahmeKontrolle(med: Dauermedikation) -> some View {
-        if med.frequenz == "Wöchentlich" {
-            // Wöchentliche Injektion: Tage seit / bis zur nächsten
-            let letzteInjektion = logs.first { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
-            let tageSeit: Int? = letzteInjektion.map {
+        if med.frequenz == "Wöchentlich" || med.frequenz == "Monatlich" {
+            let intervall = med.frequenz == "Monatlich" ? 30 : 7
+            let letzteEinnahme = logs.first { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
+            let tageSeit: Int? = letzteEinnahme.map {
                 max(0, Calendar.current.dateComponents([.day], from: $0.datum, to: Date()).day ?? 0)
             }
             HStack(spacing: 8) {
                 if let tage = tageSeit {
                     VStack(alignment: .trailing, spacing: 1) {
                         if tage == 0 {
-                            Text("Heute injiziert").font(.caption).foregroundStyle(.green)
-                        } else if tage < 7 {
+                            Text("Heute eingenommen").font(.caption).foregroundStyle(.green)
+                        } else if tage < intervall {
                             Text("Vor \(tage) Tag\(tage == 1 ? "" : "en")")
                                 .font(.caption2).foregroundStyle(.secondary)
-                            Text("In \(7 - tage) Tag\(7 - tage == 1 ? "" : "en")")
-                                .font(.caption).foregroundStyle(tage >= 6 ? .orange : .blue)
+                            Text("In \(intervall - tage) Tag\(intervall - tage == 1 ? "" : "en")")
+                                .font(.caption).foregroundStyle(tage >= intervall - 1 ? .orange : .blue)
                         } else {
                             Text("Fällig!").font(.caption.bold()).foregroundStyle(.orange)
                         }
@@ -496,7 +496,7 @@ struct MedikamentFormView: View {
     private let frequenzOptionen = [
         "1× täglich", "2× täglich", "3× täglich",
         "Morgens", "Abends", "Morgens & Abends",
-        "Bei Bedarf", "Wöchentlich"
+        "Bei Bedarf", "Wöchentlich", "Monatlich"
     ]
     private let hinweisOptionen = [
         "", "Mit Essen", "Nüchtern", "Mit viel Wasser",
@@ -616,8 +616,8 @@ struct MedikamentFormView: View {
                     } header: {
                         Text("Wirkung")
                     } footer: {
-                        Text(frequenz == "Wöchentlich"
-                             ? "Empfohlen: 24–48h nach der Injektion. Du wirst dann nach der Wirkung gefragt."
+                        Text(frequenz == "Wöchentlich" || frequenz == "Monatlich"
+                             ? "Empfohlen: 24–48h nach der Einnahme. Du wirst dann nach der Wirkung gefragt."
                              : "Nach dieser Zeit erhältst du eine Abfrage, ob das Medikament gewirkt hat.")
                     }
                 }
@@ -642,6 +642,9 @@ struct MedikamentFormView: View {
             if medikamentTyp == MedikamentTyp.tablette.rawValue {
                 medikamentTyp = MedikamentTyp.spritze.rawValue
             }
+            if wirkungsAbfrageStunden == 2 { wirkungsAbfrageStunden = 24 }
+        }
+        if frequenz == "Monatlich" {
             if wirkungsAbfrageStunden == 2 { wirkungsAbfrageStunden = 24 }
         }
     }
@@ -721,6 +724,7 @@ struct EinnahmeLogSheet: View {
     @State private var fehlende: [Date] = []
 
     private var istWöchentlich: Bool { med.frequenz == "Wöchentlich" }
+    private var istMonatlich: Bool { med.frequenz == "Monatlich" }
     private var istBeiBedarfs: Bool { med.frequenz == "Bei Bedarf" }
 
     var body: some View {
@@ -737,7 +741,7 @@ struct EinnahmeLogSheet: View {
                 } header: {
                     Label(med.name, systemImage: med.typSymbol).font(.headline)
                 } footer: {
-                    if istWöchentlich {
+                    if istWöchentlich || istMonatlich {
                         Text("Wähle das Datum deiner letzten oder aktuellen Einnahme.")
                     } else {
                         Text("Einzelne Einnahme zu einem bestimmten Zeitpunkt erfassen.")
@@ -760,7 +764,7 @@ struct EinnahmeLogSheet: View {
                 }
 
                 // Rückwirkend nacherfassen (nur für Dauermedikamente mit fixer Einnahmezeit)
-                if !istBeiBedarfs && !istWöchentlich && !fehlende.isEmpty {
+                if !istBeiBedarfs && !istWöchentlich && !istMonatlich && !fehlende.isEmpty {
                     Section {
                         Button {
                             erstelleFehlendeLogs()
@@ -814,7 +818,7 @@ struct EinnahmeLogSheet: View {
     }
 
     private func berechneFehlende() {
-        guard !istBeiBedarfs && !istWöchentlich else { return }
+        guard !istBeiBedarfs && !istWöchentlich && !istMonatlich else { return }
         let zeiten = notif.gueltigeZeiten(fuer: med)
         guard !zeiten.isEmpty else { return }
 

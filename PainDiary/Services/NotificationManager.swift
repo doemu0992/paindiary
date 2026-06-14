@@ -94,6 +94,27 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         loescheErinnerungen(fuer: med)
         guard med.aktiv && med.erinnerungAktiv else { return }
 
+        if med.frequenz == "Monatlich" {
+            let zeiten = gueltigeZeiten(fuer: med)
+            guard let zeit = zeiten.first else { return }
+            let tag = Calendar.current.component(.day, from: med.startDatum)
+            let hinweis = med.einnahmeHinweis.isEmpty ? "" : " · \(med.einnahmeHinweis)"
+            let content = UNMutableNotificationContent()
+            content.title = "💊 \(med.name)"
+            content.body = med.dosierung.isEmpty ? "Zeit für deine Medikation\(hinweis)" : "\(med.dosierung) einnehmen\(hinweis)"
+            content.sound = .default
+            content.userInfo = ["type": "medikament", "name": med.name, "dosierung": med.dosierung]
+            if #available(iOS 15.0, *) { content.interruptionLevel = .timeSensitive }
+            var dc = DateComponents()
+            dc.day = tag
+            dc.hour = zeit.stunde
+            dc.minute = zeit.minute
+            UNUserNotificationCenter.current().add(
+                UNNotificationRequest(identifier: "\(med.notifID)-0", content: content,
+                                      trigger: UNCalendarNotificationTrigger(dateMatching: dc, repeats: true)))
+            return
+        }
+
         let zeiten = gueltigeZeiten(fuer: med)
         for (i, zeit) in zeiten.enumerated() {
             let hinweis = med.einnahmeHinweis.isEmpty ? "" : " · \(med.einnahmeHinweis)"
@@ -247,6 +268,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         case "3× täglich":              return [ZeitPunkt(stunde: 8, minute: 0), ZeitPunkt(stunde: 14, minute: 0), ZeitPunkt(stunde: 20, minute: 0)]
         case "Bei Bedarf":              return []
         case "Wöchentlich":             return [ZeitPunkt(stunde: 8, minute: 0)]
+        case "Monatlich":               return [ZeitPunkt(stunde: 8, minute: 0)]
         default:                        return [ZeitPunkt(stunde: 8, minute: 0)]
         }
     }

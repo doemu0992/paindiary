@@ -4,6 +4,9 @@ import SwiftData
 @main
 struct PainDiaryApp: App {
     @State private var container: ModelContainer? = nil
+    // Initialize early so UNUserNotificationCenter.delegate is set before iOS delivers
+    // the pending notification response on cold launch.
+    private let _notif = NotificationManager.shared
 
     var body: some Scene {
         WindowGroup {
