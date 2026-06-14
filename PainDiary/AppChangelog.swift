@@ -17,6 +17,20 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "15", aenderungen: [
+        WhatsNewAenderung(icon: "sunrise",                   farbe: .orange,
+                          titel: "Morgensteifigkeit erfassen",
+                          beschreibung: "Im Wohlbefinden-Schritt kannst du jetzt angeben, wie lange die Morgensteifigkeit nach dem Aufstehen angehalten hat – ein wichtiger Wert für Rücken- und Rheuma-Patienten."),
+        WhatsNewAenderung(icon: "drop.halffull",             farbe: .pink,
+                          titel: "Periode: Nur halber Tag",
+                          beschreibung: "Im Zyklus-Eintrag gibt es jetzt den Toggle 'Nur halber Tag', wenn eine Blutung erfasst wird – z.B. für Tage mit kurzem Einsetzen oder Ende der Periode."),
+        WhatsNewAenderung(icon: "person.crop.circle.badge.plus", farbe: .blue,
+                          titel: "Arzt aus Adressbuch",
+                          beschreibung: "Ärzte können jetzt direkt aus dem iOS-Adressbuch importiert werden – Name, Telefon und E-Mail werden automatisch übernommen."),
+        WhatsNewAenderung(icon: "clock.arrow.trianglehead.counterclockwise.rotate.90", farbe: .indigo,
+                          titel: "Versionsverlauf",
+                          beschreibung: "Unter Einstellungen → App findest du jetzt den vollständigen Versionsverlauf aller bisherigen Updates."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "14", aenderungen: [
         WhatsNewAenderung(icon: "bolt.fill", farbe: .yellow,
                           titel: "Schnellerer App-Start",
