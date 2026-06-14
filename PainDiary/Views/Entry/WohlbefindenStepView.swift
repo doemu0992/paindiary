@@ -117,7 +117,7 @@ struct WohlbefindenStepView: View {
                         Spacer()
                         Text(mgBinding.wrappedValue == 0 ? "Keine" : "\(mgBinding.wrappedValue) Min")
                             .font(.subheadline.bold())
-                            .foregroundStyle(mgBinding.wrappedValue == 0 ? .secondary : .orange)
+                            .foregroundStyle(mgBinding.wrappedValue == 0 ? Color.secondary : Color.orange)
                     }
                     HStack(spacing: 6) {
                         ForEach([(0, "–"), (15, "15'"), (30, "30'"), (60, "60'"), (90, "90'+'")], id: \.0) { wert, label in
