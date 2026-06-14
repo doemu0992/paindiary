@@ -198,6 +198,12 @@ struct EinstellungenView: View {
                     Label("Was ist neu", systemImage: "sparkles")
                 }
 
+                NavigationLink {
+                    ChangelogVerlaufView()
+                } label: {
+                    Label("Versionsverlauf", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                }
+
                 Button("Onboarding erneut anzeigen") {
                     UserDefaults.standard.set(false, forKey: "onboardingAbgeschlossen")
                 }
