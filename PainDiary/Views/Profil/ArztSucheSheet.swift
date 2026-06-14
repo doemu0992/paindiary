@@ -94,19 +94,97 @@ struct ArztSucheSheet: View {
         guard !query.isEmpty else { return }
         sucht = true
         keineErgebnisse = false
+        ergebnisse = []
+
+        Task {
+            // All four searches run in parallel
+            async let mk1 = mapKitSuche(query)
+            async let mk2 = mapKitSuche(query + " Arzt")
+            async let mk3 = mapKitSuche(query + " Praxis")
+            async let op  = overpassSuche(query)
+
+            let alle = await mk1 + mk2 + mk3 + op
+            let dedupliziert = dedupliziere(alle)
+
+            ergebnisse = dedupliziert
+            sucht = false
+            keineErgebnisse = dedupliziert.isEmpty
+        }
+    }
+
+    // MARK: - MapKit
+
+    private func mapKitSuche(_ query: String) async -> [ArztErgebnis] {
         let req = MKLocalSearch.Request()
         req.naturalLanguageQuery = query
-        MKLocalSearch(request: req).start { resp, _ in
-            // Extract all fields immediately so tap is instant (avoids lazy phoneNumber fetch on main thread)
-            let items = (resp?.mapItems ?? []).compactMap { item -> ArztErgebnis? in
-                guard let name = item.name, !name.isEmpty else { return nil }
-                let adresse = formatAdresse(item.placemark) ?? ""
-                let telefon = item.phoneNumber ?? ""
-                return ArztErgebnis(praxis: name, adresse: adresse, telefon: telefon)
+        req.resultTypes = .pointOfInterest
+        let search = MKLocalSearch(request: req)
+        return await withCheckedContinuation { cont in
+            search.start { resp, _ in
+                let items = (resp?.mapItems ?? []).compactMap { item -> ArztErgebnis? in
+                    guard let name = item.name, !name.isEmpty else { return nil }
+                    let adresse = formatAdresse(item.placemark) ?? ""
+                    let telefon = item.phoneNumber ?? ""
+                    return ArztErgebnis(praxis: name, adresse: adresse, telefon: telefon)
+                }
+                cont.resume(returning: items)
             }
-            sucht = false
-            ergebnisse = items
-            keineErgebnisse = items.isEmpty
+        }
+    }
+
+    // MARK: - OpenStreetMap / Overpass
+
+    private func overpassSuche(_ query: String) async -> [ArztErgebnis] {
+        // Escape regex metacharacters for Overpass QL
+        let escaped = NSRegularExpression.escapedPattern(for: query)
+        // DACH bounding box covers CH, DE, AT without requiring device location
+        let ql = """
+        [out:json][timeout:25];
+        (
+          node["name"~"\(escaped)",i]["healthcare"](45.8,5.9,55.1,17.2);
+          node["name"~"\(escaped)",i]["amenity"~"doctors|clinic|hospital|dentist"](45.8,5.9,55.1,17.2);
+          way["name"~"\(escaped)",i]["healthcare"](45.8,5.9,55.1,17.2);
+          way["name"~"\(escaped)",i]["amenity"~"doctors|clinic|hospital|dentist"](45.8,5.9,55.1,17.2);
+        );
+        out center;
+        """
+        guard let url = URL(string: "https://overpass-api.de/api/interpreter") else { return [] }
+        var req = URLRequest(url: url, timeoutInterval: 30)
+        req.httpMethod = "POST"
+        let encoded = ql.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        req.httpBody = "data=\(encoded)".data(using: .utf8)
+        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        guard let (data, _) = try? await URLSession.shared.data(for: req) else { return [] }
+        return parseOverpass(data)
+    }
+
+    private func parseOverpass(_ data: Data) -> [ArztErgebnis] {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let elements = json["elements"] as? [[String: Any]] else { return [] }
+        return elements.compactMap { el -> ArztErgebnis? in
+            guard let tags = el["tags"] as? [String: String],
+                  let name = tags["name"], !name.isEmpty else { return nil }
+            let street = [tags["addr:street"], tags["addr:housenumber"]]
+                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+            let ort = [tags["addr:postcode"], tags["addr:city"]]
+                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+            let adresse = [street, ort].filter { !$0.isEmpty }.joined(separator: ", ")
+            let telefon = tags["phone"] ?? tags["contact:phone"] ?? ""
+            return ArztErgebnis(praxis: name, adresse: adresse, telefon: telefon)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func dedupliziere(_ items: [ArztErgebnis]) -> [ArztErgebnis] {
+        var seen: Set<String> = []
+        return items.filter { item in
+            let key = item.praxis.lowercased()
+                .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                .filter { !$0.isEmpty }
+                .joined()
+            return seen.insert(key).inserted
         }
     }
 
