@@ -17,6 +17,17 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "13", aenderungen: [
+        WhatsNewAenderung(icon: "bell.badge.fill",           farbe: .blue,
+                          titel: "Benachrichtigungen beim Kaltstart",
+                          beschreibung: "Deep Links aus Benachrichtigungen funktionieren jetzt auch zuverlässig, wenn die App vollständig geschlossen war – die richtige Ansicht öffnet sich direkt nach dem Tippen auf eine Mitteilung."),
+        WhatsNewAenderung(icon: "calendar.badge.plus",       farbe: .green,
+                          titel: "Monatliche Frequenz",
+                          beschreibung: "Medikamente können jetzt als 'Monatlich' eingestellt werden. Die Erinnerung erscheint jeden Monat am gleichen Tag wie das Startdatum."),
+        WhatsNewAenderung(icon: "slider.horizontal.3",       farbe: .teal,
+                          titel: "Zeitfilter oben",
+                          beschreibung: "Der Zeitfilter im Analysen-Tab steht jetzt an erster Stelle – noch vor der Zusammenfassung, sodass die Filterauswahl sofort sichtbar ist."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "12", aenderungen: [
         WhatsNewAenderung(icon: "chart.bar.doc.horizontal.fill", farbe: .indigo,
                           titel: "Analysen komplett neu strukturiert",
