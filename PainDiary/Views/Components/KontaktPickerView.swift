@@ -1,11 +1,13 @@
 import SwiftUI
 import ContactsUI
+import Contacts
 
 #if os(iOS)
 struct KontaktDaten {
     let name: String
     let phone: String
     let email: String
+    let adresse: String
 }
 
 struct KontaktPickerView: UIViewControllerRepresentable {
@@ -35,12 +37,26 @@ struct KontaktPickerView: UIViewControllerRepresentable {
 
         func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
             let daten = contacts.compactMap { kontakt -> KontaktDaten? in
-                let name = [kontakt.givenName, kontakt.familyName]
+                // Person name first, fall back to organization name (e.g. practice contacts)
+                let personName = [kontakt.givenName, kontakt.familyName]
                     .filter { !$0.isEmpty }.joined(separator: " ")
+                let name = personName.isEmpty ? kontakt.organizationName : personName
                 guard !name.isEmpty else { return nil }
+
                 let phone = kontakt.phoneNumbers.first?.value.stringValue ?? ""
                 let email = kontakt.emailAddresses.first?.value as String? ?? ""
-                return KontaktDaten(name: name, phone: phone, email: email)
+
+                // Build address string from first postal address
+                let adresse: String
+                if let pa = kontakt.postalAddresses.first?.value {
+                    let teile = [pa.street, [pa.postalCode, pa.city].filter { !$0.isEmpty }.joined(separator: " ")]
+                        .filter { !$0.isEmpty }
+                    adresse = teile.joined(separator: ", ")
+                } else {
+                    adresse = ""
+                }
+
+                return KontaktDaten(name: name, phone: phone, email: email, adresse: adresse)
             }
             onFertig(daten)
             dismiss()

@@ -118,7 +118,7 @@ private struct ProfilInhaltView: View {
         .sheet(isPresented: $adressbuchArztAnzeigen) {
             KontaktPickerView { daten in
                 for d in daten {
-                    profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: d.name, fachgebiet: "", praxis: "", telefon: d.phone, email: d.email)]
+                    profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: d.name, fachgebiet: "", praxis: d.adresse, telefon: d.phone, email: d.email)]
                 }
             }
         }
