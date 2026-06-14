@@ -11,29 +11,43 @@ struct KontaktDaten {
     let adresse: String
 }
 
+// CNContactPickerViewController must be presented natively (not wrapped in a SwiftUI sheet)
+// otherwise its internal search bar stops working. This representable embeds a transparent
+// UIViewController that presents the picker directly when isPresented becomes true.
 struct KontaktPickerView: UIViewControllerRepresentable {
+    @Binding var isPresented: Bool
     let onFertig: ([KontaktDaten]) -> Void
-    @Environment(\.dismiss) private var dismiss
 
-    func makeUIViewController(context: Context) -> CNContactPickerViewController {
-        let picker = CNContactPickerViewController()
-        picker.delegate = context.coordinator
-        return picker
+    func makeUIViewController(context: Context) -> UIViewController {
+        let vc = UIViewController()
+        vc.view.backgroundColor = .clear
+        return vc
     }
 
-    func updateUIViewController(_ uiViewController: CNContactPickerViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        if isPresented && context.coordinator.pickerVC == nil {
+            let picker = CNContactPickerViewController()
+            picker.delegate = context.coordinator
+            context.coordinator.pickerVC = picker
+            uiViewController.present(picker, animated: true)
+        } else if !isPresented, let picker = context.coordinator.pickerVC {
+            picker.dismiss(animated: true)
+            context.coordinator.pickerVC = nil
+        }
+    }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onFertig: onFertig, dismiss: dismiss)
+        Coordinator(isPresented: $isPresented, onFertig: onFertig)
     }
 
     class Coordinator: NSObject, CNContactPickerDelegate {
+        @Binding var isPresented: Bool
         let onFertig: ([KontaktDaten]) -> Void
-        let dismiss: DismissAction
+        var pickerVC: CNContactPickerViewController?
 
-        init(onFertig: @escaping ([KontaktDaten]) -> Void, dismiss: DismissAction) {
+        init(isPresented: Binding<Bool>, onFertig: @escaping ([KontaktDaten]) -> Void) {
+            _isPresented = isPresented
             self.onFertig = onFertig
-            self.dismiss = dismiss
         }
 
         func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
@@ -41,7 +55,6 @@ struct KontaktPickerView: UIViewControllerRepresentable {
                 let personName = [kontakt.givenName, kontakt.familyName]
                     .filter { !$0.isEmpty }.joined(separator: " ")
                 let praxis = kontakt.organizationName
-                // At least one of name or praxis must be present
                 guard !personName.isEmpty || !praxis.isEmpty else { return nil }
 
                 let phone = kontakt.phoneNumbers.first?.value.stringValue ?? ""
@@ -59,11 +72,13 @@ struct KontaktPickerView: UIViewControllerRepresentable {
                 return KontaktDaten(name: personName, praxis: praxis, phone: phone, email: email, adresse: adresse)
             }
             onFertig(daten)
-            dismiss()
+            pickerVC = nil
+            isPresented = false
         }
 
         func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
-            dismiss()
+            pickerVC = nil
+            isPresented = false
         }
     }
 }
