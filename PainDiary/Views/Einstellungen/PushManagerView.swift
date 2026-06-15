@@ -11,6 +11,7 @@ struct PushManagerView: View {
     @Query(sort: \Dauermedikation.name) private var medikamente: [Dauermedikation]
 
     @State private var bearbeitetMedikament: Dauermedikation? = nil
+    @State private var testGesendet = false
 
     private let notif = NotificationManager.shared
 
@@ -30,36 +31,62 @@ struct PushManagerView: View {
 
     var body: some View {
         List {
-            // MARK: - Status
+            // MARK: - Statusbanner (nur bei Problemen)
             if notif.status != .authorized {
                 Section {
-                    HStack(spacing: 12) {
-                        Image(systemName: "bell.slash.fill")
-                            .font(.title2)
-                            .foregroundStyle(.red)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Benachrichtigungen deaktiviert")
-                                .font(.subheadline.bold())
-                            Text("Aktiviere sie in den iOS-Einstellungen damit Erinnerungen ankommen.")
+                    Button {
+                        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "bell.slash.fill")
+                                .font(.title2)
+                                .foregroundStyle(.red)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Benachrichtigungen deaktiviert")
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(.primary)
+                                Text("Tippe um iOS-Einstellungen zu öffnen.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        Spacer()
-                        Button {
-                            if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
-                                UIApplication.shared.open(url)
-                            }
-                        } label: {
-                            Text("Öffnen")
-                                .font(.caption.bold())
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Color.red.opacity(0.12), in: Capsule())
-                                .foregroundStyle(.red)
-                        }
-                        .buttonStyle(.plain)
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
+                    .buttonStyle(.plain)
+                }
+            } else if !notif.timeSensitiveAktiv {
+                Section {
+                    Button {
+                        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "moon.fill")
+                                .font(.title2)
+                                .foregroundStyle(.orange)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Fokus-Modus ignoriert Erinnerungen")
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(.primary)
+                                Text("Zeitkritische Mitteilungen in iOS-Einstellungen aktivieren.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -142,7 +169,7 @@ struct PushManagerView: View {
                                 Image(systemName: med.typSymbol)
                                     .font(.title3)
                                     .foregroundStyle(med.erinnerungAktiv && med.aktiv ? Color.accentColor : .secondary)
-                                    .frame(width: 32)
+                                    .frame(width: 28)
 
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(med.name)
@@ -174,7 +201,7 @@ struct PushManagerView: View {
 
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color(.tertiaryLabel))
                             }
                             .padding(.vertical, 2)
                         }
@@ -193,11 +220,11 @@ struct PushManagerView: View {
                     Image(systemName: "circle.grid.cross.fill")
                         .font(.title3)
                         .foregroundStyle(.pink)
-                        .frame(width: 32)
+                        .frame(width: 28)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Zyklus-Erinnerungen")
                             .font(.subheadline.bold())
-                        Text("Automatisch basierend auf deinem Zyklus")
+                        Text("Automatisch aus deinen Zyklus-Daten")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -209,7 +236,29 @@ struct PushManagerView: View {
             } header: {
                 Label("Zyklus", systemImage: "circle.grid.cross.fill")
             } footer: {
-                Text("Erinnerungen für Periode, fruchtbare Tage und Eisprung werden automatisch aus deinen Zyklus-Daten berechnet.")
+                Text("Periode, fruchtbare Tage und Eisprung werden automatisch berechnet.")
+            }
+
+            // MARK: - Test
+            Section {
+                Button {
+                    notif.sendeTestBenachrichtigung()
+                    testGesendet = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) { testGesendet = false }
+                } label: {
+                    HStack {
+                        Label("Testbenachrichtigung senden", systemImage: "bell.badge")
+                        Spacer()
+                        if testGesendet {
+                            Text("Kommt in 5 Sek…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .disabled(notif.status != .authorized)
+            } footer: {
+                Text("Verlasse die App nach dem Senden um den Banner zu sehen.")
             }
         }
         .navigationTitle("Benachrichtigungen")
@@ -221,6 +270,4 @@ struct PushManagerView: View {
         }
         .task { _ = await notif.berechtigungAnfordern() }
     }
-
 }
-
