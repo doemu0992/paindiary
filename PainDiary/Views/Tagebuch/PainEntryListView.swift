@@ -221,6 +221,15 @@ private struct PainEntryZeile: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
+                if eintrag.istSchub {
+                    HStack(spacing: 2) {
+                        Image(systemName: "flame.fill")
+                            .font(.caption2)
+                        Text("Schub")
+                            .font(.caption2.bold())
+                    }
+                    .foregroundStyle(Color.red)
+                }
                 if eintrag.stimmung > 0 {
                     HStack(spacing: 2) {
                         Image(systemName: "heart.fill")

@@ -62,6 +62,14 @@ struct PainEntryDetailView: View {
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    if eintrag.istSchub {
+                        Label("Rheumaschub", systemImage: "flame.fill")
+                            .font(.caption.bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.red, in: Capsule())
+                    }
                 }
                 Spacer()
                 ZStack {
@@ -174,6 +182,21 @@ struct PainEntryDetailView: View {
 
             if eintrag.schlafStunden > 0 {
                 zeile("Schlaf", wert: String(format: "%.1f Stunden", eintrag.schlafStunden))
+            }
+
+            if eintrag.fatigue > 0 {
+                HStack {
+                    Text("Erschöpfung (Fatigue)").font(.subheadline).foregroundStyle(.secondary)
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Image(systemName: "battery.25")
+                            .font(.caption)
+                            .foregroundStyle(fatigueFarbe(eintrag.fatigue))
+                        Text("\(eintrag.fatigue)/10")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(fatigueFarbe(eintrag.fatigue))
+                    }
+                }
             }
 
             if eintrag.morgensteifigkeit > 0 {
@@ -305,6 +328,14 @@ struct PainEntryDetailView: View {
         case 4: return .orange
         case 5: return .red
         default: return .secondary
+        }
+    }
+
+    private func fatigueFarbe(_ f: Int) -> Color {
+        switch f {
+        case 1...3: return .green
+        case 4...6: return .orange
+        default:    return .red
         }
     }
 }

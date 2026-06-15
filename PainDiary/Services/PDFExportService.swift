@@ -98,6 +98,9 @@ struct PDFEintrag {
     var morgensteifigkeit: Int
     var istHautEintrag: Bool; var hautStellen: String; var hautArt: String; var verlauf: String
     var wetterTemperatur: Double?; var wetterCode: Int?; var wetterWind: Double?
+    var istSchub: Bool = false
+    var fatigue: Int = 0
+    var gelenkStatus: String = ""
 
     static func aus(eintrag: PainEntry) -> PDFEintrag {
         PDFEintrag(datum: eintrag.datum, schmerzstaerke: eintrag.schmerzstaerke,
@@ -112,7 +115,10 @@ struct PDFEintrag {
                    hautStellen: eintrag.hautStellen, hautArt: eintrag.hautArt,
                    verlauf: eintrag.verlauf,
                    wetterTemperatur: eintrag.wetterTemperatur,
-                   wetterCode: eintrag.wetterCode, wetterWind: eintrag.wetterWind)
+                   wetterCode: eintrag.wetterCode, wetterWind: eintrag.wetterWind,
+                   istSchub: eintrag.istSchub,
+                   fatigue: eintrag.fatigue,
+                   gelenkStatus: eintrag.gelenkStatus)
     }
 }
 
@@ -1199,11 +1205,15 @@ class PDFExportService: @unchecked Sendable {
             if !eintrag.massnahmen.isEmpty {
                 subZeilen.append(("Massnahmen: \(String(eintrag.massnahmen.prefix(60)))", .secondaryLabel))
             }
+            if eintrag.istSchub {
+                subZeilen.append(("⚡ Rheuma-Schub / Flare", UIColor.systemRed.withAlphaComponent(0.8)))
+            }
             let wbTeile: [String] = [
                 eintrag.stimmung > 0 ? "Stimmung: \(eintrag.stimmung)/5" : nil,
                 eintrag.stressLevel > 0 ? "Stress: \(eintrag.stressLevel)/5" : nil,
                 eintrag.schlafStunden > 0 ? String(format: "Schlaf: %.1fh", eintrag.schlafStunden) : nil,
                 eintrag.morgensteifigkeit > 0 ? "Morgensteifigkeit: \(eintrag.morgensteifigkeit) Min" : nil,
+                eintrag.fatigue > 0 ? "Fatigue: \(eintrag.fatigue)/10" : nil,
             ].compactMap { $0 }
             if !wbTeile.isEmpty {
                 subZeilen.append((wbTeile.joined(separator: "   "), UIColor.systemBlue.withAlphaComponent(0.7)))

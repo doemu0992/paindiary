@@ -98,11 +98,13 @@ struct KorrelationsView: View {
             if !schmerzartDaten.isEmpty { schmerzartChart }
         }
 
-        if schlafDaten.count >= 3 || stressPegelDaten.count >= 2 || stimmungPegelDaten.count >= 2 || morgensteifigkeitDaten.count >= 3 || !begleitDaten.isEmpty || !massnahmenDaten.isEmpty {
+        if schlafDaten.count >= 3 || stressPegelDaten.count >= 2 || stimmungPegelDaten.count >= 2 || morgensteifigkeitDaten.count >= 3 || !begleitDaten.isEmpty || !massnahmenDaten.isEmpty || schubDaten.count >= 2 || fatigueDaten.count >= 3 {
             abschnittTitel("Körper & Geist")
             if schlafDaten.count >= 3 { schlafSchmerzChart }
             if stressPegelDaten.count >= 2 { stressSchmerzChart }
             if stimmungPegelDaten.count >= 2 { stimmungSchmerzChart }
+            if fatigueDaten.count >= 3 { fatigueSchmerzChart }
+            if schubDaten.count >= 2 { schubVerlaufChart }
             if morgensteifigkeitDaten.count >= 3 { morgensteifigkeitChart }
             if !begleitDaten.isEmpty { begleiterscheinungenChart }
             if !massnahmenDaten.isEmpty { massnahmenChart }
@@ -121,7 +123,7 @@ struct KorrelationsView: View {
 
         if wochentagDaten.isEmpty && topAusloeser.isEmpty && koerperstellenDaten.isEmpty &&
            schlafDaten.count < 3 && stressPegelDaten.count < 2 && begleitDaten.isEmpty &&
-           koffeinGruppenDaten.count < 2 && wetterDaten.isEmpty {
+           koffeinGruppenDaten.count < 2 && wetterDaten.isEmpty && fatigueDaten.count < 3 && schubDaten.map(\.anzahl).reduce(0,+) == 0 {
             ContentUnavailableView(
                 "Noch nicht genug Daten",
                 systemImage: "chart.bar",
@@ -600,6 +602,122 @@ struct KorrelationsView: View {
             .frame(height: 160)
             Text(String(format: "Ø %.0f Min · %d Einträge", avg, morgensteifigkeitDaten.count))
                 .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Fatigue ↔ Schmerz
+
+    private var fatigueDaten: [(fatigue: Int, schmerz: Double)] {
+        eintraege.filter { $0.fatigue > 0 }
+            .map { (fatigue: $0.fatigue, schmerz: Double($0.schmerzstaerke)) }
+    }
+
+    private var fatigueGruppenDaten: [(label: String, schmerz: Double, anzahl: Int)] {
+        let gruppen: [(label: String, pred: (Int) -> Bool)] = [
+            ("Gering\n(1–3)",    { $0 >= 1 && $0 <= 3 }),
+            ("Mittel\n(4–6)",    { $0 >= 4 && $0 <= 6 }),
+            ("Hoch\n(7–10)",     { $0 >= 7 })
+        ]
+        return gruppen.compactMap { label, pred in
+            let treffer = fatigueDaten.filter { pred($0.fatigue) }
+            guard treffer.count >= 2 else { return nil }
+            let avg = treffer.map(\.schmerz).reduce(0, +) / Double(treffer.count)
+            return (label: label, schmerz: avg, anzahl: treffer.count)
+        }
+    }
+
+    private var fatigueSchmerzChart: some View {
+        karte {
+            karteHeader(
+                titel: "Erschöpfung (Fatigue) ↔ Schmerz",
+                untertitel: "Ø Schmerzstärke je Fatigue-Niveau",
+                info: "Zeigt den Zusammenhang zwischen Erschöpfung und Schmerzintensität. Fatigue ist ein häufiges Begleitsymptom bei chronischen Schmerzerkrankungen und Rheuma.\n\nWerte über 7/10 gelten als schwere Fatigue und sollten ärztlich besprochen werden."
+            )
+            if fatigueGruppenDaten.count < 2 {
+                Text("Nicht genug Daten. Erfasse die Erschöpfung in deinen Einträgen.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(fatigueGruppenDaten, id: \.label) { p in
+                    BarMark(x: .value("Fatigue", p.label), y: .value("Schmerz", p.schmerz), width: .ratio(0.6))
+                        .foregroundStyle(Color.purple.gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .top) {
+                            VStack(spacing: 1) {
+                                Text(fmt(p.schmerz)).font(.caption2.bold()).foregroundStyle(.secondary)
+                                Text("n=\(p.anzahl)").font(.system(size: 8)).foregroundStyle(.tertiary)
+                            }
+                        }
+                }
+                .chartYScale(domain: 0...10)
+                .chartYAxis {
+                    AxisMarks(values: [0, 5, 10]) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: 180)
+                Text("Basiert auf \(fatigueDaten.count) Einträgen mit Fatigue-Angabe")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Schub-Verlauf
+
+    private struct SchubMonat: Identifiable {
+        let id: String; let label: String; let anzahl: Int
+    }
+
+    private var schubDaten: [SchubMonat] {
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+        return (0..<6).reversed().map { monatVor in
+            guard let monatsEnde = kal.date(byAdding: .month, value: -monatVor, to: heute),
+                  let monatsStart = kal.date(byAdding: .day, value: -(kal.component(.day, from: monatsEnde) - 1), to: kal.startOfDay(for: monatsEnde)) else {
+                return SchubMonat(id: "\(monatVor)", label: "?", anzahl: 0)
+            }
+            let anzahl = eintraege.filter { $0.istSchub && $0.datum >= monatsStart && $0.datum <= monatsEnde }.count
+            let df = DateFormatter(); df.dateFormat = "MMM"; df.locale = Locale(identifier: "de_CH")
+            return SchubMonat(id: "\(monatVor)", label: df.string(from: monatsEnde), anzahl: anzahl)
+        }
+    }
+
+    private var schubVerlaufChart: some View {
+        karte {
+            karteHeader(
+                titel: "Schub-Verlauf",
+                untertitel: "Anzahl Rheuma-Schübe pro Monat (letzte 6 Monate)",
+                info: "Zeigt wie viele Einträge als Rheuma-Schub / Flare markiert wurden, aufgeteilt nach Monat.\n\nEin Schub bezeichnet eine Phase erhöhter Krankheitsaktivität mit Zunahme von Schmerzen, Schwellung und Steifigkeit. Die Häufigkeit ist ein wichtiger Indikator für den Therapieerfolg."
+            )
+            let gesamt = schubDaten.map(\.anzahl).reduce(0, +)
+            if gesamt == 0 {
+                Text("Keine Schübe in den letzten 6 Monaten – oder Schübe noch nicht markiert.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(schubDaten) { m in
+                    BarMark(x: .value("Monat", m.label), y: .value("Schübe", m.anzahl), width: .ratio(0.65))
+                        .foregroundStyle(m.anzahl == 0 ? Color.green.gradient : Color.red.gradient)
+                        .cornerRadius(8)
+                        .annotation(position: .top) {
+                            if m.anzahl > 0 {
+                                Text("\(m.anzahl)").font(.caption2.bold()).foregroundStyle(.secondary)
+                            }
+                        }
+                }
+                .chartYScale(domain: 0...max(3, schubDaten.map(\.anzahl).max() ?? 3))
+                .chartYAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) {
+                        AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                        AxisValueLabel()
+                    }
+                }
+                .frame(height: 160)
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill").foregroundStyle(.orange)
+                    Text("\(gesamt) Schübe in 6 Monaten")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 

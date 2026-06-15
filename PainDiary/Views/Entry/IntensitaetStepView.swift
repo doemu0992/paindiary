@@ -3,6 +3,7 @@ import SwiftUI
 struct IntensitaetStepView: View {
     @Binding var schmerzstaerke: Int
     @Binding var verlauf: String
+    @Binding var istSchub: Bool
     var letzterEintrag: PainEntry? = nil
 
     var body: some View {
@@ -50,6 +51,38 @@ struct IntensitaetStepView: View {
             }
             .padding()
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+
+            // Schub / Flare toggle
+            Button {
+                withAnimation(.spring(response: 0.25)) { istSchub.toggle() }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: istSchub ? "flame.fill" : "flame")
+                        .font(.title3)
+                        .foregroundStyle(istSchub ? .red : .secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Schub / Flare")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.primary)
+                        Text("Akute Verschlechterung / Krankheitsschub")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: istSchub ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(istSchub ? .red : .secondary)
+                }
+                .padding()
+                .background(
+                    istSchub ? Color.red.opacity(0.1) : Color(.secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 16)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(istSchub ? Color.red.opacity(0.4) : Color.clear, lineWidth: 1.5)
+                )
+            }
+            .buttonStyle(.plain)
 
             if let letzter = letzterEintrag {
                 VerlaufSektionView(letzterEintrag: letzter, verlauf: $verlauf)

@@ -17,6 +17,20 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "20", aenderungen: [
+        WhatsNewAenderung(icon: "figure.arms.open", farbe: .purple,
+                          titel: "Rheuma & Gelenke",
+                          beschreibung: "Neues Modul für Rheuma- und Chronikpatienten: HAQ-Fragebogen mit DAS28-Score, Gelenkstatus-Erfassung, Laborwerte mit Verlaufskurven, Arztbesuche, Impfpass und Arztbrief-Vorlage – alles unter Profil → Rheuma & Gelenke."),
+        WhatsNewAenderung(icon: "flame.fill", farbe: .red,
+                          titel: "Schub-Modus & Fatigue",
+                          beschreibung: "Beim Erfassen eines Eintrags kann ein Rheuma-Schub (Flare) markiert und die Erschöpfung (Fatigue 0–10) erfasst werden. Schübe erscheinen mit Flammen-Badge in der Tagebuchliste und werden im Analysen-Tab ausgewertet."),
+        WhatsNewAenderung(icon: "hand.point.up.left.fill", farbe: .blue,
+                          titel: "Gelenkdiagramm",
+                          beschreibung: "Im Erfassungs-Wizard gibt es einen neuen Schritt für den Gelenkstatus: 39 Gelenke können als schmerzhaft, geschwollen oder beides markiert werden. DAS28-relevante Gelenke werden automatisch erkannt."),
+        WhatsNewAenderung(icon: "doc.text.fill", farbe: .teal,
+                          titel: "Arztbrief-Vorlage",
+                          beschreibung: "Erzeuge mit einem Tap einen strukturierten Arztbrief mit Schmerzstatistik, Medikamenten, Laborwerten und Arztbesuchen – direkt teilen oder in die Zwischenablage kopieren."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "19", aenderungen: [
         WhatsNewAenderung(icon: "bell.badge.fill", farbe: .indigo,
                           titel: "Benachrichtigungen zentral verwalten",

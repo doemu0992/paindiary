@@ -43,7 +43,12 @@ struct AddEntryView: View {
     @State private var stressLevel = 3
     @State private var schlafStunden = 7.0
     @State private var morgensteifigkeit = 0
+    @State private var fatigue = 0
     @State private var healthSchlaf: Double? = nil
+
+    // Rheuma
+    @State private var istSchub = false
+    @State private var gelenkStatus = ""
 
     // Vorlage
     @State private var vorlageAngewendet = false
@@ -57,7 +62,7 @@ struct AddEntryView: View {
 
     private var gesamtSchritte: Int {
         switch eintragTyp {
-        case .schmerz: return 5  // steps 0-4
+        case .schmerz: return 6  // steps 0-5
         case .haut:    return 3  // steps 0-2
         }
     }
@@ -65,7 +70,7 @@ struct AddEntryView: View {
     private var schrittNamen: [String] {
         switch eintragTyp {
         case .schmerz:
-            return ["Ort & Typ", "Intensität", "Wie & Warum", "Was noch", "Wohlbefinden"]
+            return ["Ort & Typ", "Intensität", "Gelenke", "Wie & Warum", "Was noch", "Wohlbefinden"]
         case .haut:
             return ["Ort & Typ", "Hautbild", "Wohlbefinden"]
         }
@@ -256,28 +261,31 @@ struct AddEntryView: View {
                     eintragTyp: $eintragTyp
                 )
             case 1:
-                IntensitaetStepView(schmerzstaerke: $schmerzstaerke, verlauf: $verlauf)
+                IntensitaetStepView(schmerzstaerke: $schmerzstaerke, verlauf: $verlauf, istSchub: $istSchub)
             case 2:
+                GelenkStepView(gelenkStatus: $gelenkStatus)
+            case 3:
                 CharakterAusloeserStepView(
                     schmerzart: $schmerzart,
                     dauerMinuten: $dauerMinuten,
                     ausloeser: $ausloeser,
                     koerperstelle: koerperstelle
                 )
-            case 3:
+            case 4:
                 BegleitMassnahmenStepView(
                     begleiterscheinungen: $begleiterscheinungen,
                     massnahmen: $massnahmen,
                     koerperstelle: koerperstelle,
                     datum: datum
                 )
-            case 4:
+            case 5:
                 WohlbefindenStepView(
                     stimmung: $stimmung,
                     schlafStunden: $schlafStunden,
                     stressLevel: $stressLevel,
                     notizen: $notizen,
                     morgensteifigkeit: $morgensteifigkeit,
+                    fatigue: $fatigue,
                     healthSchlafVorschlag: healthSchlaf
                 )
             default:
@@ -420,6 +428,9 @@ struct AddEntryView: View {
         stressLevel = e.stressLevel
         schlafStunden = e.schlafStunden
         morgensteifigkeit = e.morgensteifigkeit
+        istSchub = e.istSchub
+        fatigue = e.fatigue
+        gelenkStatus = e.gelenkStatus
         notizen = e.notizen
         hautArt = e.hautArt
         fotoDateiname = e.fotoDateiname
@@ -466,6 +477,9 @@ struct AddEntryView: View {
             e.schlafStunden = schlafStunden
             e.stressLevel = stressLevel
             e.morgensteifigkeit = morgensteifigkeit
+            e.istSchub = istSchub
+            e.fatigue = fatigue
+            e.gelenkStatus = gelenkStatus
             e.notizen = notizen
             e.hautArt = hautArt
             e.fotoDateiname = fotoDateiname
@@ -498,6 +512,9 @@ struct AddEntryView: View {
                 schlafStunden: schlafStunden,
                 stressLevel: stressLevel,
                 morgensteifigkeit: morgensteifigkeit,
+                istSchub: istSchub,
+                fatigue: fatigue,
+                gelenkStatus: gelenkStatus,
                 wetterTemperatur: wetterSnap?.temperatur,
                 wetterCode: wetterSnap?.code,
                 wetterWind: wetterSnap?.windgeschwindigkeit,

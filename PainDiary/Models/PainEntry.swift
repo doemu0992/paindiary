@@ -16,6 +16,9 @@ import SwiftData
     var schlafStunden: Double = 0
     var stressLevel: Int = 3          // 1–5
     var morgensteifigkeit: Int = 0    // Minuten, 0 = nicht erfasst
+    var istSchub: Bool = false        // Rheuma-Schub / Flare
+    var fatigue: Int = 0              // Erschöpfung 0–10, 0 = nicht erfasst
+    var gelenkStatus: String = ""     // "R_K:1,L_K:2,…" — GelenkStatusCoder
 
     // Wetter zum Zeitpunkt der Erfassung
     var wetterTemperatur: Double?
@@ -43,6 +46,9 @@ import SwiftData
         schlafStunden: Double = 0,
         stressLevel: Int = 3,
         morgensteifigkeit: Int = 0,
+        istSchub: Bool = false,
+        fatigue: Int = 0,
+        gelenkStatus: String = "",
         wetterTemperatur: Double? = nil,
         wetterCode: Int? = nil,
         wetterWind: Double? = nil,
@@ -64,6 +70,9 @@ import SwiftData
         self.schlafStunden = schlafStunden
         self.stressLevel = stressLevel
         self.morgensteifigkeit = morgensteifigkeit
+        self.istSchub = istSchub
+        self.fatigue = fatigue
+        self.gelenkStatus = gelenkStatus
         self.wetterTemperatur = wetterTemperatur
         self.wetterCode = wetterCode
         self.wetterWind = wetterWind

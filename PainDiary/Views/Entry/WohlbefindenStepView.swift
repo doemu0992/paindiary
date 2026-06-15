@@ -6,6 +6,7 @@ struct WohlbefindenStepView: View {
     @Binding var stressLevel: Int
     @Binding var notizen: String
     var morgensteifigkeit: Binding<Int>? = nil
+    var fatigue: Binding<Int>? = nil
     var healthSchlafVorschlag: Double? = nil
 
     var body: some View {
@@ -109,6 +110,31 @@ struct WohlbefindenStepView: View {
                 .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
             }
 
+            if let fBinding = fatigue {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Erschöpfung / Fatigue")
+                            .font(.headline)
+                        Spacer()
+                        Text(fBinding.wrappedValue == 0 ? "Nicht erfasst" : "\(fBinding.wrappedValue)/10")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(fBinding.wrappedValue == 0 ? Color.secondary : fatigueFarbe(fBinding.wrappedValue))
+                    }
+                    Slider(value: Binding(
+                        get: { Double(fBinding.wrappedValue) },
+                        set: { fBinding.wrappedValue = Int($0) }
+                    ), in: 0...10, step: 1)
+                    .tint(fatigueFarbe(fBinding.wrappedValue))
+                    HStack {
+                        Text("Keine").font(.caption2).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("Extrem").font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            }
+
             if let mgBinding = morgensteifigkeit {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
@@ -172,6 +198,15 @@ struct WohlbefindenStepView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal)
+    }
+
+    private func fatigueFarbe(_ wert: Int) -> Color {
+        switch wert {
+        case 0:    return .secondary
+        case 1...3: return .green
+        case 4...6: return .orange
+        default:   return .red
+        }
     }
 
     private func stimmungLabel(_ i: Int) -> String {
