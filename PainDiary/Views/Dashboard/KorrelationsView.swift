@@ -98,11 +98,12 @@ struct KorrelationsView: View {
             if !schmerzartDaten.isEmpty { schmerzartChart }
         }
 
-        if schlafDaten.count >= 3 || stressPegelDaten.count >= 2 || stimmungPegelDaten.count >= 2 || !begleitDaten.isEmpty || !massnahmenDaten.isEmpty {
+        if schlafDaten.count >= 3 || stressPegelDaten.count >= 2 || stimmungPegelDaten.count >= 2 || morgensteifigkeitDaten.count >= 3 || !begleitDaten.isEmpty || !massnahmenDaten.isEmpty {
             abschnittTitel("Körper & Geist")
             if schlafDaten.count >= 3 { schlafSchmerzChart }
             if stressPegelDaten.count >= 2 { stressSchmerzChart }
             if stimmungPegelDaten.count >= 2 { stimmungSchmerzChart }
+            if morgensteifigkeitDaten.count >= 3 { morgensteifigkeitChart }
             if !begleitDaten.isEmpty { begleiterscheinungenChart }
             if !massnahmenDaten.isEmpty { massnahmenChart }
         }
@@ -565,6 +566,40 @@ struct KorrelationsView: View {
                 }
                 .frame(height: 180)
             }
+        }
+    }
+
+    // MARK: - Morgensteifigkeit
+
+    private var morgensteifigkeitDaten: [(datum: Date, minuten: Int)] {
+        eintraege
+            .filter { $0.morgensteifigkeit > 0 }
+            .map { (datum: $0.datum, minuten: $0.morgensteifigkeit) }
+            .sorted { $0.datum < $1.datum }
+    }
+
+    private var morgensteifigkeitChart: some View {
+        karte {
+            karteHeader(
+                titel: "Morgensteifigkeit",
+                untertitel: "Dauer nach dem Aufstehen in Minuten",
+                info: "Morgensteifigkeit ist ein typisches Zeichen entzündlicher Erkrankungen wie Rheuma. Ein Verlauf über Zeit hilft dem Arzt, den Therapieerfolg einzuschätzen.\n\nWerte ≥ 30 Minuten über mehrere Wochen können klinisch relevant sein."
+            )
+            let avg = Double(morgensteifigkeitDaten.map(\.minuten).reduce(0, +)) / Double(morgensteifigkeitDaten.count)
+            Chart(morgensteifigkeitDaten, id: \.datum) { p in
+                BarMark(x: .value("Datum", p.datum, unit: .day), y: .value("Minuten", p.minuten))
+                    .foregroundStyle(Color.orange.gradient.opacity(0.8))
+                    .cornerRadius(4)
+            }
+            .chartYAxis {
+                AxisMarks { v in
+                    AxisGridLine().foregroundStyle(Color.secondary.opacity(0.10))
+                    AxisValueLabel { if let d = v.as(Int.self) { Text("\(d)'") } }
+                }
+            }
+            .frame(height: 160)
+            Text(String(format: "Ø %.0f Min · %d Einträge", avg, morgensteifigkeitDaten.count))
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 

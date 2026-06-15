@@ -95,6 +95,7 @@ struct PDFEintrag {
     var schmerzart: String; var dauerMinuten: Int; var ausloeser: String
     var massnahmen: String; var notizen: String; var begleiterscheinungen: String
     var stimmung: Int; var stressLevel: Int; var schlafStunden: Double
+    var morgensteifigkeit: Int
     var istHautEintrag: Bool; var hautStellen: String; var hautArt: String; var verlauf: String
     var wetterTemperatur: Double?; var wetterCode: Int?; var wetterWind: Double?
 
@@ -106,6 +107,7 @@ struct PDFEintrag {
                    begleiterscheinungen: eintrag.begleiterscheinungen,
                    stimmung: eintrag.stimmung, stressLevel: eintrag.stressLevel,
                    schlafStunden: eintrag.schlafStunden,
+                   morgensteifigkeit: eintrag.morgensteifigkeit,
                    istHautEintrag: eintrag.istHautEintrag,
                    hautStellen: eintrag.hautStellen, hautArt: eintrag.hautArt,
                    verlauf: eintrag.verlauf,
@@ -543,7 +545,8 @@ class PDFExportService: @unchecked Sendable {
         let mitStimmung = eintraege.filter { $0.stimmung > 0 }
         let mitStress = eintraege.filter { $0.stressLevel > 0 }
         let mitSchlaf = eintraege.filter { $0.schlafStunden > 0 }
-        if !mitStimmung.isEmpty || !mitStress.isEmpty || !mitSchlaf.isEmpty {
+        let mitMorgensteifigkeit = eintraege.filter { $0.morgensteifigkeit > 0 }
+        if !mitStimmung.isEmpty || !mitStress.isEmpty || !mitSchlaf.isEmpty || !mitMorgensteifigkeit.isEmpty {
             y += 8
             trennlinie(ctx: ctx, y: y); y += 14
             draw("Wohlbefinden (Durchschnitte)", at: CGPoint(x: rand, y: y),
@@ -565,6 +568,12 @@ class PDFExportService: @unchecked Sendable {
                 let avgSch = mitSchlaf.map(\.schlafStunden).reduce(0,+) / Double(mitSchlaf.count)
                 draw("Schlaf:", at: CGPoint(x: wbCols[0], y: y), font: .systemFont(ofSize: 10), color: .secondaryLabel)
                 draw(String(format: "Ø %.1f Stunden", avgSch), at: CGPoint(x: wbCols[1], y: y), font: .systemFont(ofSize: 10, weight: .medium), color: .label)
+                y += 16
+            }
+            if !mitMorgensteifigkeit.isEmpty {
+                let avgM = Double(mitMorgensteifigkeit.map(\.morgensteifigkeit).reduce(0,+)) / Double(mitMorgensteifigkeit.count)
+                draw("Morgensteifigkeit:", at: CGPoint(x: wbCols[0], y: y), font: .systemFont(ofSize: 10), color: .secondaryLabel)
+                draw(String(format: "Ø %.0f Min", avgM), at: CGPoint(x: wbCols[1], y: y), font: .systemFont(ofSize: 10, weight: .medium), color: .label)
                 y += 16
             }
         }
@@ -1194,6 +1203,7 @@ class PDFExportService: @unchecked Sendable {
                 eintrag.stimmung > 0 ? "Stimmung: \(eintrag.stimmung)/5" : nil,
                 eintrag.stressLevel > 0 ? "Stress: \(eintrag.stressLevel)/5" : nil,
                 eintrag.schlafStunden > 0 ? String(format: "Schlaf: %.1fh", eintrag.schlafStunden) : nil,
+                eintrag.morgensteifigkeit > 0 ? "Morgensteifigkeit: \(eintrag.morgensteifigkeit) Min" : nil,
             ].compactMap { $0 }
             if !wbTeile.isEmpty {
                 subZeilen.append((wbTeile.joined(separator: "   "), UIColor.systemBlue.withAlphaComponent(0.7)))

@@ -220,14 +220,25 @@ private struct PainEntryZeile: View {
                 }
             }
             Spacer()
-            if eintrag.stimmung > 0 {
-                HStack(spacing: 2) {
-                    Image(systemName: "heart.fill")
-                        .font(.caption2)
-                    Text("\(eintrag.stimmung)")
-                        .font(.caption2.bold())
+            VStack(alignment: .trailing, spacing: 3) {
+                if eintrag.stimmung > 0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "heart.fill")
+                            .font(.caption2)
+                        Text("\(eintrag.stimmung)")
+                            .font(.caption2.bold())
+                    }
+                    .foregroundStyle(stimmungFarbe(eintrag.stimmung))
                 }
-                .foregroundStyle(stimmungFarbe(eintrag.stimmung))
+                if eintrag.morgensteifigkeit > 0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "sunrise.fill")
+                            .font(.caption2)
+                        Text("\(eintrag.morgensteifigkeit)'")
+                            .font(.caption2.bold())
+                    }
+                    .foregroundStyle(Color.orange)
+                }
             }
         }
         .padding(.vertical, 4)
