@@ -22,10 +22,15 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     var timeSensitiveAktiv: Bool = false
     var pendingDeepLink: DeepLink? = nil
 
-    override init() {
+    nonisolated override init() {
         super.init()
-        UNUserNotificationCenter.current().delegate = self
-        Task { await aktualisiereStatus() }
+        // Defer UNUserNotificationCenter access off the calling thread to avoid
+        // triggering disk I/O at the call site (Xcode runtime issue 2652).
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            UNUserNotificationCenter.current().delegate = self
+            await self.aktualisiereStatus()
+        }
     }
 
     // Show notifications even when app is in foreground
@@ -43,19 +48,21 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        let info = response.notification.request.content.userInfo
-        let id   = response.notification.request.identifier
+        // Extract Sendable String values here — [AnyHashable: Any] is not Sendable
+        // and cannot be captured across the actor boundary below.
+        let typeValue = response.notification.request.content.userInfo["type"] as? String
+        let nameValue = response.notification.request.content.userInfo["name"] as? String ?? ""
+        let dosValue  = response.notification.request.content.userInfo["dosierung"] as? String ?? ""
+        let id        = response.notification.request.identifier
 
         Task { @MainActor [weak self] in
             guard let self else { completionHandler(); return }
-            if let type = info["type"] as? String {
+            if let type = typeValue {
                 switch type {
                 case "schmerz":
                     pendingDeepLink = .neuerSchmerzEintrag
                 case "medikament":
-                    let name = info["name"] as? String ?? ""
-                    let dos  = info["dosierung"] as? String ?? ""
-                    pendingDeepLink = .medikamentErfassen(name: name, dosierung: dos)
+                    pendingDeepLink = .medikamentErfassen(name: nameValue, dosierung: dosValue)
                 case "wirkung":
                     pendingDeepLink = .medikamenteAnzeigen
                 default: break
