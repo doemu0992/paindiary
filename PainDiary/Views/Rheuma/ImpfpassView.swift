@@ -40,6 +40,7 @@ struct ImpfpassView: View {
                                     } label: {
                                         Label("Löschen", systemImage: "trash")
                                     }
+                                    .tint(.red)
                                     Button { bearbeitet = i } label: {
                                         Label("Bearbeiten", systemImage: "pencil")
                                     }
@@ -62,6 +63,7 @@ struct ImpfpassView: View {
                                     } label: {
                                         Label("Löschen", systemImage: "trash")
                                     }
+                                    .tint(.red)
                                     Button { bearbeitet = i } label: {
                                         Label("Bearbeiten", systemImage: "pencil")
                                     }
