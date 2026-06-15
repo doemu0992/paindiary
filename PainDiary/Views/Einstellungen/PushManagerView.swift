@@ -141,7 +141,7 @@ struct PushManagerView: View {
                             HStack(spacing: 12) {
                                 Image(systemName: med.typSymbol)
                                     .font(.title3)
-                                    .foregroundStyle(med.erinnerungAktiv && med.aktiv ? .accentColor : .secondary)
+                                    .foregroundStyle(med.erinnerungAktiv && med.aktiv ? Color.accentColor : .secondary)
                                     .frame(width: 32)
 
                                 VStack(alignment: .leading, spacing: 3) {
@@ -157,7 +157,7 @@ struct PushManagerView: View {
                                         } else {
                                             Text(zeiten.map(\.anzeigeText).joined(separator: " · "))
                                                 .font(.caption)
-                                                .foregroundStyle(.accentColor)
+                                                .foregroundStyle(Color.accentColor)
                                         }
                                     } else if !med.aktiv {
                                         Text("Inaktiv")
