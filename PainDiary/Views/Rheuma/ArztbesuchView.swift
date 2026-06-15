@@ -10,6 +10,26 @@ struct ArztbesuchView: View {
 
     var body: some View {
         List {
+            if augenarztErinnerungNoetig {
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "eye.trianglebadge.exclamationmark.fill")
+                            .font(.title2).foregroundStyle(.orange)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Augenarzt-Kontrolle empfohlen")
+                                .font(.subheadline.bold())
+                            Text(letzterAugenarztBesuch == nil
+                                 ? "Noch kein Augenarzt-Besuch dokumentiert."
+                                 : "Letzter Besuch vor über 12 Monaten.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Text("Rheumapatienten sollten jährlich zum Augenarzt (Uveitis-Screening).")
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+
             if besuche.isEmpty {
                 ContentUnavailableView(
                     "Keine Arztbesuche",
@@ -56,6 +76,19 @@ struct ArztbesuchView: View {
         }
         .sheet(isPresented: $zeigeForm) { ArztbesuchForm() }
         .sheet(item: $bearbeitet) { ArztbesuchForm(besuch: $0) }
+    }
+
+    private var letzterAugenarztBesuch: Arztbesuch? {
+        besuche.first {
+            $0.fachgebiet.localizedCaseInsensitiveContains("augenarzt") ||
+            $0.fachgebiet.localizedCaseInsensitiveContains("augenheilkunde")
+        }
+    }
+
+    private var augenarztErinnerungNoetig: Bool {
+        guard let letzter = letzterAugenarztBesuch else { return true }
+        let monate = Calendar.current.dateComponents([.month], from: letzter.datum, to: Date()).month ?? 0
+        return monate >= 12
     }
 
     private func loeschen(_ offsets: IndexSet) {
@@ -117,7 +150,8 @@ struct ArztbesuchForm: View {
     @State private var notizen = ""
 
     private let fachgebiete = ["Rheumatologie", "Allgemeinmedizin", "Orthopädie", "Neurologie",
-                                "Dermatologie", "Kardiologie", "Gastroenterologie", "Innere Medizin"]
+                                "Augenheilkunde", "Dermatologie", "Kardiologie",
+                                "Gastroenterologie", "Innere Medizin"]
 
     var body: some View {
         NavigationStack {

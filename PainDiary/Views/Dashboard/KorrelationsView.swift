@@ -105,6 +105,7 @@ struct KorrelationsView: View {
             if stimmungPegelDaten.count >= 2 { stimmungSchmerzChart }
             if fatigueDaten.count >= 3 { fatigueSchmerzChart }
             if schubDaten.count >= 2 { schubVerlaufChart }
+            if schubAusloeserVerfuegbar { schubAusloeserChart }
             if morgensteifigkeitDaten.count >= 3 { morgensteifigkeitChart }
             if !begleitDaten.isEmpty { begleiterscheinungenChart }
             if !massnahmenDaten.isEmpty { massnahmenChart }
@@ -123,7 +124,8 @@ struct KorrelationsView: View {
 
         if wochentagDaten.isEmpty && topAusloeser.isEmpty && koerperstellenDaten.isEmpty &&
            schlafDaten.count < 3 && stressPegelDaten.count < 2 && begleitDaten.isEmpty &&
-           koffeinGruppenDaten.count < 2 && wetterDaten.isEmpty && fatigueDaten.count < 3 && schubDaten.map(\.anzahl).reduce(0,+) == 0 {
+           koffeinGruppenDaten.count < 2 && wetterDaten.isEmpty && fatigueDaten.count < 3 &&
+           schubDaten.map(\.anzahl).reduce(0,+) == 0 && !schubAusloeserVerfuegbar {
             ContentUnavailableView(
                 "Noch nicht genug Daten",
                 systemImage: "chart.bar",
@@ -715,6 +717,95 @@ struct KorrelationsView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "flame.fill").foregroundStyle(.orange)
                     Text("\(gesamt) Schübe in 6 Monaten")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Schub-Auslöser
+
+    private var schubAusloeserVerfuegbar: Bool {
+        let schubEintraege = eintraege.filter { $0.istSchub }
+        return schubEintraege.count >= 2 && eintraege.count >= 5
+    }
+
+    private struct AusloeserVergleich: Identifiable {
+        let id = UUID()
+        let faktor: String
+        let gruppe: String
+        let wert: Double
+    }
+
+    private var schubAusloeserDaten: [AusloeserVergleich] {
+        let schub = eintraege.filter { $0.istSchub }
+        let kein  = eintraege.filter { !$0.istSchub }
+        guard !schub.isEmpty, !kein.isEmpty else { return [] }
+
+        func avg<T: BinaryInteger>(_ entries: [PainEntry], _ kp: KeyPath<PainEntry, T>) -> Double {
+            Double(entries.map { Int($0[keyPath: kp]) }.reduce(0, +)) / Double(entries.count)
+        }
+
+        let stressSchub = avg(schub, \.stressLevel)
+        let stressKein  = avg(kein,  \.stressLevel)
+        let schlafSchub = schub.map { $0.schlafStunden }.reduce(0, +) / Double(schub.count)
+        let schlafKein  = kein.map  { $0.schlafStunden }.reduce(0, +) / Double(kein.count)
+        let fatigueSchub = avg(schub.filter { $0.fatigue > 0 }, \.fatigue)
+        let fatigueKein  = avg(kein.filter  { $0.fatigue > 0 }, \.fatigue)
+
+        var daten: [AusloeserVergleich] = [
+            AusloeserVergleich(faktor: "Stress",    gruppe: "Schub",     wert: stressSchub),
+            AusloeserVergleich(faktor: "Stress",    gruppe: "Kein Schub", wert: stressKein),
+            AusloeserVergleich(faktor: "Schlaf (h)", gruppe: "Schub",    wert: schlafSchub),
+            AusloeserVergleich(faktor: "Schlaf (h)", gruppe: "Kein Schub", wert: schlafKein),
+        ]
+        if fatigueSchub > 0 && fatigueKein > 0 {
+            daten += [
+                AusloeserVergleich(faktor: "Fatigue", gruppe: "Schub",     wert: fatigueSchub),
+                AusloeserVergleich(faktor: "Fatigue", gruppe: "Kein Schub", wert: fatigueKein),
+            ]
+        }
+        return daten
+    }
+
+    private var schubAusloeserChart: some View {
+        karte {
+            karteHeader(
+                titel: "Schub-Auslöser",
+                untertitel: "Ø Faktoren an Schub-Tagen vs. schubfreien Tagen",
+                info: "Vergleicht Stress, Schlaf und Fatigue zwischen Tagen mit und ohne Rheuma-Schub. Ein höherer Stress oder niedrigerer Schlaf an Schub-Tagen kann auf mögliche Auslöser hinweisen."
+            )
+
+            let daten = schubAusloeserDaten
+            if daten.isEmpty {
+                Text("Nicht genug Daten").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(daten) { d in
+                    BarMark(
+                        x: .value("Faktor", d.faktor),
+                        y: .value("Wert", d.wert),
+                        width: .ratio(0.35)
+                    )
+                    .foregroundStyle(by: .value("Gruppe", d.gruppe))
+                    .position(by: .value("Gruppe", d.gruppe))
+                    .cornerRadius(6)
+                    .annotation(position: .top) {
+                        Text(String(format: "%.1f", d.wert))
+                            .font(.system(size: 9)).foregroundStyle(.secondary)
+                    }
+                }
+                .chartForegroundStyleScale([
+                    "Schub": Color.red.gradient,
+                    "Kein Schub": Color.green.gradient
+                ])
+                .chartLegend(position: .bottom, alignment: .center)
+                .frame(height: 180)
+
+                let schub = eintraege.filter { $0.istSchub }
+                let kein  = eintraege.filter { !$0.istSchub }
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill").foregroundStyle(.red)
+                    Text("\(schub.count) Schub-Tage vs. \(kein.count) schubfreie Tage")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

@@ -125,6 +125,19 @@ struct HAQView: View {
                 }
             }
 
+            if let crp = crpWert, hatGelenke {
+                let pga = Double(letzterHAQ.globalBewertung) / 10.0
+                let sdai = Double(tjc + sjc) + pga + (crp * 0.1)
+                Divider()
+                HStack(spacing: 12) {
+                    scoreBox(label: "SDAI", wert: String(format: "%.1f", sdai),
+                             farbe: sdaiFarbe(sdai))
+                    Text(sdaiText(sdai))
+                        .font(.caption.bold())
+                        .foregroundStyle(sdaiFarbe(sdai))
+                }
+            }
+
             if !hatGelenke {
                 Label("Gelenkstatus erfassen für TJC/SJC", systemImage: "hand.point.up.left")
                     .font(.caption).foregroundStyle(.secondary)
@@ -136,6 +149,24 @@ struct HAQView: View {
         }
         .padding()
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func sdaiFarbe(_ score: Double) -> Color {
+        switch score {
+        case ...3.3:  return .green
+        case ...11.0: return .mint
+        case ...26.0: return .orange
+        default:      return .red
+        }
+    }
+
+    private func sdaiText(_ score: Double) -> String {
+        switch score {
+        case ...3.3:  return "Remission"
+        case ...11.0: return "Niedrige Aktivität"
+        case ...26.0: return "Mässige Aktivität"
+        default:      return "Hohe Aktivität"
+        }
     }
 
 
@@ -168,6 +199,17 @@ struct HAQView: View {
                     infoPill("2.6 – 3.2", label: "Niedrige Aktivität", farbe: .yellow)
                     infoPill("3.2 – 5.1", label: "Moderate Aktivität", farbe: .orange)
                     infoPill("> 5.1", label: "Hohe Aktivität", farbe: .red)
+                }
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("SDAI – Vereinfachter Aktivitätsindex")
+                        .font(.subheadline.bold())
+                    Text("SDAI = TJC + SJC + PGA(0–10) + CRP(mg/dL)")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                    infoPill("≤ 3.3", label: "Remission", farbe: .green)
+                    infoPill("≤ 11", label: "Niedrige Aktivität", farbe: .mint)
+                    infoPill("≤ 26", label: "Mässige Aktivität", farbe: .orange)
+                    infoPill("> 26", label: "Hohe Aktivität", farbe: .red)
                 }
             }
             .padding(.top, 6)
