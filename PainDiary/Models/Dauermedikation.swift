@@ -22,10 +22,10 @@ enum MedikamentTyp: String, CaseIterable {
         case .spritze, .injPen:  return "syringe"
         case .tropfen:           return "drop.fill"
         case .spray:             return "lungs.fill"
-        case .pulver:            return "shaker.package.fill"
+        case .pulver:            return "bag.fill"
         case .brausetab:         return "bubbles.and.sparkles"
         case .pflaster:          return "bandage.fill"
-        case .gel:               return "tube.horizontal.fill"
+        case .gel:               return "cross.case.fill"
         case .zaepfchen:         return "thermometer.medium"
         case .sonstige:          return "cross.case.fill"
         }
