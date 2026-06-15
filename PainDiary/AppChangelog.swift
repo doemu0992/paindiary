@@ -17,6 +17,14 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "18", aenderungen: [
+        WhatsNewAenderung(icon: "bell.badge.fill", farbe: .indigo,
+                          titel: "Benachrichtigungen zentral verwalten",
+                          beschreibung: "Alle Erinnerungen an einem Ort: Tägliche Erinnerung, Wasser-Erinnerung und Medikamenten-Zeiten lassen sich jetzt direkt über Einstellungen → Benachrichtigungen konfigurieren."),
+        WhatsNewAenderung(icon: "magnifyingglass", farbe: .blue,
+                          titel: "Kontaktsuche im Adressbuch",
+                          beschreibung: "Die Kontaktauswahl für Arzt und Notfallkontakte zeigt jetzt eine Suchleiste – du findest Kontakte sofort durch Tippen."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "17", aenderungen: [
         WhatsNewAenderung(icon: "magnifyingglass.circle.fill", farbe: .blue,
                           titel: "Erweiterte Arztsuche",

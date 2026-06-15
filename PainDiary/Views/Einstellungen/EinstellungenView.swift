@@ -71,6 +71,10 @@ struct EinstellungenView: View {
             }
 
             Section {
+                NavigationLink(destination: PushManagerView()) {
+                    Label("Benachrichtigungen verwalten", systemImage: "bell.badge")
+                }
+
                 Toggle("Tägliche Erinnerung", isOn: $tagesErinnerungAktiv)
                     .onChange(of: tagesErinnerungAktiv) { _, aktiv in
                         if aktiv {
