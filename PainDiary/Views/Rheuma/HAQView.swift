@@ -47,6 +47,13 @@ struct HAQView: View {
                 }
             }
 
+            // Score explanation
+            Section {
+                scoreInfoBox
+            }
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
+
             // History List
             Section(eintraege.isEmpty ? "" : "Einträge") {
                 if eintraege.isEmpty {
@@ -111,6 +118,7 @@ struct HAQView: View {
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
+
     private func scoreBox(label: String, wert: String, farbe: Color) -> some View {
         VStack(spacing: 4) {
             Text(wert).font(.title2.bold()).foregroundStyle(farbe)
@@ -119,6 +127,45 @@ struct HAQView: View {
         .frame(minWidth: 70)
         .padding(10)
         .background(farbe.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var scoreInfoBox: some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("HAQ-DI – Funktionseinschränkung")
+                        .font(.subheadline.bold())
+                    infoPill("0.0 – 0.5", label: "Keine / minimale Einschränkung", farbe: .green)
+                    infoPill("0.5 – 1.0", label: "Leichte Einschränkung", farbe: .yellow)
+                    infoPill("1.0 – 2.0", label: "Mässige Einschränkung", farbe: .orange)
+                    infoPill("2.0 – 3.0", label: "Schwere Einschränkung", farbe: .red)
+                }
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("DAS28 – Krankheitsaktivität")
+                        .font(.subheadline.bold())
+                    infoPill("< 2.6", label: "Remission", farbe: .green)
+                    infoPill("2.6 – 3.2", label: "Niedrige Aktivität", farbe: .yellow)
+                    infoPill("3.2 – 5.1", label: "Moderate Aktivität", farbe: .orange)
+                    infoPill("> 5.1", label: "Hohe Aktivität", farbe: .red)
+                }
+            }
+            .padding(.top, 6)
+        } label: {
+            Label("Was bedeuten die Scores?", systemImage: "info.circle")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func infoPill(_ wert: String, label: String, farbe: Color) -> some View {
+        HStack(spacing: 8) {
+            Circle().fill(farbe).frame(width: 8, height: 8)
+            Text(wert).font(.caption.bold()).foregroundStyle(farbe).frame(width: 60, alignment: .leading)
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
     }
 
     private func loeschen(_ offsets: IndexSet) {
@@ -161,8 +208,7 @@ struct HAQFormView: View {
     @State private var aktivitaeten = 0
     @State private var globalBewertung = 50
 
-    private let stufen = ["0 – Keine Schwierigkeit", "1 – Einige Schwierigkeit",
-                           "2 – Grosse Schwierigkeit", "3 – Nicht möglich"]
+    private let stufenKurz = ["Keine", "Einige", "Grosse", "Nicht\nmöglich"]
 
     var body: some View {
         NavigationStack {
@@ -226,16 +272,54 @@ struct HAQFormView: View {
     }
 
     private func haqFrage(_ titel: String, wert: Binding<Int>, beispiel: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(titel).font(.subheadline.bold())
-            Text(beispiel).font(.caption).foregroundStyle(.secondary)
-            Picker(titel, selection: wert) {
-                ForEach(0...3, id: \.self) { i in Text(stufen[i]).tag(i) }
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(titel).font(.subheadline.bold())
+                Text(beispiel).font(.caption).foregroundStyle(.secondary)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            HStack(spacing: 6) {
+                ForEach(0...3, id: \.self) { i in
+                    Button {
+                        wert.wrappedValue = i
+                    } label: {
+                        VStack(spacing: 3) {
+                            Text("\(i)")
+                                .font(.headline.bold())
+                            Text(stufenKurz[i])
+                                .font(.system(size: 9, weight: .medium))
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            wert.wrappedValue == i
+                                ? stufenFarbe(i).opacity(0.18)
+                                : Color(.tertiarySystemBackground),
+                            in: RoundedRectangle(cornerRadius: 8)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(wert.wrappedValue == i ? stufenFarbe(i) : Color.clear, lineWidth: 1.5)
+                        )
+                        .foregroundStyle(wert.wrappedValue == i ? stufenFarbe(i) : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .animation(.spring(response: 0.2), value: wert.wrappedValue)
+                }
+            }
         }
         .padding(.vertical, 4)
+    }
+
+    private func stufenFarbe(_ i: Int) -> Color {
+        switch i {
+        case 0:  return .green
+        case 1:  return .yellow
+        case 2:  return .orange
+        default: return .red
+        }
     }
 
     private var globalFarbe: Color {
