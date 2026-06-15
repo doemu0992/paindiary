@@ -17,6 +17,23 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "22", aenderungen: [
+        WhatsNewAenderung(icon: "doc.richtext.fill", farbe: .purple,
+                          titel: "Rheuma-Seite im PDF",
+                          beschreibung: "Der PDF-Export enthält jetzt eine eigene Rheuma-Seite mit HAQ-DI-Verlauf, Laborwerte-Tabelle, Schub-Statistik und Auslöser-Vergleich (Schub vs. kein Schub). Einzelne Einträge zeigen auch betroffene Gelenke (TJC/SJC)."),
+        WhatsNewAenderung(icon: "flame.fill", farbe: .red,
+                          titel: "Schübe / Flares in der Zusammenfassung",
+                          beschreibung: "Die Zusammenfassung im PDF zeigt jetzt 5 Stat-Boxen: Ø Schmerzstärke, Höchstwert, Tage mit Schmerz, Schübe / Flares und MIDAS-Score – auf einen Blick."),
+        WhatsNewAenderung(icon: "testtube.2", farbe: .blue,
+                          titel: "Biologika, Kortison & Physiotherapie",
+                          beschreibung: "Neue Tracker für Biologika-Injektionen (mit Chargen-Nr. und nächster Dosis), Kortison-Tagebuch mit Dosierungsverlauf und Physiotherapie-Protokoll – alle im Rheuma-Modul."),
+        WhatsNewAenderung(icon: "checkmark.seal.fill", farbe: .green,
+                          titel: "Remissionsphasen & FACIT",
+                          beschreibung: "Remissionsphasen lassen sich mit Start und Ende dokumentieren – ein Live-Timer zeigt die bisherige Dauer. Der FACIT-Erschöpfungsfragebogen (13 Fragen) misst Fatigue auf einer 52-Punkte-Skala."),
+        WhatsNewAenderung(icon: "staroflife.fill", farbe: .orange,
+                          titel: "Notfallausweis & Diagnosen",
+                          beschreibung: "Ein digitaler Notfallausweis fasst alle wichtigen Daten zusammen – Diagnosen, Immunsuppressiva-Warnung, Notfallkontakte. Die Diagnose-Verwaltung listet aktive und frühere Diagnosen mit ICD-Code."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "21", aenderungen: [
         WhatsNewAenderung(icon: "figure.arms.open", farbe: .purple,
                           titel: "Rheuma & Gelenke Modul",
