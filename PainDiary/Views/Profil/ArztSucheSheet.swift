@@ -110,7 +110,7 @@ struct ArztSucheSheet: View {
             // Collect MapKit extras (likely already done)
             let r2 = await mk2
             let r3 = await mk3
-            var aktuell = dedupliziere(erste + r2 + r3)
+            let aktuell = dedupliziere(erste + r2 + r3)
             ergebnisse = aktuell
             sucht = false
             keineErgebnisse = aktuell.isEmpty
