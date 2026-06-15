@@ -18,6 +18,9 @@ struct WhatsNewVersion {
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
     WhatsNewVersion(version: "2.0", build: "21", aenderungen: [
+        WhatsNewAenderung(icon: "figure.arms.open", farbe: .purple,
+                          titel: "Rheuma & Gelenke Modul",
+                          beschreibung: "Das vollständige Rheuma-Modul ist jetzt unter Profil → Rheuma & Gelenke erreichbar: HAQ-Fragebogen mit DAS28-Score, Gelenkstatus mit 39 Gelenken, Laborwerte mit Verlaufskurven, Arztbesuche, Impfpass und Arztbrief-Vorlage. Schübe (Flare) und Fatigue lassen sich direkt beim Eintrag erfassen."),
         WhatsNewAenderung(icon: "hand.point.up.left.fill", farbe: .purple,
                           titel: "Gelenke optional erfassen",
                           beschreibung: "Der Gelenkstatus kann jetzt optional im Wizard aktiviert werden – genau wie der Schub-Modus. Ein Haken reicht, und der Wizard fügt automatisch den Gelenkstatus-Schritt ein. Ohne Haken bleibt der Ablauf unverändert kurz."),
