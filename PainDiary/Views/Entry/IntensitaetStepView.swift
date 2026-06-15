@@ -4,10 +4,8 @@ struct IntensitaetStepView: View {
     @Binding var schmerzstaerke: Int
     @Binding var verlauf: String
     @Binding var istSchub: Bool
-    @Binding var gelenkStatus: String
+    @Binding var gelenkErfassenAktiv: Bool
     var letzterEintrag: PainEntry? = nil
-
-    @State private var zeigeGelenke: Bool = false
 
     var body: some View {
         VStack(spacing: 32) {
@@ -56,76 +54,27 @@ struct IntensitaetStepView: View {
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
 
             // Schub / Flare toggle
-            Button {
+            toggleZeile(
+                aktiv: istSchub,
+                titel: "Schub / Flare",
+                untertitel: "Akute Verschlechterung / Krankheitsschub",
+                symbolAktiv: "flame.fill",
+                symbolInaktiv: "flame",
+                farbe: .red
+            ) {
                 withAnimation(.spring(response: 0.25)) { istSchub.toggle() }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: istSchub ? "flame.fill" : "flame")
-                        .font(.title3)
-                        .foregroundStyle(istSchub ? .red : .secondary)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Schub / Flare")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.primary)
-                        Text("Akute Verschlechterung / Krankheitsschub")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: istSchub ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(istSchub ? .red : .secondary)
-                }
-                .padding()
-                .background(
-                    istSchub ? Color.red.opacity(0.1) : Color(.secondarySystemBackground),
-                    in: RoundedRectangle(cornerRadius: 16)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(istSchub ? Color.red.opacity(0.4) : Color.clear, lineWidth: 1.5)
-                )
             }
-            .buttonStyle(.plain)
 
-            // Gelenke erfassen (optional, expandable)
-            VStack(spacing: 0) {
-                Button {
-                    withAnimation(.spring(response: 0.3)) { zeigeGelenke.toggle() }
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: gelenkAktiv ? "hand.point.up.left.fill" : "hand.point.up.left")
-                            .font(.title3)
-                            .foregroundStyle(gelenkAktiv ? Color.purple : Color.secondary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Gelenke erfassen")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(.primary)
-                            Text(gelenkAktiv ? gelenkZusammenfassung : "Optional · bei Gelenkbeschwerden")
-                                .font(.caption)
-                                .foregroundStyle(gelenkAktiv ? Color.purple : Color.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: zeigeGelenke ? "chevron.up" : "chevron.down")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
-                    .background(
-                        gelenkAktiv ? Color.purple.opacity(0.08) : Color(.secondarySystemBackground),
-                        in: RoundedRectangle(cornerRadius: 16)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(gelenkAktiv ? Color.purple.opacity(0.3) : Color.clear, lineWidth: 1.5)
-                    )
-                }
-                .buttonStyle(.plain)
-
-                if zeigeGelenke {
-                    GelenkStepView(gelenkStatus: $gelenkStatus)
-                        .padding(.top, 12)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
+            // Gelenke erfassen toggle
+            toggleZeile(
+                aktiv: gelenkErfassenAktiv,
+                titel: "Gelenke erfassen",
+                untertitel: gelenkErfassenAktiv ? "Gelenkstatus im nächsten Schritt" : "Optional · bei Gelenkbeschwerden",
+                symbolAktiv: "hand.point.up.left.fill",
+                symbolInaktiv: "hand.point.up.left",
+                farbe: .purple
+            ) {
+                withAnimation(.spring(response: 0.25)) { gelenkErfassenAktiv.toggle() }
             }
 
             if let letzter = letzterEintrag {
@@ -133,21 +82,45 @@ struct IntensitaetStepView: View {
             }
         }
         .padding(.horizontal)
-        .onAppear {
-            if !gelenkStatus.isEmpty { zeigeGelenke = true }
-        }
     }
 
-    private var gelenkAktiv: Bool { !gelenkStatus.isEmpty }
-
-    private var gelenkZusammenfassung: String {
-        let dict = GelenkStatusCoder.decode(gelenkStatus)
-        let tjc = DAS28Rechner.tjc28(dict)
-        let sjc = DAS28Rechner.sjc28(dict)
-        var teile: [String] = []
-        if tjc > 0 { teile.append("\(tjc) schmerzhaft") }
-        if sjc > 0 { teile.append("\(sjc) geschwollen") }
-        return teile.isEmpty ? "Eingetragen" : teile.joined(separator: ", ")
+    private func toggleZeile(
+        aktiv: Bool,
+        titel: String,
+        untertitel: String,
+        symbolAktiv: String,
+        symbolInaktiv: String,
+        farbe: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: aktiv ? symbolAktiv : symbolInaktiv)
+                    .font(.title3)
+                    .foregroundStyle(aktiv ? farbe : .secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(titel)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.primary)
+                    Text(untertitel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: aktiv ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(aktiv ? farbe : .secondary)
+            }
+            .padding()
+            .background(
+                aktiv ? farbe.opacity(0.1) : Color(.secondarySystemBackground),
+                in: RoundedRectangle(cornerRadius: 16)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(aktiv ? farbe.opacity(0.4) : Color.clear, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var beschreibung: String {
@@ -238,10 +211,7 @@ private struct VerlaufSektionView: View {
     }
 
     private struct VerlaufOption {
-        let wert: String
-        let label: String
-        let symbol: String
-        let farbe: Color
+        let wert: String; let label: String; let symbol: String; let farbe: Color
     }
 
     private let verlaufOptionen: [VerlaufOption] = [
@@ -250,4 +220,3 @@ private struct VerlaufSektionView: View {
         VerlaufOption(wert: "schlechter", label: "Schlechter", symbol: "arrow.down",  farbe: .red),
     ]
 }
-

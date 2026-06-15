@@ -48,6 +48,7 @@ struct AddEntryView: View {
 
     // Rheuma
     @State private var istSchub = false
+    @State private var gelenkErfassenAktiv = false
     @State private var gelenkStatus = ""
 
     // Vorlage
@@ -62,15 +63,17 @@ struct AddEntryView: View {
 
     private var gesamtSchritte: Int {
         switch eintragTyp {
-        case .schmerz: return 5  // steps 0-4
-        case .haut:    return 3  // steps 0-2
+        case .schmerz: return gelenkErfassenAktiv ? 6 : 5
+        case .haut:    return 3
         }
     }
 
     private var schrittNamen: [String] {
         switch eintragTyp {
         case .schmerz:
-            return ["Ort & Typ", "Intensität", "Wie & Warum", "Was noch", "Wohlbefinden"]
+            return gelenkErfassenAktiv
+                ? ["Ort & Typ", "Intensität", "Gelenke", "Wie & Warum", "Was noch", "Wohlbefinden"]
+                : ["Ort & Typ", "Intensität", "Wie & Warum", "Was noch", "Wohlbefinden"]
         case .haut:
             return ["Ort & Typ", "Hautbild", "Wohlbefinden"]
         }
@@ -265,35 +268,13 @@ struct AddEntryView: View {
                     schmerzstaerke: $schmerzstaerke,
                     verlauf: $verlauf,
                     istSchub: $istSchub,
-                    gelenkStatus: $gelenkStatus,
+                    gelenkErfassenAktiv: $gelenkErfassenAktiv,
                     letzterEintrag: letzterEintrag
                 )
-            case 2:
-                CharakterAusloeserStepView(
-                    schmerzart: $schmerzart,
-                    dauerMinuten: $dauerMinuten,
-                    ausloeser: $ausloeser,
-                    koerperstelle: koerperstelle
-                )
-            case 3:
-                BegleitMassnahmenStepView(
-                    begleiterscheinungen: $begleiterscheinungen,
-                    massnahmen: $massnahmen,
-                    koerperstelle: koerperstelle,
-                    datum: datum
-                )
-            case 4:
-                WohlbefindenStepView(
-                    stimmung: $stimmung,
-                    schlafStunden: $schlafStunden,
-                    stressLevel: $stressLevel,
-                    notizen: $notizen,
-                    morgensteifigkeit: $morgensteifigkeit,
-                    fatigue: $fatigue,
-                    healthSchlafVorschlag: healthSchlaf
-                )
+            case 2 where gelenkErfassenAktiv:
+                GelenkStepView(gelenkStatus: $gelenkStatus)
             default:
-                EmptyView()
+                schmerzFolgeSchritt
             }
         case .haut:
             switch schritt {
@@ -315,6 +296,39 @@ struct AddEntryView: View {
             default:
                 EmptyView()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var schmerzFolgeSchritt: some View {
+        let s = gelenkErfassenAktiv ? schritt - 1 : schritt
+        switch s {
+        case 2:
+            CharakterAusloeserStepView(
+                schmerzart: $schmerzart,
+                dauerMinuten: $dauerMinuten,
+                ausloeser: $ausloeser,
+                koerperstelle: koerperstelle
+            )
+        case 3:
+            BegleitMassnahmenStepView(
+                begleiterscheinungen: $begleiterscheinungen,
+                massnahmen: $massnahmen,
+                koerperstelle: koerperstelle,
+                datum: datum
+            )
+        case 4:
+            WohlbefindenStepView(
+                stimmung: $stimmung,
+                schlafStunden: $schlafStunden,
+                stressLevel: $stressLevel,
+                notizen: $notizen,
+                morgensteifigkeit: $morgensteifigkeit,
+                fatigue: $fatigue,
+                healthSchlafVorschlag: healthSchlaf
+            )
+        default:
+            EmptyView()
         }
     }
 
@@ -435,6 +449,7 @@ struct AddEntryView: View {
         istSchub = e.istSchub
         fatigue = e.fatigue
         gelenkStatus = e.gelenkStatus
+        gelenkErfassenAktiv = !e.gelenkStatus.isEmpty
         notizen = e.notizen
         hautArt = e.hautArt
         fotoDateiname = e.fotoDateiname
