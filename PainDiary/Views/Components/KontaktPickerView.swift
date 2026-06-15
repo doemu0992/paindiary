@@ -114,11 +114,16 @@ struct KontaktPickerView: View {
         let request = CNContactFetchRequest(keysToFetch: keys)
         request.sortOrder = .userDefault
 
-        var result: [CNContact] = []
-        try? store.enumerateContacts(with: request) { contact, _ in
-            guard !contact.givenName.isEmpty || !contact.familyName.isEmpty || !contact.organizationName.isEmpty else { return }
-            result.append(contact)
-        }
+        // Enumerate contacts off the main thread — enumerateContacts is synchronous blocking I/O
+        let result = await Task.detached(priority: .userInitiated) {
+            var list: [CNContact] = []
+            try? store.enumerateContacts(with: request) { contact, _ in
+                guard !contact.givenName.isEmpty || !contact.familyName.isEmpty || !contact.organizationName.isEmpty else { return }
+                list.append(contact)
+            }
+            return list
+        }.value
+
         kontakte = result
         laedt = false
     }
