@@ -165,6 +165,43 @@ struct PDFZyklusEintrag {
     }
 }
 
+struct PDFHAQEintrag {
+    var datum: Date
+    var haqScore: Double
+    var haqGradText: String
+    var globalBewertung: Int
+    var notizen: String
+
+    static func aus(eintrag: HAQEintrag) -> PDFHAQEintrag {
+        PDFHAQEintrag(datum: eintrag.datum, haqScore: eintrag.haqScore,
+                      haqGradText: eintrag.haqGradText, globalBewertung: eintrag.globalBewertung,
+                      notizen: eintrag.notizen)
+    }
+}
+
+struct PDFLaborwert {
+    var datum: Date
+    var typ: String
+    var wert: Double
+    var einheit: String
+    var referenzMin: Double?
+    var referenzMax: Double?
+
+    var istErhoeht: Bool? {
+        guard let max = referenzMax else { return nil }
+        return wert > max
+    }
+    var istErniedrigt: Bool? {
+        guard let min = referenzMin else { return nil }
+        return wert < min
+    }
+
+    static func aus(lw: Laborwert) -> PDFLaborwert {
+        PDFLaborwert(datum: lw.datum, typ: lw.typ, wert: lw.wert, einheit: lw.einheit,
+                     referenzMin: lw.referenzMin, referenzMax: lw.referenzMax)
+    }
+}
+
 struct PDFErnaehrungsTag {
     let datum: Date
     let koffeinTassen: Int
@@ -210,6 +247,7 @@ struct ExportOptionen {
     var mitEintraege: Bool = true
     var mitZyklus: Bool = true
     var mitErnaehrung: Bool = true
+    var mitRheuma: Bool = true
 }
 
 enum ExportZeitraum: String, CaseIterable {
@@ -253,6 +291,8 @@ class PDFExportService: @unchecked Sendable {
         einnahmeLogs: [EinnahmeLog] = [],
         midasBewertungen: [MIDASBewertung],
         zyklusEintraege: [ZyklusEintrag],
+        haqEintraege: [HAQEintrag] = [],
+        laborwerte: [Laborwert] = [],
         profil: Benutzerprofil?,
         optionen: ExportOptionen,
         completion: @escaping @MainActor @Sendable (URL?) -> Void
@@ -274,16 +314,28 @@ class PDFExportService: @unchecked Sendable {
         } else {
             logs = einnahmeLogs.sorted { $0.datum > $1.datum }.map(PDFEinnahmeLog.aus)
         }
-        let midas     = midasBewertungen.sorted { $0.datum > $1.datum }.map(PDFMidas.aus)
-        let analyse   = ZyklusRechner.analyse(eintraege: zyklusEintraege)
-        let zyklus    = zyklusEintraege.sorted { $0.datum > $1.datum }.map(PDFZyklusEintrag.aus)
+        let midas      = midasBewertungen.sorted { $0.datum > $1.datum }.map(PDFMidas.aus)
+        let analyse    = ZyklusRechner.analyse(eintraege: zyklusEintraege)
+        let zyklus     = zyklusEintraege.sorted { $0.datum > $1.datum }.map(PDFZyklusEintrag.aus)
         let ernaehrung = PDFErnaehrungsTag.lesen(start: optionen.zeitraum.startDatum())
+        let haqPDF: [PDFHAQEintrag]
+        if let start = optionen.zeitraum.startDatum() {
+            haqPDF = haqEintraege.filter { $0.datum >= start }.sorted { $0.datum > $1.datum }.map(PDFHAQEintrag.aus)
+        } else {
+            haqPDF = haqEintraege.sorted { $0.datum > $1.datum }.map(PDFHAQEintrag.aus)
+        }
+        let labPDF: [PDFLaborwert]
+        if let start = optionen.zeitraum.startDatum() {
+            labPDF = laborwerte.filter { $0.datum >= start }.sorted { $0.datum > $1.datum }.map(PDFLaborwert.aus)
+        } else {
+            labPDF = laborwerte.sorted { $0.datum > $1.datum }.map(PDFLaborwert.aus)
+        }
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let url = self.renderPDF(patient: patient, eintraege: gefiltert,
                                      medikamente: meds, einnahmeLogs: logs, midas: midas,
-                                     zyklus: zyklus, analyse: analyse,
-                                     ernaehrung: ernaehrung, optionen: optionen)
+                                     zyklus: zyklus, analyse: analyse, ernaehrung: ernaehrung,
+                                     haqEintraege: haqPDF, laborwerte: labPDF, optionen: optionen)
             Task { @MainActor in completion(url) }
         }
     }
@@ -299,6 +351,8 @@ class PDFExportService: @unchecked Sendable {
         zyklus: [PDFZyklusEintrag],
         analyse: ZyklusAnalyse,
         ernaehrung: [PDFErnaehrungsTag],
+        haqEintraege: [PDFHAQEintrag] = [],
+        laborwerte: [PDFLaborwert] = [],
         optionen: ExportOptionen
     ) -> URL? {
         let dateiname = "Schmerztagebuch_\(fmt(Date())).pdf"
@@ -327,6 +381,12 @@ class PDFExportService: @unchecked Sendable {
                         seite = medikamentDossierSeiten(ctx: ctx, medikamente: medikamente,
                                                         einnahmeLogs: einnahmeLogs, eintraege: eintraege,
                                                         startSeite: seite + 1)
+                    }
+
+                    if optionen.mitRheuma && (!haqEintraege.isEmpty || !laborwerte.isEmpty) {
+                        seite += 1; ctx.beginPage()
+                        rheumaSeite(ctx: ctx.cgContext, haqEintraege: haqEintraege,
+                                    laborwerte: laborwerte, painEintraege: eintraege, seite: seite)
                     }
 
                     if optionen.mitZyklus && !zyklus.isEmpty {
@@ -450,16 +510,19 @@ class PDFExportService: @unchecked Sendable {
         let avg = eintraege.map { Double($0.schmerzstaerke) }.reduce(0, +) / Double(eintraege.count)
         let maxVal = eintraege.map(\.schmerzstaerke).max() ?? 0
         let tage = Set(eintraege.map { Calendar.current.startOfDay(for: $0.datum) }).count
+        let schube = eintraege.filter(\.istSchub).count
         let letzterMidas = midas.first
 
-        let boxW = (iw - 12) / 4
+        let boxW = (iw - 16) / 5
         statBox(ctx: ctx, x: rand,                       y: y, w: boxW, h: 72, titel: "Ø Schmerzstärke",
                 wert: String(format: "%.1f/10", avg), farbe: .systemOrange)
-        statBox(ctx: ctx, x: rand + boxW + 4,             y: y, w: boxW, h: 72, titel: "Höchstwert",
+        statBox(ctx: ctx, x: rand + (boxW + 4),           y: y, w: boxW, h: 72, titel: "Höchstwert",
                 wert: "\(maxVal)/10", farbe: .systemRed)
         statBox(ctx: ctx, x: rand + (boxW + 4) * 2,       y: y, w: boxW, h: 72, titel: "Tage mit Schmerz",
                 wert: "\(tage)", farbe: .systemBlue)
-        statBox(ctx: ctx, x: rand + (boxW + 4) * 3,       y: y, w: boxW, h: 72, titel: "MIDAS Score",
+        statBox(ctx: ctx, x: rand + (boxW + 4) * 3,       y: y, w: boxW, h: 72, titel: "Schübe / Flares",
+                wert: "\(schube)", farbe: schube > 0 ? .systemRed : .systemGreen)
+        statBox(ctx: ctx, x: rand + (boxW + 4) * 4,       y: y, w: boxW, h: 72, titel: "MIDAS Score",
                 wert: letzterMidas.map { "\($0.score)" } ?? "–", farbe: .systemPurple)
         y += 88
 
@@ -1172,6 +1235,149 @@ class PDFExportService: @unchecked Sendable {
         fusszeile(ctx: ctx, seite: seite)
     }
 
+    // MARK: - Rheuma page
+
+    private func rheumaSeite(ctx: CGContext, haqEintraege: [PDFHAQEintrag],
+                              laborwerte: [PDFLaborwert], painEintraege: [PDFEintrag], seite: Int) {
+        seitenKopf(ctx: ctx, titel: "Rheuma & Gelenke", seite: seite)
+        var y: CGFloat = rand + 52
+
+        let schube = painEintraege.filter(\.istSchub).count
+        let mitGelenk = painEintraege.filter { !$0.gelenkStatus.isEmpty }
+        let avgTJC = mitGelenk.isEmpty ? 0 : mitGelenk.map { e -> Int in
+            let g = GelenkStatusCoder.decode(e.gelenkStatus)
+            return g.filter { $0.value == .schmerzhaft || $0.value == .beides }.count
+        }.reduce(0, +) / mitGelenk.count
+        let avgSJC = mitGelenk.isEmpty ? 0 : mitGelenk.map { e -> Int in
+            let g = GelenkStatusCoder.decode(e.gelenkStatus)
+            return g.filter { $0.value == .geschwollen || $0.value == .beides }.count
+        }.reduce(0, +) / mitGelenk.count
+
+        let boxW = (iw - 8) / 3
+        statBox(ctx: ctx, x: rand,              y: y, w: boxW, h: 72, titel: "Schübe im Zeitraum",
+                wert: "\(schube)", farbe: schube > 0 ? .systemRed : .systemGreen)
+        statBox(ctx: ctx, x: rand + boxW + 4,   y: y, w: boxW, h: 72, titel: "Ø Druckschmerzhafte Gelenke",
+                wert: mitGelenk.isEmpty ? "–" : "\(avgTJC)", farbe: .systemOrange)
+        statBox(ctx: ctx, x: rand + (boxW+4)*2, y: y, w: boxW, h: 72, titel: "Ø Geschwollene Gelenke",
+                wert: mitGelenk.isEmpty ? "–" : "\(avgSJC)", farbe: .systemPurple)
+        y += 88
+
+        // HAQ history
+        if !haqEintraege.isEmpty {
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("HAQ-DI Verlauf", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+
+            let cols: [CGFloat] = [rand, rand + 90, rand + 230, rand + 360]
+            tabellenKopf(ctx: ctx, y: y, cols: cols,
+                         headers: ["Datum", "HAQ-DI Score", "Grad", "Globales Befinden"])
+            y += 26
+
+            for e in haqEintraege.prefix(12) {
+                if y > H - rand - 30 { break }
+                let scoreText = String(format: "%.2f", e.haqScore)
+                let globalText = e.globalBewertung > 0 ? "\(e.globalBewertung)/100" : "–"
+                let scoreColor: UIColor = e.haqScore < 0.5 ? .systemGreen
+                    : e.haqScore < 1.5 ? .systemOrange : .systemRed
+                tabellenZeile(ctx: ctx, y: y, cols: cols,
+                              werte: [fmt(e.datum), scoreText, e.haqGradText, globalText],
+                              fett: [false, true, false, false])
+                if e.haqScore > 0 {
+                    let bw = CGFloat(e.haqScore / 3.0) * (iw - 100)
+                    ctx.setFillColor(scoreColor.withAlphaComponent(0.3).cgColor)
+                    ctx.fill(CGRect(x: cols[1] + 4, y: y + 12, width: bw, height: 5))
+                }
+                y += 22
+                trennlinie(ctx: ctx, y: y - 2, alpha: 0.08)
+            }
+            y += 10
+        }
+
+        // Laborwerte
+        if !laborwerte.isEmpty {
+            if y + 60 > H - rand - 30 { y = H }
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Laborwerte", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+
+            let labCols: [CGFloat] = [rand, rand + 80, rand + 200, rand + 290, rand + 380]
+            tabellenKopf(ctx: ctx, y: y, cols: labCols,
+                         headers: ["Datum", "Parameter", "Wert", "Einheit", "Referenz"])
+            y += 26
+
+            for lw in laborwerte.prefix(20) {
+                if y > H - rand - 30 { break }
+                let refText: String
+                if let rMin = lw.referenzMin, let rMax = lw.referenzMax {
+                    refText = "\(String(format: "%.1f", rMin))–\(String(format: "%.1f", rMax))"
+                } else if let rMax = lw.referenzMax {
+                    refText = "< \(String(format: "%.1f", rMax))"
+                } else {
+                    refText = "–"
+                }
+                let abweichung = lw.istErhoeht == true ? " ↑" : (lw.istErniedrigt == true ? " ↓" : "")
+                let wertFarbe: UIColor = lw.istErhoeht == true || lw.istErniedrigt == true
+                    ? .systemOrange : .label
+                tabellenZeile(ctx: ctx, y: y, cols: labCols,
+                              werte: [fmt(lw.datum), lw.typ,
+                                      String(format: "%.1f", lw.wert) + abweichung,
+                                      lw.einheit, refText],
+                              fett: [false, false, true, false, false])
+                if lw.istErhoeht == true || lw.istErniedrigt == true {
+                    let x = labCols[2] + 4
+                    let wertW = CGFloat(50)
+                    ctx.setFillColor(wertFarbe.withAlphaComponent(0.12).cgColor)
+                    ctx.fill(CGRect(x: x - 2, y: y, width: wertW, height: 16))
+                }
+                y += 18
+                trennlinie(ctx: ctx, y: y - 1, alpha: 0.08)
+            }
+            y += 10
+        }
+
+        // Schub trend
+        if schube > 0 && painEintraege.count >= 5 {
+            if y + 40 > H - rand - 30 { y = H }
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Schub-Auslöser Analyse", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+
+            let schubEintraege = painEintraege.filter(\.istSchub)
+            let keineSchubEintraege = painEintraege.filter { !$0.istSchub }
+
+            let avgStressSchub = schubEintraege.filter { $0.stressLevel > 0 }.map { Double($0.stressLevel) }
+            let avgStressKein  = keineSchubEintraege.filter { $0.stressLevel > 0 }.map { Double($0.stressLevel) }
+            let avgSchlafSchub = schubEintraege.filter { $0.schlafStunden > 0 }.map { $0.schlafStunden }
+            let avgSchlafKein  = keineSchubEintraege.filter { $0.schlafStunden > 0 }.map { $0.schlafStunden }
+
+            func avg(_ vals: [Double]) -> Double { vals.isEmpty ? 0 : vals.reduce(0,+)/Double(vals.count) }
+
+            let vergleiche: [(String, Double, Double)] = [
+                ("Stress (Ø)", avg(avgStressSchub), avg(avgStressKein)),
+                ("Schlaf h (Ø)", avg(avgSchlafSchub), avg(avgSchlafKein)),
+            ].filter { $0.1 > 0 || $0.2 > 0 }
+
+            for (label, schubWert, keinWert) in vergleiche {
+                if y > H - rand - 30 { break }
+                draw(label, at: CGPoint(x: rand, y: y), font: .systemFont(ofSize: 10), color: .secondaryLabel)
+                draw("Schub: \(String(format: "%.1f", schubWert))",
+                     at: CGPoint(x: rand + 130, y: y),
+                     font: .systemFont(ofSize: 10, weight: .medium),
+                     color: .systemRed)
+                draw("Kein Schub: \(String(format: "%.1f", keinWert))",
+                     at: CGPoint(x: rand + 260, y: y),
+                     font: .systemFont(ofSize: 10, weight: .medium),
+                     color: .systemGreen)
+                y += 16
+            }
+        }
+
+        fusszeile(ctx: ctx, seite: seite)
+    }
+
     // MARK: - Entries pages
 
     private func eintraegeSeiten(ctx: UIGraphicsPDFRendererContext, eintraege: [PDFEintrag], startSeite: Int) {
@@ -1207,6 +1413,15 @@ class PDFExportService: @unchecked Sendable {
             }
             if eintrag.istSchub {
                 subZeilen.append(("⚡ Rheuma-Schub / Flare", UIColor.systemRed.withAlphaComponent(0.8)))
+            }
+            if !eintrag.gelenkStatus.isEmpty {
+                let gelenke = GelenkStatusCoder.decode(eintrag.gelenkStatus)
+                let schmerz = gelenke.filter { $0.value == .schmerzhaft || $0.value == .beides }.count
+                let geschwollen = gelenke.filter { $0.value == .geschwollen || $0.value == .beides }.count
+                if schmerz > 0 || geschwollen > 0 {
+                    subZeilen.append(("Gelenke: \(schmerz) schmerzhaft, \(geschwollen) geschwollen",
+                                      UIColor.systemPurple.withAlphaComponent(0.75)))
+                }
             }
             let wbTeile: [String] = [
                 eintrag.stimmung > 0 ? "Stimmung: \(eintrag.stimmung)/5" : nil,
@@ -1284,7 +1499,7 @@ class PDFExportService: @unchecked Sendable {
         let optionen = ExportOptionen(
             zeitraum: .dreissigTage, mitZusammenfassung: false,
             mitMedikamente: true, mitMedikamentDossier: true,
-            mitEintraege: false, mitZyklus: false, mitErnaehrung: false
+            mitEintraege: false, mitZyklus: false, mitErnaehrung: false, mitRheuma: false
         )
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let url = self.renderPDF(patient: patient, eintraege: [], medikamente: meds,

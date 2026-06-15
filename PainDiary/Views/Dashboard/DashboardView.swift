@@ -9,6 +9,8 @@ struct DashboardView: View {
     @Query(sort: \MIDASBewertung.datum, order: .reverse) private var midasBewertungen: [MIDASBewertung]
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var einnahmeLogs: [EinnahmeLog]
+    @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
+    @Query(sort: \Laborwert.datum, order: .reverse) private var laborwerte: [Laborwert]
     @State private var viewModel = DashboardViewModel()
     @State private var exportURL: URL? = nil
     @State private var pdfVorschauAnzeigen = false
@@ -68,7 +70,8 @@ struct DashboardView: View {
         .sheet(isPresented: $exportOptionsAnzeigen) {
             ExportOptionsSheet(
                 optionen: $exportOptionen,
-                hatZyklusDaten: !zyklusEintraege.isEmpty
+                hatZyklusDaten: !zyklusEintraege.isEmpty,
+                hatRheumaDaten: !haqEintraege.isEmpty || !laborwerte.isEmpty
             ) {
                 exportOptionsAnzeigen = false
                 exportierePDF()
@@ -511,6 +514,8 @@ struct DashboardView: View {
             einnahmeLogs: Array(einnahmeLogs),
             midasBewertungen: Array(midasBewertungen),
             zyklusEintraege: Array(zyklusEintraege),
+            haqEintraege: Array(haqEintraege),
+            laborwerte: Array(laborwerte),
             profil: profile.first,
             optionen: exportOptionen
         ) { @MainActor url in
@@ -528,6 +533,7 @@ private struct ExportOptionsSheet: View {
     @Binding var optionen: ExportOptionen
     @Environment(\.dismiss) private var dismiss
     let hatZyklusDaten: Bool
+    let hatRheumaDaten: Bool
     let onExport: () -> Void
 
     var body: some View {
@@ -543,6 +549,7 @@ private struct ExportOptionsSheet: View {
                     Toggle("Zusammenfassung",      isOn: $optionen.mitZusammenfassung)
                     Toggle("Medikamente",          isOn: $optionen.mitMedikamente)
                     Toggle("Medikamenten-Dossier", isOn: $optionen.mitMedikamentDossier)
+                    if hatRheumaDaten { Toggle("Rheuma & Gelenke", isOn: $optionen.mitRheuma) }
                     if hatZyklusDaten { Toggle("Zyklus", isOn: $optionen.mitZyklus) }
                     Toggle("Alle Einträge",        isOn: $optionen.mitEintraege)
                 }
