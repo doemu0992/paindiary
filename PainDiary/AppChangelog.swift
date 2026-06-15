@@ -17,6 +17,20 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "19", aenderungen: [
+        WhatsNewAenderung(icon: "bell.badge.fill", farbe: .indigo,
+                          titel: "Benachrichtigungen zentral verwalten",
+                          beschreibung: "Alle Erinnerungen an einem Ort: Tägliche Erinnerung, Wasser-Erinnerung und Medikamenten-Zeiten lassen sich direkt über Einstellungen → Benachrichtigungen konfigurieren."),
+        WhatsNewAenderung(icon: "magnifyingglass", farbe: .blue,
+                          titel: "Kontaktsuche im Adressbuch",
+                          beschreibung: "Die Kontaktauswahl für Arzt und Notfallkontakte zeigt jetzt eine Suchleiste – du findest Kontakte sofort durch Tippen."),
+        WhatsNewAenderung(icon: "sunrise.fill", farbe: .orange,
+                          titel: "Morgensteifigkeit vollständig dokumentiert",
+                          beschreibung: "Morgensteifigkeit erscheint jetzt in der Tagebuchliste, im Detaileintrag, in der Analyse (Körper & Geist) und im PDF-Export."),
+        WhatsNewAenderung(icon: "arrow.trianglehead.branch", farbe: .teal,
+                          titel: "Alle Push-Deep-Links aktiv",
+                          beschreibung: "Tippen auf eine Benachrichtigung öffnet jetzt immer die richtige Ansicht – auch für Vorrat, Ablauf, Wasser und Zyklus."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "18", aenderungen: [
         WhatsNewAenderung(icon: "bell.badge.fill", farbe: .indigo,
                           titel: "Benachrichtigungen zentral verwalten",
