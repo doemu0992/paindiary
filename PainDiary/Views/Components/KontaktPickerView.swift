@@ -26,10 +26,17 @@ struct KontaktPickerView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
         if isPresented && context.coordinator.pickerVC == nil {
+            // Present from the window's topmost VC — child VCs embedded via .background()
+            // can't reliably host modal presentations (breaks CNContactPickerViewController search)
+            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
+            var top = root
+            while let next = top.presentedViewController { top = next }
+
             let picker = CNContactPickerViewController()
             picker.delegate = context.coordinator
             context.coordinator.pickerVC = picker
-            uiViewController.present(picker, animated: true)
+            top.present(picker, animated: true)
         } else if !isPresented, let picker = context.coordinator.pickerVC {
             picker.dismiss(animated: true)
             context.coordinator.pickerVC = nil
