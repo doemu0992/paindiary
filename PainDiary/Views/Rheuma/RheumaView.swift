@@ -4,7 +4,6 @@ import SwiftData
 struct RheumaView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
-    @Query(sort: \Impftermin.impfstoff) private var impfungen: [Impftermin]
     @Query(sort: \Arztbesuch.datum, order: .reverse) private var besuche: [Arztbesuch]
     @Query(sort: \Laborwert.datum, order: .reverse) private var laborwerte: [Laborwert]
 
@@ -62,21 +61,6 @@ struct RheumaView: View {
                     } icon: {
                         Image(systemName: "stethoscope")
                             .foregroundStyle(.teal)
-                    }
-                }
-                NavigationLink(destination: ImpfpassView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Impfpass")
-                            let faellig = impfungen.filter { $0.dringlichkeit != .ok }
-                            if !faellig.isEmpty {
-                                Text("\(faellig.count) ausstehend / fällig")
-                                    .font(.caption).foregroundStyle(.orange)
-                            }
-                        }
-                    } icon: {
-                        Image(systemName: "syringe.fill")
-                            .foregroundStyle(.green)
                     }
                 }
                 NavigationLink(destination: ArztbriefView()) {

@@ -225,6 +225,9 @@ private struct ProfilInhaltView: View {
             NavigationLink(destination: MedikamenteView()) {
                 Label("Medikamente verwalten", systemImage: "pill.fill")
             }
+            NavigationLink(destination: ImpfpassView()) {
+                Label("Impfpass", systemImage: "syringe.fill")
+            }
             NavigationLink(destination: RheumaView()) {
                 Label("Rheuma & Gelenke", systemImage: "figure.arms.open")
             }
