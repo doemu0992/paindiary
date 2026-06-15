@@ -179,7 +179,7 @@ struct LaborwertForm: View {
                     HStack {
                         TextField("Typ (z.B. CRP)", text: $typ)
                         Button { zeigePicker = true } label: {
-                            Image(systemName: "list.bullet").foregroundStyle(.accentColor)
+                            Image(systemName: "list.bullet").foregroundStyle(Color.accentColor)
                         }
                         .buttonStyle(.plain)
                     }
