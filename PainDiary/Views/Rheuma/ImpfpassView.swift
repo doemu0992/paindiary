@@ -27,26 +27,47 @@ struct ImpfpassView: View {
                     }
                 }
             } else {
-                // Due / Overdue
                 let faellig = impfungen.filter { $0.dringlichkeit == .ueberfaellig || $0.dringlichkeit == .bald }
                 if !faellig.isEmpty {
                     Section("Ausstehend / Bald fällig") {
                         ForEach(faellig) { i in
-                            Button { bearbeitet = i } label: { ImpfZeile(impfung: i) }
-                                .buttonStyle(.plain)
+                            ImpfZeile(impfung: i)
+                                .contentShape(Rectangle())
+                                .onTapGesture { bearbeitet = i }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        modelContext.delete(i)
+                                    } label: {
+                                        Label("Löschen", systemImage: "trash")
+                                    }
+                                    Button { bearbeitet = i } label: {
+                                        Label("Bearbeiten", systemImage: "pencil")
+                                    }
+                                    .tint(.blue)
+                                }
                         }
                     }
                 }
 
-                // OK
                 let aktuell = impfungen.filter { $0.dringlichkeit == .ok }
                 if !aktuell.isEmpty {
                     Section("Aktuell") {
                         ForEach(aktuell) { i in
-                            Button { bearbeitet = i } label: { ImpfZeile(impfung: i) }
-                                .buttonStyle(.plain)
+                            ImpfZeile(impfung: i)
+                                .contentShape(Rectangle())
+                                .onTapGesture { bearbeitet = i }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        modelContext.delete(i)
+                                    } label: {
+                                        Label("Löschen", systemImage: "trash")
+                                    }
+                                    Button { bearbeitet = i } label: {
+                                        Label("Bearbeiten", systemImage: "pencil")
+                                    }
+                                    .tint(.blue)
+                                }
                         }
-                        .onDelete(perform: loeschen)
                     }
                 }
             }
@@ -65,11 +86,6 @@ struct ImpfpassView: View {
         for standard in Impftermin.standardImpfungen {
             modelContext.insert(standard)
         }
-    }
-
-    private func loeschen(_ offsets: IndexSet) {
-        let aktuell = impfungen.filter { $0.dringlichkeit == .ok }
-        offsets.map { aktuell[$0] }.forEach { modelContext.delete($0) }
     }
 }
 
