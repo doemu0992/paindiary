@@ -175,6 +175,21 @@ struct PainEntryDetailView: View {
             if eintrag.schlafStunden > 0 {
                 zeile("Schlaf", wert: String(format: "%.1f Stunden", eintrag.schlafStunden))
             }
+
+            if eintrag.morgensteifigkeit > 0 {
+                HStack {
+                    Text("Morgensteifigkeit").font(.subheadline).foregroundStyle(.secondary)
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Image(systemName: "sunrise.fill")
+                            .font(.caption)
+                            .foregroundStyle(Color.orange)
+                        Text("\(eintrag.morgensteifigkeit) Min")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(Color.orange)
+                    }
+                }
+            }
         }
         .padding()
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
