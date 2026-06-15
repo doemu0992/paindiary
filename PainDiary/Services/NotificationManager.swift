@@ -14,6 +14,7 @@ enum DeepLink: Equatable {
 }
 
 @Observable
+@MainActor
 class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
 
@@ -24,11 +25,11 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
-        Task.detached { [weak self] in await self?.aktualisiereStatus() }
+        Task { await aktualisiereStatus() }
     }
 
     // Show notifications even when app is in foreground
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
@@ -37,7 +38,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     // Deep link when user taps a notification
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
@@ -45,32 +46,33 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         let info = response.notification.request.content.userInfo
         let id   = response.notification.request.identifier
 
-        // Called on main thread — set directly so @Observable fires immediately
-        if let type = info["type"] as? String {
-            switch type {
-            case "schmerz":
+        Task { @MainActor [weak self] in
+            guard let self else { completionHandler(); return }
+            if let type = info["type"] as? String {
+                switch type {
+                case "schmerz":
+                    pendingDeepLink = .neuerSchmerzEintrag
+                case "medikament":
+                    let name = info["name"] as? String ?? ""
+                    let dos  = info["dosierung"] as? String ?? ""
+                    pendingDeepLink = .medikamentErfassen(name: name, dosierung: dos)
+                case "wirkung":
+                    pendingDeepLink = .medikamenteAnzeigen
+                default: break
+                }
+            } else if id == "tages-erinnerung" {
                 pendingDeepLink = .neuerSchmerzEintrag
-            case "medikament":
-                let name = info["name"] as? String ?? ""
-                let dos  = info["dosierung"] as? String ?? ""
-                pendingDeepLink = .medikamentErfassen(name: name, dosierung: dos)
-            case "wirkung":
+            } else if id.hasPrefix("wirkung-") {
                 pendingDeepLink = .medikamenteAnzeigen
-            default: break
+            } else if id.hasPrefix("vorrat-") || id.hasPrefix("ablauf-") {
+                pendingDeepLink = .medikamenteAnzeigen
+            } else if id == "wasser-erinnerung" {
+                pendingDeepLink = .wellnessAnzeigen
+            } else if id.hasPrefix("zyklus-") {
+                pendingDeepLink = .zyklusAnzeigen
             }
-        } else if id == "tages-erinnerung" {
-            pendingDeepLink = .neuerSchmerzEintrag
-        } else if id.hasPrefix("wirkung-") {
-            pendingDeepLink = .medikamenteAnzeigen
-        } else if id.hasPrefix("vorrat-") || id.hasPrefix("ablauf-") {
-            pendingDeepLink = .medikamenteAnzeigen
-        } else if id == "wasser-erinnerung" {
-            pendingDeepLink = .wellnessAnzeigen
-        } else if id.hasPrefix("zyklus-") {
-            pendingDeepLink = .zyklusAnzeigen
+            completionHandler()
         }
-
-        completionHandler()
     }
 
     func berechtigungAnfordern() async -> Bool {
@@ -86,13 +88,11 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func aktualisiereStatus() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
-        await MainActor.run {
-            status = settings.authorizationStatus
-            if #available(iOS 15.0, *) {
-                timeSensitiveAktiv = settings.timeSensitiveSetting == .enabled
-            } else {
-                timeSensitiveAktiv = true
-            }
+        status = settings.authorizationStatus
+        if #available(iOS 15.0, *) {
+            timeSensitiveAktiv = settings.timeSensitiveSetting == .enabled
+        } else {
+            timeSensitiveAktiv = true
         }
     }
 
