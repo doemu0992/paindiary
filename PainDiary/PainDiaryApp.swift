@@ -82,6 +82,11 @@ private func makeContainer() -> ModelContainer {
         Arztbesuch.self,
         HAQEintrag.self,
         Impftermin.self,
+        BiologikaInjektion.self,
+        KortisonEintrag.self,
+        FACITEintrag.self,
+        PhysioSession.self,
+        Remissionsphase.self,
     ]
     let schema = Schema(alleTypen)
 
