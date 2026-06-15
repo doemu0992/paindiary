@@ -219,7 +219,7 @@ struct PushManagerView: View {
                 MedikamentFormView(medikament: med)
             }
         }
-        .task { await notif.berechtigungAnfordern() }
+        .task { _ = await notif.berechtigungAnfordern() }
     }
 
 }
