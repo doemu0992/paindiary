@@ -4,7 +4,10 @@ struct IntensitaetStepView: View {
     @Binding var schmerzstaerke: Int
     @Binding var verlauf: String
     @Binding var istSchub: Bool
+    @Binding var gelenkStatus: String
     var letzterEintrag: PainEntry? = nil
+
+    @State private var zeigeGelenke: Bool = false
 
     var body: some View {
         VStack(spacing: 32) {
@@ -84,11 +87,67 @@ struct IntensitaetStepView: View {
             }
             .buttonStyle(.plain)
 
+            // Gelenke erfassen (optional, expandable)
+            VStack(spacing: 0) {
+                Button {
+                    withAnimation(.spring(response: 0.3)) { zeigeGelenke.toggle() }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: gelenkAktiv ? "hand.point.up.left.fill" : "hand.point.up.left")
+                            .font(.title3)
+                            .foregroundStyle(gelenkAktiv ? Color.purple : Color.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Gelenke erfassen")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.primary)
+                            Text(gelenkAktiv ? gelenkZusammenfassung : "Optional · bei Gelenkbeschwerden")
+                                .font(.caption)
+                                .foregroundStyle(gelenkAktiv ? Color.purple : Color.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: zeigeGelenke ? "chevron.up" : "chevron.down")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .background(
+                        gelenkAktiv ? Color.purple.opacity(0.08) : Color(.secondarySystemBackground),
+                        in: RoundedRectangle(cornerRadius: 16)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(gelenkAktiv ? Color.purple.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                if zeigeGelenke {
+                    GelenkStepView(gelenkStatus: $gelenkStatus)
+                        .padding(.top, 12)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+
             if let letzter = letzterEintrag {
                 VerlaufSektionView(letzterEintrag: letzter, verlauf: $verlauf)
             }
         }
         .padding(.horizontal)
+        .onAppear {
+            if !gelenkStatus.isEmpty { zeigeGelenke = true }
+        }
+    }
+
+    private var gelenkAktiv: Bool { !gelenkStatus.isEmpty }
+
+    private var gelenkZusammenfassung: String {
+        let dict = GelenkStatusCoder.decode(gelenkStatus)
+        let tjc = DAS28Rechner.tjc28(dict)
+        let sjc = DAS28Rechner.sjc28(dict)
+        var teile: [String] = []
+        if tjc > 0 { teile.append("\(tjc) schmerzhaft") }
+        if sjc > 0 { teile.append("\(sjc) geschwollen") }
+        return teile.isEmpty ? "Eingetragen" : teile.joined(separator: ", ")
     }
 
     private var beschreibung: String {
@@ -186,8 +245,9 @@ private struct VerlaufSektionView: View {
     }
 
     private let verlaufOptionen: [VerlaufOption] = [
-        VerlaufOption(wert: "besser",         label: "Besser",      symbol: "arrow.up",    farbe: .green),
-        VerlaufOption(wert: "gleich",         label: "Gleich",      symbol: "arrow.right", farbe: .orange),
-        VerlaufOption(wert: "schlechter",     label: "Schlechter",  symbol: "arrow.down",  farbe: .red),
+        VerlaufOption(wert: "besser",     label: "Besser",     symbol: "arrow.up",    farbe: .green),
+        VerlaufOption(wert: "gleich",     label: "Gleich",     symbol: "arrow.right", farbe: .orange),
+        VerlaufOption(wert: "schlechter", label: "Schlechter", symbol: "arrow.down",  farbe: .red),
     ]
 }
+
