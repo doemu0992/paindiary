@@ -6,6 +6,12 @@ struct HAQView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var eintraege: [HAQEintrag]
     @Query(sort: \Laborwert.datum, order: .reverse) private var laborwerte: [Laborwert]
+    @Query(sort: \PainEntry.datum, order: .reverse) private var painEintraege: [PainEntry]
+
+    private var letzterGelenkStatus: [String: GelenkZustand] {
+        guard let eintrag = painEintraege.first(where: { !$0.gelenkStatus.isEmpty }) else { return [:] }
+        return GelenkStatusCoder.decode(eintrag.gelenkStatus)
+    }
 
     @State private var zeigeForm = false
 
@@ -85,16 +91,24 @@ struct HAQView: View {
         let crpWert = laborwerte.first(where: { $0.typ == "CRP" })?.wert
         let bsgWert = laborwerte.first(where: { $0.typ == "BSG" })?.wert
 
+        let gelenke = letzterGelenkStatus
+        let tjc = DAS28Rechner.tjc28(gelenke)
+        let sjc = DAS28Rechner.sjc28(gelenke)
+        let hatGelenke = !gelenke.isEmpty
+
         VStack(alignment: .leading, spacing: 12) {
             Label("DAS28 Aktivitätsscore", systemImage: "chart.bar.fill")
                 .font(.headline).foregroundStyle(.purple)
             Divider()
 
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 scoreBox(label: "HAQ-DI", wert: String(format: "%.2f", letzterHAQ.haqScore), farbe: .purple)
+                if hatGelenke {
+                    scoreBox(label: "TJC", wert: "\(tjc)", farbe: .red)
+                    scoreBox(label: "SJC", wert: "\(sjc)", farbe: .blue)
+                }
                 if let crp = crpWert {
-                    let score = DAS28Rechner.das28crp(
-                        tjc: 0, sjc: 0, crp: crp, gh: letzterHAQ.globalBewertung)
+                    let score = DAS28Rechner.das28crp(tjc: tjc, sjc: sjc, crp: crp, gh: letzterHAQ.globalBewertung)
                     scoreBox(label: "DAS28-CRP", wert: String(format: "%.1f", score),
                              farbe: DAS28Rechner.aktivitaetsFarbe(score))
                     Text(DAS28Rechner.aktivitaetsText(score))
@@ -102,13 +116,19 @@ struct HAQView: View {
                         .foregroundStyle(DAS28Rechner.aktivitaetsFarbe(score))
                 }
                 if let bsg = bsgWert, crpWert == nil {
-                    let score = DAS28Rechner.das28esr(
-                        tjc: 0, sjc: 0, bsg: bsg, gh: letzterHAQ.globalBewertung)
+                    let score = DAS28Rechner.das28esr(tjc: tjc, sjc: sjc, bsg: bsg, gh: letzterHAQ.globalBewertung)
                     scoreBox(label: "DAS28-BSG", wert: String(format: "%.1f", score),
                              farbe: DAS28Rechner.aktivitaetsFarbe(score))
+                    Text(DAS28Rechner.aktivitaetsText(score))
+                        .font(.caption.bold())
+                        .foregroundStyle(DAS28Rechner.aktivitaetsFarbe(score))
                 }
             }
 
+            if !hatGelenke {
+                Label("Gelenkstatus erfassen für TJC/SJC", systemImage: "hand.point.up.left")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             if crpWert == nil && bsgWert == nil {
                 Label("CRP oder BSG eintragen für vollständigen DAS28", systemImage: "info.circle")
                     .font(.caption).foregroundStyle(.secondary)
