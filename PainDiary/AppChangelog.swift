@@ -17,6 +17,14 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "21", aenderungen: [
+        WhatsNewAenderung(icon: "hand.point.up.left.fill", farbe: .purple,
+                          titel: "Gelenke optional erfassen",
+                          beschreibung: "Der Gelenkstatus kann jetzt optional im Wizard aktiviert werden – genau wie der Schub-Modus. Ein Haken reicht, und der Wizard fügt automatisch den Gelenkstatus-Schritt ein. Ohne Haken bleibt der Ablauf unverändert kurz."),
+        WhatsNewAenderung(icon: "syringe.fill", farbe: .teal,
+                          titel: "Impfpass im Profil",
+                          beschreibung: "Der Impfpass ist jetzt unter Profil → Gesundheit zu finden – neben Medikamenten, Rheuma & Gelenke und MIDAS. Einträge lassen sich jetzt per Wischen bearbeiten und löschen."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "20", aenderungen: [
         WhatsNewAenderung(icon: "figure.arms.open", farbe: .purple,
                           titel: "Rheuma & Gelenke",
