@@ -1,5 +1,4 @@
 import SwiftUI
-import ContactsUI
 import Contacts
 
 #if os(iOS)
@@ -11,82 +10,132 @@ struct KontaktDaten {
     let adresse: String
 }
 
-// CNContactPickerViewController must be presented natively (not wrapped in a SwiftUI sheet)
-// otherwise its internal search bar stops working. This representable embeds a transparent
-// UIViewController that presents the picker directly when isPresented becomes true.
-struct KontaktPickerView: UIViewControllerRepresentable {
-    @Binding var isPresented: Bool
+struct KontaktPickerView: View {
+    @Environment(\.dismiss) private var dismiss
     let onFertig: ([KontaktDaten]) -> Void
 
-    func makeUIViewController(context: Context) -> UIViewController {
-        let vc = UIViewController()
-        vc.view.backgroundColor = .clear
-        return vc
-    }
+    @State private var kontakte: [CNContact] = []
+    @State private var suche = ""
+    @State private var laedt = true
+    @State private var keinZugriff = false
 
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        if isPresented && context.coordinator.pickerVC == nil {
-            // Present from the window's topmost VC — child VCs embedded via .background()
-            // can't reliably host modal presentations (breaks CNContactPickerViewController search)
-            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
-            var top = root
-            while let next = top.presentedViewController { top = next }
-
-            let picker = CNContactPickerViewController()
-            picker.delegate = context.coordinator
-            context.coordinator.pickerVC = picker
-            top.present(picker, animated: true)
-        } else if !isPresented, let picker = context.coordinator.pickerVC {
-            picker.dismiss(animated: true)
-            context.coordinator.pickerVC = nil
+    private var gefilterteKontakte: [CNContact] {
+        guard !suche.isEmpty else { return kontakte }
+        let s = suche.lowercased()
+        return kontakte.filter {
+            $0.givenName.lowercased().contains(s) ||
+            $0.familyName.lowercased().contains(s) ||
+            $0.organizationName.lowercased().contains(s)
         }
     }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(isPresented: $isPresented, onFertig: onFertig)
-    }
-
-    class Coordinator: NSObject, CNContactPickerDelegate {
-        @Binding var isPresented: Bool
-        let onFertig: ([KontaktDaten]) -> Void
-        var pickerVC: CNContactPickerViewController?
-
-        init(isPresented: Binding<Bool>, onFertig: @escaping ([KontaktDaten]) -> Void) {
-            _isPresented = isPresented
-            self.onFertig = onFertig
-        }
-
-        func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
-            let daten = contacts.compactMap { kontakt -> KontaktDaten? in
-                let personName = [kontakt.givenName, kontakt.familyName]
-                    .filter { !$0.isEmpty }.joined(separator: " ")
-                let praxis = kontakt.organizationName
-                guard !personName.isEmpty || !praxis.isEmpty else { return nil }
-
-                let phone = kontakt.phoneNumbers.first?.value.stringValue ?? ""
-                let email = kontakt.emailAddresses.first?.value as String? ?? ""
-
-                let adresse: String
-                if let pa = kontakt.postalAddresses.first?.value {
-                    let teile = [pa.street, [pa.postalCode, pa.city].filter { !$0.isEmpty }.joined(separator: " ")]
-                        .filter { !$0.isEmpty }
-                    adresse = teile.joined(separator: ", ")
+    var body: some View {
+        NavigationStack {
+            Group {
+                if laedt {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if keinZugriff {
+                    ContentUnavailableView(
+                        "Kein Zugriff auf Kontakte",
+                        systemImage: "person.crop.circle.badge.xmark",
+                        description: Text("Erlaube PainDiary den Zugriff auf Kontakte unter Einstellungen → Datenschutz.")
+                    )
                 } else {
-                    adresse = ""
+                    List(gefilterteKontakte, id: \.identifier) { kontakt in
+                        Button {
+                            onFertig([toDaten(kontakt)])
+                            dismiss()
+                        } label: {
+                            kontaktZeile(kontakt)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listStyle(.plain)
                 }
-
-                return KontaktDaten(name: personName, praxis: praxis, phone: phone, email: email, adresse: adresse)
             }
-            onFertig(daten)
-            pickerVC = nil
-            isPresented = false
+            .searchable(text: $suche,
+                        placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: "Suchen…")
+            .navigationTitle("Kontakte")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+            }
+        }
+        .task { await ladeKontakte() }
+    }
+
+    @ViewBuilder
+    private func kontaktZeile(_ k: CNContact) -> some View {
+        let personName = [k.givenName, k.familyName].filter { !$0.isEmpty }.joined(separator: " ")
+        let org = k.organizationName
+        let anzeigeName = personName.isEmpty ? org : personName
+        let telefon = k.phoneNumbers.first?.value.stringValue ?? ""
+
+        VStack(alignment: .leading, spacing: 2) {
+            Text(anzeigeName)
+                .foregroundStyle(.primary)
+            if !personName.isEmpty && !org.isEmpty {
+                Text(org)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if !telefon.isEmpty {
+                Text(telefon)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func ladeKontakte() async {
+        let store = CNContactStore()
+        let status = CNContactStore.authorizationStatus(for: .contacts)
+        if status == .notDetermined {
+            guard (try? await store.requestAccess(for: .contacts)) == true else {
+                keinZugriff = true; laedt = false; return
+            }
+        } else if status != .authorized {
+            keinZugriff = true; laedt = false; return
         }
 
-        func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
-            pickerVC = nil
-            isPresented = false
+        let keys: [CNKeyDescriptor] = [
+            CNContactGivenNameKey as CNKeyDescriptor,
+            CNContactFamilyNameKey as CNKeyDescriptor,
+            CNContactOrganizationNameKey as CNKeyDescriptor,
+            CNContactPhoneNumbersKey as CNKeyDescriptor,
+            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactPostalAddressesKey as CNKeyDescriptor,
+        ]
+        let request = CNContactFetchRequest(keysToFetch: keys)
+        request.sortOrder = .userDefault
+
+        var result: [CNContact] = []
+        try? store.enumerateContacts(with: request) { contact, _ in
+            guard !contact.givenName.isEmpty || !contact.familyName.isEmpty || !contact.organizationName.isEmpty else { return }
+            result.append(contact)
         }
+        kontakte = result
+        laedt = false
+    }
+
+    private func toDaten(_ k: CNContact) -> KontaktDaten {
+        let name = [k.givenName, k.familyName].filter { !$0.isEmpty }.joined(separator: " ")
+        let phone = k.phoneNumbers.first?.value.stringValue ?? ""
+        let email = k.emailAddresses.first?.value as String? ?? ""
+        let adresse: String
+        if let pa = k.postalAddresses.first?.value {
+            let strasse = [pa.street, ""].filter { !$0.isEmpty }.first ?? ""
+            let ort = [pa.postalCode, pa.city].filter { !$0.isEmpty }.joined(separator: " ")
+            adresse = [strasse, ort].filter { !$0.isEmpty }.joined(separator: ", ")
+        } else {
+            adresse = ""
+        }
+        return KontaktDaten(name: name, praxis: k.organizationName, phone: phone, email: email, adresse: adresse)
     }
 }
 #endif

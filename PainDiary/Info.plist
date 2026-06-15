@@ -33,6 +33,8 @@
 	<string>PainDiary schreibt keine Daten in die Gesundheits-App.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Wird benötigt, um deinen Körper einmalig für den Körper-Picker zu scannen.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Um Ärzte und Notfallkontakte direkt aus deinem Adressbuch hinzuzufügen.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Wetterbedingungen zum Zeitpunkt deines Schmerzeintrags erfassen</string>
 

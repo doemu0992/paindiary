@@ -110,16 +110,20 @@ private struct ProfilInhaltView: View {
             }
         }
 #if os(iOS)
-        .background(KontaktPickerView(isPresented: $adressbuchAnzeigen) { daten in
-            for d in daten {
-                profil.notfallkontakte = (profil.notfallkontakte ?? []) + [NotfallKontakt(name: d.name, phone: d.phone, beziehung: "")]
+        .sheet(isPresented: $adressbuchAnzeigen) {
+            KontaktPickerView { daten in
+                for d in daten {
+                    profil.notfallkontakte = (profil.notfallkontakte ?? []) + [NotfallKontakt(name: d.name, phone: d.phone, beziehung: "")]
+                }
             }
-        })
-        .background(KontaktPickerView(isPresented: $adressbuchArztAnzeigen) { daten in
-            for d in daten {
-                profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: d.name, praxis: d.praxis, fachgebiet: "", adresse: d.adresse, telefon: d.phone, email: d.email)]
+        }
+        .sheet(isPresented: $adressbuchArztAnzeigen) {
+            KontaktPickerView { daten in
+                for d in daten {
+                    profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: d.name, praxis: d.praxis, fachgebiet: "", adresse: d.adresse, telefon: d.phone, email: d.email)]
+                }
             }
-        })
+        }
         .sheet(isPresented: $arztSucheAnzeigen) {
             ArztSucheSheet { praxis, adresse, telefon, name in
                 profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: name, praxis: praxis, fachgebiet: "", adresse: adresse, telefon: telefon, email: "")]
