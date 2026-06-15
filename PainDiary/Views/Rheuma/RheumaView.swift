@@ -6,6 +6,10 @@ struct RheumaView: View {
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
     @Query(sort: \Arztbesuch.datum, order: .reverse) private var besuche: [Arztbesuch]
     @Query(sort: \Laborwert.datum, order: .reverse) private var laborwerte: [Laborwert]
+    @Query(sort: \FACITEintrag.datum, order: .reverse) private var facitEintraege: [FACITEintrag]
+    @Query(sort: \BiologikaInjektion.datum, order: .reverse) private var injektionen: [BiologikaInjektion]
+    @Query(sort: \Remissionsphase.beginn, order: .reverse) private var remissionsphasen: [Remissionsphase]
+    @Query(sort: \Diagnose.bezeichnung) private var diagnosen: [Diagnose]
 
     var body: some View {
         List {
@@ -17,7 +21,7 @@ struct RheumaView: View {
                 .listRowBackground(Color.clear)
             }
 
-            Section("Verlauf & Scores") {
+            Section("Scores & Verlauf") {
                 NavigationLink(destination: HAQView()) {
                     Label {
                         VStack(alignment: .leading, spacing: 2) {
@@ -28,8 +32,20 @@ struct RheumaView: View {
                             }
                         }
                     } icon: {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .foregroundStyle(.purple)
+                        Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(.purple)
+                    }
+                }
+                NavigationLink(destination: FACITView()) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("FACIT-Erschöpfung")
+                            if let letzter = facitEintraege.first {
+                                Text("Score: \(letzter.facitScore) – \(letzter.erschoepfungsgradText)")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    } icon: {
+                        Image(systemName: "battery.25percent").foregroundStyle(.orange)
                     }
                 }
                 NavigationLink(destination: LaborwerteView()) {
@@ -42,9 +58,69 @@ struct RheumaView: View {
                             }
                         }
                     } icon: {
-                        Image(systemName: "testtube.2")
-                            .foregroundStyle(.blue)
+                        Image(systemName: "testtube.2").foregroundStyle(.blue)
                     }
+                }
+                NavigationLink(destination: RemissionsView()) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Remissionsphasen")
+                            if let aktive = remissionsphasen.first(where: { $0.istAktiv }) {
+                                Text("Aktiv seit \(aktive.dauerText)")
+                                    .font(.caption).foregroundStyle(.green)
+                            }
+                        }
+                    } icon: {
+                        Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+                    }
+                }
+            }
+
+            Section("Diagnosen & Notfall") {
+                NavigationLink(destination: DiagnoseView()) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Diagnosen")
+                            let aktive = diagnosen.filter { $0.aktiv }
+                            if !aktive.isEmpty {
+                                Text(aktive.map(\.bezeichnung).prefix(2).joined(separator: ", "))
+                                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        }
+                    } icon: {
+                        Image(systemName: "cross.case.fill").foregroundStyle(.red)
+                    }
+                }
+                NavigationLink(destination: NotfallausweisView()) {
+                    Label("Notfallausweis", systemImage: "staroflife.fill")
+                        .foregroundStyle(.primary)
+                }
+            }
+
+            Section("Medikamente & Therapie") {
+                NavigationLink(destination: BiologikaView()) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Biologika / Injektionen")
+                            if let naechste = injektionen.compactMap(\.naechsteDosis).filter({ $0 > Date() }).min() {
+                                Text("Nächste: \(naechste.formatted(date: .abbreviated, time: .omitted))")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            } else if let letzte = injektionen.first {
+                                Text("Letzte: \(letzte.praeparat)")
+                                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        }
+                    } icon: {
+                        Image(systemName: "syringe.fill").foregroundStyle(.indigo)
+                    }
+                }
+                NavigationLink(destination: KortisonView()) {
+                    Label("Kortison-Tagebuch", systemImage: "pills.fill")
+                        .foregroundStyle(.primary)
+                }
+                NavigationLink(destination: PhysioView()) {
+                    Label("Physiotherapie", systemImage: "figure.walk.motion")
+                        .foregroundStyle(.primary)
                 }
             }
 
@@ -59,8 +135,7 @@ struct RheumaView: View {
                             }
                         }
                     } icon: {
-                        Image(systemName: "stethoscope")
-                            .foregroundStyle(.teal)
+                        Image(systemName: "stethoscope").foregroundStyle(.teal)
                     }
                 }
                 NavigationLink(destination: ArztbriefView()) {
