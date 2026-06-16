@@ -546,6 +546,15 @@ struct SchmerzForm: View {
             } else {
                 wetter.laden()
             }
+
+            let heute = Calendar.current.startOfDay(for: Date())
+            let descriptor = FetchDescriptor<PainEntry>(
+                predicate: #Predicate { $0.datum >= heute },
+                sortBy: [SortDescriptor(\.datum, order: .reverse)]
+            )
+            if let letzter = try? modelContext.fetch(descriptor).first {
+                schlafStunden = letzter.schlafStunden
+            }
         }
     }
 
