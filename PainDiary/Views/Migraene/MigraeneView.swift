@@ -217,6 +217,7 @@ struct MigraeneAnfallForm: View {
     var vorDatum: Date = Date()
     var vorStaerke: Int = 6
     var vorBegleit: Set<String> = []
+    var onGespeichert: (() -> Void)? = nil
 
     @State private var datum = Date()
     @State private var dauerStunden = 0
@@ -509,6 +510,7 @@ struct MigraeneAnfallForm: View {
                 NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: akutmedikament)
             }
         }
+        onGespeichert?()
         dismiss()
     }
 }

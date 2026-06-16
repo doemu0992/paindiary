@@ -34,6 +34,9 @@ private struct ProfilInhaltView: View {
     @Query(sort: \Allergie.schwere) private var alleAllergien: [Allergie]
     @Query(sort: \Arztbesuch.datum, order: .reverse) private var alleArztbesuche: [Arztbesuch]
     @Query(sort: \Laborwert.datum, order: .reverse) private var alleLaborwerte: [Laborwert]
+    @AppStorage("migraeneModulAktiv") private var migraeneModulAktiv = false
+    @AppStorage("rheumaModulAktiv") private var rheumaModulAktiv = false
+    @AppStorage("diabetesModulAktiv") private var diabetesModulAktiv = false
     @State private var stammdatenAnzeigen = false
 
     var body: some View {
@@ -41,6 +44,7 @@ private struct ProfilInhaltView: View {
             heroHeader
             gesundheitSektion
             erkrankungenSektion
+            moduleSektion
             notfallSektion
             einstellungen
         }
@@ -278,6 +282,50 @@ private struct ProfilInhaltView: View {
                 Label("Diabetes", systemImage: "drop.fill")
                     .foregroundStyle(.orange)
             }
+        }
+    }
+
+    // MARK: - Module
+
+    private var moduleSektion: some View {
+        Section {
+            Toggle(isOn: $migraeneModulAktiv) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Migräne")
+                        Text("Anfälle separat erfassen & im Verlauf anzeigen")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "brain.head.profile").foregroundStyle(.purple)
+                }
+            }
+            Toggle(isOn: $rheumaModulAktiv) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Rheuma & Gelenke")
+                        Text("Gelenkstatus & Scores beim Eintrag")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "figure.arms.open").foregroundStyle(.teal)
+                }
+            }
+            Toggle(isOn: $diabetesModulAktiv) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Diabetes")
+                        Text("Blutzucker & HbA1c tracken")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "drop.fill").foregroundStyle(.orange)
+                }
+            }
+        } header: {
+            Text("Meine Module")
+        } footer: {
+            Text("Aktivierte Module erscheinen bei der Eintragserfassung als Auswahlmöglichkeit.")
         }
     }
 

@@ -7,6 +7,7 @@ struct ContentView: View {
     @AppStorage("akzentFarbe") private var akzentFarbe = "blau"
     @AppStorage("biometrischesLockAktiv") private var biometriAktivCache = false
     @AppStorage("whatsNewGezeigteVersion") private var whatsNewGezeigteVersion = ""
+    @AppStorage("migraeneModulAktiv") private var migraeneModulAktiv = false
     @State private var ausgewaehlterTab = 0
     @State private var neuerEintragAnzeigen = false
     @State private var entsperrt = false
@@ -168,7 +169,11 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $neuerEintragAnzeigen) {
-            AddEntryView()
+            if migraeneModulAktiv {
+                EintragAuswahlView()
+            } else {
+                AddEntryView()
+            }
         }
     }
 
