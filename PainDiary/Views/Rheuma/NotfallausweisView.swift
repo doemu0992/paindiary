@@ -7,6 +7,10 @@ struct NotfallausweisView: View {
     @Query private var medikamente: [Dauermedikation]
     @Query private var profile: [Benutzerprofil]
 
+    @State private var pdfURL: URL? = nil
+    @State private var zeigePDFVorschau = false
+    @State private var istAmExportieren = false
+
     private var profil: Benutzerprofil? { profile.first }
     private var aerzte: [ArztKontakt] { profil?.aerzte ?? [] }
     private var notfallKontakte: [NotfallKontakt] { profil?.notfallkontakte ?? [] }
@@ -62,12 +66,44 @@ struct NotfallausweisView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                ShareLink(item: ausweisText) {
-                    Label("Teilen", systemImage: "square.and.arrow.up")
+                if istAmExportieren {
+                    ProgressView()
+                } else {
+                    Button {
+                        exportierenAlsPDF()
+                    } label: {
+                        Label("PDF", systemImage: "doc.fill")
+                    }
                 }
             }
         }
         .background(Color(.systemGroupedBackground))
+#if os(iOS)
+        .sheet(isPresented: $zeigePDFVorschau) {
+            if let url = pdfURL {
+                PDFPreviewView(url: url)
+            }
+        }
+#endif
+    }
+
+    // MARK: - PDF Export
+
+    private func exportierenAlsPDF() {
+        istAmExportieren = true
+        PDFExportService.shared.erstelleNotfallausweisAsync(
+            profil: profil,
+            diagnosen: diagnosen,
+            allergien: Array(allergien),
+            medikamente: Array(medikamente),
+            istImmunSuppr: zeigeImmunWarnung
+        ) { url in
+            istAmExportieren = false
+            if let url {
+                pdfURL = url
+                zeigePDFVorschau = true
+            }
+        }
     }
 
     // MARK: - Karten

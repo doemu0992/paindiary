@@ -202,6 +202,12 @@ struct PDFLaborwert {
     }
 }
 
+struct PDFNotfallAllergie {
+    var substanz: String
+    var reaktion: String
+    var schwere: String
+}
+
 struct PDFErnaehrungsTag {
     let datum: Date
     let koffeinTassen: Int
@@ -1514,6 +1520,210 @@ class PDFExportService: @unchecked Sendable {
                                      ernaehrung: [], optionen: optionen)
             Task { @MainActor in completion(url) }
         }
+    }
+
+    // MARK: - Notfallausweis PDF
+
+    @MainActor
+    func erstelleNotfallausweisAsync(
+        profil: Benutzerprofil?,
+        diagnosen: [Diagnose],
+        allergien: [Allergie],
+        medikamente: [Dauermedikation],
+        istImmunSuppr: Bool,
+        completion: @escaping @MainActor @Sendable (URL?) -> Void
+    ) {
+        var patient = PDFPatientenDaten.aus(profil: profil)
+        let diagnosenTexte = diagnosen.filter { $0.aktiv }.map(\.bezeichnung).filter { !$0.isEmpty }
+        let existing = Set(patient.diagnosen)
+        patient.diagnosen = patient.diagnosen + diagnosenTexte.filter { !existing.contains($0) }
+        let pdfAllergien = allergien.map { PDFNotfallAllergie(substanz: $0.substanz, reaktion: $0.reaktion, schwere: $0.schwere) }
+        let pdfMeds = medikamente.filter { $0.aktiv }.map(PDFMedikament.aus)
+
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            let url = self.renderNotfallausweis(patient: patient, allergien: pdfAllergien,
+                                                medikamente: pdfMeds, istImmunSuppr: istImmunSuppr)
+            Task { @MainActor in completion(url) }
+        }
+    }
+
+    private func renderNotfallausweis(
+        patient: PDFPatientenDaten,
+        allergien: [PDFNotfallAllergie],
+        medikamente: [PDFMedikament],
+        istImmunSuppr: Bool
+    ) -> URL? {
+        let dateiname = "Notfallausweis_\(fmt(Date())).pdf"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(dateiname)
+        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: W, height: H))
+        var renderFehler: Error? = nil
+        UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
+            do {
+                try renderer.writePDF(to: url) { ctx in
+                    ctx.beginPage()
+                    notfallausweisSeite(ctx: ctx.cgContext, patient: patient, allergien: allergien,
+                                        medikamente: medikamente, istImmunSuppr: istImmunSuppr)
+                }
+            } catch { renderFehler = error }
+        }
+        return renderFehler == nil ? url : nil
+    }
+
+    private func notfallausweisSeite(ctx: CGContext, patient: PDFPatientenDaten,
+                                      allergien: [PDFNotfallAllergie],
+                                      medikamente: [PDFMedikament],
+                                      istImmunSuppr: Bool) {
+        let rot = UIColor(red: 0.82, green: 0.08, blue: 0.08, alpha: 1)
+
+        // Red header band
+        ctx.setFillColor(rot.cgColor)
+        ctx.fill(CGRect(x: 0, y: 0, width: W, height: 130))
+
+        draw("MEDIZINISCHER NOTFALLAUSWEIS", at: CGPoint(x: rand, y: 18),
+             font: .systemFont(ofSize: 17, weight: .bold), color: .white)
+        draw("MEDICAL EMERGENCY CARD", at: CGPoint(x: rand, y: 42),
+             font: .systemFont(ofSize: 10), color: UIColor.white.withAlphaComponent(0.72))
+
+        var hy: CGFloat = 68
+        let name = patient.vollerName
+        if !name.isEmpty {
+            draw(name, at: CGPoint(x: rand, y: hy),
+                 font: .systemFont(ofSize: 15, weight: .semibold), color: .white)
+            hy += 22
+        }
+        var headerParts: [String] = []
+        if let geb = patient.geburtsdatum { headerParts.append("Geb. \(fmt(geb))") }
+        if !patient.blutgruppe.isEmpty && patient.blutgruppe != "Unbekannt" {
+            headerParts.append("Blutgruppe \(patient.blutgruppe)")
+        }
+        if !patient.versicherung.isEmpty { headerParts.append(patient.versicherung) }
+        if !patient.versicherungsNummer.isEmpty { headerParts.append("Nr. \(patient.versicherungsNummer)") }
+        if !headerParts.isEmpty {
+            draw(headerParts.joined(separator: "   ·   "), at: CGPoint(x: rand, y: hy),
+                 font: .systemFont(ofSize: 10), color: UIColor.white.withAlphaComponent(0.85))
+        }
+
+        var y: CGFloat = 146
+
+        // Immunsuppressiva warning
+        if istImmunSuppr {
+            let warn = UIColor(red: 0.88, green: 0.48, blue: 0.0, alpha: 1)
+            roundedRect(ctx: ctx, rect: CGRect(x: rand, y: y, width: iw, height: 38),
+                        corner: 6, fill: warn.withAlphaComponent(0.08), stroke: warn.withAlphaComponent(0.45))
+            draw("⚠  IMMUNSUPPRESSIVA — Kein lebend-attenuierter Impfstoff verabreichen (MMR, Varizellen, Gelbfieber)",
+                 at: CGPoint(x: rand + 10, y: y + 13),
+                 font: .systemFont(ofSize: 9.5, weight: .semibold), color: warn)
+            y += 50
+        }
+
+        // Two-column layout: left=Diagnosen, right=Allergien
+        let lw = iw * 0.55 - 6
+        let rx = rand + iw * 0.55 + 6
+        let rw = iw * 0.45 - 6
+        var ly = y
+        var ry = y
+
+        if !patient.diagnosen.isEmpty {
+            draw("DIAGNOSEN", at: CGPoint(x: rand, y: ly),
+                 font: .systemFont(ofSize: 9, weight: .bold), color: UIColor(red: 0.55, green: 0.0, blue: 0.0, alpha: 1))
+            ly += 14
+            for d in patient.diagnosen.prefix(10) {
+                drawClamped("• \(d)", at: CGPoint(x: rand + 4, y: ly),
+                            font: .systemFont(ofSize: 10), color: .label, maxW: lw - 8)
+                ly += 14
+            }
+            ly += 6
+        }
+
+        if !allergien.isEmpty {
+            draw("ALLERGIEN / UNVERTRÄGLICHKEITEN", at: CGPoint(x: rx, y: ry),
+                 font: .systemFont(ofSize: 9, weight: .bold), color: UIColor(red: 0.72, green: 0.28, blue: 0.0, alpha: 1))
+            ry += 14
+            for a in allergien.prefix(8) {
+                let marker: String
+                let farbe: UIColor
+                switch a.schwere {
+                case "Lebensbedrohlich": marker = " !!!"; farbe = .systemRed
+                case "Schwer":          marker = " !!";  farbe = .systemOrange
+                case "Mittel":          marker = " !";   farbe = UIColor(red: 0.65, green: 0.45, blue: 0.0, alpha: 1)
+                default:                marker = "";     farbe = .label
+                }
+                drawClamped("• \(a.substanz)\(marker)", at: CGPoint(x: rx + 4, y: ry),
+                            font: .systemFont(ofSize: 10, weight: marker.isEmpty ? .regular : .semibold),
+                            color: farbe, maxW: rw - 8)
+                ry += 14
+                if !a.reaktion.isEmpty {
+                    drawClamped("  \(a.reaktion)", at: CGPoint(x: rx + 4, y: ry),
+                                font: .systemFont(ofSize: 8.5), color: .secondaryLabel, maxW: rw - 8)
+                    ry += 12
+                }
+            }
+            ry += 6
+        }
+
+        y = max(ly, ry)
+
+        // Dauermedikation
+        if !medikamente.isEmpty {
+            trennlinie(ctx: ctx, y: y - 2, alpha: 0.18)
+            y += 6
+            draw("DAUERMEDIKATION", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 9, weight: .bold), color: UIColor(red: 0.1, green: 0.38, blue: 0.74, alpha: 1))
+            y += 14
+            for med in medikamente.prefix(12) {
+                var zeile = med.name
+                if !med.dosierung.isEmpty { zeile += " \(med.dosierung)" }
+                if !med.frequenz.isEmpty { zeile += " – \(med.frequenz)" }
+                drawClamped("• \(zeile)", at: CGPoint(x: rand + 4, y: y),
+                            font: .systemFont(ofSize: 10), color: .label, maxW: iw - 8)
+                y += 14
+            }
+            y += 6
+        }
+
+        // Ärzte
+        if !patient.aerzte.isEmpty {
+            trennlinie(ctx: ctx, y: y - 2, alpha: 0.18)
+            y += 6
+            draw("BEHANDELNDE ÄRZTE", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 9, weight: .bold), color: blau)
+            y += 14
+            for arzt in patient.aerzte.prefix(6) {
+                var zeile = arzt.name.isEmpty ? arzt.fachgebiet : arzt.name
+                if arzt.istHausarzt { zeile += " (Hausarzt)" }
+                else if !arzt.fachgebiet.isEmpty { zeile += " (\(arzt.fachgebiet))" }
+                if !arzt.telefon.isEmpty { zeile += "  ·  Tel. \(arzt.telefon)" }
+                drawClamped("• \(zeile)", at: CGPoint(x: rand + 4, y: y),
+                            font: .systemFont(ofSize: 10), color: .label, maxW: iw - 8)
+                y += 14
+            }
+            y += 6
+        }
+
+        // Notfallkontakte
+        if !patient.notfallkontakte.isEmpty {
+            trennlinie(ctx: ctx, y: y - 2, alpha: 0.18)
+            y += 6
+            draw("NOTFALLKONTAKTE", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 9, weight: .bold), color: UIColor(red: 0.0, green: 0.52, blue: 0.22, alpha: 1))
+            y += 14
+            for k in patient.notfallkontakte.prefix(5) {
+                var zeile = k.name
+                if !k.beziehung.isEmpty { zeile += " (\(k.beziehung))" }
+                if !k.phone.isEmpty { zeile += "  —  Tel. \(k.phone)" }
+                drawClamped("• \(zeile)", at: CGPoint(x: rand + 4, y: y),
+                            font: .systemFont(ofSize: 10), color: .label, maxW: iw - 8)
+                y += 14
+            }
+        }
+
+        // Footer
+        trennlinie(ctx: ctx, y: H - 50, alpha: 0.2)
+        draw("Erstellt mit PainDiary am \(fmtLang(Date()))",
+             at: CGPoint(x: rand, y: H - 40),
+             font: .systemFont(ofSize: 8), color: .tertiaryLabel)
+        drawRight("Vertraulich – Nur für medizinisches Personal", rightX: W - rand, y: H - 40,
+                  font: .systemFont(ofSize: 8), color: .tertiaryLabel)
     }
 
     // MARK: - Drawing helpers

@@ -25,20 +25,6 @@ struct ProfilView: View {
     }
 }
 
-// MARK: - Sheet enum
-
-private enum ProfilFormular: Identifiable {
-    case arzt(ArztKontakt?)
-    case notfallKontakt(NotfallKontakt?)
-
-    var id: String {
-        switch self {
-        case .arzt(let a):           return a.map { "arzt-\(ObjectIdentifier($0))" } ?? "arzt-new"
-        case .notfallKontakt(let k): return k.map { "nk-\(ObjectIdentifier($0))" } ?? "nk-new"
-        }
-    }
-}
-
 // MARK: - Content
 
 private struct ProfilInhaltView: View {
@@ -46,71 +32,18 @@ private struct ProfilInhaltView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
     @Query(sort: \Allergie.schwere) private var alleAllergien: [Allergie]
-    @State private var aktivesFormular: ProfilFormular? = nil
     @State private var stammdatenAnzeigen = false
-#if os(iOS)
-    @State private var adressbuchAnzeigen = false
-    @State private var adressbuchArztAnzeigen = false
-    @State private var arztSucheAnzeigen = false
-#endif
 
     var body: some View {
         List {
             heroHeader
             gesundheitSektion
-            aerzte
-            notfallkontakte
             einstellungen
         }
         .navigationTitle("Profil")
         .sheet(isPresented: $stammdatenAnzeigen) {
             StammdatenSheet(profil: profil)
         }
-        .sheet(item: $aktivesFormular) { formular in
-            switch formular {
-            case .arzt(let existing):
-                ArztFormView(existing: existing) { name, praxis, fachgebiet, adresse, telefon, email, istHausarzt, notizen in
-                    if let a = existing {
-                        a.name = name; a.praxis = praxis; a.fachgebiet = fachgebiet; a.adresse = adresse
-                        a.telefon = telefon; a.email = email; a.istHausarzt = istHausarzt; a.notizen = notizen
-                    } else {
-                        profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: name, praxis: praxis,
-                                                         fachgebiet: fachgebiet, adresse: adresse,
-                                                         telefon: telefon, email: email,
-                                                         istHausarzt: istHausarzt, notizen: notizen)]
-                    }
-                }
-            case .notfallKontakt(let existing):
-                NotfallKontaktFormView(existing: existing) { name, phone, beziehung in
-                    if let k = existing {
-                        k.name = name; k.phone = phone; k.beziehung = beziehung
-                    } else {
-                        profil.notfallkontakte = (profil.notfallkontakte ?? []) + [NotfallKontakt(name: name, phone: phone, beziehung: beziehung)]
-                    }
-                }
-            }
-        }
-#if os(iOS)
-        .sheet(isPresented: $adressbuchAnzeigen) {
-            KontaktPickerView { daten in
-                for d in daten {
-                    profil.notfallkontakte = (profil.notfallkontakte ?? []) + [NotfallKontakt(name: d.name, phone: d.phone, beziehung: "")]
-                }
-            }
-        }
-        .sheet(isPresented: $adressbuchArztAnzeigen) {
-            KontaktPickerView { daten in
-                for d in daten {
-                    profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: d.name, praxis: d.praxis, fachgebiet: "", adresse: d.adresse, telefon: d.phone, email: d.email)]
-                }
-            }
-        }
-        .sheet(isPresented: $arztSucheAnzeigen) {
-            ArztSucheSheet { praxis, adresse, telefon, name in
-                profil.aerzte = (profil.aerzte ?? []) + [ArztKontakt(name: name, praxis: praxis, fachgebiet: "", adresse: adresse, telefon: telefon, email: "")]
-            }
-        }
-#endif
         .onAppear {
             if profil.geschlecht == "Nicht angegeben" { profil.geschlecht = "" }
             if profil.blutgruppe == "Unbekannt" { profil.blutgruppe = "" }
@@ -234,6 +167,34 @@ private struct ProfilInhaltView: View {
                 Label("Notfallausweis", systemImage: "staroflife.fill")
                     .foregroundStyle(.primary)
             }
+            NavigationLink(destination: AerzteView(profil: profil)) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Ärzte")
+                        let aerzteListe = profil.aerzte ?? []
+                        if !aerzteListe.isEmpty {
+                            Text(aerzteListe.prefix(2).map { $0.name.isEmpty ? $0.praxis : $0.name }.joined(separator: ", "))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "stethoscope").foregroundStyle(.blue)
+                }
+            }
+            NavigationLink(destination: NotfallkontakteView(profil: profil)) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Notfallkontakte")
+                        let kontaktListe = profil.notfallkontakte ?? []
+                        if !kontaktListe.isEmpty {
+                            Text(kontaktListe.prefix(2).map(\.name).joined(separator: ", "))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "phone.fill").foregroundStyle(.green)
+                }
+            }
             NavigationLink(destination: MedikamenteView()) {
                 Label("Medikamente", systemImage: "pill.fill")
             }
@@ -250,89 +211,6 @@ private struct ProfilInhaltView: View {
                 Label("Zyklus-Tracking", systemImage: "drop.fill")
             }
         }
-    }
-
-    // MARK: - Ärzte
-
-    private var aerzte: some View {
-        Section {
-            ForEach(profil.aerzte ?? []) { a in
-                Button { aktivesFormular = .arzt(a) } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack {
-                                Text(a.name.isEmpty ? a.praxis : a.name).font(.headline).foregroundStyle(.primary)
-                                if a.istHausarzt {
-                                    Label("Hausarzt", systemImage: "staroflife.fill")
-                                        .font(.caption).foregroundStyle(.blue)
-                                }
-                            }
-                            if !a.name.isEmpty && !a.praxis.isEmpty { Text(a.praxis).font(.subheadline).foregroundStyle(.secondary) }
-                            if !a.fachgebiet.isEmpty { Text(a.fachgebiet).font(.caption).foregroundStyle(.secondary) }
-                            if !a.adresse.isEmpty    { Text(a.adresse).font(.caption).foregroundStyle(.secondary) }
-                            if !a.telefon.isEmpty    { Label(a.telefon, systemImage: "phone").font(.caption).foregroundStyle(.secondary) }
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-            .onDelete { indexSet in
-                let liste = profil.aerzte ?? []
-                indexSet.map { liste[$0] }.forEach { modelContext.delete($0) }
-            }
-#if os(iOS)
-            Button {
-                arztSucheAnzeigen = true
-            } label: {
-                Label("Suchen", systemImage: "magnifyingglass")
-            }
-            Button {
-                adressbuchArztAnzeigen = true
-            } label: {
-                Label("Aus Adressbuch wählen", systemImage: "person.crop.circle.badge.plus")
-            }
-#endif
-            Button("Manuell hinzufügen") { aktivesFormular = .arzt(nil) }
-        } header: { Text("Ärzte") }
-    }
-
-    // MARK: - Notfallkontakte
-
-    private var notfallkontakte: some View {
-        Section {
-            ForEach(profil.notfallkontakte ?? []) { k in
-                HStack {
-                    Button { aktivesFormular = .notfallKontakt(k) } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(k.name).font(.headline).foregroundStyle(.primary)
-                            if !k.beziehung.isEmpty { Text(k.beziehung).font(.caption).foregroundStyle(.secondary) }
-                            if !k.phone.isEmpty     { Text(k.phone).font(.caption).foregroundStyle(.secondary) }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                    if !k.phone.isEmpty {
-                        Link(destination: URL(string: "tel:\(k.phone.filter { $0.isNumber || $0 == "+" })")!) {
-                            Image(systemName: "phone.circle.fill").font(.title2).foregroundStyle(.green)
-                        }
-                    }
-                }
-            }
-            .onDelete { indexSet in
-                let liste = profil.notfallkontakte ?? []
-                indexSet.map { liste[$0] }.forEach { modelContext.delete($0) }
-            }
-#if os(iOS)
-            Button {
-                adressbuchAnzeigen = true
-            } label: {
-                Label("Aus Adressbuch wählen", systemImage: "person.crop.circle.badge.plus")
-            }
-#endif
-            Button("Manuell hinzufügen") { aktivesFormular = .notfallKontakt(nil) }
-        } header: { Text("Notfallkontakte") }
     }
 
     // MARK: - Einstellungen
@@ -477,99 +355,6 @@ private struct StammdatenSheet: View {
 #endif
 }
 
-// MARK: - Form Views
-
-private struct ArztFormView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var name: String
-    @State private var praxis: String
-    @State private var fachgebiet: String
-    @State private var adresse: String
-    @State private var telefon: String
-    @State private var email: String
-    @State private var istHausarzt: Bool
-    @State private var notizen: String
-    private let isEdit: Bool
-    let onSave: (String, String, String, String, String, String, Bool, String) -> Void
-
-    init(existing: ArztKontakt? = nil, onSave: @escaping (String, String, String, String, String, String, Bool, String) -> Void) {
-        self.isEdit = existing != nil
-        self.onSave = onSave
-        _name        = State(initialValue: existing?.name ?? "")
-        _praxis      = State(initialValue: existing?.praxis ?? "")
-        _fachgebiet  = State(initialValue: existing?.fachgebiet ?? "")
-        _adresse     = State(initialValue: existing?.adresse ?? "")
-        _telefon     = State(initialValue: existing?.telefon ?? "")
-        _email       = State(initialValue: existing?.email ?? "")
-        _istHausarzt = State(initialValue: existing?.istHausarzt ?? false)
-        _notizen     = State(initialValue: existing?.notizen ?? "")
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Praxis / Klinik", text: $praxis)
-                    TextField("Name des Arztes", text: $name)
-                    TextField("Fachgebiet", text: $fachgebiet)
-                    TextField("Adresse", text: $adresse)
-                }
-                Section {
-                    TextField("Telefon", text: $telefon).keyboardType(.phonePad)
-                    TextField("E-Mail", text: $email).keyboardType(.emailAddress)
-                    Toggle("Hausarzt", isOn: $istHausarzt)
-                }
-                Section("Notizen") { TextEditor(text: $notizen).frame(minHeight: 60) }
-            }
-            .navigationTitle(isEdit ? "Arzt bearbeiten" : "Neuer Arzt")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { onSave(name, praxis, fachgebiet, adresse, telefon, email, istHausarzt, notizen); dismiss() }
-                        .disabled(name.isEmpty && praxis.isEmpty)
-                }
-            }
-        }
-    }
-}
-
-private struct NotfallKontaktFormView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var name: String
-    @State private var phone: String
-    @State private var beziehung: String
-    private let isEdit: Bool
-    let onSave: (String, String, String) -> Void
-
-    init(existing: NotfallKontakt? = nil, onSave: @escaping (String, String, String) -> Void) {
-        self.isEdit = existing != nil
-        self.onSave = onSave
-        _name      = State(initialValue: existing?.name ?? "")
-        _phone     = State(initialValue: existing?.phone ?? "")
-        _beziehung = State(initialValue: existing?.beziehung ?? "")
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Name", text: $name)
-                TextField("Telefon", text: $phone).keyboardType(.phonePad)
-                TextField("Beziehung (z.B. Partner)", text: $beziehung)
-            }
-            .navigationTitle(isEdit ? "Kontakt bearbeiten" : "Notfallkontakt")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { onSave(name, phone, beziehung); dismiss() }
-                        .disabled(name.isEmpty)
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Foto Zuschneiden
 
 #if os(iOS)
@@ -669,4 +454,3 @@ private struct FotoZuschneidenView: View {
     }
 }
 #endif
-
