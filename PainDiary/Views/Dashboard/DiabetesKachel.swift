@@ -17,7 +17,7 @@ struct DiabetesKachel: View {
     }
 
     private var chartDaten: [(datum: Date, wert: Double)] {
-        Array(messungen.prefix(14).reversed())
+        messungen.prefix(14).reversed().map { (datum: $0.datum, wert: $0.wert) }
     }
 
     var body: some View {
