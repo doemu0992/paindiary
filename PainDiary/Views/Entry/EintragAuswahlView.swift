@@ -174,11 +174,7 @@ struct EintragAuswahlView: View {
     }
 
     private var reihenfolge: [AuswahlTyp] {
-        var liste: [AuswahlTyp] = []
-        if auswahl.contains(.migraene) { liste.append(.migraene) }
-        if brauchtSchmerzWizard        { liste.append(.schmerz) }
-        if auswahl.contains(.diabetes) { liste.append(.diabetes) }
-        return liste
+        [.migraene, .schmerz, .rheuma, .diabetes].filter { auswahl.contains($0) }
     }
 
     // MARK: - Flow
