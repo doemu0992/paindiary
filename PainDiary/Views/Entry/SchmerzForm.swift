@@ -8,8 +8,10 @@ struct SchmerzForm: View {
     var eintrag: PainEntry? = nil
     var onGespeichert: (() -> Void)? = nil
 
+    @StateObject private var scanService = BodyScanService.shared
     @State private var datum = Date()
     @State private var koerperstelle = ""
+    @State private var scanSetupAnzeigen = false
     @State private var schmerzstaerke = 5
     @State private var dauerStunden = 0
     @State private var dauerMinuten = 0
@@ -51,12 +53,64 @@ struct SchmerzForm: View {
                 // MARK: Schmerz
                 Section("Schmerz") {
                     DatePicker("Datum & Uhrzeit", selection: $datum)
+                }
 
-                    LabeledContent("Körperstelle") {
-                        TextField("z.B. Rücken, Knie rechts", text: $koerperstelle)
-                            .multilineTextAlignment(.trailing)
+                // MARK: Körperstelle
+                Section {
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("Körperstelle")
+                                .font(.subheadline.bold())
+                            Spacer()
+                            Button {
+                                scanSetupAnzeigen = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "figure.stand")
+                                    Text("Proportionen")
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        KoerperPickerView(
+                            auswahl: $koerperstelle,
+                            tintColor: .systemRed,
+                            frameHeight: 280
+                        )
+
+                        let ausgewaehlt = Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
+                        if !ausgewaehlt.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    ForEach(ausgewaehlt.sorted(), id: \.self) { r in
+                                        Button {
+                                            var s = ausgewaehlt; s.remove(r)
+                                            koerperstelle = s.sorted().joined(separator: ", ")
+                                        } label: {
+                                            HStack(spacing: 3) {
+                                                Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                                                Text(r).font(.caption)
+                                            }
+                                            .padding(.horizontal, 10).padding(.vertical, 5)
+                                            .background(Color.red.opacity(0.15))
+                                            .clipShape(Capsule())
+                                            .foregroundStyle(.red)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
                     }
+                    .padding(.vertical, 4)
+                }
+                .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
 
+                // MARK: Schmerzstärke & Details
+                Section("Schmerzstärke") {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text("Stärke: \(schmerzstaerke) / 10")
