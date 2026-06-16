@@ -60,6 +60,8 @@ class WetterService: NSObject, CLLocationManagerDelegate {
     private(set) var aktuell: WetterSnapshot? = nil
     private(set) var isLoading = false
     private(set) var fehler: String? = nil
+    private var letzteAktualisierung: Date? = nil
+    private let cacheMinuten: Double = 30
 
     override init() {
         super.init()
@@ -68,6 +70,9 @@ class WetterService: NSObject, CLLocationManagerDelegate {
     }
 
     func laden() {
+        // Daten weniger als 30 Minuten alt → GPS-Request sparen
+        if let ts = letzteAktualisierung, aktuell != nil,
+           Date().timeIntervalSince(ts) < cacheMinuten * 60 { return }
         guard !isLoading else { return }
         fehler = nil
         isLoading = true
@@ -118,6 +123,7 @@ class WetterService: NSObject, CLLocationManagerDelegate {
                     windgeschwindigkeit: r.current.wind_speed_10m,
                     luftdruckHpa: r.current.surface_pressure
                 )
+                self.letzteAktualisierung = Date()
                 self.isLoading = false
             }
         } catch {
