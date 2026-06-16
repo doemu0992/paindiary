@@ -56,7 +56,7 @@ struct BiologikaView: View {
                                 if let n = naechste.naechsteDosis {
                                     Text(n, style: .date)
                                         .font(.caption.bold())
-                                        .foregroundStyle(.accentColor)
+                                        .foregroundStyle(Color.accentColor)
                                     Text(n, style: .relative)
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
@@ -139,7 +139,7 @@ private struct BiologikaZeile: View {
         HStack(spacing: 12) {
             Image(systemName: "syringe.fill")
                 .font(.title3)
-                .foregroundStyle(.accentColor)
+                .foregroundStyle(Color.accentColor)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 3) {
