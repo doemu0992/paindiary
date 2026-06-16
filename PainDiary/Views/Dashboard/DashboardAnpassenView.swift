@@ -152,6 +152,7 @@ struct DashboardAnpassenView: View {
         case .schlafSchmerz: return .purple
         case .koerperstellen: return .teal
         case .midasKachel: return .purple
+        case .migraeneKachel: return .purple
         }
     }
 }
