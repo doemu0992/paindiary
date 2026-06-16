@@ -28,13 +28,11 @@ struct ProfilView: View {
 // MARK: - Sheet enum
 
 private enum ProfilFormular: Identifiable {
-    case allergie(Allergie?)
     case arzt(ArztKontakt?)
     case notfallKontakt(NotfallKontakt?)
 
     var id: String {
         switch self {
-        case .allergie(let a):       return a.map { "a-\(ObjectIdentifier($0))" } ?? "a-new"
         case .arzt(let a):           return a.map { "arzt-\(ObjectIdentifier($0))" } ?? "arzt-new"
         case .notfallKontakt(let k): return k.map { "nk-\(ObjectIdentifier($0))" } ?? "nk-new"
         }
@@ -46,6 +44,7 @@ private enum ProfilFormular: Identifiable {
 private struct ProfilInhaltView: View {
     let profil: Benutzerprofil
     @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
+    @Query(sort: \Allergie.schwere) private var alleAllergien: [Allergie]
     @State private var aktivesFormular: ProfilFormular? = nil
     @State private var stammdatenAnzeigen = false
 #if os(iOS)
@@ -58,7 +57,6 @@ private struct ProfilInhaltView: View {
         List {
             heroHeader
             gesundheitSektion
-            allergienSektion
             aerzte
             notfallkontakte
             einstellungen
@@ -69,14 +67,6 @@ private struct ProfilInhaltView: View {
         }
         .sheet(item: $aktivesFormular) { formular in
             switch formular {
-            case .allergie(let existing):
-                AllergieFormView(existing: existing) { substanz, typ, reaktion, schwere in
-                    if let a = existing {
-                        a.substanz = substanz; a.typ = typ; a.reaktion = reaktion; a.schwere = schwere
-                    } else {
-                        profil.allergien = (profil.allergien ?? []) + [Allergie(substanz: substanz, typ: typ, reaktion: reaktion, schwere: schwere)]
-                    }
-                }
             case .arzt(let existing):
                 ArztFormView(existing: existing) { name, praxis, fachgebiet, adresse, telefon, email, istHausarzt, notizen in
                     if let a = existing {
@@ -226,6 +216,19 @@ private struct ProfilInhaltView: View {
                     Image(systemName: "cross.case.fill").foregroundStyle(.red)
                 }
             }
+            NavigationLink(destination: AllergienView()) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Allergien & Unverträglichkeiten")
+                        if !alleAllergien.isEmpty {
+                            Text(alleAllergien.map(\.substanz).prefix(2).joined(separator: ", "))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "allergens").foregroundStyle(.orange)
+                }
+            }
             NavigationLink(destination: NotfallausweisView()) {
                 Label("Notfallausweis", systemImage: "staroflife.fill")
                     .foregroundStyle(.primary)
@@ -246,32 +249,6 @@ private struct ProfilInhaltView: View {
                 Label("Zyklus-Tracking", systemImage: "drop.fill")
             }
         }
-    }
-
-    // MARK: - Allergien
-
-    private var allergienSektion: some View {
-        Section {
-            ForEach(profil.allergien ?? []) { a in
-                Button { aktivesFormular = .allergie(a) } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack {
-                                Text(a.substanz).font(.headline).foregroundStyle(.primary)
-                                Spacer()
-                                AllergieSchwereBadge(schwere: a.schwere)
-                            }
-                            if !a.typ.isEmpty      { Text(a.typ).font(.caption).foregroundStyle(.secondary) }
-                            if !a.reaktion.isEmpty { Text(a.reaktion).font(.caption).foregroundStyle(.secondary) }
-                        }
-                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-            .onDelete { var a = profil.allergien ?? []; a.remove(atOffsets: $0); profil.allergien = a }
-            Button("Allergie hinzufügen") { aktivesFormular = .allergie(nil) }
-        } header: { Text("Allergien & Unverträglichkeiten") }
     }
 
     // MARK: - Ärzte
@@ -495,52 +472,6 @@ private struct StammdatenSheet: View {
 
 // MARK: - Form Views
 
-private struct AllergieFormView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var substanz: String
-    @State private var typ: String
-    @State private var reaktion: String
-    @State private var schwere: String
-    private let isEdit: Bool
-    let onSave: (String, String, String, String) -> Void
-    private let typen = ["Medikament", "Nahrungsmittel", "Umwelt", "Sonstiges"]
-    private let schwereGrade = ["Leicht", "Mittel", "Schwer", "Lebensbedrohlich"]
-
-    init(existing: Allergie? = nil, onSave: @escaping (String, String, String, String) -> Void) {
-        self.isEdit = existing != nil
-        self.onSave = onSave
-        _substanz = State(initialValue: existing?.substanz ?? "")
-        _typ      = State(initialValue: existing?.typ ?? "")
-        _reaktion = State(initialValue: existing?.reaktion ?? "")
-        _schwere  = State(initialValue: existing?.schwere ?? "Mittel")
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Substanz / Allergen", text: $substanz)
-                Picker("Typ", selection: $typ) {
-                    Text("Bitte wählen").tag("")
-                    ForEach(typen, id: \.self) { Text($0).tag($0) }
-                }
-                TextField("Reaktion", text: $reaktion)
-                Picker("Schwere", selection: $schwere) {
-                    ForEach(schwereGrade, id: \.self) { Text($0).tag($0) }
-                }
-            }
-            .navigationTitle(isEdit ? "Allergie bearbeiten" : "Neue Allergie")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { onSave(substanz, typ, reaktion, schwere); dismiss() }
-                        .disabled(substanz.isEmpty)
-                }
-            }
-        }
-    }
-}
-
 private struct ArztFormView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
@@ -732,25 +663,3 @@ private struct FotoZuschneidenView: View {
 }
 #endif
 
-// MARK: - Helper Views
-
-private struct AllergieSchwereBadge: View {
-    let schwere: String
-    var body: some View {
-        Text(schwere)
-            .font(.caption2.bold())
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(farbe.opacity(0.2))
-            .foregroundStyle(farbe)
-            .clipShape(Capsule())
-    }
-    private var farbe: Color {
-        switch schwere {
-        case "Leicht": return .green
-        case "Mittel": return .yellow
-        case "Schwer": return .orange
-        case "Lebensbedrohlich": return .red
-        default: return .secondary
-        }
-    }
-}

@@ -2,7 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct NotfallausweisView: View {
-    @Query private var diagnosen: [Diagnose]
+    @Query(sort: \Diagnose.bezeichnung) private var diagnosen: [Diagnose]
+    @Query(sort: \Allergie.schwere) private var allergien: [Allergie]
     @Query private var medikamente: [Dauermedikation]
     @Query private var aerzte: [ArztKontakt]
     @Query private var notfallKontakte: [NotfallKontakt]
@@ -11,13 +12,6 @@ struct NotfallausweisView: View {
     private var profil: Benutzerprofil? { profile.first }
     private var aktiveDiagnosen: [Diagnose] { diagnosen.filter { $0.aktiv } }
     private var aktiveMedikamente: [Dauermedikation] { medikamente.filter { $0.aktiv } }
-
-    private var rheumatologe: ArztKontakt? {
-        aerzte.first { $0.fachgebiet.localizedCaseInsensitiveContains("Rheumatolog") }
-            ?? aerzte.first
-    }
-
-    private var ersterNotfallKontakt: NotfallKontakt? { notfallKontakte.first }
 
     private var zeigeImmunWarnung: Bool {
         aktiveMedikamente.contains { med in
@@ -46,15 +40,19 @@ struct NotfallausweisView: View {
                     diagnoseKarte
                 }
 
+                if !allergien.isEmpty {
+                    allergienKarte
+                }
+
                 if !aktiveMedikamente.isEmpty {
                     medikamenteKarte
                 }
 
-                if rheumatologe != nil {
+                if !aerzte.isEmpty {
                     arztKarte
                 }
 
-                if ersterNotfallKontakt != nil {
+                if !notfallKontakte.isEmpty {
                     notfallKontaktKarte
                 }
             }
@@ -86,11 +84,14 @@ struct NotfallausweisView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Medizinischer Notfallausweis")
                     .font(.headline)
-                Text("Rheumatologische Erkrankung")
-                    .font(.subheadline).foregroundStyle(.secondary)
                 if let profil {
                     Text("\(profil.vorname) \(profil.nachname)".trimmingCharacters(in: .whitespaces))
                         .font(.title3.bold())
+                    if let geb = profil.geburtsdatum {
+                        let alter = Calendar.current.dateComponents([.year], from: geb, to: Date()).year ?? 0
+                        Text("\(alter) Jahre")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
                 }
             }
             Spacer()
@@ -144,7 +145,7 @@ struct NotfallausweisView: View {
     }
 
     private var diagnoseKarte: some View {
-        AusweisSektion(titel: "Diagnosen", symbol: "staroflife.fill") {
+        AusweisSektion(titel: "Diagnosen", symbol: "cross.case.fill") {
             ForEach(aktiveDiagnosen) { d in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -158,6 +159,25 @@ struct NotfallausweisView: View {
                         Text(datum.formatted(date: .abbreviated, time: .omitted))
                             .font(.caption).foregroundStyle(.secondary)
                     }
+                }
+                .padding(.vertical, 2)
+                Divider()
+            }
+        }
+    }
+
+    private var allergienKarte: some View {
+        AusweisSektion(titel: "Allergien & Unverträglichkeiten", symbol: "allergens") {
+            ForEach(allergien) { a in
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(a.substanz).font(.subheadline)
+                        if !a.reaktion.isEmpty {
+                            Text(a.reaktion).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    AllergieSchwereBadge(schwere: a.schwere)
                 }
                 .padding(.vertical, 2)
                 Divider()
@@ -190,32 +210,57 @@ struct NotfallausweisView: View {
     }
 
     private var arztKarte: some View {
-        AusweisSektion(titel: "Rheumatologin / Rheumatologe", symbol: "stethoscope") {
-            if let arzt = rheumatologe {
-                if !arzt.name.isEmpty {
-                    AusweisZeile(label: "Name", wert: arzt.name)
+        AusweisSektion(titel: "Behandelnde Ärzte", symbol: "stethoscope") {
+            ForEach(aerzte) { arzt in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack {
+                        Text(arzt.name.isEmpty ? arzt.praxis : arzt.name)
+                            .font(.subheadline.bold())
+                        if arzt.istHausarzt {
+                            Text("Hausarzt").font(.caption2).foregroundStyle(.blue)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.12)).clipShape(Capsule())
+                        }
+                        Spacer()
+                        if !arzt.fachgebiet.isEmpty {
+                            Text(arzt.fachgebiet).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    if !arzt.name.isEmpty && !arzt.praxis.isEmpty {
+                        Text(arzt.praxis).font(.caption).foregroundStyle(.secondary)
+                    }
+                    if !arzt.telefon.isEmpty {
+                        Label(arzt.telefon, systemImage: "phone")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
-                if !arzt.praxis.isEmpty {
-                    AusweisZeile(label: "Praxis", wert: arzt.praxis)
-                }
-                if !arzt.telefon.isEmpty {
-                    AusweisZeile(label: "Telefon", wert: arzt.telefon)
+                .padding(.vertical, 3)
+                if arzt.id != aerzte.last?.id {
+                    Divider()
                 }
             }
         }
     }
 
     private var notfallKontaktKarte: some View {
-        AusweisSektion(titel: "Notfallkontakt", symbol: "phone.fill") {
-            if let kontakt = ersterNotfallKontakt {
-                if !kontakt.name.isEmpty {
-                    AusweisZeile(label: "Name", wert: kontakt.name)
+        AusweisSektion(titel: "Notfallkontakte", symbol: "phone.fill") {
+            ForEach(notfallKontakte) { kontakt in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(kontakt.name).font(.subheadline.bold())
+                        if !kontakt.beziehung.isEmpty {
+                            Text(kontakt.beziehung).font(.caption).foregroundStyle(.secondary)
+                        }
+                        if !kontakt.phone.isEmpty {
+                            Label(kontakt.phone, systemImage: "phone")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
                 }
-                if !kontakt.beziehung.isEmpty {
-                    AusweisZeile(label: "Beziehung", wert: kontakt.beziehung)
-                }
-                if !kontakt.phone.isEmpty {
-                    AusweisZeile(label: "Telefon", wert: kontakt.phone)
+                .padding(.vertical, 2)
+                if kontakt.id != notfallKontakte.last?.id {
+                    Divider()
                 }
             }
         }
@@ -249,6 +294,17 @@ struct NotfallausweisView: View {
             zeilen.append("")
         }
 
+        if !allergien.isEmpty {
+            zeilen.append("ALLERGIEN & UNVERTRÄGLICHKEITEN")
+            for a in allergien {
+                var zeile = a.substanz
+                if !a.reaktion.isEmpty { zeile += ": \(a.reaktion)" }
+                zeile += " [\(a.schwere)]"
+                zeilen.append("• \(zeile)")
+            }
+            zeilen.append("")
+        }
+
         if !aktiveMedikamente.isEmpty {
             zeilen.append("DAUERMEDIKATION")
             for med in aktiveMedikamente {
@@ -265,19 +321,27 @@ struct NotfallausweisView: View {
             zeilen.append("")
         }
 
-        if let arzt = rheumatologe {
-            zeilen.append("RHEUMATOLOGE / RHEUMATOLOGIN")
-            if !arzt.name.isEmpty { zeilen.append("Name: \(arzt.name)") }
-            if !arzt.praxis.isEmpty { zeilen.append("Praxis: \(arzt.praxis)") }
-            if !arzt.telefon.isEmpty { zeilen.append("Tel.: \(arzt.telefon)") }
+        if !aerzte.isEmpty {
+            zeilen.append("BEHANDELNDE ÄRZTE")
+            for arzt in aerzte {
+                let label = arzt.istHausarzt ? "Hausarzt" : arzt.fachgebiet
+                let name = arzt.name.isEmpty ? arzt.praxis : arzt.name
+                var zeile = name
+                if !label.isEmpty { zeile += " (\(label))" }
+                if !arzt.telefon.isEmpty { zeile += " – Tel. \(arzt.telefon)" }
+                zeilen.append("• \(zeile)")
+            }
             zeilen.append("")
         }
 
-        if let kontakt = ersterNotfallKontakt {
-            zeilen.append("NOTFALLKONTAKT")
-            if !kontakt.name.isEmpty { zeilen.append("Name: \(kontakt.name)") }
-            if !kontakt.beziehung.isEmpty { zeilen.append("Beziehung: \(kontakt.beziehung)") }
-            if !kontakt.phone.isEmpty { zeilen.append("Tel.: \(kontakt.phone)") }
+        if !notfallKontakte.isEmpty {
+            zeilen.append("NOTFALLKONTAKTE")
+            for kontakt in notfallKontakte {
+                var zeile = kontakt.name
+                if !kontakt.beziehung.isEmpty { zeile += " (\(kontakt.beziehung))" }
+                if !kontakt.phone.isEmpty { zeile += " – Tel. \(kontakt.phone)" }
+                zeilen.append("• \(zeile)")
+            }
         }
 
         return zeilen.joined(separator: "\n")
