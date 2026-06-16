@@ -12,6 +12,9 @@ DerivedData/
 # macOS
 .DS_Store
 
+# Claude Code session data
+.claude/
+
 # API Keys – nie hochladen!
 Secrets.swift
 Config.plist
