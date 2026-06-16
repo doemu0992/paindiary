@@ -16,6 +16,12 @@ struct DashboardAnpassenView: View {
         ].filter { !bereitsIds.contains($0.rawValue) }
     }
 
+    private var moduleHinzufuegbar: [KachelTyp] {
+        let bereitsIds = Set(kacheln.map(\.id))
+        return [.migraeneKachel, .rheumaKachel, .diabetesKachel]
+            .filter { !bereitsIds.contains($0.rawValue) }
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -64,6 +70,27 @@ struct DashboardAnpassenView: View {
                 } footer: {
                     Text("Tippe auf das Auge zum Ein-/Ausblenden. Stift-Icon: Korrelation bearbeiten. Im Bearbeiten-Modus: verschieben oder löschen.")
                         .font(.caption2)
+                }
+
+                if !moduleHinzufuegbar.isEmpty {
+                    Section("Module hinzufügen") {
+                        ForEach(moduleHinzufuegbar, id: \.self) { typ in
+                            Button {
+                                withAnimation {
+                                    kacheln.append(KachelKonfiguration(id: typ.rawValue, typ: typ))
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: typ.symbol)
+                                        .foregroundStyle(kachelFarbe(typ))
+                                        .frame(width: 24)
+                                    Text(typ.titel).font(.subheadline).foregroundStyle(.primary)
+                                    Spacer()
+                                    Image(systemName: "plus.circle.fill").foregroundStyle(kachelFarbe(typ))
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if !analyseHinzufuegbar.isEmpty {
