@@ -17,6 +17,17 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "23", aenderungen: [
+        WhatsNewAenderung(icon: "brain.head.profile", farbe: .purple,
+                          titel: "Migräne-Modul",
+                          beschreibung: "Vollständiges Migräne-Modul mit Anfall-Tagebuch, Auslöser-Analyse (30 Tage), Schmerzcharakter, Begleitsymptome, Akutmedikament-Tracking und integriertem MIDAS-Score."),
+        WhatsNewAenderung(icon: "drop.fill", farbe: .orange,
+                          titel: "Diabetes-Modul",
+                          beschreibung: "Blutzucker-Tagebuch mit mmol/L-Erfassung, Messzeitpunkte (Nüchtern, vor/nach Essen), Insulin-Tracking, Zielbereich-Statistik und Link zu Laborwerten (HbA1c)."),
+        WhatsNewAenderung(icon: "list.bullet.rectangle.portrait.fill", farbe: .blue,
+                          titel: "Profil neu strukturiert",
+                          beschreibung: "Das Profil ist jetzt in drei klare Sektionen gegliedert: Gesundheit (Basisinfos), Erkrankungen (Rheuma, Migräne, Diabetes) und Notfall & Kontakte (Ausweis, Ärzte, Notfallkontakte)."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "22", aenderungen: [
         WhatsNewAenderung(icon: "doc.richtext.fill", farbe: .purple,
                           titel: "Rheuma-Seite im PDF",

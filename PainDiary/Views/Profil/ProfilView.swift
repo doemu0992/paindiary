@@ -38,6 +38,8 @@ private struct ProfilInhaltView: View {
         List {
             heroHeader
             gesundheitSektion
+            erkrankungenSektion
+            notfallSektion
             einstellungen
         }
         .navigationTitle("Profil")
@@ -163,9 +165,44 @@ private struct ProfilInhaltView: View {
                     Image(systemName: "allergens").foregroundStyle(.orange)
                 }
             }
+            NavigationLink(destination: MedikamenteView()) {
+                Label("Medikamente", systemImage: "pill.fill")
+            }
+            NavigationLink(destination: ImpfpassView()) {
+                Label("Impfpass", systemImage: "syringe.fill")
+            }
+            NavigationLink(destination: ZyklusView()) {
+                Label("Zyklus-Tracking", systemImage: "drop.fill")
+            }
+        }
+    }
+
+    // MARK: - Erkrankungen
+
+    private var erkrankungenSektion: some View {
+        Section("Erkrankungen") {
+            NavigationLink(destination: RheumaView()) {
+                Label("Rheuma & Gelenke", systemImage: "figure.arms.open")
+            }
+            NavigationLink(destination: MigraeneView()) {
+                Label("Migräne", systemImage: "brain.head.profile")
+            }
+            NavigationLink(destination: DiabetesView()) {
+                Label("Diabetes", systemImage: "drop.fill")
+                    .foregroundStyle(.orange)
+            }
+            NavigationLink(destination: MIDASView()) {
+                Label("MIDAS-Fragebogen", systemImage: "list.clipboard.fill")
+            }
+        }
+    }
+
+    // MARK: - Notfall & Kontakte
+
+    private var notfallSektion: some View {
+        Section("Notfall & Kontakte") {
             NavigationLink(destination: NotfallausweisView()) {
                 Label("Notfallausweis", systemImage: "staroflife.fill")
-                    .foregroundStyle(.primary)
             }
             NavigationLink(destination: AerzteView(profil: profil)) {
                 Label {
@@ -195,21 +232,6 @@ private struct ProfilInhaltView: View {
                     Image(systemName: "phone.fill").foregroundStyle(.green)
                 }
             }
-            NavigationLink(destination: MedikamenteView()) {
-                Label("Medikamente", systemImage: "pill.fill")
-            }
-            NavigationLink(destination: ImpfpassView()) {
-                Label("Impfpass", systemImage: "syringe.fill")
-            }
-            NavigationLink(destination: RheumaView()) {
-                Label("Rheuma & Gelenke", systemImage: "figure.arms.open")
-            }
-            NavigationLink(destination: MIDASView()) {
-                Label("MIDAS-Fragebogen", systemImage: "brain.head.profile")
-            }
-            NavigationLink(destination: ZyklusView()) {
-                Label("Zyklus-Tracking", systemImage: "drop.fill")
-            }
         }
     }
 
@@ -217,7 +239,6 @@ private struct ProfilInhaltView: View {
 
     private var einstellungen: some View {
         Section("Einstellungen") {
-            Toggle("Zyklus-Tracking", isOn: Bindable(profil).zyklusTrackingAktiv)
             NavigationLink(destination: EinstellungenView()) {
                 Label("App-Einstellungen", systemImage: "gearshape")
             }
