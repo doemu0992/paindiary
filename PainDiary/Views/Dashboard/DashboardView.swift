@@ -11,6 +11,7 @@ struct DashboardView: View {
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var einnahmeLogs: [EinnahmeLog]
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
     @Query(sort: \Laborwert.datum, order: .reverse) private var laborwerte: [Laborwert]
+    @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
     @State private var viewModel = DashboardViewModel()
     @State private var exportURL: URL? = nil
     @State private var pdfVorschauAnzeigen = false
@@ -516,6 +517,7 @@ struct DashboardView: View {
             zyklusEintraege: Array(zyklusEintraege),
             haqEintraege: Array(haqEintraege),
             laborwerte: Array(laborwerte),
+            alleDiagnosen: Array(alleDiagnosen),
             profil: profile.first,
             optionen: exportOptionen
         ) { @MainActor url in

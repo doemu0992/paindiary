@@ -293,12 +293,18 @@ class PDFExportService: @unchecked Sendable {
         zyklusEintraege: [ZyklusEintrag],
         haqEintraege: [HAQEintrag] = [],
         laborwerte: [Laborwert] = [],
+        alleDiagnosen: [Diagnose] = [],
         profil: Benutzerprofil?,
         optionen: ExportOptionen,
         completion: @escaping @MainActor @Sendable (URL?) -> Void
     ) {
         // Copy all SwiftData objects into plain structs on main thread
-        let patient  = PDFPatientenDaten.aus(profil: profil)
+        var patient = PDFPatientenDaten.aus(profil: profil)
+        if !alleDiagnosen.isEmpty {
+            let existing = Set(patient.diagnosen)
+            let zusaetzliche = alleDiagnosen.map(\.bezeichnung).filter { !$0.isEmpty && !existing.contains($0) }
+            patient.diagnosen = patient.diagnosen + zusaetzliche
+        }
         let gefiltert: [PDFEintrag]
         if let start = optionen.zeitraum.startDatum() {
             gefiltert = eintraege.filter { $0.datum >= start }

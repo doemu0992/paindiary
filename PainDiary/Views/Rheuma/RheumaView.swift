@@ -9,7 +9,6 @@ struct RheumaView: View {
     @Query(sort: \FACITEintrag.datum, order: .reverse) private var facitEintraege: [FACITEintrag]
     @Query(sort: \BiologikaInjektion.datum, order: .reverse) private var injektionen: [BiologikaInjektion]
     @Query(sort: \Remissionsphase.beginn, order: .reverse) private var remissionsphasen: [Remissionsphase]
-    @Query(sort: \Diagnose.bezeichnung) private var diagnosen: [Diagnose]
 
     var body: some View {
         List {
@@ -73,27 +72,6 @@ struct RheumaView: View {
                     } icon: {
                         Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
                     }
-                }
-            }
-
-            Section("Diagnosen & Notfall") {
-                NavigationLink(destination: DiagnoseView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Diagnosen")
-                            let aktive = diagnosen.filter { $0.aktiv }
-                            if !aktive.isEmpty {
-                                Text(aktive.map(\.bezeichnung).prefix(2).joined(separator: ", "))
-                                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                        }
-                    } icon: {
-                        Image(systemName: "cross.case.fill").foregroundStyle(.red)
-                    }
-                }
-                NavigationLink(destination: NotfallausweisView()) {
-                    Label("Notfallausweis", systemImage: "staroflife.fill")
-                        .foregroundStyle(.primary)
                 }
             }
 

@@ -17,7 +17,8 @@ import SwiftData
         self.notizen = notizen
     }
 
-    static let rheumaDiagnosen = [
+    static let haeufigeVorschlaege = [
+        // Rheuma & Autoimmun
         "Rheumatoide Arthritis (RA)",
         "Psoriasis-Arthritis (PsA)",
         "Ankylosierende Spondylitis (AS)",
@@ -28,5 +29,22 @@ import SwiftData
         "Fibromyalgie",
         "Reaktive Arthritis",
         "Juvenile idiopathische Arthritis (JIA)",
+        // Schmerz & Neurologie
+        "Migräne",
+        "Spannungskopfschmerz",
+        "Chronischer Rückenschmerz",
+        "Bandscheibenvorfall",
+        "Neuropathischer Schmerz",
+        // Stoffwechsel & Allgemein
+        "Diabetes mellitus Typ 1",
+        "Diabetes mellitus Typ 2",
+        "Arterielle Hypertonie",
+        "Hypothyreose",
+        "Psoriasis",
+        "Morbus Crohn",
+        "Colitis ulcerosa",
     ]
+
+    @available(*, deprecated, renamed: "haeufigeVorschlaege")
+    static let rheumaDiagnosen = haeufigeVorschlaege
 }

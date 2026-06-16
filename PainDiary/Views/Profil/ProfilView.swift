@@ -28,14 +28,12 @@ struct ProfilView: View {
 // MARK: - Sheet enum
 
 private enum ProfilFormular: Identifiable {
-    case diagnose(Diagnose?)
     case allergie(Allergie?)
     case arzt(ArztKontakt?)
     case notfallKontakt(NotfallKontakt?)
 
     var id: String {
         switch self {
-        case .diagnose(let d):       return d.map { "d-\(ObjectIdentifier($0))" } ?? "d-new"
         case .allergie(let a):       return a.map { "a-\(ObjectIdentifier($0))" } ?? "a-new"
         case .arzt(let a):           return a.map { "arzt-\(ObjectIdentifier($0))" } ?? "arzt-new"
         case .notfallKontakt(let k): return k.map { "nk-\(ObjectIdentifier($0))" } ?? "nk-new"
@@ -47,6 +45,7 @@ private enum ProfilFormular: Identifiable {
 
 private struct ProfilInhaltView: View {
     let profil: Benutzerprofil
+    @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
     @State private var aktivesFormular: ProfilFormular? = nil
     @State private var stammdatenAnzeigen = false
 #if os(iOS)
@@ -59,7 +58,6 @@ private struct ProfilInhaltView: View {
         List {
             heroHeader
             gesundheitSektion
-            diagnoseSektion
             allergienSektion
             aerzte
             notfallkontakte
@@ -71,14 +69,6 @@ private struct ProfilInhaltView: View {
         }
         .sheet(item: $aktivesFormular) { formular in
             switch formular {
-            case .diagnose(let existing):
-                DiagnoseFormView(existing: existing) { bezeichnung, datum, notizen in
-                    if let d = existing {
-                        d.bezeichnung = bezeichnung; d.datum = datum; d.notizen = notizen
-                    } else {
-                        profil.diagnosen = (profil.diagnosen ?? []) + [Diagnose(bezeichnung: bezeichnung, datum: datum, notizen: notizen)]
-                    }
-                }
             case .allergie(let existing):
                 AllergieFormView(existing: existing) { substanz, typ, reaktion, schwere in
                     if let a = existing {
@@ -222,8 +212,26 @@ private struct ProfilInhaltView: View {
 
     private var gesundheitSektion: some View {
         Section("Gesundheit") {
+            NavigationLink(destination: DiagnoseView()) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Diagnosen")
+                        let aktive = alleDiagnosen.filter { $0.aktiv }
+                        if !aktive.isEmpty {
+                            Text(aktive.map(\.bezeichnung).prefix(2).joined(separator: ", "))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "cross.case.fill").foregroundStyle(.red)
+                }
+            }
+            NavigationLink(destination: NotfallausweisView()) {
+                Label("Notfallausweis", systemImage: "staroflife.fill")
+                    .foregroundStyle(.primary)
+            }
             NavigationLink(destination: MedikamenteView()) {
-                Label("Medikamente verwalten", systemImage: "pill.fill")
+                Label("Medikamente", systemImage: "pill.fill")
             }
             NavigationLink(destination: ImpfpassView()) {
                 Label("Impfpass", systemImage: "syringe.fill")
@@ -238,33 +246,6 @@ private struct ProfilInhaltView: View {
                 Label("Zyklus-Tracking", systemImage: "drop.fill")
             }
         }
-    }
-
-    // MARK: - Diagnosen
-
-    private var diagnoseSektion: some View {
-        Section {
-            ForEach(profil.diagnosen ?? []) { d in
-                Button { aktivesFormular = .diagnose(d) } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(d.bezeichnung).font(.headline).foregroundStyle(.primary)
-                            if let datum = d.datum {
-                                Text(datum, style: .date).font(.caption).foregroundStyle(.secondary)
-                            }
-                            if !d.notizen.isEmpty {
-                                Text(d.notizen).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-            .onDelete { var a = profil.diagnosen ?? []; a.remove(atOffsets: $0); profil.diagnosen = a }
-            Button("Diagnose hinzufügen") { aktivesFormular = .diagnose(nil) }
-        } header: { Text("Diagnosen") }
     }
 
     // MARK: - Allergien
@@ -513,49 +494,6 @@ private struct StammdatenSheet: View {
 }
 
 // MARK: - Form Views
-
-private struct DiagnoseFormView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var bezeichnung: String
-    @State private var datum: Date?
-    @State private var notizen: String
-    @State private var datumAktiv: Bool
-    private let isEdit: Bool
-    let onSave: (String, Date?, String) -> Void
-
-    init(existing: Diagnose? = nil, onSave: @escaping (String, Date?, String) -> Void) {
-        self.isEdit = existing != nil
-        self.onSave = onSave
-        _bezeichnung = State(initialValue: existing?.bezeichnung ?? "")
-        _datum       = State(initialValue: existing?.datum)
-        _notizen     = State(initialValue: existing?.notizen ?? "")
-        _datumAktiv  = State(initialValue: existing?.datum != nil)
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Diagnose", text: $bezeichnung)
-                Toggle("Datum bekannt", isOn: $datumAktiv)
-                if datumAktiv {
-                    DatePicker("Datum", selection: Binding(
-                        get: { datum ?? Date() }, set: { datum = $0 }
-                    ), displayedComponents: .date)
-                }
-                Section("Notizen") { TextEditor(text: $notizen).frame(minHeight: 60) }
-            }
-            .navigationTitle(isEdit ? "Diagnose bearbeiten" : "Neue Diagnose")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { onSave(bezeichnung, datumAktiv ? datum : nil, notizen); dismiss() }
-                        .disabled(bezeichnung.isEmpty)
-                }
-            }
-        }
-    }
-}
 
 private struct AllergieFormView: View {
     @Environment(\.dismiss) private var dismiss

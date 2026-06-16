@@ -144,7 +144,7 @@ struct DiagnoseForm: View {
 
                     Picker("Vorschlag", selection: $bezeichnung) {
                         Text("Eigene Eingabe").tag("")
-                        ForEach(Diagnose.rheumaDiagnosen, id: \.self) { name in
+                        ForEach(Diagnose.haeufigeVorschlaege, id: \.self) { name in
                             Text(name).tag(name)
                         }
                     }
