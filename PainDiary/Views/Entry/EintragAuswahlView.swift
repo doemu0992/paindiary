@@ -1,12 +1,23 @@
 import SwiftUI
 
-private enum AuswahlTyp: String, Hashable {
-    case schmerz, migraene
+private enum AuswahlTyp: String, Hashable, CaseIterable {
+    case schmerz, migraene, rheuma, diabetes
 
     var label: String {
         switch self {
         case .schmerz:  return "Schmerz"
         case .migraene: return "Migräne"
+        case .rheuma:   return "Rheuma & Gelenke"
+        case .diabetes: return "Diabetes"
+        }
+    }
+
+    var untertitel: String {
+        switch self {
+        case .schmerz:  return "Schmerzstärke, Ort & Verlauf"
+        case .migraene: return "Anfall, Aura & Medikament"
+        case .rheuma:   return "Gelenke, Schub & Scores"
+        case .diabetes: return "Blutzucker & Insulindosis"
         }
     }
 
@@ -14,6 +25,8 @@ private enum AuswahlTyp: String, Hashable {
         switch self {
         case .schmerz:  return "waveform.path.ecg"
         case .migraene: return "brain.head.profile"
+        case .rheuma:   return "figure.arms.open"
+        case .diabetes: return "drop.fill"
         }
     }
 
@@ -21,6 +34,8 @@ private enum AuswahlTyp: String, Hashable {
         switch self {
         case .schmerz:  return .indigo
         case .migraene: return .purple
+        case .rheuma:   return .teal
+        case .diabetes: return .orange
         }
     }
 }
@@ -28,51 +43,49 @@ private enum AuswahlTyp: String, Hashable {
 struct EintragAuswahlView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("migraeneModulAktiv") private var migraeneAktiv = false
+    @AppStorage("rheumaModulAktiv")   private var rheumaAktiv   = false
+    @AppStorage("diabetesModulAktiv") private var diabetesAktiv = false
 
-    @State private var auswahl: Set<AuswahlTyp> = [.schmerz]
+    @State private var auswahl: Set<AuswahlTyp> = []
     @State private var zeigeMigraene = false
-    @State private var zeigeSchmerz = false
+    @State private var zeigeSchmerz  = false
     @State private var migraeneFertig = false
 
     private var verfuegbareTypen: [AuswahlTyp] {
         var typen: [AuswahlTyp] = [.schmerz]
         if migraeneAktiv { typen.append(.migraene) }
+        if rheumaAktiv   { typen.append(.rheuma) }
+        if diabetesAktiv { typen.append(.diabetes) }
         return typen
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Was möchtest du erfassen?")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal)
-
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        ForEach(verfuegbareTypen, id: \.self) { typ in
-                            auswahlKarte(typ)
-                        }
-                    }
-                    .padding(.horizontal)
-
-                    if auswahl.count > 1 {
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.right.circle")
-                                .font(.caption)
-                            Text("Zuerst Migräne, dann Schmerz erfassen.")
-                                .font(.caption)
-                        }
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal)
-                        .transition(.opacity)
+                VStack(spacing: 12) {
+                    ForEach(verfuegbareTypen, id: \.self) { typ in
+                        auswahlZeile(typ)
                     }
                 }
-                .padding(.top, 20)
-                .animation(.easeInOut(duration: 0.2), value: auswahl.count)
+                .padding(.horizontal)
+                .padding(.top, 16)
+
+                if auswahl.contains(.migraene) && auswahl.contains(.schmerz) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.right.circle")
+                            .font(.caption)
+                        Text("Zuerst Migräne, dann Schmerz erfassen.")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+                    .transition(.opacity)
+                }
             }
-            .navigationTitle("Neuer Eintrag")
+            .navigationTitle("Was erfassen?")
             .navigationBarTitleDisplayMode(.inline)
+            .animation(.easeInOut(duration: 0.15), value: auswahl)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") { dismiss() }
@@ -92,34 +105,46 @@ struct EintragAuswahlView: View {
         }
     }
 
-    private func auswahlKarte(_ typ: AuswahlTyp) -> some View {
+    private func auswahlZeile(_ typ: AuswahlTyp) -> some View {
         let gewaehlt = auswahl.contains(typ)
         return Button {
-            if gewaehlt {
-                auswahl.remove(typ)
-            } else {
-                auswahl.insert(typ)
-            }
+            if gewaehlt { auswahl.remove(typ) } else { auswahl.insert(typ) }
         } label: {
-            VStack(spacing: 12) {
+            HStack(spacing: 16) {
                 Image(systemName: typ.symbol)
-                    .font(.system(size: 28))
-                    .foregroundStyle(gewaehlt ? .white : typ.farbe)
-                Text(typ.label)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(gewaehlt ? .white : .primary)
-                    .multilineTextAlignment(.center)
+                    .font(.title3)
+                    .foregroundStyle(typ.farbe)
+                    .frame(width: 36, height: 36)
+                    .background(typ.farbe.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(typ.label)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(typ.untertitel)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .stroke(gewaehlt ? typ.farbe : Color.secondary.opacity(0.4), lineWidth: 1.5)
+                        .frame(width: 24, height: 24)
+                    if gewaehlt {
+                        Circle()
+                            .fill(typ.farbe)
+                            .frame(width: 16, height: 16)
+                    }
+                }
+                .animation(.spring(duration: 0.2), value: gewaehlt)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 28)
-            .background(gewaehlt ? typ.farbe : Color(.secondarySystemBackground))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 18)
+            .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(gewaehlt ? typ.farbe : Color.secondary.opacity(0.15),
-                            lineWidth: gewaehlt ? 0 : 1)
-            )
-            .animation(.spring(duration: 0.2), value: gewaehlt)
         }
         .buttonStyle(.plain)
     }
@@ -138,7 +163,8 @@ struct EintragAuswahlView: View {
             return
         }
         migraeneFertig = false
-        if auswahl.contains(.schmerz) {
+        let brauchtSchmerz = auswahl.contains(.schmerz) || auswahl.contains(.rheuma) || auswahl.contains(.diabetes)
+        if brauchtSchmerz {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 zeigeSchmerz = true
             }
