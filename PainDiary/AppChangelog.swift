@@ -18,26 +18,15 @@ struct WhatsNewVersion {
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
     WhatsNewVersion(version: "2.0", build: "24", aenderungen: [
-        WhatsNewAenderung(icon: "bolt.horizontal.fill", farbe: .purple,
-                          titel: "Migräne-Kachel im Dashboard",
-                          beschreibung: "Neue Kachel in der Übersicht zeigt Anfälle (30 Tage), letzten Anfall und Ø Schmerzstärke als 14-Tage-Balkendiagramm. Direkterfassung per + oder \"Alle Anfälle\" öffnet das Migräne-Modul."),
-        WhatsNewAenderung(icon: "checkmark.bubble.fill", farbe: .indigo,
-                          titel: "Schmerzwizard erkennt Migräne",
-                          beschreibung: "Wird beim Eintragen von Kopfschmerzen mit Symptomen wie Lichtempfindlichkeit oder Übelkeit gespeichert, fragt der Wizard ob der Eintrag auch als Migräne-Anfall erfasst werden soll – mit vorausgefüllten Daten."),
-        WhatsNewAenderung(icon: "arrow.right.circle.fill", farbe: .teal,
-                          titel: "Gesundheit vollständiger",
-                          beschreibung: "Arztbesuche, Laborwerte und Physiotherapie sind jetzt unter Profil → Gesundheit verfügbar – nicht mehr nur im Rheuma-Modul. So profitieren auch Migräne- und Diabetes-Patienten davon."),
-    ]),
-    WhatsNewVersion(version: "2.0", build: "23", aenderungen: [
         WhatsNewAenderung(icon: "brain.head.profile", farbe: .purple,
                           titel: "Migräne-Modul",
-                          beschreibung: "Vollständiges Migräne-Modul mit Anfall-Tagebuch, Auslöser-Analyse (30 Tage), Schmerzcharakter, Begleitsymptome, Akutmedikament-Tracking und integriertem MIDAS-Score."),
+                          beschreibung: "Anfall-Tagebuch mit Auslöser-Analyse, Aura, Begleitsymptome und Akutmedikament. Dashboard-Kachel mit 14-Tage-Diagramm. Schmerzwizard erkennt Migräne automatisch und bietet Direktübernahme an."),
         WhatsNewAenderung(icon: "drop.fill", farbe: .orange,
                           titel: "Diabetes-Modul",
-                          beschreibung: "Blutzucker-Tagebuch mit mmol/L-Erfassung, Messzeitpunkte (Nüchtern, vor/nach Essen), Insulin-Tracking, Zielbereich-Statistik und Link zu Laborwerten (HbA1c)."),
+                          beschreibung: "Blutzucker-Tagebuch mit mmol/L-Erfassung, Messzeitpunkte (Nüchtern, vor/nach Essen), Insulin-Tracking und Zielbereich-Statistik."),
         WhatsNewAenderung(icon: "list.bullet.rectangle.portrait.fill", farbe: .blue,
                           titel: "Profil neu strukturiert",
-                          beschreibung: "Das Profil ist jetzt in drei klare Sektionen gegliedert: Gesundheit (Basisinfos), Erkrankungen (Rheuma, Migräne, Diabetes) und Notfall & Kontakte (Ausweis, Ärzte, Notfallkontakte)."),
+                          beschreibung: "Drei klare Sektionen: Gesundheit (inkl. Arztbesuche, Laborwerte, Physiotherapie), Erkrankungen (Rheuma, Migräne, Diabetes) und Notfall & Kontakte. Rheuma zeigt nur noch krankheitsspezifische Inhalte."),
     ]),
     WhatsNewVersion(version: "2.0", build: "22", aenderungen: [
         WhatsNewAenderung(icon: "doc.richtext.fill", farbe: .purple,
