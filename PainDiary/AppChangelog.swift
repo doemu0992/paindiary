@@ -17,6 +17,17 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "24", aenderungen: [
+        WhatsNewAenderung(icon: "bolt.horizontal.fill", farbe: .purple,
+                          titel: "Migräne-Kachel im Dashboard",
+                          beschreibung: "Neue Kachel in der Übersicht zeigt Anfälle (30 Tage), letzten Anfall und Ø Schmerzstärke als 14-Tage-Balkendiagramm. Direkterfassung per + oder \"Alle Anfälle\" öffnet das Migräne-Modul."),
+        WhatsNewAenderung(icon: "checkmark.bubble.fill", farbe: .indigo,
+                          titel: "Schmerzwizard erkennt Migräne",
+                          beschreibung: "Wird beim Eintragen von Kopfschmerzen mit Symptomen wie Lichtempfindlichkeit oder Übelkeit gespeichert, fragt der Wizard ob der Eintrag auch als Migräne-Anfall erfasst werden soll – mit vorausgefüllten Daten."),
+        WhatsNewAenderung(icon: "arrow.right.circle.fill", farbe: .teal,
+                          titel: "Gesundheit vollständiger",
+                          beschreibung: "Arztbesuche, Laborwerte und Physiotherapie sind jetzt unter Profil → Gesundheit verfügbar – nicht mehr nur im Rheuma-Modul. So profitieren auch Migräne- und Diabetes-Patienten davon."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "23", aenderungen: [
         WhatsNewAenderung(icon: "brain.head.profile", farbe: .purple,
                           titel: "Migräne-Modul",
