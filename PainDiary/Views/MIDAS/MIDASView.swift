@@ -1,47 +1,117 @@
 import SwiftUI
 import SwiftData
+import Charts
 
 struct MIDASView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \MIDASBewertung.datum, order: .reverse) private var bewertungen: [MIDASBewertung]
-    @State private var fragebogenAnzeigen = false
+    @State private var zeigeForm = false
 
     var body: some View {
         List {
-            Section {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Der MIDAS-Score misst, wie stark Migräne/Kopfschmerzen deinen Alltag in den letzten 3 Monaten beeinträchtigt haben.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Button("Neue Bewertung starten") { fragebogenAnzeigen = true }
-                        .buttonStyle(.borderedProminent)
+            if let letzter = bewertungen.first {
+                Section {
+                    scoreKarte(letzter)
                 }
-                .padding(.vertical, 4)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
             }
 
-            if !bewertungen.isEmpty {
+            if bewertungen.count >= 2 {
                 Section("Verlauf") {
-                    ForEach(bewertungen as [MIDASBewertung]) { b in
+                    let daten = bewertungen.sorted { $0.datum < $1.datum }
+                    Chart(daten) { b in
+                        LineMark(
+                            x: .value("Datum", b.datum, unit: .day),
+                            y: .value("MIDAS", b.score)
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(Color.purple)
+                        PointMark(
+                            x: .value("Datum", b.datum, unit: .day),
+                            y: .value("MIDAS", b.score)
+                        )
+                        .foregroundStyle(Color.purple)
+                    }
+                    .chartYScale(domain: 0...50)
+                    .chartYAxis {
+                        AxisMarks(values: [0, 5, 10, 20, 30]) { v in
+                            AxisGridLine()
+                            AxisValueLabel { if let i = v.as(Int.self) { Text("\(i)") } }
+                        }
+                    }
+                    .frame(height: 140)
+                    .padding(.vertical, 4)
+                }
+            }
+
+            Section {
+                infoBox
+            }
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
+
+            Section(bewertungen.isEmpty ? "" : "Einträge") {
+                if bewertungen.isEmpty {
+                    ContentUnavailableView(
+                        "Noch kein MIDAS erfasst",
+                        systemImage: "list.clipboard.fill",
+                        description: Text("Tippe auf + um den Fragebogen auszufüllen.")
+                    )
+                    .listRowSeparator(.hidden)
+                } else {
+                    ForEach(bewertungen) { b in
                         MIDASZeile(bewertung: b)
                     }
-                    .onDelete { idx in
-                        idx.forEach { modelContext.delete(bewertungen[$0]) }
-                    }
+                    .onDelete { idx in idx.forEach { modelContext.delete(bewertungen[$0]) } }
                 }
             }
         }
         .navigationTitle("MIDAS-Score")
-        .sheet(isPresented: $fragebogenAnzeigen) {
-            MIDASFragebogenView()
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { zeigeForm = true } label: { Image(systemName: "plus") }
+            }
         }
+        .sheet(isPresented: $zeigeForm) { MIDASFragebogenView() }
     }
-}
 
-private struct MIDASZeile: View {
-    let bewertung: MIDASBewertung
+    @ViewBuilder
+    private func scoreKarte(_ b: MIDASBewertung) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Letzter MIDAS-Score", systemImage: "list.clipboard.fill")
+                .font(.headline).foregroundStyle(.purple)
+            Divider()
+            HStack(spacing: 16) {
+                VStack(spacing: 4) {
+                    Text("\(b.score)")
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundStyle(gradFarbe(b.score))
+                    Text("Punkte").font(.caption).foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(b.gradText)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(gradFarbe(b.score))
+                    Text(b.datum, style: .date)
+                        .font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.caption)
+                        Text("Zeitraum: 3 Monate")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
 
-    private var farbe: Color {
-        switch bewertung.score {
+    private func gradFarbe(_ score: Int) -> Color {
+        switch score {
         case 0...5:   return .green
         case 6...10:  return .yellow
         case 11...20: return .orange
@@ -49,22 +119,70 @@ private struct MIDASZeile: View {
         }
     }
 
+    private var infoBox: some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Der MIDAS-Score misst, wie stark Migräne deinen Alltag in den letzten 3 Monaten beeinträchtigt hat. 5 Fragen zählen verlorene oder eingeschränkte Tage.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Divider()
+                infoPill("0–5",   label: "Grad I – Minimale Beeinträchtigung",  farbe: .green)
+                infoPill("6–10",  label: "Grad II – Leichte Beeinträchtigung",  farbe: .yellow)
+                infoPill("11–20", label: "Grad III – Mässige Beeinträchtigung", farbe: .orange)
+                infoPill("≥ 21",  label: "Grad IV – Schwere Beeinträchtigung",  farbe: .red)
+            }
+            .padding(.top, 6)
+        } label: {
+            Label("Was ist der MIDAS-Score?", systemImage: "info.circle")
+                .font(.subheadline).foregroundStyle(.secondary)
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func infoPill(_ wert: String, label: String, farbe: Color) -> some View {
+        HStack(spacing: 8) {
+            Circle().fill(farbe).frame(width: 8, height: 8)
+            Text(wert).font(.caption.bold()).foregroundStyle(farbe).frame(width: 36, alignment: .leading)
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - Zeile
+
+private struct MIDASZeile: View {
+    let bewertung: MIDASBewertung
+
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
-                Circle().fill(farbe.opacity(0.2)).frame(width: 48, height: 48)
+                Circle().fill(gradFarbe.opacity(0.2)).frame(width: 48, height: 48)
                 Text("\(bewertung.score)")
                     .font(.title3.bold())
-                    .foregroundStyle(farbe)
+                    .foregroundStyle(gradFarbe)
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text(bewertung.gradText).font(.headline)
                 Text(bewertung.datum, style: .date).font(.caption).foregroundStyle(.secondary)
             }
+            Spacer()
+            Text("\(bewertung.score) Pkt.")
+                .font(.caption).foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
     }
+
+    private var gradFarbe: Color {
+        switch bewertung.score {
+        case 0...5:   return .green
+        case 6...10:  return .yellow
+        case 11...20: return .orange
+        default:      return .red
+        }
+    }
 }
+
+// MARK: - Form
 
 struct MIDASFragebogenView: View {
     @Environment(\.modelContext) private var modelContext
@@ -78,6 +196,7 @@ struct MIDASFragebogenView: View {
     @State private var notizen = ""
 
     private var score: Int { q1 + q2 + q3 + q4 + q5 }
+
     private var gradText: String {
         switch score {
         case 0...5:   return "Grad I – Minimal"
@@ -86,6 +205,7 @@ struct MIDASFragebogenView: View {
         default:      return "Grad IV – Schwer"
         }
     }
+
     private var gradFarbe: Color {
         switch score {
         case 0...5:   return .green
@@ -95,56 +215,118 @@ struct MIDASFragebogenView: View {
         }
     }
 
-    private let fragen = [
-        ("Arbeit / Schule – eingeschränkt", "An wie vielen Tagen konntest du bei der Arbeit oder in der Schule weniger als 50% leisten?"),
-        ("Arbeit / Schule – gefehlt", "An wie vielen Tagen hast du wegen Kopfschmerzen Arbeit oder Schule komplett versäumt?"),
-        ("Haushalt – eingeschränkt", "An wie vielen Tagen konntest du im Haushalt weniger als 50% leisten?"),
-        ("Haushalt – gefehlt", "An wie vielen Tagen hast du Hausarbeiten wegen Kopfschmerzen komplett versäumt?"),
-        ("Freizeit & Soziales", "An wie vielen Tagen hast du Freizeit-, Familien- oder soziale Aktivitäten verpasst?")
+    private let fragen: [(titel: String, frage: String)] = [
+        ("Arbeit / Schule – eingeschränkt",
+         "An wie vielen Tagen konntest du bei der Arbeit oder in der Schule weniger als die Hälfte deiner normalen Leistung erbringen?"),
+        ("Arbeit / Schule – gefehlt",
+         "An wie vielen Tagen hast du wegen Kopfschmerzen die Arbeit oder Schule komplett versäumt?"),
+        ("Haushalt – eingeschränkt",
+         "An wie vielen Tagen konntest du im Haushalt weniger als die Hälfte deiner normalen Arbeit erledigen?"),
+        ("Haushalt – gefehlt",
+         "An wie vielen Tagen hast du Hausarbeiten wegen Kopfschmerzen komplett versäumt?"),
+        ("Freizeit & Soziales",
+         "An wie vielen Tagen hast du Freizeit-, Familien- oder soziale Aktivitäten wegen Kopfschmerzen verpasst?")
     ]
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Beantworte diese 5 Fragen für die letzten **3 Monate**.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Zeitraum: letzte 3 Monate")
+                                .font(.subheadline.bold())
+                            Text("Zähle Tage mit Migräne oder starken Kopfschmerzen.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("\(score)")
+                                .font(.title2.bold())
+                                .foregroundStyle(gradFarbe)
+                                .animation(.easeInOut, value: score)
+                            Text("Punkte").font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
 
                 ForEach(Array(zip(fragen.indices, fragen)), id: \.0) { i, frage in
                     Section {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(frage.1)
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(frage.frage)
                                 .font(.subheadline)
-                            Stepper("\(wert(i)) Tage", value: binding(i), in: 0...90)
-                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            HStack(spacing: 0) {
+                                Button {
+                                    if wert(i) > 0 { setWert(i, wert(i) - 1) }
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.title)
+                                        .foregroundStyle(wert(i) > 0 ? .purple : .secondary)
+                                }
+                                .buttonStyle(.plain)
+
+                                Spacer()
+
+                                VStack(spacing: 2) {
+                                    Text("\(wert(i))")
+                                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                                        .foregroundStyle(wert(i) == 0 ? .secondary : .purple)
+                                        .animation(.spring(response: 0.2), value: wert(i))
+                                    Text("Tage")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(minWidth: 80)
+
+                                Spacer()
+
+                                Button {
+                                    if wert(i) < 90 { setWert(i, wert(i) + 1) }
+                                } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title)
+                                        .foregroundStyle(.purple)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.vertical, 4)
                         }
                         .padding(.vertical, 4)
                     } header: {
-                        Text("Frage \(i + 1): \(frage.0)")
+                        Text("Frage \(i + 1): \(frage.titel)")
                     }
                 }
 
-                Section("Ergebnis") {
+                Section {
                     HStack {
-                        Text("MIDAS-Score")
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(gradText)
+                                .font(.headline)
+                                .foregroundStyle(gradFarbe)
+                            Text("MIDAS-Score: \(score) Punkte")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         Spacer()
-                        Text("\(score)")
-                            .font(.title2.bold())
-                            .foregroundStyle(gradFarbe)
+                        ZStack {
+                            Circle().fill(gradFarbe.opacity(0.15)).frame(width: 52, height: 52)
+                            Text("\(score)")
+                                .font(.title2.bold())
+                                .foregroundStyle(gradFarbe)
+                        }
+                        .animation(.easeInOut, value: score)
                     }
-                    HStack {
-                        Text("Beeinträchtigung")
-                        Spacer()
-                        Text(gradText)
-                            .foregroundStyle(gradFarbe)
-                            .fontWeight(.medium)
-                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Ergebnis")
                 }
 
                 Section("Notizen") {
-                    TextEditor(text: $notizen).frame(minHeight: 60)
+                    TextField("Optionale Notizen", text: $notizen, axis: .vertical)
+                        .lineLimit(3...6)
                 }
             }
             .navigationTitle("MIDAS-Fragebogen")
@@ -162,10 +344,8 @@ struct MIDASFragebogenView: View {
         switch i { case 0: return q1; case 1: return q2; case 2: return q3; case 3: return q4; default: return q5 }
     }
 
-    private func binding(_ i: Int) -> Binding<Int> {
-        switch i {
-        case 0: return $q1; case 1: return $q2; case 2: return $q3; case 3: return $q4; default: return $q5
-        }
+    private func setWert(_ i: Int, _ v: Int) {
+        switch i { case 0: q1 = v; case 1: q2 = v; case 2: q3 = v; case 3: q4 = v; default: q5 = v }
     }
 
     private func speichern() {
