@@ -145,68 +145,67 @@ struct SchmerzForm: View {
         }
     }
 
-    // MARK: - Schritt 2: Körperstelle (3D Modell)
+    // MARK: - Schritt 2: Körperstelle (3D Modell – Vollbild)
 
     private var schritt2: some View {
-        Form {
-            Section {
-                VStack(spacing: 8) {
-                    HStack {
-                        Text("Körperstelle")
-                            .font(.subheadline.bold())
-                        Spacer()
-                        Button {
-                            scanSetupAnzeigen = true
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "figure.stand")
-                                Text("Proportionen")
-                            }
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    KoerperPickerView(
-                        auswahl: $koerperstelle,
-                        tintColor: .systemRed,
-                        frameHeight: 340
-                    )
-
-                    let ausgewaehlt = Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
-                    if !ausgewaehlt.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(ausgewaehlt.sorted(), id: \.self) { r in
-                                    Button {
-                                        var s = ausgewaehlt; s.remove(r)
-                                        koerperstelle = s.sorted().joined(separator: ", ")
-                                    } label: {
-                                        HStack(spacing: 3) {
-                                            Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
-                                            Text(r).font(.caption)
-                                        }
-                                        .padding(.horizontal, 10).padding(.vertical, 5)
-                                        .background(Color.red.opacity(0.15))
-                                        .clipShape(Capsule())
-                                        .foregroundStyle(.red)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(.vertical, 4)
-            } header: {
+        VStack(spacing: 0) {
+            HStack {
                 Text("Wo tut es weh?")
-            } footer: {
-                if koerperstelle.isEmpty {
-                    Text("Tippe auf das Modell um eine oder mehrere Stellen auszuwählen.")
+                    .font(.subheadline.bold())
+                Spacer()
+                Button {
+                    scanSetupAnzeigen = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "figure.stand")
+                        Text("Proportionen")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal)
+            .padding(.top, 8)
+
+            KoerperPickerView(
+                auswahl: $koerperstelle,
+                tintColor: .systemRed
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            let ausgewaehlt = Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
+            if ausgewaehlt.isEmpty {
+                Text("Tippe auf das Modell um eine Stelle auszuwählen.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 12)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(ausgewaehlt.sorted(), id: \.self) { r in
+                            Button {
+                                var s = ausgewaehlt; s.remove(r)
+                                koerperstelle = s.sorted().joined(separator: ", ")
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                                    Text(r).font(.caption)
+                                }
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(Color.red.opacity(0.15))
+                                .clipShape(Capsule())
+                                .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.bottom, 12)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Schritt 3: Schmerzcharakter & Auslöser
