@@ -87,7 +87,63 @@ private struct ProfilInhaltView: View {
                 .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
+
+            NavigationLink(destination: NotfallausweisView()) {
+                notfallKurzInfo
+            }
         }
+    }
+
+    private var notfallKurzInfo: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "staroflife.fill")
+                .font(.callout)
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(Color.red)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Notfallausweis")
+                    .font(.subheadline.bold())
+
+                let aktDiag = alleDiagnosen.filter { $0.aktiv }
+                if alleAllergien.isEmpty && aktDiag.isEmpty {
+                    Text("Tippe um medizinische Daten zu hinterlegen")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    HStack(spacing: 6) {
+                        if !alleAllergien.isEmpty {
+                            Label(
+                                alleAllergien.count == 1
+                                    ? alleAllergien[0].substanz
+                                    : "\(alleAllergien.count) Allergien",
+                                systemImage: "exclamationmark.triangle.fill"
+                            )
+                            .font(.caption2.bold())
+                            .foregroundStyle(.orange)
+                            .lineLimit(1)
+                            .padding(.horizontal, 7).padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.12), in: Capsule())
+                        }
+                        if !aktDiag.isEmpty {
+                            Text(
+                                aktDiag.count == 1
+                                    ? aktDiag[0].bezeichnung
+                                    : "\(aktDiag.count) Diagnosen"
+                            )
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 7).padding(.vertical, 3)
+                            .background(Color.secondary.opacity(0.1), in: Capsule())
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder
@@ -225,13 +281,10 @@ private struct ProfilInhaltView: View {
         }
     }
 
-    // MARK: - Notfall & Kontakte
+    // MARK: - Kontakte
 
     private var notfallSektion: some View {
-        Section("Notfall & Kontakte") {
-            NavigationLink(destination: NotfallausweisView()) {
-                Label("Notfallausweis", systemImage: "staroflife.fill")
-            }
+        Section("Kontakte") {
             NavigationLink(destination: AerzteView(profil: profil)) {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
