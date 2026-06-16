@@ -29,6 +29,7 @@ struct SchmerzForm: View {
     @State private var wetterWind: Double? = nil
 
     private let wetter = WetterService.shared
+    private let maxSchritt = 4
 
     private let charakterOptionen = [
         "Dumpf", "Stechend", "Brennend", "Drückend",
@@ -51,10 +52,12 @@ struct SchmerzForm: View {
     var body: some View {
         NavigationStack {
             Group {
-                if schritt == 0 {
-                    schritt1
-                } else {
-                    schritt2
+                switch schritt {
+                case 0: schritt1
+                case 1: schritt2
+                case 2: schritt3
+                case 3: schritt4
+                default: schritt5
                 }
             }
             .navigationTitle(eintrag == nil ? "Neuer Schmerzeintrag" : "Schmerz bearbeiten")
@@ -65,7 +68,7 @@ struct SchmerzForm: View {
                         Button("Abbrechen") { dismiss() }
                     } else {
                         Button {
-                            withAnimation { schritt = 0 }
+                            withAnimation { schritt -= 1 }
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "chevron.left")
@@ -74,10 +77,15 @@ struct SchmerzForm: View {
                         }
                     }
                 }
+                ToolbarItem(placement: .principal) {
+                    Text("\(schritt + 1) / \(maxSchritt + 1)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    if schritt == 0 {
+                    if schritt < maxSchritt {
                         Button("Weiter") {
-                            withAnimation { schritt = 1 }
+                            withAnimation { schritt += 1 }
                         }
                         .fontWeight(.semibold)
                     } else {
@@ -85,25 +93,62 @@ struct SchmerzForm: View {
                             .fontWeight(.semibold)
                     }
                 }
-                ToolbarItem(placement: .principal) {
-                    Text("\(schritt + 1) / 2")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
         }
         .onAppear { laden() }
         .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
     }
 
-    // MARK: - Schritt 1: Ort & Stärke
+    // MARK: - Schritt 1: Zeitpunkt & Schmerzstärke
 
     private var schritt1: some View {
         Form {
             Section("Zeitpunkt") {
                 DatePicker("Datum & Uhrzeit", selection: $datum)
+
+                if let snap = wetterAnzeige {
+                    HStack(spacing: 6) {
+                        Image(systemName: snap.symbol)
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                        Text(String(format: "%.0f°C · %@ · %.0f km/h",
+                                    snap.temperatur, snap.beschreibung, snap.windgeschwindigkeit))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
+            Section("Schmerzstärke") {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Stärke: \(schmerzstaerke) / 10")
+                        Spacer()
+                        Text(staerkeLabel)
+                            .font(.caption.bold())
+                            .foregroundStyle(staerkeFarbe)
+                    }
+                    Slider(
+                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
+                        in: 0...10, step: 1
+                    ).tint(staerkeFarbe)
+                }
+            }
+
+            Section("Dauer") {
+                HStack {
+                    Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
+                    Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
+                }
+                .font(.subheadline)
+            }
+        }
+    }
+
+    // MARK: - Schritt 2: Körperstelle (3D Modell)
+
+    private var schritt2: some View {
+        Form {
             Section {
                 VStack(spacing: 8) {
                     HStack {
@@ -126,7 +171,7 @@ struct SchmerzForm: View {
                     KoerperPickerView(
                         auswahl: $koerperstelle,
                         tintColor: .systemRed,
-                        frameHeight: 280
+                        frameHeight: 340
                     )
 
                     let ausgewaehlt = Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
@@ -154,50 +199,19 @@ struct SchmerzForm: View {
                     }
                 }
                 .padding(.vertical, 4)
-            }
-
-            Section("Schmerzstärke") {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Stärke: \(schmerzstaerke) / 10")
-                        Spacer()
-                        Text(staerkeLabel)
-                            .font(.caption.bold())
-                            .foregroundStyle(staerkeFarbe)
-                    }
-                    Slider(
-                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
-                        in: 0...10, step: 1
-                    ).tint(staerkeFarbe)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Dauer").font(.subheadline)
-                    HStack {
-                        Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
-                        Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
-                    }
-                    .font(.subheadline)
-                }
-
-                if let snap = wetterAnzeige {
-                    HStack(spacing: 6) {
-                        Image(systemName: snap.symbol)
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                        Text(String(format: "%.0f°C · %@ · %.0f km/h",
-                                    snap.temperatur, snap.beschreibung, snap.windgeschwindigkeit))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+            } header: {
+                Text("Wo tut es weh?")
+            } footer: {
+                if koerperstelle.isEmpty {
+                    Text("Tippe auf das Modell um eine oder mehrere Stellen auszuwählen.")
                 }
             }
         }
     }
 
-    // MARK: - Schritt 2: Details & Wohlbefinden
+    // MARK: - Schritt 3: Schmerzcharakter & Auslöser
 
-    private var schritt2: some View {
+    private var schritt3: some View {
         Form {
             Section("Schmerzcharakter") {
                 FlowLayout(charakterOptionen) { opt in
@@ -220,7 +234,13 @@ struct SchmerzForm: View {
                 }
                 .padding(.vertical, 4)
             }
+        }
+    }
 
+    // MARK: - Schritt 4: Begleitsymptome & Massnahmen
+
+    private var schritt4: some View {
+        Form {
             Section("Begleitsymptome") {
                 FlowLayout(begleitOptionen) { opt in
                     ChipButton(label: opt,
@@ -242,22 +262,31 @@ struct SchmerzForm: View {
                 }
                 .padding(.vertical, 4)
             }
+        }
+    }
 
-            Section("Wohlbefinden") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Stimmung").font(.subheadline)
-                    HStack(spacing: 10) {
-                        ForEach(1...5, id: \.self) { wert in
-                            Button { stimmung = wert } label: {
-                                Image(systemName: stimmung >= wert ? "heart.fill" : "heart")
-                                    .foregroundStyle(stimmung >= wert ? .pink : .secondary)
-                                    .font(.title3)
-                            }
-                            .buttonStyle(.plain)
+    // MARK: - Schritt 5: Wohlbefinden & Notizen
+
+    private var schritt5: some View {
+        Form {
+            Section("Stimmung") {
+                HStack(spacing: 12) {
+                    ForEach(1...5, id: \.self) { wert in
+                        Button { stimmung = wert } label: {
+                            Image(systemName: stimmung >= wert ? "heart.fill" : "heart")
+                                .foregroundStyle(stimmung >= wert ? .pink : .secondary)
+                                .font(.title3)
                         }
+                        .buttonStyle(.plain)
                     }
+                    Spacer()
+                    Text(stimmungLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
+            }
 
+            Section("Stress") {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text("Stress: \(stressLevel) / 5")
@@ -269,16 +298,17 @@ struct SchmerzForm: View {
                         in: 1...5, step: 1
                     ).tint(.orange)
                 }
+            }
 
+            Section("Schlaf") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(String(format: "Schlaf: %.1f Std.", schlafStunden))
-                        .font(.subheadline)
+                    Text(String(format: "%.1f Stunden", schlafStunden))
                     Slider(value: $schlafStunden, in: 0...12, step: 0.5).tint(.blue)
                 }
             }
 
             Section("Notizen") {
-                TextEditor(text: $notizen).frame(minHeight: 60)
+                TextEditor(text: $notizen).frame(minHeight: 80)
             }
         }
     }
@@ -313,6 +343,10 @@ struct SchmerzForm: View {
         }
     }
 
+    private var stimmungLabel: String {
+        ["", "Sehr schlecht", "Schlecht", "Neutral", "Gut", "Sehr gut"][stimmung]
+    }
+
     private var stressLabel: String {
         ["", "Entspannt", "Ruhig", "Mässig", "Gestresst", "Extrem"][stressLevel]
     }
@@ -341,7 +375,6 @@ struct SchmerzForm: View {
             wetterTemperatur = e.wetterTemperatur
             wetterCode = e.wetterCode
             wetterWind = e.wetterWind
-            schritt = 1
         } else {
             if let snap = wetter.aktuell {
                 wetterTemperatur = snap.temperatur
