@@ -251,54 +251,16 @@ struct MIDASFragebogenView: View {
                     .padding(.vertical, 4)
                 }
 
-                ForEach(Array(zip(fragen.indices, fragen)), id: \.0) { i, frage in
-                    Section {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(frage.frage)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            HStack(spacing: 0) {
-                                Button {
-                                    if wert(i) > 0 { setWert(i, wert(i) - 1) }
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .font(.title)
-                                        .foregroundStyle(wert(i) > 0 ? .purple : .secondary)
-                                }
-                                .buttonStyle(.plain)
-
-                                Spacer()
-
-                                VStack(spacing: 2) {
-                                    Text("\(wert(i))")
-                                        .font(.system(size: 42, weight: .bold, design: .rounded))
-                                        .foregroundStyle(wert(i) == 0 ? .secondary : .purple)
-                                        .animation(.spring(response: 0.2), value: wert(i))
-                                    Text("Tage")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .frame(minWidth: 80)
-
-                                Spacer()
-
-                                Button {
-                                    if wert(i) < 90 { setWert(i, wert(i) + 1) }
-                                } label: {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.title)
-                                        .foregroundStyle(.purple)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(.vertical, 4)
-                        }
-                        .padding(.vertical, 4)
-                    } header: {
-                        Text("Frage \(i + 1): \(frage.titel)")
-                    }
+                ForEach(fragen.indices, id: \.self) { i in
+                    let frage = fragen[i]
+                    MIDASFrageSektion(
+                        index: i,
+                        titel: frage.titel,
+                        frageText: frage.frage,
+                        tage: wert(i),
+                        onMinus: { if wert(i) > 0 { setWert(i, wert(i) - 1) } },
+                        onPlus:  { if wert(i) < 90 { setWert(i, wert(i) + 1) } }
+                    )
                 }
 
                 Section {
@@ -356,5 +318,62 @@ struct MIDASFragebogenView: View {
         )
         modelContext.insert(neu)
         dismiss()
+    }
+}
+
+// MARK: - Frage-Sektion (ausgelagert zur Entlastung des Type-Checkers)
+
+private struct MIDASFrageSektion: View {
+    let index: Int
+    let titel: String
+    let frageText: String
+    let tage: Int
+    let onMinus: () -> Void
+    let onPlus: () -> Void
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(frageText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 0) {
+                    Button(action: onMinus) {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title)
+                            .foregroundStyle(tage > 0 ? Color.purple : Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    VStack(spacing: 2) {
+                        Text("\(tage)")
+                            .font(.system(size: 42, weight: .bold, design: .rounded))
+                            .foregroundStyle(tage == 0 ? Color.secondary : Color.purple)
+                            .animation(.spring(response: 0.2), value: tage)
+                        Text("Tage")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(minWidth: 80)
+
+                    Spacer()
+
+                    Button(action: onPlus) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title)
+                            .foregroundStyle(Color.purple)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 4)
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Frage \(index + 1): \(titel)")
+        }
     }
 }
