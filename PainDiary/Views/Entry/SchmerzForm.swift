@@ -8,6 +8,7 @@ struct SchmerzForm: View {
     var eintrag: PainEntry? = nil
     var onGespeichert: (() -> Void)? = nil
 
+    @AppStorage("migraeneModulAktiv") private var migraeneModulAktiv = false
     @StateObject private var scanService = BodyScanService.shared
     @State private var schritt = 0
     @State private var datum = Date()
@@ -32,6 +33,18 @@ struct SchmerzForm: View {
     @State private var wetterTemperatur: Double? = nil
     @State private var wetterCode: Int? = nil
     @State private var wetterWind: Double? = nil
+
+    // Vorlage (template from last entry)
+    @State private var letzterEintrag: PainEntry? = nil
+    @State private var vorlageAngewendet = false
+
+    // Erfolg & Migräne-Vorschlag
+    @State private var zeigeErfolg = false
+    @State private var istMigraeneEintrag = false
+    @State private var zeigeMigraeneForm = false
+    @State private var migraeneVorDatum = Date()
+    @State private var migraeneVorStaerke = 6
+    @State private var migraeneVorBegleit: Set<String> = []
 
     private let wetter = WetterService.shared
     private let maxSchritt = 4
@@ -103,6 +116,71 @@ struct SchmerzForm: View {
         }
         .onAppear { laden() }
         .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
+        .sheet(isPresented: $zeigeMigraeneForm, onDismiss: { dismiss() }) {
+            MigraeneAnfallForm(
+                vorDatum: migraeneVorDatum,
+                vorStaerke: migraeneVorStaerke,
+                vorBegleit: migraeneVorBegleit
+            )
+        }
+        .overlay {
+            if zeigeErfolg {
+                ZStack {
+                    Color.black.opacity(0.25).ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 72, height: 72)
+                                .shadow(color: .green.opacity(0.4), radius: 16, y: 4)
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .scaleEffect(zeigeErfolg ? 1 : 0.3)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.55), value: zeigeErfolg)
+                        Text("Gespeichert")
+                            .font(.headline.bold())
+                            .foregroundStyle(.white)
+                            .opacity(zeigeErfolg ? 1 : 0)
+                            .animation(.easeIn.delay(0.1), value: zeigeErfolg)
+
+                        if istMigraeneEintrag {
+                            VStack(spacing: 10) {
+                                Text("Auch als Migräne-Anfall erfassen?")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.white.opacity(0.9))
+                                    .multilineTextAlignment(.center)
+                                HStack(spacing: 12) {
+                                    Button {
+                                        zeigeErfolg = false
+                                        zeigeMigraeneForm = true
+                                    } label: {
+                                        Text("Ja, erfassen")
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 20).padding(.vertical, 9)
+                                            .background(Color.purple)
+                                            .clipShape(Capsule())
+                                    }
+                                    Button { dismiss() } label: {
+                                        Text("Nein")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.white.opacity(0.85))
+                                            .padding(.horizontal, 20).padding(.vertical, 9)
+                                            .background(Color.white.opacity(0.18))
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
+                            .opacity(zeigeErfolg ? 1 : 0)
+                            .animation(.easeIn.delay(0.25), value: zeigeErfolg)
+                        }
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
     }
 
     // MARK: - Schritt 1: Zeitpunkt & Schmerzstärke
@@ -111,6 +189,20 @@ struct SchmerzForm: View {
         Form {
             Section("Zeitpunkt") {
                 DatePicker("Datum & Uhrzeit", selection: $datum)
+
+                if !vorlageAngewendet, let letzter = letzterEintrag, !letzter.koerperstelle.isEmpty {
+                    Button {
+                        wendeVorlageAn(letzter)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.counterclockwise")
+                            Text("Letzter Eintrag: \(letzter.koerperstelle)")
+                                .lineLimit(1).truncationMode(.tail)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                }
 
                 if let snap = wetterAnzeige {
                     HStack(spacing: 6) {
@@ -503,6 +595,29 @@ struct SchmerzForm: View {
         }
     }
 
+    // MARK: - Template
+
+    private func wendeVorlageAn(_ e: PainEntry) {
+        withAnimation(.spring(response: 0.25)) {
+            koerperstelle = e.koerperstelle
+            schmerzstaerke = e.schmerzstaerke
+            dauerStunden = e.dauerMinuten / 60
+            dauerMinuten = e.dauerMinuten % 60
+            ausgewaehlterCharakter = Set(e.schmerzart.components(separatedBy: ", ").filter { !$0.isEmpty })
+                .intersection(Set(charakterOptionen))
+            ausgewaehlteAusloeser  = Set(e.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty })
+                .intersection(Set(ausloeserOptionen))
+            ausgewaehlteBegleit    = Set(e.begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty })
+                .intersection(Set(begleitOptionen))
+            ausgewaehlteMassnahmen = Set(e.massnahmen.components(separatedBy: ", ").filter { !$0.isEmpty })
+                .intersection(Set(massnahmenOptionen))
+            stimmung = e.stimmung
+            stressLevel = e.stressLevel
+            schlafStunden = e.schlafStunden
+            vorlageAngewendet = true
+        }
+    }
+
     // MARK: - Load / Save
 
     private func laden() {
@@ -547,13 +662,19 @@ struct SchmerzForm: View {
                 wetter.laden()
             }
 
+            var alleDesc = FetchDescriptor<PainEntry>(
+                sortBy: [SortDescriptor(\.datum, order: .reverse)]
+            )
+            alleDesc.fetchLimit = 1
+            letzterEintrag = try? modelContext.fetch(alleDesc).first
+
             let heute = Calendar.current.startOfDay(for: Date())
-            let descriptor = FetchDescriptor<PainEntry>(
+            let heuteDesc = FetchDescriptor<PainEntry>(
                 predicate: #Predicate { $0.datum >= heute },
                 sortBy: [SortDescriptor(\.datum, order: .reverse)]
             )
-            if let letzter = try? modelContext.fetch(descriptor).first {
-                schlafStunden = letzter.schlafStunden
+            if let letzterHeute = try? modelContext.fetch(heuteDesc).first {
+                schlafStunden = letzterHeute.schlafStunden
             }
         }
     }
@@ -598,7 +719,25 @@ struct SchmerzForm: View {
             )
             modelContext.insert(neu)
         }
-        onGespeichert?()
-        dismiss()
+        // Migräne-Erkennung bei Kopfschmerz mit Migräne-Symptomen
+        if eintrag == nil, migraeneModulAktiv, koerperstelle.contains("Kopf") {
+            let migraeneSym: Set<String> = ["Lichtempfindlichkeit", "Lärmempfindlichkeit", "Übelkeit", "Sehstörungen (Aura)"]
+            let symptomListe = Set(beglStr.components(separatedBy: ", ").filter { !$0.isEmpty })
+            if !symptomListe.isDisjoint(with: migraeneSym) {
+                migraeneVorDatum = datum
+                migraeneVorStaerke = min(10, max(1, schmerzstaerke))
+                migraeneVorBegleit = symptomListe.intersection(migraeneSym)
+                istMigraeneEintrag = true
+            }
+        }
+
+#if os(iOS)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+#endif
+        zeigeErfolg = true
+        if !istMigraeneEintrag {
+            onGespeichert?()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
+        }
     }
 }
