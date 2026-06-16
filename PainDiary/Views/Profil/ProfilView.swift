@@ -32,6 +32,8 @@ private struct ProfilInhaltView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
     @Query(sort: \Allergie.schwere) private var alleAllergien: [Allergie]
+    @Query(sort: \Arztbesuch.datum, order: .reverse) private var alleArztbesuche: [Arztbesuch]
+    @Query(sort: \Laborwert.datum, order: .reverse) private var alleLaborwerte: [Laborwert]
     @State private var stammdatenAnzeigen = false
 
     var body: some View {
@@ -170,6 +172,35 @@ private struct ProfilInhaltView: View {
             }
             NavigationLink(destination: ImpfpassView()) {
                 Label("Impfpass", systemImage: "syringe.fill")
+            }
+            NavigationLink(destination: ArztbesuchView()) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Arztbesuche")
+                        if let naechster = alleArztbesuche.compactMap(\.naechsterTermin).filter({ $0 > Date() }).min() {
+                            Text("Nächster: \(naechster.formatted(date: .abbreviated, time: .omitted))")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "stethoscope").foregroundStyle(.teal)
+                }
+            }
+            NavigationLink(destination: LaborwerteView()) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Laborwerte")
+                        if let letzter = alleLaborwerte.first {
+                            Text("\(letzter.typ): \(String(format: "%.1f", letzter.wert)) \(letzter.einheit)")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "testtube.2").foregroundStyle(.blue)
+                }
+            }
+            NavigationLink(destination: PhysioView()) {
+                Label("Physiotherapie", systemImage: "figure.walk.motion")
             }
             NavigationLink(destination: ZyklusView()) {
                 Label("Zyklus-Tracking", systemImage: "drop.fill")

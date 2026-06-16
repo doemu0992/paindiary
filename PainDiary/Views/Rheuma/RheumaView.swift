@@ -4,8 +4,6 @@ import SwiftData
 struct RheumaView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
-    @Query(sort: \Arztbesuch.datum, order: .reverse) private var besuche: [Arztbesuch]
-    @Query(sort: \Laborwert.datum, order: .reverse) private var laborwerte: [Laborwert]
     @Query(sort: \FACITEintrag.datum, order: .reverse) private var facitEintraege: [FACITEintrag]
     @Query(sort: \BiologikaInjektion.datum, order: .reverse) private var injektionen: [BiologikaInjektion]
     @Query(sort: \Remissionsphase.beginn, order: .reverse) private var remissionsphasen: [Remissionsphase]
@@ -47,19 +45,6 @@ struct RheumaView: View {
                         Image(systemName: "battery.25percent").foregroundStyle(.orange)
                     }
                 }
-                NavigationLink(destination: LaborwerteView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Laborwerte")
-                            if let letzter = laborwerte.first {
-                                Text("\(letzter.typ): \(String(format: "%.1f", letzter.wert)) \(letzter.einheit)")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    } icon: {
-                        Image(systemName: "testtube.2").foregroundStyle(.blue)
-                    }
-                }
                 NavigationLink(destination: RemissionsView()) {
                     Label {
                         VStack(alignment: .leading, spacing: 2) {
@@ -95,26 +80,6 @@ struct RheumaView: View {
                 NavigationLink(destination: KortisonView()) {
                     Label("Kortison-Tagebuch", systemImage: "pills.fill")
                         .foregroundStyle(.primary)
-                }
-                NavigationLink(destination: PhysioView()) {
-                    Label("Physiotherapie", systemImage: "figure.walk.motion")
-                        .foregroundStyle(.primary)
-                }
-            }
-
-            Section("Ärztliche Betreuung") {
-                NavigationLink(destination: ArztbesuchView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Arztbesuche")
-                            if let naechster = besuche.compactMap(\.naechsterTermin).filter({ $0 > Date() }).min() {
-                                Text("Nächster: \(naechster.formatted(date: .abbreviated, time: .omitted))")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    } icon: {
-                        Image(systemName: "stethoscope").foregroundStyle(.teal)
-                    }
                 }
                 NavigationLink(destination: ArztbriefView()) {
                     Label("Arztbrief erstellen", systemImage: "doc.text.fill")
