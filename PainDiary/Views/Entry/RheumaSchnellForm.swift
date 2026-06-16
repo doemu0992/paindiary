@@ -159,12 +159,12 @@ struct RheumaSchnellForm: View {
             datum: datum,
             schmerzstaerke: 0,
             koerperstelle: "Rheuma",
+            notizen: notizen,
+            stimmung: stimmung,
             morgensteifigkeit: morgensteifigkeit,
             istSchub: istSchub,
             fatigue: fatigue,
-            gelenkStatus: gelenkStatus,
-            stimmung: stimmung,
-            notizen: notizen
+            gelenkStatus: gelenkStatus
         )
         modelContext.insert(neu)
         onGespeichert?()
