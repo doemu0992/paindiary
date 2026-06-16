@@ -211,6 +211,7 @@ private struct MigraeneStatCard: View {
 struct MigraeneAnfallForm: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Dauermedikation.name) private var alleMedikamente: [Dauermedikation]
 
     var anfall: MigraeneEintrag? = nil
     var vorDatum: Date = Date()
@@ -227,6 +228,7 @@ struct MigraeneAnfallForm: View {
     @State private var ausgewaehlteBegleitsymptome: Set<String> = []
     @State private var ausgewaehlteAusloeser: Set<String> = []
     @State private var akutmedikament = ""
+    @State private var ausgewaehltesMedikament: Dauermedikation? = nil
     @State private var medikamentWirksam = ""
     @State private var notizen = ""
 
@@ -293,8 +295,47 @@ struct MigraeneAnfallForm: View {
                 }
 
                 Section("Akutmedikament") {
-                    TextField("z.B. Sumatriptan 50 mg", text: $akutmedikament)
-                    if !akutmedikament.isEmpty {
+                    let aktiveMeds = alleMedikamente.filter(\.aktiv)
+                    if !aktiveMeds.isEmpty {
+                        ForEach(aktiveMeds) { med in
+                            Button {
+                                if ausgewaehltesMedikament?.id == med.id {
+                                    ausgewaehltesMedikament = nil
+                                    akutmedikament = ""
+                                } else {
+                                    ausgewaehltesMedikament = med
+                                    akutmedikament = med.dosierung.isEmpty
+                                        ? med.name : "\(med.name) \(med.dosierung)"
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: med.typSymbol)
+                                        .foregroundStyle(.blue)
+                                        .frame(width: 24)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(med.name).foregroundStyle(.primary)
+                                        if !med.dosierung.isEmpty {
+                                            Text(med.dosierung)
+                                                .font(.caption).foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    if ausgewaehltesMedikament?.id == med.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.blue)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Divider()
+                        TextField("Anderes Medikament", text: $akutmedikament)
+                            .disabled(ausgewaehltesMedikament != nil)
+                            .foregroundStyle(ausgewaehltesMedikament != nil ? .secondary : .primary)
+                    } else {
+                        TextField("z.B. Sumatriptan 50 mg", text: $akutmedikament)
+                    }
+                    if !akutmedikament.isEmpty || ausgewaehltesMedikament != nil {
                         Picker("Wirksam?", selection: $medikamentWirksam) {
                             Text("Nicht angegeben").tag("")
                             ForEach(["Ja", "Teilweise", "Nein"], id: \.self) { Text($0).tag($0) }
@@ -356,6 +397,11 @@ struct MigraeneAnfallForm: View {
             akutmedikament = a.akutmedikament
             medikamentWirksam = a.medikamentWirksam
             notizen = a.notizen
+            // Versuche gespeichertes Medikament in Profil-Liste zu finden
+            ausgewaehltesMedikament = alleMedikamente.first { med in
+                let vollname = med.dosierung.isEmpty ? med.name : "\(med.name) \(med.dosierung)"
+                return vollname == a.akutmedikament || med.name == a.akutmedikament
+            }
         } else if !vorBegleit.isEmpty || vorStaerke != 6 {
             datum = vorDatum
             staerke = max(1, min(10, vorStaerke))
@@ -388,6 +434,20 @@ struct MigraeneAnfallForm: View {
                                       ausloeser: auslStr, akutmedikament: akutmedikament,
                                       medikamentWirksam: medikamentWirksam, notizen: notizen)
             modelContext.insert(neu)
+
+            // EinnahmeLog erstellen wenn Profil-Medikament ausgewählt
+            if let med = ausgewaehltesMedikament {
+                let wirkungMap = ["Ja": "gut", "Teilweise": "teilweise", "Nein": "nicht"]
+                let log = EinnahmeLog(
+                    datum: datum,
+                    medikamentName: med.name,
+                    dosierung: med.dosierung,
+                    eingenommen: true,
+                    notizen: "Migräne-Anfall"
+                )
+                log.wirkung = wirkungMap[medikamentWirksam] ?? ""
+                modelContext.insert(log)
+            }
         }
         dismiss()
     }
