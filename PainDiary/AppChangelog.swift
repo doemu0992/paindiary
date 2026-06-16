@@ -17,6 +17,29 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "25", aenderungen: [
+        WhatsNewAenderung(icon: "cloud.sun.fill", farbe: .cyan,
+                          titel: "Migräne: Wetter-Autofill",
+                          beschreibung: "Beim Öffnen eines neuen Migräne-Anfalls wird das aktuelle Wetter automatisch geladen und gespeichert – genau wie im Schmerzwizard. Temperatur, Wetterzustand und Wind erscheinen als kompakte Zeile im Formular."),
+        WhatsNewAenderung(icon: "doc.richtext.fill", farbe: .purple,
+                          titel: "Migräne-Seite im PDF-Export",
+                          beschreibung: "Der PDF-Export enthält jetzt eine eigene Migräne-Seite: Statistik-Boxen (Anfälle, Ø Stärke, Aura, Ø Dauer), Top-5-Auslöser als Balkendiagramm, 8-Wochen-Verlauf und eine Detailtabelle mit farbkodierter Medikamenten-Wirksamkeit."),
+        WhatsNewAenderung(icon: "bell.badge.fill", farbe: .orange,
+                          titel: "Wirkungsabfrage nach Migräne",
+                          beschreibung: "Nach dem Erfassen eines Anfalls mit Akutmedikament erscheint 90 Minuten später eine Benachrichtigung: «Wie hat [Medikament] gewirkt?» – damit kein Follow-up verloren geht."),
+        WhatsNewAenderung(icon: "chart.line.uptrend.xyaxis", farbe: .indigo,
+                          titel: "Migräne im Schmerzverlauf sichtbar",
+                          beschreibung: "Migräne-Anfälle erscheinen jetzt als lila Rauten (◆) im Schmerzverlauf-Chart – auf derselben Skala wie Wizard-Einträge, aber klar unterschieden. Gibt es Migräne-Daten im Zeitraum, erscheint ein Hinweis in der Legende."),
+        WhatsNewAenderung(icon: "staroflife.fill", farbe: .red,
+                          titel: "Notfallausweis im Profil-Header",
+                          beschreibung: "Der Notfallausweis ist jetzt direkt im Profil-Header sichtbar – Allergien und aktive Diagnosen als Chips auf einen Blick. Tippen öffnet den vollständigen Ausweis."),
+        WhatsNewAenderung(icon: "list.clipboard.fill", farbe: .purple,
+                          titel: "MIDAS-Fragebogen überarbeitet",
+                          beschreibung: "Der MIDAS-Score-Bildschirm zeigt jetzt eine Score-Karte mit Verlaufschart und einen verbesserten Fragebogen im HAQ-Stil mit +/- Tages-Picker."),
+        WhatsNewAenderung(icon: "plus.square.on.square", farbe: .teal,
+                          titel: "Module im Dashboard hinzufügbar",
+                          beschreibung: "Migräne-, Rheuma- und Diabetes-Kacheln können jetzt über «Dashboard anpassen» gezielt hinzugefügt werden – auch wenn sie nicht in der Standard-Ansicht erscheinen."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "24", aenderungen: [
         WhatsNewAenderung(icon: "brain.head.profile", farbe: .purple,
                           titel: "Migräne-Modul",
