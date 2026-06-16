@@ -9,6 +9,7 @@ struct SchmerzForm: View {
     var onGespeichert: (() -> Void)? = nil
 
     @StateObject private var scanService = BodyScanService.shared
+    @State private var schritt = 0
     @State private var datum = Date()
     @State private var koerperstelle = ""
     @State private var scanSetupAnzeigen = false
@@ -49,204 +50,237 @@ struct SchmerzForm: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                // MARK: Schmerz
-                Section("Schmerz") {
-                    DatePicker("Datum & Uhrzeit", selection: $datum)
-                }
-
-                // MARK: Körperstelle
-                Section {
-                    VStack(spacing: 8) {
-                        HStack {
-                            Text("Körperstelle")
-                                .font(.subheadline.bold())
-                            Spacer()
-                            Button {
-                                scanSetupAnzeigen = true
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "figure.stand")
-                                    Text("Proportionen")
-                                }
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        KoerperPickerView(
-                            auswahl: $koerperstelle,
-                            tintColor: .systemRed,
-                            frameHeight: 280
-                        )
-
-                        let ausgewaehlt = Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
-                        if !ausgewaehlt.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 6) {
-                                    ForEach(ausgewaehlt.sorted(), id: \.self) { r in
-                                        Button {
-                                            var s = ausgewaehlt; s.remove(r)
-                                            koerperstelle = s.sorted().joined(separator: ", ")
-                                        } label: {
-                                            HStack(spacing: 3) {
-                                                Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
-                                                Text(r).font(.caption)
-                                            }
-                                            .padding(.horizontal, 10).padding(.vertical, 5)
-                                            .background(Color.red.opacity(0.15))
-                                            .clipShape(Capsule())
-                                            .foregroundStyle(.red)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-                .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
-
-                // MARK: Schmerzstärke & Details
-                Section("Schmerzstärke") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Stärke: \(schmerzstaerke) / 10")
-                            Spacer()
-                            Text(staerkeLabel)
-                                .font(.caption.bold())
-                                .foregroundStyle(staerkeFarbe)
-                        }
-                        Slider(
-                            value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
-                            in: 0...10, step: 1
-                        ).tint(staerkeFarbe)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Dauer").font(.subheadline)
-                        HStack {
-                            Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
-                            Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
-                        }
-                        .font(.subheadline)
-                    }
-
-                    if let snap = wetterAnzeige {
-                        HStack(spacing: 6) {
-                            Image(systemName: snap.symbol)
-                                .foregroundStyle(.secondary)
-                                .font(.caption)
-                            Text(String(format: "%.0f°C · %@ · %.0f km/h",
-                                        snap.temperatur, snap.beschreibung, snap.windgeschwindigkeit))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                // MARK: Charakter
-                Section("Schmerzcharakter") {
-                    FlowLayout(charakterOptionen) { opt in
-                        ChipButton(label: opt,
-                                   ausgewaehlt: ausgewaehlterCharakter.contains(opt),
-                                   farbe: .indigo) {
-                            toggle(&ausgewaehlterCharakter, opt)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                // MARK: Auslöser
-                Section("Auslöser") {
-                    FlowLayout(ausloeserOptionen) { opt in
-                        ChipButton(label: opt,
-                                   ausgewaehlt: ausgewaehlteAusloeser.contains(opt),
-                                   farbe: .orange) {
-                            toggle(&ausgewaehlteAusloeser, opt)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                // MARK: Begleitsymptome
-                Section("Begleitsymptome") {
-                    FlowLayout(begleitOptionen) { opt in
-                        ChipButton(label: opt,
-                                   ausgewaehlt: ausgewaehlteBegleit.contains(opt),
-                                   farbe: .red) {
-                            toggle(&ausgewaehlteBegleit, opt)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                // MARK: Massnahmen
-                Section("Massnahmen") {
-                    FlowLayout(massnahmenOptionen) { opt in
-                        ChipButton(label: opt,
-                                   ausgewaehlt: ausgewaehlteMassnahmen.contains(opt),
-                                   farbe: .green) {
-                            toggle(&ausgewaehlteMassnahmen, opt)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                // MARK: Wohlbefinden
-                Section("Wohlbefinden") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Stimmung").font(.subheadline)
-                        HStack(spacing: 10) {
-                            ForEach(1...5, id: \.self) { wert in
-                                Button { stimmung = wert } label: {
-                                    Image(systemName: stimmung >= wert ? "heart.fill" : "heart")
-                                        .foregroundStyle(stimmung >= wert ? .pink : .secondary)
-                                        .font(.title3)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Stress: \(stressLevel) / 5")
-                            Spacer()
-                            Text(stressLabel).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Slider(
-                            value: Binding(get: { Double(stressLevel) }, set: { stressLevel = Int($0) }),
-                            in: 1...5, step: 1
-                        ).tint(.orange)
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(String(format: "Schlaf: %.1f Std.", schlafStunden))
-                            .font(.subheadline)
-                        Slider(value: $schlafStunden, in: 0...12, step: 0.5).tint(.blue)
-                    }
-                }
-
-                // MARK: Notizen
-                Section("Notizen") {
-                    TextEditor(text: $notizen).frame(minHeight: 60)
+            Group {
+                if schritt == 0 {
+                    schritt1
+                } else {
+                    schritt2
                 }
             }
             .navigationTitle(eintrag == nil ? "Neuer Schmerzeintrag" : "Schmerz bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
+                    if schritt == 0 {
+                        Button("Abbrechen") { dismiss() }
+                    } else {
+                        Button {
+                            withAnimation { schritt = 0 }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                Text("Zurück")
+                            }
+                        }
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
+                    if schritt == 0 {
+                        Button("Weiter") {
+                            withAnimation { schritt = 1 }
+                        }
+                        .fontWeight(.semibold)
+                    } else {
+                        Button("Speichern") { speichern() }
+                            .fontWeight(.semibold)
+                    }
+                }
+                ToolbarItem(placement: .principal) {
+                    Text("\(schritt + 1) / 2")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
         .onAppear { laden() }
+        .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
+    }
+
+    // MARK: - Schritt 1: Ort & Stärke
+
+    private var schritt1: some View {
+        Form {
+            Section("Zeitpunkt") {
+                DatePicker("Datum & Uhrzeit", selection: $datum)
+            }
+
+            Section {
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("Körperstelle")
+                            .font(.subheadline.bold())
+                        Spacer()
+                        Button {
+                            scanSetupAnzeigen = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "figure.stand")
+                                Text("Proportionen")
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    KoerperPickerView(
+                        auswahl: $koerperstelle,
+                        tintColor: .systemRed,
+                        frameHeight: 280
+                    )
+
+                    let ausgewaehlt = Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
+                    if !ausgewaehlt.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(ausgewaehlt.sorted(), id: \.self) { r in
+                                    Button {
+                                        var s = ausgewaehlt; s.remove(r)
+                                        koerperstelle = s.sorted().joined(separator: ", ")
+                                    } label: {
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                                            Text(r).font(.caption)
+                                        }
+                                        .padding(.horizontal, 10).padding(.vertical, 5)
+                                        .background(Color.red.opacity(0.15))
+                                        .clipShape(Capsule())
+                                        .foregroundStyle(.red)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            Section("Schmerzstärke") {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Stärke: \(schmerzstaerke) / 10")
+                        Spacer()
+                        Text(staerkeLabel)
+                            .font(.caption.bold())
+                            .foregroundStyle(staerkeFarbe)
+                    }
+                    Slider(
+                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
+                        in: 0...10, step: 1
+                    ).tint(staerkeFarbe)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Dauer").font(.subheadline)
+                    HStack {
+                        Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
+                        Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
+                    }
+                    .font(.subheadline)
+                }
+
+                if let snap = wetterAnzeige {
+                    HStack(spacing: 6) {
+                        Image(systemName: snap.symbol)
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                        Text(String(format: "%.0f°C · %@ · %.0f km/h",
+                                    snap.temperatur, snap.beschreibung, snap.windgeschwindigkeit))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Schritt 2: Details & Wohlbefinden
+
+    private var schritt2: some View {
+        Form {
+            Section("Schmerzcharakter") {
+                FlowLayout(charakterOptionen) { opt in
+                    ChipButton(label: opt,
+                               ausgewaehlt: ausgewaehlterCharakter.contains(opt),
+                               farbe: .indigo) {
+                        toggle(&ausgewaehlterCharakter, opt)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            Section("Auslöser") {
+                FlowLayout(ausloeserOptionen) { opt in
+                    ChipButton(label: opt,
+                               ausgewaehlt: ausgewaehlteAusloeser.contains(opt),
+                               farbe: .orange) {
+                        toggle(&ausgewaehlteAusloeser, opt)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            Section("Begleitsymptome") {
+                FlowLayout(begleitOptionen) { opt in
+                    ChipButton(label: opt,
+                               ausgewaehlt: ausgewaehlteBegleit.contains(opt),
+                               farbe: .red) {
+                        toggle(&ausgewaehlteBegleit, opt)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            Section("Massnahmen") {
+                FlowLayout(massnahmenOptionen) { opt in
+                    ChipButton(label: opt,
+                               ausgewaehlt: ausgewaehlteMassnahmen.contains(opt),
+                               farbe: .green) {
+                        toggle(&ausgewaehlteMassnahmen, opt)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            Section("Wohlbefinden") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Stimmung").font(.subheadline)
+                    HStack(spacing: 10) {
+                        ForEach(1...5, id: \.self) { wert in
+                            Button { stimmung = wert } label: {
+                                Image(systemName: stimmung >= wert ? "heart.fill" : "heart")
+                                    .foregroundStyle(stimmung >= wert ? .pink : .secondary)
+                                    .font(.title3)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Stress: \(stressLevel) / 5")
+                        Spacer()
+                        Text(stressLabel).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Slider(
+                        value: Binding(get: { Double(stressLevel) }, set: { stressLevel = Int($0) }),
+                        in: 1...5, step: 1
+                    ).tint(.orange)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(String(format: "Schlaf: %.1f Std.", schlafStunden))
+                        .font(.subheadline)
+                    Slider(value: $schlafStunden, in: 0...12, step: 0.5).tint(.blue)
+                }
+            }
+
+            Section("Notizen") {
+                TextEditor(text: $notizen).frame(minHeight: 60)
+            }
+        }
     }
 
     // MARK: - Helpers
@@ -307,6 +341,7 @@ struct SchmerzForm: View {
             wetterTemperatur = e.wetterTemperatur
             wetterCode = e.wetterCode
             wetterWind = e.wetterWind
+            schritt = 1
         } else {
             if let snap = wetter.aktuell {
                 wetterTemperatur = snap.temperatur
