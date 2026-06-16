@@ -19,9 +19,11 @@ struct SchmerzForm: View {
     @State private var ausgewaehlterCharakter: Set<String> = []
     @State private var charakterFreitext = ""
     @State private var ausgewaehlteAusloeser: Set<String> = []
+    @State private var ausloeserFreitext = ""
     @State private var ausgewaehlteBegleit: Set<String> = []
     @State private var begleitFreitext = ""
     @State private var ausgewaehlteMassnahmen: Set<String> = []
+    @State private var massnahmenFreitext = ""
     @State private var stimmung = 3
     @State private var stressLevel = 3
     @State private var schlafStunden = 7.0
@@ -236,7 +238,9 @@ struct SchmerzForm: View {
                     titel: "Häufige Auslöser (mehrere möglich)",
                     optionen: ausloeserOptionen,
                     ausgewaehlt: $ausgewaehlteAusloeser,
-                    farbe: .orange
+                    farbe: .orange,
+                    freitext: $ausloeserFreitext,
+                    platzhalter: "Eigene Auslöser…"
                 )
             }
             .padding(.horizontal, 16)
@@ -272,7 +276,9 @@ struct SchmerzForm: View {
                     titel: "Massnahmen (mehrere möglich)",
                     optionen: massnahmenOptionen,
                     ausgewaehlt: $ausgewaehlteMassnahmen,
-                    farbe: .green
+                    farbe: .green,
+                    freitext: $massnahmenFreitext,
+                    platzhalter: "Eigene Massnahmen…"
                 )
             }
             .padding(.horizontal, 16)
@@ -506,10 +512,24 @@ struct SchmerzForm: View {
             schmerzstaerke = e.schmerzstaerke
             dauerStunden = e.dauerMinuten / 60
             dauerMinuten = e.dauerMinuten % 60
-            ausgewaehlterCharakter  = Set(e.schmerzart.components(separatedBy: ", ").filter { !$0.isEmpty })
-            ausgewaehlteAusloeser   = Set(e.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty })
-            ausgewaehlteBegleit     = Set(e.begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty })
-            ausgewaehlteMassnahmen  = Set(e.massnahmen.components(separatedBy: ", ").filter { !$0.isEmpty })
+
+            let alleChar  = Set(e.schmerzart.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let alleAusl  = Set(e.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let alleBegl  = Set(e.begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let alleMass  = Set(e.massnahmen.components(separatedBy: ", ").filter { !$0.isEmpty })
+
+            ausgewaehlterCharakter = alleChar.intersection(Set(charakterOptionen))
+            charakterFreitext      = alleChar.subtracting(Set(charakterOptionen)).sorted().joined(separator: ", ")
+
+            ausgewaehlteAusloeser  = alleAusl.intersection(Set(ausloeserOptionen))
+            ausloeserFreitext      = alleAusl.subtracting(Set(ausloeserOptionen)).sorted().joined(separator: ", ")
+
+            ausgewaehlteBegleit    = alleBegl.intersection(Set(begleitOptionen))
+            begleitFreitext        = alleBegl.subtracting(Set(begleitOptionen)).sorted().joined(separator: ", ")
+
+            ausgewaehlteMassnahmen = alleMass.intersection(Set(massnahmenOptionen))
+            massnahmenFreitext     = alleMass.subtracting(Set(massnahmenOptionen)).sorted().joined(separator: ", ")
+
             stimmung = e.stimmung
             stressLevel = e.stressLevel
             schlafStunden = e.schlafStunden
@@ -530,18 +550,17 @@ struct SchmerzForm: View {
     }
 
     private func speichern() {
-        var charSet = ausgewaehlterCharakter
-        let charFrei = charakterFreitext.trimmingCharacters(in: .whitespaces)
-        if !charFrei.isEmpty { charSet.insert(charFrei) }
+        func merge(_ set: Set<String>, _ text: String) -> String {
+            var s = set
+            let t = text.trimmingCharacters(in: .whitespaces)
+            if !t.isEmpty { s.insert(t) }
+            return s.sorted().joined(separator: ", ")
+        }
 
-        var beglSet = ausgewaehlteBegleit
-        let beglFrei = begleitFreitext.trimmingCharacters(in: .whitespaces)
-        if !beglFrei.isEmpty { beglSet.insert(beglFrei) }
-
-        let charStr = charSet.sorted().joined(separator: ", ")
-        let auslStr = ausgewaehlteAusloeser.sorted().joined(separator: ", ")
-        let beglStr = beglSet.sorted().joined(separator: ", ")
-        let massStr = ausgewaehlteMassnahmen.sorted().joined(separator: ", ")
+        let charStr = merge(ausgewaehlterCharakter, charakterFreitext)
+        let auslStr = merge(ausgewaehlteAusloeser,  ausloeserFreitext)
+        let beglStr = merge(ausgewaehlteBegleit,    begleitFreitext)
+        let massStr = merge(ausgewaehlteMassnahmen, massnahmenFreitext)
         let dauer   = dauerStunden * 60 + dauerMinuten
         let snap    = wetter.aktuell
         let finalTemp = wetterTemperatur ?? snap?.temperatur
