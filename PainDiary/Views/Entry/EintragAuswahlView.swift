@@ -47,9 +47,16 @@ struct EintragAuswahlView: View {
     @AppStorage("diabetesModulAktiv") private var diabetesAktiv = false
 
     @State private var auswahl: Set<AuswahlTyp> = []
+
+    // sequential sheet flags
     @State private var zeigeMigraene = false
     @State private var zeigeSchmerz  = false
+    @State private var zeigeDiabetes = false
+
+    // saved-flags distinguish "saved" from "cancelled"
     @State private var migraeneFertig = false
+    @State private var schmerzFertig  = false
+    @State private var diabetesFertig = false
 
     private var verfuegbareTypen: [AuswahlTyp] {
         var typen: [AuswahlTyp] = [.schmerz]
@@ -57,6 +64,11 @@ struct EintragAuswahlView: View {
         if rheumaAktiv   { typen.append(.rheuma) }
         if diabetesAktiv { typen.append(.diabetes) }
         return typen
+    }
+
+    // Schmerz and Rheuma both go through AddEntryView
+    private var brauchtSchmerzWizard: Bool {
+        auswahl.contains(.schmerz) || auswahl.contains(.rheuma)
     }
 
     var body: some View {
@@ -70,17 +82,11 @@ struct EintragAuswahlView: View {
                 .padding(.horizontal)
                 .padding(.top, 16)
 
-                if auswahl.contains(.migraene) && auswahl.contains(.schmerz) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.right.circle")
-                            .font(.caption)
-                        Text("Zuerst Migräne, dann Schmerz erfassen.")
-                            .font(.caption)
-                    }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-                    .padding(.top, 4)
-                    .transition(.opacity)
+                if auswahl.count > 1 {
+                    reihenfolgeHinweis
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        .transition(.opacity)
                 }
             }
             .navigationTitle("Was erfassen?")
@@ -100,10 +106,15 @@ struct EintragAuswahlView: View {
         .sheet(isPresented: $zeigeMigraene, onDismiss: migraeneOnDismiss) {
             MigraeneAnfallForm(onGespeichert: { migraeneFertig = true })
         }
-        .sheet(isPresented: $zeigeSchmerz, onDismiss: { dismiss() }) {
-            AddEntryView()
+        .sheet(isPresented: $zeigeSchmerz, onDismiss: schmerzOnDismiss) {
+            AddEntryView(onGespeichert: { schmerzFertig = true })
+        }
+        .sheet(isPresented: $zeigeDiabetes, onDismiss: diabetesOnDismiss) {
+            BlutzuckerForm(onGespeichert: { diabetesFertig = true })
         }
     }
+
+    // MARK: - Row
 
     private func auswahlZeile(_ typ: AuswahlTyp) -> some View {
         let gewaehlt = auswahl.contains(typ)
@@ -149,27 +160,65 @@ struct EintragAuswahlView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Hinweis
+
+    private var reihenfolgeHinweis: some View {
+        let schritte = reihenfolge.map(\.label).joined(separator: " → ")
+        return HStack(spacing: 6) {
+            Image(systemName: "arrow.right.circle")
+                .font(.caption)
+            Text(schritte)
+                .font(.caption)
+        }
+        .foregroundStyle(.secondary)
+    }
+
+    private var reihenfolge: [AuswahlTyp] {
+        var liste: [AuswahlTyp] = []
+        if auswahl.contains(.migraene) { liste.append(.migraene) }
+        if brauchtSchmerzWizard        { liste.append(.schmerz) }
+        if auswahl.contains(.diabetes) { liste.append(.diabetes) }
+        return liste
+    }
+
+    // MARK: - Flow
+
     private func weiter() {
         if auswahl.contains(.migraene) {
             zeigeMigraene = true
-        } else {
+        } else if brauchtSchmerzWizard {
             zeigeSchmerz = true
+        } else if auswahl.contains(.diabetes) {
+            zeigeDiabetes = true
         }
     }
 
     private func migraeneOnDismiss() {
-        guard migraeneFertig else {
-            migraeneFertig = false
-            return
+        defer { migraeneFertig = false }
+        guard migraeneFertig else { return }
+        delay {
+            if brauchtSchmerzWizard        { zeigeSchmerz  = true }
+            else if auswahl.contains(.diabetes) { zeigeDiabetes = true }
+            else                           { dismiss() }
         }
-        migraeneFertig = false
-        let brauchtSchmerz = auswahl.contains(.schmerz) || auswahl.contains(.rheuma) || auswahl.contains(.diabetes)
-        if brauchtSchmerz {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                zeigeSchmerz = true
-            }
-        } else {
-            dismiss()
+    }
+
+    private func schmerzOnDismiss() {
+        defer { schmerzFertig = false }
+        guard schmerzFertig else { return }
+        delay {
+            if auswahl.contains(.diabetes) { zeigeDiabetes = true }
+            else                           { dismiss() }
         }
+    }
+
+    private func diabetesOnDismiss() {
+        defer { diabetesFertig = false }
+        guard diabetesFertig else { return }
+        dismiss()
+    }
+
+    private func delay(_ block: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: block)
     }
 }

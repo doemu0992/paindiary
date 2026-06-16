@@ -14,6 +14,7 @@ struct AddEntryView: View {
     @Environment(\.dismiss) private var dismiss
 
     var eintrag: PainEntry? = nil
+    var onGespeichert: (() -> Void)? = nil
 
     @State private var schritt = 0
     @State private var vorwaerts = true
@@ -611,6 +612,7 @@ struct AddEntryView: View {
 #endif
         zeigeErfolg = true
         if !istMigraeneEintrag {
+            onGespeichert?()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
         }
     }

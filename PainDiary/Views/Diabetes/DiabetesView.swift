@@ -196,6 +196,7 @@ struct BlutzuckerForm: View {
     @Environment(\.dismiss) private var dismiss
 
     var messung: BlutzuckerEintrag? = nil
+    var onGespeichert: (() -> Void)? = nil
 
     @State private var datum = Date()
     @State private var wert = 5.5
@@ -303,6 +304,7 @@ struct BlutzuckerForm: View {
             )
             modelContext.insert(neu)
         }
+        onGespeichert?()
         dismiss()
     }
 }
