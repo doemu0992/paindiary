@@ -17,6 +17,17 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "26", aenderungen: [
+        WhatsNewAenderung(icon: "switch.2", farbe: .teal,
+                          titel: "Modulverwaltung im Profil",
+                          beschreibung: "Im Profil gibt es jetzt den Abschnitt «Meine Module». Dort lassen sich Migräne, Rheuma & Gelenke und Diabetes ein- oder ausschalten. Aktivierte Module erscheinen beim Erfassen als Auswahlmöglichkeit."),
+        WhatsNewAenderung(icon: "plus.square.fill.on.square.fill", farbe: .indigo,
+                          titel: "Neuer Eintragsscreen",
+                          beschreibung: "Beim Tippen auf + öffnet sich jetzt ein Auswahlscreen, sobald mindestens ein Modul aktiv ist. Schmerz, Migräne, Rheuma oder Diabetes – du wählst frei, was du erfassen möchtest. Mehrere Einträge gleichzeitig sind möglich."),
+        WhatsNewAenderung(icon: "arrow.right.square.fill", farbe: .purple,
+                          titel: "Kombinierter Migräne + Schmerz-Flow",
+                          beschreibung: "Wenn du Migräne und Schmerz gleichzeitig auswählst, öffnet sich zuerst das Migräne-Formular und danach automatisch der Schmerzwizard – beide Einträge werden separat gespeichert."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "25", aenderungen: [
         WhatsNewAenderung(icon: "cloud.sun.fill", farbe: .cyan,
                           titel: "Migräne: Wetter-Autofill",
