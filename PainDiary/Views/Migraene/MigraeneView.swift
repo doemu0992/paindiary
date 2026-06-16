@@ -213,6 +213,9 @@ struct MigraeneAnfallForm: View {
     @Environment(\.dismiss) private var dismiss
 
     var anfall: MigraeneEintrag? = nil
+    var vorDatum: Date = Date()
+    var vorStaerke: Int = 6
+    var vorBegleit: Set<String> = []
 
     @State private var datum = Date()
     @State private var dauerStunden = 0
@@ -340,19 +343,32 @@ struct MigraeneAnfallForm: View {
     }
 
     private func laden() {
-        guard let a = anfall else { return }
-        datum = a.datum
-        dauerStunden = a.dauer / 60
-        dauerMinuten = a.dauer % 60
-        staerke = a.staerke
-        seite = a.seite.isEmpty ? "Einseitig links" : a.seite
-        hatAura = a.hatAura
-        ausgewaehlterCharakter = Set(a.charakterListe)
-        ausgewaehlteBegleitsymptome = Set(a.begleitsymptomeListe)
-        ausgewaehlteAusloeser = Set(a.ausloeserListe)
-        akutmedikament = a.akutmedikament
-        medikamentWirksam = a.medikamentWirksam
-        notizen = a.notizen
+        if let a = anfall {
+            datum = a.datum
+            dauerStunden = a.dauer / 60
+            dauerMinuten = a.dauer % 60
+            staerke = a.staerke
+            seite = a.seite.isEmpty ? "Einseitig links" : a.seite
+            hatAura = a.hatAura
+            ausgewaehlterCharakter = Set(a.charakterListe)
+            ausgewaehlteBegleitsymptome = Set(a.begleitsymptomeListe)
+            ausgewaehlteAusloeser = Set(a.ausloeserListe)
+            akutmedikament = a.akutmedikament
+            medikamentWirksam = a.medikamentWirksam
+            notizen = a.notizen
+        } else if !vorBegleit.isEmpty || vorStaerke != 6 {
+            datum = vorDatum
+            staerke = max(1, min(10, vorStaerke))
+            // Map Schmerzwizard symptom names → Migräne begleit options
+            let mapping: [String: String] = [
+                "Übelkeit": "Übelkeit",
+                "Lichtempfindlichkeit": "Lichtempfindlichkeit",
+                "Lärmempfindlichkeit": "Lärmempfindlichkeit",
+                "Sehstörungen (Aura)": "Sehstörungen / Flimmern"
+            ]
+            ausgewaehlteBegleitsymptome = Set(vorBegleit.compactMap { mapping[$0] })
+            hatAura = vorBegleit.contains("Sehstörungen (Aura)")
+        }
     }
 
     private func speichern() {

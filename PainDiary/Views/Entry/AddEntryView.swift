@@ -54,6 +54,13 @@ struct AddEntryView: View {
     // Vorlage
     @State private var vorlageAngewendet = false
     @State private var zeigeErfolg = false
+
+    // Migräne-Verknüpfung
+    @State private var istMigraeneEintrag = false
+    @State private var zeigeMigraeneForm = false
+    @State private var migraeneVorDatum = Date()
+    @State private var migraeneVorStaerke = 6
+    @State private var migraeneVorBegleit: Set<String> = []
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
 
     private let wetter = WetterService.shared
@@ -184,10 +191,49 @@ struct AddEntryView: View {
                             .foregroundStyle(.white)
                             .opacity(zeigeErfolg ? 1 : 0)
                             .animation(.easeIn.delay(0.1), value: zeigeErfolg)
+
+                        if istMigraeneEintrag {
+                            VStack(spacing: 10) {
+                                Text("Auch als Migräne-Anfall erfassen?")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.white.opacity(0.9))
+                                    .multilineTextAlignment(.center)
+                                HStack(spacing: 12) {
+                                    Button {
+                                        zeigeErfolg = false
+                                        zeigeMigraeneForm = true
+                                    } label: {
+                                        Text("Ja, erfassen")
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 20).padding(.vertical, 9)
+                                            .background(Color.purple)
+                                            .clipShape(Capsule())
+                                    }
+                                    Button { dismiss() } label: {
+                                        Text("Nein")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.white.opacity(0.85))
+                                            .padding(.horizontal, 20).padding(.vertical, 9)
+                                            .background(Color.white.opacity(0.18))
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
+                            .opacity(zeigeErfolg ? 1 : 0)
+                            .animation(.easeIn.delay(0.25), value: zeigeErfolg)
+                        }
                     }
                 }
                 .transition(.opacity)
             }
+        }
+        .sheet(isPresented: $zeigeMigraeneForm, onDismiss: { dismiss() }) {
+            MigraeneAnfallForm(
+                vorDatum: migraeneVorDatum,
+                vorStaerke: migraeneVorStaerke,
+                vorBegleit: migraeneVorBegleit
+            )
         }
     }
 
@@ -545,11 +591,28 @@ struct AddEntryView: View {
             neu.istHautEintrag = (eintragTyp == .haut)
             modelContext.insert(neu)
         }
+
+        // Detect migraine-like entry for cross-module suggestion
+        let migraeneSym: Set<String> = [
+            "Lichtempfindlichkeit", "Lärmempfindlichkeit", "Übelkeit", "Sehstörungen (Aura)"
+        ]
+        if eintrag == nil, eintragTyp == .schmerz, koerperstelle.contains("Kopf") {
+            let symptomListe = Set(begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            if !symptomListe.isDisjoint(with: migraeneSym) {
+                migraeneVorDatum = datum
+                migraeneVorStaerke = min(10, max(1, schmerzstaerke))
+                migraeneVorBegleit = symptomListe.intersection(migraeneSym)
+                istMigraeneEintrag = true
+            }
+        }
+
 #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 #endif
         zeigeErfolg = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
+        if !istMigraeneEintrag {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
+        }
     }
 }
 
