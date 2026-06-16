@@ -12,6 +12,7 @@ struct DashboardView: View {
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
     @Query(sort: \Laborwert.datum, order: .reverse) private var laborwerte: [Laborwert]
     @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
+    @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerMessungen: [BlutzuckerEintrag]
     @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
     @State private var viewModel = DashboardViewModel()
     @State private var exportURL: URL? = nil
@@ -118,6 +119,8 @@ struct DashboardView: View {
         case .stimmungsTrend:      StimmungsTrendKachel(eintraege: Array(eintraege))
         case .midasKachel:         MidasKachel(bewertungen: Array(midasBewertungen))
         case .migraeneKachel:      MigraeneKachel(anfaelle: Array(migraeneAnfaelle))
+        case .rheumaKachel:        RheumaKachel(eintraege: Array(eintraege), haqEintraege: Array(haqEintraege))
+        case .diabetesKachel:      DiabetesKachel(messungen: Array(blutzuckerMessungen))
         case .konfigKorrelation:
             KonfigKorrelationsKachel(
                 kachel: kachel,
