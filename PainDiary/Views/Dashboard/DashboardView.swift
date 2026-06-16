@@ -74,7 +74,8 @@ struct DashboardView: View {
             ExportOptionsSheet(
                 optionen: $exportOptionen,
                 hatZyklusDaten: !zyklusEintraege.isEmpty,
-                hatRheumaDaten: !haqEintraege.isEmpty || !laborwerte.isEmpty
+                hatRheumaDaten: !haqEintraege.isEmpty || !laborwerte.isEmpty,
+                hatMigraeneDaten: !migraeneAnfaelle.isEmpty
             ) {
                 exportOptionsAnzeigen = false
                 exportierePDF()
@@ -523,6 +524,7 @@ struct DashboardView: View {
             haqEintraege: Array(haqEintraege),
             laborwerte: Array(laborwerte),
             alleDiagnosen: Array(alleDiagnosen),
+            migraeneAnfaelle: Array(migraeneAnfaelle),
             profil: profile.first,
             optionen: exportOptionen
         ) { @MainActor url in
@@ -541,6 +543,7 @@ private struct ExportOptionsSheet: View {
     @Environment(\.dismiss) private var dismiss
     let hatZyklusDaten: Bool
     let hatRheumaDaten: Bool
+    let hatMigraeneDaten: Bool
     let onExport: () -> Void
 
     var body: some View {
@@ -558,6 +561,7 @@ private struct ExportOptionsSheet: View {
                     Toggle("Medikamenten-Dossier", isOn: $optionen.mitMedikamentDossier)
                     if hatRheumaDaten { Toggle("Rheuma & Gelenke", isOn: $optionen.mitRheuma) }
                     if hatZyklusDaten { Toggle("Zyklus", isOn: $optionen.mitZyklus) }
+                    if hatMigraeneDaten { Toggle("Migräne", isOn: $optionen.mitMigraene) }
                     Toggle("Alle Einträge",        isOn: $optionen.mitEintraege)
                 }
             }

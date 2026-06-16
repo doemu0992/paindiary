@@ -13,12 +13,17 @@ import SwiftData
     var akutmedikament: String
     var medikamentWirksam: String  // "Ja", "Teilweise", "Nein"
     var notizen: String
+    var wetterTemperatur: Double?
+    var wetterCode: Int?
+    var wetterWind: Double?
 
     init(datum: Date = Date(), dauer: Int = 0, staerke: Int = 6,
          seite: String = "Einseitig links", charakter: String = "",
          begleitsymptome: String = "", hatAura: Bool = false,
          ausloeser: String = "", akutmedikament: String = "",
-         medikamentWirksam: String = "", notizen: String = "") {
+         medikamentWirksam: String = "", notizen: String = "",
+         wetterTemperatur: Double? = nil, wetterCode: Int? = nil,
+         wetterWind: Double? = nil) {
         self.datum = datum
         self.dauer = dauer
         self.staerke = staerke
@@ -30,6 +35,9 @@ import SwiftData
         self.akutmedikament = akutmedikament
         self.medikamentWirksam = medikamentWirksam
         self.notizen = notizen
+        self.wetterTemperatur = wetterTemperatur
+        self.wetterCode = wetterCode
+        self.wetterWind = wetterWind
     }
 
     var dauerText: String {

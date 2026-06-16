@@ -231,6 +231,11 @@ struct MigraeneAnfallForm: View {
     @State private var ausgewaehltesMedikament: Dauermedikation? = nil
     @State private var medikamentWirksam = ""
     @State private var notizen = ""
+    @State private var wetterTemperatur: Double? = nil
+    @State private var wetterCode: Int? = nil
+    @State private var wetterWind: Double? = nil
+
+    private let wetter = WetterService.shared
 
     private let seiten = ["Einseitig links", "Einseitig rechts", "Beidseitig"]
     private let charakterOptionen = ["Pulsierend", "Hämmernd", "Drückend", "Stechend", "Brennend"]
@@ -274,6 +279,20 @@ struct MigraeneAnfallForm: View {
                     }
 
                     Toggle("Aura vorhanden", isOn: $hatAura)
+
+                    if let snap = wetterAnzeige {
+                        HStack(spacing: 6) {
+                            Image(systemName: snap.symbol)
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                            Text(String(format: "%.0f°C · %@", snap.temperatur, snap.beschreibung))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(String(format: "· %.0f km/h", snap.windgeschwindigkeit))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
 
                 Section("Schmerzcharakter") {
@@ -377,6 +396,14 @@ struct MigraeneAnfallForm: View {
         .onAppear { laden() }
     }
 
+    private var wetterAnzeige: WetterSnapshot? {
+        if let temp = wetterTemperatur, let code = wetterCode {
+            return WetterSnapshot(temperatur: temp, code: code,
+                                  windgeschwindigkeit: wetterWind ?? 0)
+        }
+        return wetter.aktuell
+    }
+
     private var staerkeLabel: String {
         switch staerke {
         case 1...3: return "Leicht"
@@ -408,23 +435,33 @@ struct MigraeneAnfallForm: View {
             akutmedikament = a.akutmedikament
             medikamentWirksam = a.medikamentWirksam
             notizen = a.notizen
-            // Versuche gespeichertes Medikament in Profil-Liste zu finden
+            wetterTemperatur = a.wetterTemperatur
+            wetterCode = a.wetterCode
+            wetterWind = a.wetterWind
             ausgewaehltesMedikament = alleMedikamente.first { med in
                 let vollname = med.dosierung.isEmpty ? med.name : "\(med.name) \(med.dosierung)"
                 return vollname == a.akutmedikament || med.name == a.akutmedikament
             }
-        } else if !vorBegleit.isEmpty || vorStaerke != 6 {
-            datum = vorDatum
-            staerke = max(1, min(10, vorStaerke))
-            // Map Schmerzwizard symptom names → Migräne begleit options
-            let mapping: [String: String] = [
-                "Übelkeit": "Übelkeit",
-                "Lichtempfindlichkeit": "Lichtempfindlichkeit",
-                "Lärmempfindlichkeit": "Lärmempfindlichkeit",
-                "Sehstörungen (Aura)": "Sehstörungen / Flimmern"
-            ]
-            ausgewaehlteBegleitsymptome = Set(vorBegleit.compactMap { mapping[$0] })
-            hatAura = vorBegleit.contains("Sehstörungen (Aura)")
+        } else {
+            if !vorBegleit.isEmpty || vorStaerke != 6 {
+                datum = vorDatum
+                staerke = max(1, min(10, vorStaerke))
+                let mapping: [String: String] = [
+                    "Übelkeit": "Übelkeit",
+                    "Lichtempfindlichkeit": "Lichtempfindlichkeit",
+                    "Lärmempfindlichkeit": "Lärmempfindlichkeit",
+                    "Sehstörungen (Aura)": "Sehstörungen / Flimmern"
+                ]
+                ausgewaehlteBegleitsymptome = Set(vorBegleit.compactMap { mapping[$0] })
+                hatAura = vorBegleit.contains("Sehstörungen (Aura)")
+            }
+            if let snap = wetter.aktuell {
+                wetterTemperatur = snap.temperatur
+                wetterCode = snap.code
+                wetterWind = snap.windgeschwindigkeit
+            } else {
+                wetter.laden()
+            }
         }
     }
 
@@ -434,19 +471,28 @@ struct MigraeneAnfallForm: View {
         let beglStr   = ausgewaehlteBegleitsymptome.sorted().joined(separator: ", ")
         let auslStr   = ausgewaehlteAusloeser.sorted().joined(separator: ", ")
 
+        let wetterSnap = wetter.aktuell
+        let finalTemp = wetterTemperatur ?? wetterSnap?.temperatur
+        let finalCode = wetterCode ?? wetterSnap?.code
+        let finalWind = wetterWind ?? wetterSnap?.windgeschwindigkeit
+
         if let a = anfall {
             a.datum = datum; a.dauer = dauer; a.staerke = staerke; a.seite = seite
             a.hatAura = hatAura; a.charakter = charStr; a.begleitsymptome = beglStr
             a.ausloeser = auslStr; a.akutmedikament = akutmedikament
             a.medikamentWirksam = medikamentWirksam; a.notizen = notizen
+            a.wetterTemperatur = finalTemp
+            a.wetterCode = finalCode
+            a.wetterWind = finalWind
         } else {
             let neu = MigraeneEintrag(datum: datum, dauer: dauer, staerke: staerke, seite: seite,
                                       charakter: charStr, begleitsymptome: beglStr, hatAura: hatAura,
                                       ausloeser: auslStr, akutmedikament: akutmedikament,
-                                      medikamentWirksam: medikamentWirksam, notizen: notizen)
+                                      medikamentWirksam: medikamentWirksam, notizen: notizen,
+                                      wetterTemperatur: finalTemp, wetterCode: finalCode,
+                                      wetterWind: finalWind)
             modelContext.insert(neu)
 
-            // EinnahmeLog erstellen wenn Profil-Medikament ausgewählt
             if let med = ausgewaehltesMedikament {
                 let wirkungMap = ["Ja": "gut", "Teilweise": "teilweise", "Nein": "nicht"]
                 let log = EinnahmeLog(
@@ -458,6 +504,9 @@ struct MigraeneAnfallForm: View {
                 )
                 log.wirkung = wirkungMap[medikamentWirksam] ?? ""
                 modelContext.insert(log)
+                NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: med.name)
+            } else if !akutmedikament.isEmpty {
+                NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: akutmedikament)
             }
         }
         dismiss()

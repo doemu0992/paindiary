@@ -208,6 +208,39 @@ struct PDFNotfallAllergie {
     var schwere: String
 }
 
+struct PDFMigraeneEintrag {
+    var datum: Date
+    var dauer: Int
+    var staerke: Int
+    var seite: String
+    var charakter: String
+    var begleitsymptome: String
+    var hatAura: Bool
+    var ausloeser: String
+    var akutmedikament: String
+    var medikamentWirksam: String
+    var notizen: String
+    var wetterTemperatur: Double?
+    var wetterCode: Int?
+    var wetterWind: Double?
+
+    var dauerText: String {
+        guard dauer > 0 else { return "–" }
+        let h = dauer / 60; let m = dauer % 60
+        if h == 0 { return "\(m) Min." }
+        return m == 0 ? "\(h) Std." : "\(h) Std. \(m) Min."
+    }
+
+    static func aus(a: MigraeneEintrag) -> PDFMigraeneEintrag {
+        PDFMigraeneEintrag(datum: a.datum, dauer: a.dauer, staerke: a.staerke, seite: a.seite,
+                           charakter: a.charakter, begleitsymptome: a.begleitsymptome,
+                           hatAura: a.hatAura, ausloeser: a.ausloeser,
+                           akutmedikament: a.akutmedikament, medikamentWirksam: a.medikamentWirksam,
+                           notizen: a.notizen, wetterTemperatur: a.wetterTemperatur,
+                           wetterCode: a.wetterCode, wetterWind: a.wetterWind)
+    }
+}
+
 struct PDFErnaehrungsTag {
     let datum: Date
     let koffeinTassen: Int
@@ -254,6 +287,7 @@ struct ExportOptionen {
     var mitZyklus: Bool = true
     var mitErnaehrung: Bool = true
     var mitRheuma: Bool = true
+    var mitMigraene: Bool = true
 }
 
 enum ExportZeitraum: String, CaseIterable {
@@ -300,6 +334,7 @@ class PDFExportService: @unchecked Sendable {
         haqEintraege: [HAQEintrag] = [],
         laborwerte: [Laborwert] = [],
         alleDiagnosen: [Diagnose] = [],
+        migraeneAnfaelle: [MigraeneEintrag] = [],
         profil: Benutzerprofil?,
         optionen: ExportOptionen,
         completion: @escaping @MainActor @Sendable (URL?) -> Void
@@ -342,12 +377,19 @@ class PDFExportService: @unchecked Sendable {
         } else {
             labPDF = laborwerte.sorted { $0.datum > $1.datum }.map(PDFLaborwert.aus)
         }
+        let migraenePDF: [PDFMigraeneEintrag]
+        if let start = optionen.zeitraum.startDatum() {
+            migraenePDF = migraeneAnfaelle.filter { $0.datum >= start }.sorted { $0.datum > $1.datum }.map(PDFMigraeneEintrag.aus)
+        } else {
+            migraenePDF = migraeneAnfaelle.sorted { $0.datum > $1.datum }.map(PDFMigraeneEintrag.aus)
+        }
 
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             let url = self.renderPDF(patient: patient, eintraege: gefiltert,
                                      medikamente: meds, einnahmeLogs: logs, midas: midas,
                                      zyklus: zyklus, analyse: analyse, ernaehrung: ernaehrung,
-                                     haqEintraege: haqPDF, laborwerte: labPDF, optionen: optionen)
+                                     haqEintraege: haqPDF, laborwerte: labPDF,
+                                     migraenePDF: migraenePDF, optionen: optionen)
             Task { @MainActor in completion(url) }
         }
     }
@@ -365,6 +407,7 @@ class PDFExportService: @unchecked Sendable {
         ernaehrung: [PDFErnaehrungsTag],
         haqEintraege: [PDFHAQEintrag] = [],
         laborwerte: [PDFLaborwert] = [],
+        migraenePDF: [PDFMigraeneEintrag] = [],
         optionen: ExportOptionen
     ) -> URL? {
         let dateiname = "Schmerztagebuch_\(fmt(Date())).pdf"
@@ -410,6 +453,11 @@ class PDFExportService: @unchecked Sendable {
                     if optionen.mitErnaehrung && !ernaehrung.isEmpty {
                         seite += 1; ctx.beginPage()
                         ernaehrungSeite(ctx: ctx.cgContext, daten: ernaehrung, seite: seite)
+                    }
+
+                    if optionen.mitMigraene && !migraenePDF.isEmpty {
+                        seite += 1; ctx.beginPage()
+                        migraeneSeite(ctx: ctx.cgContext, anfaelle: migraenePDF, seite: seite)
                     }
 
                     if optionen.mitEintraege && !eintraege.isEmpty {
@@ -1384,6 +1432,191 @@ class PDFExportService: @unchecked Sendable {
                      font: .systemFont(ofSize: 10, weight: .medium),
                      color: .systemGreen)
                 y += 16
+            }
+        }
+
+        fusszeile(ctx: ctx, seite: seite)
+    }
+
+    // MARK: - Migräne page
+
+    private func migraeneSeite(ctx: CGContext, anfaelle: [PDFMigraeneEintrag], seite: Int) {
+        seitenKopf(ctx: ctx, titel: "Migräne", seite: seite)
+        var y: CGFloat = rand + 52
+
+        let anzahl = anfaelle.count
+        let avgStaerke = anfaelle.isEmpty ? 0.0
+            : Double(anfaelle.map(\.staerke).reduce(0, +)) / Double(anzahl)
+        let mitAura = anfaelle.filter(\.hatAura).count
+        let mitMed = anfaelle.filter { !$0.akutmedikament.isEmpty }.count
+        let avgDauer = anfaelle.isEmpty ? 0
+            : anfaelle.map(\.dauer).reduce(0, +) / anzahl
+
+        let boxW = (iw - 12) / 4
+        statBox(ctx: ctx, x: rand,                  y: y, w: boxW, h: 72, titel: "Anfälle",
+                wert: "\(anzahl)", farbe: anzahl == 0 ? .systemGreen : anzahl <= 4 ? .systemOrange : .systemRed)
+        statBox(ctx: ctx, x: rand + boxW + 4,        y: y, w: boxW, h: 72, titel: "Ø Schmerzstärke",
+                wert: anzahl == 0 ? "–" : String(format: "%.1f/10", avgStaerke), farbe: .systemOrange)
+        statBox(ctx: ctx, x: rand + (boxW + 4) * 2,  y: y, w: boxW, h: 72, titel: "Mit Aura",
+                wert: "\(mitAura)", farbe: .systemPurple)
+        statBox(ctx: ctx, x: rand + (boxW + 4) * 3,  y: y, w: boxW, h: 72, titel: "Ø Dauer",
+                wert: anzahl == 0 ? "–" : avgDauer < 60 ? "\(avgDauer) Min." : "\(avgDauer/60) Std.",
+                farbe: .systemBlue)
+        y += 88
+
+        let ausloeserMap = anfaelle.flatMap { $0.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty } }
+            .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
+        let topAusloeser = ausloeserMap.sorted { $0.value > $1.value }.prefix(5)
+
+        if !topAusloeser.isEmpty {
+            trennlinie(ctx: ctx, y: y); y += 14
+            draw("Häufigste Auslöser", at: CGPoint(x: rand, y: y),
+                 font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+            y += 20
+            let barMaxW: CGFloat = iw - 180
+            let maxCount = max(1, topAusloeser.first?.value ?? 1)
+            for (name, count) in topAusloeser {
+                if y > H - rand - 30 { break }
+                let bw = CGFloat(count) / CGFloat(maxCount) * barMaxW
+                draw(name, at: CGPoint(x: rand, y: y + 2),
+                     font: .systemFont(ofSize: 10), color: .label)
+                ctx.setFillColor(c(.systemPurple).withAlphaComponent(0.45).cgColor)
+                ctx.fill(CGRect(x: rand + 160, y: y + 2, width: bw, height: 12))
+                draw("\(count)×", at: CGPoint(x: rand + 160 + bw + 4, y: y + 2),
+                     font: .systemFont(ofSize: 9), color: .secondaryLabel)
+                y += 18
+            }
+            y += 6
+        }
+
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+        let wochen = (0..<8).reversed().map { wocheVor -> (label: String, anzahl: Int) in
+            guard let wocheEnde = kal.date(byAdding: .weekOfYear, value: -wocheVor, to: heute),
+                  let wocheStart = kal.date(byAdding: .day, value: -6, to: wocheEnde) else {
+                return ("?", 0)
+            }
+            let n = anfaelle.filter { $0.datum >= wocheStart && $0.datum <= wocheEnde }.count
+            return (wocheVor == 0 ? "Diese Woche" : "−\(wocheVor)W", n)
+        }
+        let maxWoche = max(1, wochen.map(\.anzahl).max() ?? 1)
+
+        trennlinie(ctx: ctx, y: y); y += 14
+        draw("Wochenverlauf (letzte 8 Wochen)", at: CGPoint(x: rand, y: y),
+             font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+        y += 20
+        let wBarMaxW: CGFloat = iw - 80
+        let wBarH: CGFloat = 14
+        for (label, count) in wochen {
+            if y + wBarH + 2 > H - rand - 30 { break }
+            let bw = CGFloat(count) / CGFloat(maxWoche) * wBarMaxW
+            draw(label, at: CGPoint(x: rand, y: y), font: .systemFont(ofSize: 9),
+                 color: UIColor(white: 0.45, alpha: 1))
+            let barFarbe = count > 0
+                ? UIColor(red: 0.55, green: 0.0, blue: 0.65, alpha: 0.55)
+                : UIColor(red: 0.00, green: 0.48, blue: 1.00, alpha: 0.2)
+            if bw > 0 {
+                ctx.setFillColor(barFarbe.cgColor)
+                ctx.fill(CGRect(x: rand + 72, y: y + 1, width: bw, height: wBarH - 3))
+            }
+            draw("\(count)×", at: CGPoint(x: rand + 72 + bw + 4, y: y),
+                 font: .systemFont(ofSize: 9, weight: count > 0 ? .bold : .regular),
+                 color: count > 0 ? UIColor(red: 0.55, green: 0.0, blue: 0.65, alpha: 1) : UIColor(white: 0.6, alpha: 1))
+            y += wBarH + 2
+        }
+        y += 10
+
+        trennlinie(ctx: ctx, y: y); y += 14
+        draw("Anfälle", at: CGPoint(x: rand, y: y),
+             font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+        y += 20
+
+        let cols: [CGFloat] = [rand, rand + 75, rand + 130, rand + 185, rand + 330, rand + 430]
+        tabellenKopf(ctx: ctx, y: y, cols: cols,
+                     headers: ["Datum", "Stärke", "Dauer", "Auslöser", "Medikament", "Wirkung"])
+        y += 26
+
+        for a in anfaelle {
+            if y > H - rand - 30 { break }
+            let wirkungText: String = {
+                switch a.medikamentWirksam {
+                case "Ja":       return "Gut"
+                case "Teilweise": return "Teilw."
+                case "Nein":     return "Nicht"
+                default:         return a.medikamentWirksam.isEmpty ? "–" : a.medikamentWirksam
+                }
+            }()
+            let wirkungFarbe: UIColor = {
+                switch a.medikamentWirksam {
+                case "Ja":       return UIColor(red: 0.17, green: 0.70, blue: 0.37, alpha: 1)
+                case "Teilweise": return .systemOrange
+                case "Nein":     return .systemRed
+                default:         return .secondaryLabel
+                }
+            }()
+            tabellenZeile(ctx: ctx, y: y, cols: cols,
+                          werte: [fmtKurz(a.datum),
+                                  "\(a.staerke)/10",
+                                  a.dauerText,
+                                  String(a.ausloeser.prefix(28)),
+                                  String(a.akutmedikament.prefix(22)),
+                                  ""],
+                          fett: [false, true, false, false, false, false])
+            draw(wirkungText, at: CGPoint(x: cols[5] + 4, y: y + 4),
+                 font: .systemFont(ofSize: 10, weight: .semibold), color: wirkungFarbe)
+            if a.hatAura {
+                draw("Aura", at: CGPoint(x: cols[1] + 28, y: y + 4),
+                     font: .systemFont(ofSize: 7, weight: .bold), color: .systemPurple)
+            }
+            if !a.notizen.isEmpty {
+                drawClamped("Notiz: \(a.notizen)", at: CGPoint(x: cols[2], y: y + 13),
+                            font: .systemFont(ofSize: 8), color: .secondaryLabel,
+                            maxW: cols[4] - cols[2] - 4)
+                y += 14
+            }
+            trennlinie(ctx: ctx, y: y + 14, alpha: 0.1)
+            y += 20
+        }
+
+        if mitMed > 0 {
+            let medMap = anfaelle.filter { !$0.akutmedikament.isEmpty }
+                .reduce(into: [String: (gut: Int, teilweise: Int, nicht: Int)]()) { acc, a in
+                    var v = acc[a.akutmedikament] ?? (gut: 0, teilweise: 0, nicht: 0)
+                    switch a.medikamentWirksam {
+                    case "Ja":       v.gut += 1
+                    case "Teilweise": v.teilweise += 1
+                    case "Nein":     v.nicht += 1
+                    default: break
+                    }
+                    acc[a.akutmedikament] = v
+                }
+            if !medMap.isEmpty && y + 60 < H - rand - 30 {
+                trennlinie(ctx: ctx, y: y); y += 14
+                draw("Medikamenten-Wirksamkeit", at: CGPoint(x: rand, y: y),
+                     font: .systemFont(ofSize: 13, weight: .semibold), color: .label)
+                y += 20
+                let barMaxW: CGFloat = iw - 220
+                let barStart: CGFloat = rand + 200
+                for (name, stats) in medMap.sorted(by: { $0.key < $1.key }) {
+                    if y + 22 > H - rand - 30 { break }
+                    let gesamt = stats.gut + stats.teilweise + stats.nicht
+                    draw(name, at: CGPoint(x: rand, y: y),
+                         font: .systemFont(ofSize: 11, weight: .semibold), color: .label)
+                    let gutW   = barMaxW * CGFloat(stats.gut)       / CGFloat(max(1, gesamt))
+                    let teilwW = barMaxW * CGFloat(stats.teilweise)  / CGFloat(max(1, gesamt))
+                    let nichtW = barMaxW * CGFloat(stats.nicht)      / CGFloat(max(1, gesamt))
+                    ctx.setFillColor(UIColor(red: 0.17, green: 0.70, blue: 0.37, alpha: 0.65).cgColor)
+                    ctx.fill(CGRect(x: barStart, y: y + 2, width: gutW, height: 12))
+                    ctx.setFillColor(UIColor(red: 1.00, green: 0.60, blue: 0.00, alpha: 0.65).cgColor)
+                    ctx.fill(CGRect(x: barStart + gutW, y: y + 2, width: teilwW, height: 12))
+                    ctx.setFillColor(UIColor(red: 0.96, green: 0.23, blue: 0.19, alpha: 0.65).cgColor)
+                    ctx.fill(CGRect(x: barStart + gutW + teilwW, y: y + 2, width: nichtW, height: 12))
+                    let gutPct = gesamt > 0 ? Int(Double(stats.gut) / Double(gesamt) * 100) : 0
+                    draw("\(gutPct)% gut (\(stats.gut)/\(stats.teilweise)/\(stats.nicht))",
+                         at: CGPoint(x: barStart + barMaxW + 6, y: y + 2),
+                         font: .systemFont(ofSize: 9), color: UIColor(white: 0.45, alpha: 1))
+                    y += 22
+                }
             }
         }
 

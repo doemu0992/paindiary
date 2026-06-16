@@ -362,6 +362,21 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             UNNotificationRequest(identifier: id, content: content, trigger: trigger))
     }
 
+    func planeMigraeneWirkungsAbfrage(nach datum: Date, medikamentName: String) {
+        guard status == .authorized else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "🧠 Wie hat \(medikamentName) gewirkt?"
+        content.body = "Tippe um die Wirkung deines Migräne-Akutmedikaments zu bewerten."
+        content.sound = .default
+        content.userInfo = ["type": "wirkung", "name": medikamentName]
+        if #available(iOS 15.0, *) { content.interruptionLevel = .passive }
+        let verzoegerung = max(1, datum.timeIntervalSinceNow + 90 * 60)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: verzoegerung, repeats: false)
+        let id = "migraene-wirkung-\(Int(datum.timeIntervalSince1970))"
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+
     func loescheZyklusErinnerungen() {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: ["zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung"])
