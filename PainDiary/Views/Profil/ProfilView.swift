@@ -43,6 +43,7 @@ private enum ProfilFormular: Identifiable {
 
 private struct ProfilInhaltView: View {
     let profil: Benutzerprofil
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
     @Query(sort: \Allergie.schwere) private var alleAllergien: [Allergie]
     @State private var aktivesFormular: ProfilFormular? = nil
@@ -277,7 +278,10 @@ private struct ProfilInhaltView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .onDelete { var a = profil.aerzte ?? []; a.remove(atOffsets: $0); profil.aerzte = a }
+            .onDelete { indexSet in
+                let liste = profil.aerzte ?? []
+                indexSet.map { liste[$0] }.forEach { modelContext.delete($0) }
+            }
 #if os(iOS)
             Button {
                 arztSucheAnzeigen = true
@@ -316,7 +320,10 @@ private struct ProfilInhaltView: View {
                     }
                 }
             }
-            .onDelete { var a = profil.notfallkontakte ?? []; a.remove(atOffsets: $0); profil.notfallkontakte = a }
+            .onDelete { indexSet in
+                let liste = profil.notfallkontakte ?? []
+                indexSet.map { liste[$0] }.forEach { modelContext.delete($0) }
+            }
 #if os(iOS)
             Button {
                 adressbuchAnzeigen = true

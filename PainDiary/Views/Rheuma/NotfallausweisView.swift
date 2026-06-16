@@ -5,11 +5,11 @@ struct NotfallausweisView: View {
     @Query(sort: \Diagnose.bezeichnung) private var diagnosen: [Diagnose]
     @Query(sort: \Allergie.schwere) private var allergien: [Allergie]
     @Query private var medikamente: [Dauermedikation]
-    @Query private var aerzte: [ArztKontakt]
-    @Query private var notfallKontakte: [NotfallKontakt]
     @Query private var profile: [Benutzerprofil]
 
     private var profil: Benutzerprofil? { profile.first }
+    private var aerzte: [ArztKontakt] { profil?.aerzte ?? [] }
+    private var notfallKontakte: [NotfallKontakt] { profil?.notfallkontakte ?? [] }
     private var aktiveDiagnosen: [Diagnose] { diagnosen.filter { $0.aktiv } }
     private var aktiveMedikamente: [Dauermedikation] { medikamente.filter { $0.aktiv } }
 
