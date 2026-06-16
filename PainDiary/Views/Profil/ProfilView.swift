@@ -191,9 +191,6 @@ private struct ProfilInhaltView: View {
                 Label("Diabetes", systemImage: "drop.fill")
                     .foregroundStyle(.orange)
             }
-            NavigationLink(destination: MIDASView()) {
-                Label("MIDAS-Fragebogen", systemImage: "list.clipboard.fill")
-            }
         }
     }
 
