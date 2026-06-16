@@ -390,7 +390,7 @@ struct DashboardView: View {
     // MARK: - Schmerzverlauf
 
     private var schmerzVerlaufChart: some View {
-        SchmerzVerlaufKarte(eintraege: Array(eintraege))
+        SchmerzVerlaufKarte(eintraege: Array(eintraege), migraeneAnfaelle: Array(migraeneAnfaelle))
     }
 
     // MARK: - Stimmung & Stress

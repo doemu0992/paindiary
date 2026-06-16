@@ -4,6 +4,7 @@ import Charts
 struct SchmerzVerlaufKarte: View {
 
     let eintraege: [PainEntry]
+    var migraeneAnfaelle: [MigraeneEintrag] = []
 
     enum ZeitBereich: String, CaseIterable {
         case woche = "W", monat = "M", dreiMonate = "3M", jahr = "J"
@@ -24,6 +25,24 @@ struct SchmerzVerlaufKarte: View {
 
     private var schmerzEintraege: [PainEntry] {
         eintraege.filter { !$0.istHautEintrag }
+    }
+
+    private var migraeneTagesDaten: [(datum: Date, schmerz: Double)] {
+        let kal = Calendar.current
+        let heute = kal.startOfDay(for: .now)
+        guard let start = kal.date(byAdding: .day, value: -(zeitBereich.gesamtTage - 1), to: heute)
+        else { return [] }
+        var result: [(Date, Double)] = []
+        var tag = start
+        while tag <= heute {
+            let te = migraeneAnfaelle.filter { kal.isDate($0.datum, inSameDayAs: tag) }
+            if !te.isEmpty {
+                let avg = Double(te.map(\.staerke).reduce(0, +)) / Double(te.count)
+                result.append((tag, avg))
+            }
+            tag = kal.date(byAdding: .day, value: 1, to: tag) ?? tag
+        }
+        return result
     }
 
     private var tagesDaten: [(datum: Date, schmerz: Double, anzahl: Int)] {
@@ -161,6 +180,22 @@ struct SchmerzVerlaufKarte: View {
                 .interpolationMethod(.monotone)
             }
 
+            let migraeneDaten = migraeneTagesDaten
+            ForEach(migraeneDaten, id: \.datum) { punkt in
+                PointMark(
+                    x: .value("Tag", punkt.datum, unit: .day),
+                    y: .value("Schmerz", punkt.schmerz)
+                )
+                .foregroundStyle(Color.purple)
+                .symbol(.diamond)
+                .symbolSize(80)
+                .annotation(position: .top, spacing: 2) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 8))
+                        .foregroundStyle(Color.purple.opacity(0.7))
+                }
+            }
+
             if let p = selectedPunkt {
                 RuleMark(x: .value("Tag", p.datum, unit: .day))
                     .foregroundStyle(Color.secondary.opacity(0.25))
@@ -231,15 +266,27 @@ struct SchmerzVerlaufKarte: View {
 
     private func legendeView(aktivDaten: [(datum: Date, schmerz: Double, anzahl: Int)]) -> some View {
         let avg = aktivDaten.map(\.schmerz).reduce(0, +) / Double(aktivDaten.count)
-        return HStack(spacing: 12) {
-            Label(String(format: "Ø %.1f / 10", avg), systemImage: "waveform.path.ecg")
-                .font(.caption2).foregroundStyle(.secondary)
-            Spacer()
-            HStack(spacing: 6) {
-                legendePunkt(label: "≤3",  farbe: .green)
-                legendePunkt(label: "4–6", farbe: .yellow)
-                legendePunkt(label: "7–8", farbe: .orange)
-                legendePunkt(label: "≥9",  farbe: .red)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                Label(String(format: "Ø %.1f / 10", avg), systemImage: "waveform.path.ecg")
+                    .font(.caption2).foregroundStyle(.secondary)
+                Spacer()
+                HStack(spacing: 6) {
+                    legendePunkt(label: "≤3",  farbe: .green)
+                    legendePunkt(label: "4–6", farbe: .yellow)
+                    legendePunkt(label: "7–8", farbe: .orange)
+                    legendePunkt(label: "≥9",  farbe: .red)
+                }
+            }
+            if !migraeneTagesDaten.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "diamond.fill")
+                        .font(.system(size: 7))
+                        .foregroundStyle(.purple)
+                    Text("Migräne-Anfälle (getrennt erfasst)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
