@@ -277,21 +277,39 @@ struct MigraeneAnfallForm: View {
                 }
 
                 Section("Schmerzcharakter") {
-                    ForEach(charakterOptionen, id: \.self) { opt in
-                        Toggle(opt, isOn: setBinding(opt, set: $ausgewaehlterCharakter))
+                    FlowLayout(charakterOptionen) { opt in
+                        ChipButton(label: opt,
+                                   ausgewaehlt: ausgewaehlterCharakter.contains(opt),
+                                   farbe: .purple) {
+                            if ausgewaehlterCharakter.contains(opt) { ausgewaehlterCharakter.remove(opt) }
+                            else { ausgewaehlterCharakter.insert(opt) }
+                        }
                     }
+                    .padding(.vertical, 4)
                 }
 
                 Section("Begleitsymptome") {
-                    ForEach(begleitOptionen, id: \.self) { opt in
-                        Toggle(opt, isOn: setBinding(opt, set: $ausgewaehlteBegleitsymptome))
+                    FlowLayout(begleitOptionen) { opt in
+                        ChipButton(label: opt,
+                                   ausgewaehlt: ausgewaehlteBegleitsymptome.contains(opt),
+                                   farbe: .red) {
+                            if ausgewaehlteBegleitsymptome.contains(opt) { ausgewaehlteBegleitsymptome.remove(opt) }
+                            else { ausgewaehlteBegleitsymptome.insert(opt) }
+                        }
                     }
+                    .padding(.vertical, 4)
                 }
 
                 Section("Mögliche Auslöser") {
-                    ForEach(ausloeserOptionen, id: \.self) { opt in
-                        Toggle(opt, isOn: setBinding(opt, set: $ausgewaehlteAusloeser))
+                    FlowLayout(ausloeserOptionen) { opt in
+                        ChipButton(label: opt,
+                                   ausgewaehlt: ausgewaehlteAusloeser.contains(opt),
+                                   farbe: .orange) {
+                            if ausgewaehlteAusloeser.contains(opt) { ausgewaehlteAusloeser.remove(opt) }
+                            else { ausgewaehlteAusloeser.insert(opt) }
+                        }
                     }
+                    .padding(.vertical, 4)
                 }
 
                 Section("Akutmedikament") {
@@ -374,13 +392,6 @@ struct MigraeneAnfallForm: View {
         case 4...6: return .orange
         default:    return .red
         }
-    }
-
-    private func setBinding(_ opt: String, set: Binding<Set<String>>) -> Binding<Bool> {
-        Binding(
-            get: { set.wrappedValue.contains(opt) },
-            set: { if $0 { set.wrappedValue.insert(opt) } else { set.wrappedValue.remove(opt) } }
-        )
     }
 
     private func laden() {
