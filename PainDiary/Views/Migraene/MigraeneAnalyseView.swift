@@ -298,7 +298,8 @@ struct MigraeneAnalyseView: View {
     // MARK: - Verlauf
 
     private var verlaufKarte: some View {
-        karte(titel: "Verlauf (6 Monate)", symbol: "chart.bar.fill", farbe: .purple, info: "Zeigt die Anzahl der Migräne-Anfälle pro Monat. Ein Anstieg über mehrere Monate kann auf eine Verschlechterung hinweisen und sollte mit dem Arzt besprochen werden.") {
+        let titel = zeitraum == .alle ? "Verlauf (2 Jahre)" : "Verlauf (\(zeitraum.rawValue))"
+        return karte(titel: titel, symbol: "chart.bar.fill", farbe: .purple, info: "Zeigt die Anzahl der Migräne-Anfälle pro Monat. Ein Anstieg über mehrere Monate kann auf eine Verschlechterung hinweisen und sollte mit dem Arzt besprochen werden.") {
             Chart(monatlicherVerlauf, id: \.monat) { item in
                 BarMark(
                     x: .value("Monat", item.monat, unit: .month),
@@ -308,8 +309,13 @@ struct MigraeneAnalyseView: View {
                 .cornerRadius(4)
             }
             .chartXAxis {
-                AxisMarks(values: .stride(by: .month)) {
-                    AxisValueLabel(format: .dateTime.month(.abbreviated))
+                let stride: Calendar.Component = zeitraum.verlaufMonate <= 6 ? .month : .quarter
+                let fmt: Date.FormatStyle = zeitraum.verlaufMonate <= 12
+                    ? .dateTime.month(.abbreviated)
+                    : .dateTime.month(.abbreviated).year(.twoDigits)
+                AxisMarks(values: .stride(by: stride)) {
+                    AxisValueLabel(format: fmt)
+                    AxisGridLine()
                 }
             }
             .frame(height: 130)
