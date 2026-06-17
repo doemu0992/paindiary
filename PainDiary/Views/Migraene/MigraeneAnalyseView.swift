@@ -101,6 +101,35 @@ struct MigraeneAnalyseView: View {
         ZyklusRechner.migraeneJePhase(anfaelle: anfaelle, analyse: zyklusAnalyse)
     }
 
+    private struct WetterPunkt: Identifiable {
+        let id = UUID()
+        let beschreibung: String
+        let symbol: String
+        let anzahl: Int
+    }
+
+    private var wetterVerteilung: [WetterPunkt] {
+        var counts: [Int: Int] = [:]
+        anfaelle.compactMap(\.wetterCode).forEach { counts[$0, default: 0] += 1 }
+        return counts
+            .map { WetterPunkt(beschreibung: WetterSnapshot.beschreibungFuerCode($0.key),
+                               symbol: WetterSnapshot.symbolFuerCode($0.key),
+                               anzahl: $0.value) }
+            .sorted(by: { $0.anzahl > $1.anzahl })
+    }
+
+    private var avgTemperatur: Double? {
+        let temps = anfaelle.compactMap(\.wetterTemperatur)
+        guard !temps.isEmpty else { return nil }
+        return temps.reduce(0, +) / Double(temps.count)
+    }
+
+    private var avgWind: Double? {
+        let winds = anfaelle.compactMap(\.wetterWind).filter { $0 > 0 }
+        guard !winds.isEmpty else { return nil }
+        return winds.reduce(0, +) / Double(winds.count)
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -116,6 +145,7 @@ struct MigraeneAnalyseView: View {
                         dauerKarte
                     }
                     if !medWirksamkeit.isEmpty { medikamentKarte }
+                    if !wetterVerteilung.isEmpty { wetterKarte }
                     if zyklusModulAktiv && !zyklusDaten.isEmpty { zyklusKarte }
                 }
                 .padding()
@@ -323,6 +353,64 @@ struct MigraeneAnalyseView: View {
                 }
             }
             .frame(height: 110)
+        }
+    }
+
+    // MARK: - Wetter
+
+    private var wetterKarte: some View {
+        karte(titel: "Wetter bei Anfällen", symbol: "cloud.sun.fill", farbe: .blue) {
+            VStack(spacing: 12) {
+                let maxVal = wetterVerteilung.first?.anzahl ?? 1
+                ForEach(wetterVerteilung) { item in
+                    HStack(spacing: 10) {
+                        Image(systemName: item.symbol)
+                            .font(.title3)
+                            .foregroundStyle(.yellow)
+                            .frame(width: 28)
+                        Text(item.beschreibung)
+                            .font(.subheadline)
+                            .frame(width: 100, alignment: .leading)
+                            .lineLimit(1)
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.blue.opacity(0.15))
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.blue.gradient)
+                                    .frame(width: geo.size.width * CGFloat(item.anzahl) / CGFloat(maxVal))
+                            }
+                        }
+                        .frame(height: 18)
+                        Text("\(item.anzahl)")
+                            .font(.caption.bold()).foregroundStyle(.blue)
+                            .frame(width: 20, alignment: .trailing)
+                    }
+                }
+                if avgTemperatur != nil || avgWind != nil {
+                    Divider()
+                    HStack(spacing: 0) {
+                        if let temp = avgTemperatur {
+                            VStack(spacing: 4) {
+                                Image(systemName: "thermometer.medium").foregroundStyle(.orange)
+                                Text(String(format: "%.0f°C", temp))
+                                    .font(.subheadline.bold())
+                                Text("Ø Temperatur").font(.caption).foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        if let wind = avgWind {
+                            VStack(spacing: 4) {
+                                Image(systemName: "wind").foregroundStyle(.teal)
+                                Text(String(format: "%.0f km/h", wind))
+                                    .font(.subheadline.bold())
+                                Text("Ø Wind").font(.caption).foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+            }
         }
     }
 
