@@ -8,6 +8,8 @@ struct RheumaView: View {
     @Query(sort: \BiologikaInjektion.datum, order: .reverse) private var injektionen: [BiologikaInjektion]
     @Query(sort: \Remissionsphase.beginn, order: .reverse) private var remissionsphasen: [Remissionsphase]
 
+    @State private var zeigeForm = false
+
     var body: some View {
         List {
             if !eintraege.isEmpty {
@@ -88,6 +90,12 @@ struct RheumaView: View {
             }
         }
         .navigationTitle("Rheuma & Gelenke")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { zeigeForm = true } label: { Image(systemName: "plus") }
+            }
+        }
+        .sheet(isPresented: $zeigeForm) { RheumaSchnellForm() }
     }
 
     private var schnellstatistiken: some View {

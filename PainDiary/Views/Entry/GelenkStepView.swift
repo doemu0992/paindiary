@@ -67,10 +67,15 @@ struct GelenkStepView: View {
 
     private func bilateraleGruppe(titel: String, rechts: [GelenkGruppe], links: [GelenkGruppe]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(titel)
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
+            HStack(spacing: 4) {
+                Text(titel)
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                if let info = infoText(fuer: titel) {
+                    InfoButton(titel: titel, text: info)
+                }
+            }
+            .padding(.leading, 4)
 
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .center, spacing: 4) {
@@ -98,10 +103,15 @@ struct GelenkStepView: View {
 
     private func einzelGruppe(titel: String, gruppen: [GelenkGruppe]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(titel)
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
+            HStack(spacing: 4) {
+                Text(titel)
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                if let info = infoText(fuer: titel) {
+                    InfoButton(titel: titel, text: info)
+                }
+            }
+            .padding(.leading, 4)
 
             VStack(spacing: 4) {
                 ForEach(gruppen, id: \.rawValue) { gruppe in
@@ -149,6 +159,23 @@ struct GelenkStepView: View {
             .foregroundStyle(zustand.textfarbe)
         }
         .buttonStyle(.plain)
+    }
+
+    private func infoText(fuer titel: String) -> String? {
+        switch titel {
+        case "Finger":
+            return "Grundgelenke (MCP): die Knöchelreihe direkt vor den Fingern. Mittelgelenke (PIP): die mittlere Fingerreihe. Alle 20 Fingergelenke (je 10 pro Hand) fliessen in den DAS28-Score ein."
+        case "Arm":
+            return "Handgelenk, Ellbogen und Schulter – je links und rechts. Diese 6 Gelenke sind Teil des DAS28-Scores."
+        case "Wirbelsäule":
+            return "Hals- (HWS), Brust- (BWS) und Lendenwirbelsäule (LWS). Diese Gelenke zählen nicht zum DAS28-Score, können aber bei Spondylarthritis und anderen Rheuma-Formen betroffen sein."
+        case "Bein":
+            return "Hüfte, Knie und Sprunggelenk – je links und rechts. Nur die Knie fliessen in den DAS28-Score ein."
+        case "Sonstige":
+            return "Kiefergelenk (Temporomandibulargelenk): kann bei bestimmten Rheuma-Erkrankungen schmerzhaft oder geschwollen sein."
+        default:
+            return nil
+        }
     }
 
     private func scoreChip(label: String, wert: String, farbe: Color) -> some View {

@@ -76,42 +76,42 @@ let alleGelenke: [Gelenk] = {
 
     // Right hand MCPs
     for i in 1...5 {
-        list.append(Gelenk(id: "R_MCP\(i)", kurzname: "MCP\(i)", langname: "MCP \(i) rechts", gruppe: .fingerRechts, istDAS28: true))
+        list.append(Gelenk(id: "R_MCP\(i)", kurzname: "Grund.\(i)", langname: "MCP \(i) rechts", gruppe: .fingerRechts, istDAS28: true))
     }
     // Right hand PIPs
     for i in 1...5 {
-        list.append(Gelenk(id: "R_PIP\(i)", kurzname: "PIP\(i)", langname: "PIP \(i) rechts", gruppe: .fingerRechts, istDAS28: true))
+        list.append(Gelenk(id: "R_PIP\(i)", kurzname: "Mittel.\(i)", langname: "PIP \(i) rechts", gruppe: .fingerRechts, istDAS28: true))
     }
     // Left hand MCPs
     for i in 1...5 {
-        list.append(Gelenk(id: "L_MCP\(i)", kurzname: "MCP\(i)", langname: "MCP \(i) links", gruppe: .fingerLinks, istDAS28: true))
+        list.append(Gelenk(id: "L_MCP\(i)", kurzname: "Grund.\(i)", langname: "MCP \(i) links", gruppe: .fingerLinks, istDAS28: true))
     }
     // Left hand PIPs
     for i in 1...5 {
-        list.append(Gelenk(id: "L_PIP\(i)", kurzname: "PIP\(i)", langname: "PIP \(i) links", gruppe: .fingerLinks, istDAS28: true))
+        list.append(Gelenk(id: "L_PIP\(i)", kurzname: "Mittel.\(i)", langname: "PIP \(i) links", gruppe: .fingerLinks, istDAS28: true))
     }
     // Arms
-    list.append(Gelenk(id: "R_HG",  kurzname: "HG",  langname: "Handgelenk rechts",  gruppe: .armRechts, istDAS28: true))
-    list.append(Gelenk(id: "R_E",   kurzname: "E",   langname: "Ellbogen rechts",     gruppe: .armRechts, istDAS28: true))
-    list.append(Gelenk(id: "R_S",   kurzname: "S",   langname: "Schulter rechts",     gruppe: .armRechts, istDAS28: true))
-    list.append(Gelenk(id: "L_HG",  kurzname: "HG",  langname: "Handgelenk links",    gruppe: .armLinks,  istDAS28: true))
-    list.append(Gelenk(id: "L_E",   kurzname: "E",   langname: "Ellbogen links",      gruppe: .armLinks,  istDAS28: true))
-    list.append(Gelenk(id: "L_S",   kurzname: "S",   langname: "Schulter links",      gruppe: .armLinks,  istDAS28: true))
+    list.append(Gelenk(id: "R_HG",  kurzname: "Handgel.", langname: "Handgelenk rechts",  gruppe: .armRechts, istDAS28: true))
+    list.append(Gelenk(id: "R_E",   kurzname: "Ellbog.",  langname: "Ellbogen rechts",     gruppe: .armRechts, istDAS28: true))
+    list.append(Gelenk(id: "R_S",   kurzname: "Schulter", langname: "Schulter rechts",     gruppe: .armRechts, istDAS28: true))
+    list.append(Gelenk(id: "L_HG",  kurzname: "Handgel.", langname: "Handgelenk links",    gruppe: .armLinks,  istDAS28: true))
+    list.append(Gelenk(id: "L_E",   kurzname: "Ellbog.",  langname: "Ellbogen links",      gruppe: .armLinks,  istDAS28: true))
+    list.append(Gelenk(id: "L_S",   kurzname: "Schulter", langname: "Schulter links",      gruppe: .armLinks,  istDAS28: true))
     // Spine
-    list.append(Gelenk(id: "HWS",   kurzname: "HWS", langname: "Halswirbelsäule",     gruppe: .wirbelsaeule, istDAS28: false))
-    list.append(Gelenk(id: "BWS",   kurzname: "BWS", langname: "Brustwirbelsäule",    gruppe: .wirbelsaeule, istDAS28: false))
-    list.append(Gelenk(id: "LWS",   kurzname: "LWS", langname: "Lendenwirbelsäule",   gruppe: .wirbelsaeule, istDAS28: false))
+    list.append(Gelenk(id: "HWS",   kurzname: "Hals",  langname: "Halswirbelsäule",     gruppe: .wirbelsaeule, istDAS28: false))
+    list.append(Gelenk(id: "BWS",   kurzname: "Brust", langname: "Brustwirbelsäule",    gruppe: .wirbelsaeule, istDAS28: false))
+    list.append(Gelenk(id: "LWS",   kurzname: "Lende", langname: "Lendenwirbelsäule",   gruppe: .wirbelsaeule, istDAS28: false))
     // Right leg
     list.append(Gelenk(id: "R_HUE", kurzname: "Hüfte", langname: "Hüfte rechts",     gruppe: .beinRechts, istDAS28: false))
     list.append(Gelenk(id: "R_K",   kurzname: "Knie",  langname: "Knie rechts",       gruppe: .beinRechts, istDAS28: true))
-    list.append(Gelenk(id: "R_OSG", kurzname: "OSG",   langname: "Sprunggelenk rechts", gruppe: .beinRechts, istDAS28: false))
+    list.append(Gelenk(id: "R_OSG", kurzname: "Sprung.", langname: "Sprunggelenk rechts", gruppe: .beinRechts, istDAS28: false))
     // Left leg
     list.append(Gelenk(id: "L_HUE", kurzname: "Hüfte", langname: "Hüfte links",      gruppe: .beinLinks, istDAS28: false))
     list.append(Gelenk(id: "L_K",   kurzname: "Knie",  langname: "Knie links",        gruppe: .beinLinks, istDAS28: true))
-    list.append(Gelenk(id: "L_OSG", kurzname: "OSG",   langname: "Sprunggelenk links", gruppe: .beinLinks, istDAS28: false))
+    list.append(Gelenk(id: "L_OSG", kurzname: "Sprung.", langname: "Sprunggelenk links", gruppe: .beinLinks, istDAS28: false))
     // Other
-    list.append(Gelenk(id: "R_KFG", kurzname: "KFG", langname: "Kiefergelenk rechts", gruppe: .sonstige, istDAS28: false))
-    list.append(Gelenk(id: "L_KFG", kurzname: "KFG", langname: "Kiefergelenk links",  gruppe: .sonstige, istDAS28: false))
+    list.append(Gelenk(id: "R_KFG", kurzname: "Kiefer", langname: "Kiefergelenk rechts", gruppe: .sonstige, istDAS28: false))
+    list.append(Gelenk(id: "L_KFG", kurzname: "Kiefer", langname: "Kiefergelenk links",  gruppe: .sonstige, istDAS28: false))
 
     return list
 }()
