@@ -300,7 +300,7 @@ struct MigraeneAnfallForm: View {
     @State private var endZeit = Date()
     @State private var staerke = 6
     @State private var kopfschmerzTyp = "Migräne"
-    @State private var seite = "Einseitig links"
+    @State private var ausgewaehlteSeiten: Set<String> = []
     @State private var hatAura = false
     @State private var ausgewaehlteProdrom: Set<String> = []
     @State private var ausgewaehlterCharakter: Set<String> = []
@@ -332,7 +332,7 @@ struct MigraeneAnfallForm: View {
         "Kopfhaut empfindlich", "Schwindel", "Helligkeitsempfindlichkeit", "Hunger"
     ]
 
-    private let seiten = [
+    private let lokalisationen = [
         "Einseitig links", "Einseitig rechts", "Beidseitig",
         "Stirn / Vorne", "Schläfe links", "Schläfe rechts",
         "Hinterkopf", "Scheitel", "Nacken"
@@ -635,25 +635,16 @@ struct MigraeneAnfallForm: View {
             .padding(.top, 8)
 
             karte {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Seite").font(.headline)
-                    VStack(spacing: 2) {
-                        ForEach(seiten, id: \.self) { s in
-                            Button {
-                                seite = s
-                            } label: {
-                                HStack {
-                                    Text(s).foregroundStyle(.primary)
-                                    Spacer()
-                                    if seite == s {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(.purple)
-                                    }
-                                }
-                                .padding(.vertical, 6)
-                            }
-                            .buttonStyle(.plain)
-                            if s != seiten.last { Divider() }
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Lokalisation (mehrere möglich)").font(.headline)
+                    FlowLayout(lokalisationen) { opt in
+                        ChipButton(
+                            label: opt,
+                            ausgewaehlt: ausgewaehlteSeiten.contains(opt),
+                            farbe: .purple
+                        ) {
+                            if ausgewaehlteSeiten.contains(opt) { ausgewaehlteSeiten.remove(opt) }
+                            else { ausgewaehlteSeiten.insert(opt) }
                         }
                     }
                 }
@@ -980,6 +971,7 @@ struct MigraeneAnfallForm: View {
             seite = a.seite.isEmpty ? "Einseitig links" : a.seite
             hatAura = a.hatAura
             kopfschmerzTyp = a.kopfschmerzTyp.isEmpty ? "Migräne" : a.kopfschmerzTyp
+            ausgewaehlteSeiten = Set(a.seite.components(separatedBy: ", ").filter { !$0.isEmpty })
             ausgewaehlterCharakter = Set(a.charakterListe)
             ausgewaehlteProdrom = Set(a.prodromListe)
             ausgewaehlteBegleitsymptome = Set(a.begleitsymptomeListe)
@@ -1022,6 +1014,7 @@ struct MigraeneAnfallForm: View {
 
     private func speichern() {
         let dauer = dauerStunden * 60 + dauerMinuten
+        let seitenStr  = ausgewaehlteSeiten.sorted().joined(separator: ", ")
         let charStr    = ausgewaehlterCharakter.sorted().joined(separator: ", ")
         let beglStr    = ausgewaehlteBegleitsymptome.sorted().joined(separator: ", ")
         let auslStr    = ausgewaehlteAusloeser.sorted().joined(separator: ", ")
@@ -1035,7 +1028,7 @@ struct MigraeneAnfallForm: View {
         let finalWind = wetterWind ?? wetterSnap?.windgeschwindigkeit
 
         if let a = anfall {
-            a.datum = datum; a.dauer = dauer; a.staerke = staerke; a.seite = seite
+            a.datum = datum; a.dauer = dauer; a.staerke = staerke; a.seite = seitenStr
             a.hatAura = hatAura; a.charakter = charStr; a.begleitsymptome = beglStr
             a.ausloeser = auslStr; a.akutmedikament = akutmedikament
             a.medikamentWirksam = medikamentWirksam; a.notizen = notizen
@@ -1048,7 +1041,7 @@ struct MigraeneAnfallForm: View {
             a.endZeit = hatEndZeit ? endZeit : nil
             a.zyklusPhase = zyklusPhase
         } else {
-            let neu = MigraeneEintrag(datum: datum, dauer: dauer, staerke: staerke, seite: seite,
+            let neu = MigraeneEintrag(datum: datum, dauer: dauer, staerke: staerke, seite: seitenStr,
                                       charakter: charStr, begleitsymptome: beglStr, hatAura: hatAura,
                                       ausloeser: auslStr, akutmedikament: akutmedikament,
                                       medikamentWirksam: medikamentWirksam, notizen: notizen,

@@ -93,7 +93,7 @@ struct ContentView: View {
             NavigationStack { ZyklusView() }
         }
         .sheet(item: $zeigeMigraeneBearbeiten) { eintrag in
-            MigraeneAnfallForm(anfall: eintrag)
+            PostdromErfassungView(anfall: eintrag)
         }
         // Pfad 1: App aktiv im Vordergrund — sofort reagieren
         .onChange(of: NotificationManager.shared.pendingDeepLink) { _, _ in

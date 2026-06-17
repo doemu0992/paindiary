@@ -130,7 +130,10 @@ struct MigraeneAnfallDetailView: View {
                 .font(.headline).foregroundStyle(.purple)
             Divider()
             if !anfall.seite.isEmpty {
-                zeile("Lokalisation", wert: anfall.seite)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Lokalisation").font(.subheadline).foregroundStyle(.secondary)
+                    chipReihe(anfall.seite.components(separatedBy: ", ").filter { !$0.isEmpty }, farbe: .purple)
+                }
             }
             if anfall.dauer > 0 {
                 zeile("Dauer", wert: anfall.dauerText)

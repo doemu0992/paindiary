@@ -305,7 +305,7 @@ private struct MigraeneTagesbuchZeile: View {
                         .foregroundStyle(.purple)
                     Group {
                         if Calendar.current.isDateInToday(anfall.datum) {
-                            Text(anfall.datum, style: .relative)
+                            Text(anfall.datum, style: .time)
                         } else if Calendar.current.isDateInYesterday(anfall.datum) {
                             Text("Gestern")
                         } else {
@@ -341,6 +341,16 @@ private struct MigraeneTagesbuchZeile: View {
                 }
             }
             Spacer()
+            if !anfall.postdrom.isEmpty {
+                VStack {
+                    Image(systemName: "arrow.clockwise.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.teal)
+                    Text("Nach")
+                        .font(.system(size: 7))
+                        .foregroundStyle(.teal)
+                }
+            }
         }
         .padding(.vertical, 2)
     }
