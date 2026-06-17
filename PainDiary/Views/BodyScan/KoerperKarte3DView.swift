@@ -68,10 +68,20 @@ struct KoerperKarte3DView: UIViewRepresentable {
         init(onTap: @escaping (String) -> Void) { self.onTap = onTap }
 
         @objc func handlePan(_ g: UIPanGestureRecognizer) {
-            guard let v = scnView,
-                  let body = v.scene?.rootNode.childNode(withName: "body", recursively: false)
-            else { return }
-            body.eulerAngles.y += Float(g.translation(in: v).x) * 0.013
+            guard let v = scnView else { return }
+            let t = g.translation(in: v)
+
+            // Horizontal → rotate body around Y-axis
+            if let body = v.scene?.rootNode.childNode(withName: "body", recursively: false) {
+                body.eulerAngles.y += Float(t.x) * 0.013
+            }
+
+            // Vertical → pan camera up/down so zoomed-in users can scroll to feet/head
+            if let camNode = v.scene?.rootNode.childNodes.first(where: { $0.camera != nil }) {
+                let newY = camNode.position.y + Float(t.y) * 0.004
+                camNode.position.y = max(-1.0, min(1.0, newY))
+            }
+
             g.setTranslation(.zero, in: v)
         }
 
@@ -84,11 +94,12 @@ struct KoerperKarte3DView: UIViewRepresentable {
         }
 
         @objc func handleDoubleTap(_ g: UITapGestureRecognizer) {
-            guard let cam = scnView?.scene?.rootNode
-                    .childNodes.first(where: { $0.camera != nil })?.camera else { return }
+            guard let camNode = scnView?.scene?.rootNode
+                    .childNodes.first(where: { $0.camera != nil }) else { return }
             SCNTransaction.begin()
             SCNTransaction.animationDuration = 0.35
-            cam.fieldOfView = 44
+            camNode.camera?.fieldOfView = 44
+            camNode.position.y = 0
             SCNTransaction.commit()
         }
 

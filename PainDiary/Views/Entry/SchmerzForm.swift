@@ -618,12 +618,12 @@ struct SchmerzForm: View {
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 46, height: 46)
+                        .frame(width: 40, height: 40)
                         .background(Color(.secondarySystemBackground), in: Circle())
                 }
                 .buttonStyle(.plain)
             } else {
-                Spacer().frame(width: 46)
+                Spacer().frame(width: 40)
             }
 
             Spacer()
@@ -648,7 +648,7 @@ struct SchmerzForm: View {
                     Text("Weiter ›")
                         .font(.subheadline.bold())
                         .padding(.horizontal, 22)
-                        .padding(.vertical, 13)
+                        .padding(.vertical, 10)
                         .background(progressTint, in: Capsule())
                         .foregroundStyle(.white)
                 }
@@ -660,7 +660,7 @@ struct SchmerzForm: View {
                     Text("✓ Speichern")
                         .font(.subheadline.bold())
                         .padding(.horizontal, 22)
-                        .padding(.vertical, 13)
+                        .padding(.vertical, 10)
                         .background(Color.green, in: Capsule())
                         .foregroundStyle(.white)
                 }
@@ -668,7 +668,7 @@ struct SchmerzForm: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
         .background(.bar)
     }
 
