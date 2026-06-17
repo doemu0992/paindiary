@@ -49,7 +49,7 @@ struct PostdromErfassungView: View {
                                 .textCase(.uppercase)
                             FlowLayout(optionen) { opt in
                                 ChipButton(
-                                    titel: opt,
+                                    label: opt,
                                     ausgewaehlt: ausgewaehlte.contains(opt),
                                     farbe: .teal
                                 ) {
