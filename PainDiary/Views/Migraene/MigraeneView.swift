@@ -11,6 +11,7 @@ struct MigraeneView: View {
 
     @State private var zeigeForm = false
     @State private var bearbeitet: MigraeneEintrag? = nil
+    @State private var zeigeAnalyse = false
 
     private var zyklusAnalyse: ZyklusAnalyse {
         ZyklusRechner.analyse(eintraege: Array(zyklusEintraege))
@@ -79,12 +80,23 @@ struct MigraeneView: View {
         }
         .navigationTitle("Migräne")
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    zeigeAnalyse = true
+                } label: {
+                    Label("Analyse", systemImage: "chart.bar.xaxis.ascending")
+                }
+                .disabled(anfaelle.isEmpty)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }
             }
         }
         .sheet(isPresented: $zeigeForm) { MigraeneAnfallForm() }
         .sheet(item: $bearbeitet) { MigraeneAnfallForm(anfall: $0) }
+        .sheet(isPresented: $zeigeAnalyse) {
+            MigraeneAnalyseView(anfaelle: anfaelle, zyklusAnalyse: zyklusAnalyse)
+        }
     }
 
     // MARK: - Sections
