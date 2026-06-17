@@ -298,7 +298,7 @@ struct MigraeneAnalyseView: View {
     // MARK: - Verlauf
 
     private var verlaufKarte: some View {
-        karte(titel: "Verlauf (6 Monate)", symbol: "chart.bar.fill", farbe: .purple) {
+        karte(titel: "Verlauf (6 Monate)", symbol: "chart.bar.fill", farbe: .purple, info: "Zeigt die Anzahl der Migräne-Anfälle pro Monat. Ein Anstieg über mehrere Monate kann auf eine Verschlechterung hinweisen und sollte mit dem Arzt besprochen werden.") {
             Chart(monatlicherVerlauf, id: \.monat) { item in
                 BarMark(
                     x: .value("Monat", item.monat, unit: .month),
@@ -319,7 +319,7 @@ struct MigraeneAnalyseView: View {
     // MARK: - Tageszeit
 
     private var tageszeitKarte: some View {
-        karte(titel: "Beginn nach Tageszeit", symbol: "clock.fill", farbe: .indigo) {
+        karte(titel: "Beginn nach Tageszeit", symbol: "clock.fill", farbe: .indigo, info: "Zu welcher Tageszeit beginnen deine Anfälle am häufigsten? Morgens häufige Anfälle können auf Schlaf oder Hormonschwankungen hinweisen. Anfälle am Abend können stressbedingt sein.") {
             Chart(tageszeitMuster) { item in
                 BarMark(
                     x: .value("Zeit", item.label),
@@ -335,7 +335,7 @@ struct MigraeneAnalyseView: View {
     // MARK: - Auslöser
 
     private var ausloeserKarte: some View {
-        karte(titel: "Top Auslöser", symbol: "exclamationmark.triangle.fill", farbe: .orange) {
+        karte(titel: "Top Auslöser", symbol: "exclamationmark.triangle.fill", farbe: .orange, info: "Die häufigsten von dir eingetragenen Auslöser. Achte besonders auf Auslöser die du beeinflussen kannst (Schlaf, Stress, Ernährung) – das sind die wirksamsten Ansatzpunkte zur Anfallsreduktion.") {
             let maxVal = topAusloeser.first?.anzahl ?? 1
             VStack(spacing: 10) {
                 ForEach(topAusloeser, id: \.name) { item in
@@ -401,7 +401,7 @@ struct MigraeneAnalyseView: View {
     // MARK: - Medikament
 
     private var medikamentKarte: some View {
-        karte(titel: "Medikament-Wirksamkeit", symbol: "pill.fill", farbe: .blue) {
+        karte(titel: "Medikament-Wirksamkeit", symbol: "pill.fill", farbe: .blue, info: "Zeigt wie wirksam du deine Akutmedikamente einschätzt. Medikamente die häufig als 'nicht wirksam' bewertet werden, sollten im nächsten Arztgespräch besprochen werden – möglicherweise gibt es wirksamere Alternativen.") {
             VStack(spacing: 14) {
                 ForEach(medWirksamkeit) { med in
                     VStack(alignment: .leading, spacing: 6) {
@@ -448,7 +448,7 @@ struct MigraeneAnalyseView: View {
     // MARK: - Zyklus
 
     private var zyklusKarte: some View {
-        karte(titel: "Zyklus-Korrelation", symbol: "moon.stars.fill", farbe: .pink) {
+        karte(titel: "Zyklus-Korrelation", symbol: "moon.stars.fill", farbe: .pink, info: "Ordnet jeden Migräne-Anfall einer Zyklusphase zu. Hormonelle Schwankungen – besonders der Östrogenabfall vor der Periode – sind ein bekannter Migräne-Trigger. Diese Ansicht hilft dein persönliches Muster zu erkennen.") {
             if zyklusDaten.isEmpty {
                 HStack(spacing: 12) {
                     Image(systemName: "moon.stars.fill")
@@ -515,7 +515,7 @@ struct MigraeneAnalyseView: View {
     // MARK: - Wetter
 
     private var wetterKarte: some View {
-        karte(titel: "Wetter bei Anfällen", symbol: "cloud.sun.fill", farbe: .blue) {
+        karte(titel: "Wetter bei Anfällen", symbol: "cloud.sun.fill", farbe: .blue, info: "Welche Wetterbedingungen traten bei deinen Anfällen am häufigsten auf? Wetterempfindlichkeit ist bei Migräne-Patienten häufig – besonders Föhn, Tiefdruckgebiete und rasche Temperaturwechsel gelten als Trigger.") {
             VStack(spacing: 12) {
                 let maxVal = wetterVerteilung.first?.anzahl ?? 1
                 ForEach(wetterVerteilung) { item in
@@ -598,10 +598,16 @@ struct MigraeneAnalyseView: View {
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
-    private func karte<Content: View>(titel: String, symbol: String, farbe: Color, @ViewBuilder content: () -> Content) -> some View {
+    private func karte<Content: View>(titel: String, symbol: String, farbe: Color, info: String = "", @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(titel, systemImage: symbol)
-                .font(.headline).foregroundStyle(farbe)
+            HStack(alignment: .center, spacing: 4) {
+                Label(titel, systemImage: symbol)
+                    .font(.headline).foregroundStyle(farbe)
+                if !info.isEmpty {
+                    Spacer(minLength: 4)
+                    InfoButton(titel: titel, text: info)
+                }
+            }
             Divider()
             content()
         }
