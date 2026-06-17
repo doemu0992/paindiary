@@ -968,7 +968,6 @@ struct MigraeneAnfallForm: View {
             dauerStunden = a.dauer / 60
             dauerMinuten = a.dauer % 60
             staerke = a.staerke
-            seite = a.seite.isEmpty ? "Einseitig links" : a.seite
             hatAura = a.hatAura
             kopfschmerzTyp = a.kopfschmerzTyp.isEmpty ? "Migräne" : a.kopfschmerzTyp
             ausgewaehlteSeiten = Set(a.seite.components(separatedBy: ", ").filter { !$0.isEmpty })
