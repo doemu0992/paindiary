@@ -231,7 +231,7 @@ private struct PainEntryZeile: View {
                     }
                     Group {
                         if Calendar.current.isDateInToday(eintrag.datum) {
-                            Text(eintrag.datum, style: .relative)
+                            Text(eintrag.datum, style: .time)
                         } else if Calendar.current.isDateInYesterday(eintrag.datum) {
                             Text("Gestern")
                         } else {
