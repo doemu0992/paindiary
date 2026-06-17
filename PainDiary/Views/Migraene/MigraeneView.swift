@@ -248,8 +248,8 @@ struct MigraeneAnfallForm: View {
     @State private var wetterWind: Double? = nil
 
     private let wetter = WetterService.shared
-    private let maxSchritt = 3
-    private let schrittNamen = ["Intensität", "Charakter", "Symptome & Auslöser", "Abschluss"]
+    private let maxSchritt = 4
+    private let schrittNamen = ["Intensität", "Prodrom", "Charakter", "Symptome & Auslöser", "Abschluss"]
     private let progressTint: Color = .purple
     private let pflichtSchritte: Set<Int> = [0]
 
@@ -264,7 +264,11 @@ struct MigraeneAnfallForm: View {
         "Kopfhaut empfindlich", "Schwindel", "Helligkeitsempfindlichkeit", "Hunger"
     ]
 
-    private let seiten = ["Einseitig links", "Einseitig rechts", "Beidseitig"]
+    private let seiten = [
+        "Einseitig links", "Einseitig rechts", "Beidseitig",
+        "Stirn / Vorne", "Schläfe links", "Schläfe rechts",
+        "Hinterkopf", "Scheitel", "Nacken"
+    ]
     private let charakterOptionen = ["Pulsierend", "Hämmernd", "Drückend", "Stechend", "Brennend"]
     private let begleitOptionen = [
         "Übelkeit", "Erbrechen", "Lichtempfindlichkeit", "Lärmempfindlichkeit",
@@ -373,11 +377,17 @@ struct MigraeneAnfallForm: View {
             .background(Color(.systemGroupedBackground))
         case 1:
             ScrollView {
-                charakterSchritt.padding(.vertical, 24)
+                prodromSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
         case 2:
+            ScrollView {
+                charakterSchritt.padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        case 3:
             ScrollView {
                 symptomeSchritt.padding(.vertical, 24)
             }
@@ -507,7 +517,43 @@ struct MigraeneAnfallForm: View {
         .padding(.bottom, 24)
     }
 
-    // MARK: - Schritt 1: Charakter
+    // MARK: - Schritt 1: Prodromsymptome
+
+    private var prodromSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.largeTitle)
+                    .foregroundStyle(.indigo)
+                Text("Vor dem Anfall")
+                    .font(.title2.bold())
+                Text("Optional – überspringen wenn nichts bemerkt")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, 8)
+
+            karte {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Prodromsymptome").font(.headline)
+                    FlowLayout(prodromOptionen) { opt in
+                        ChipButton(
+                            label: opt,
+                            ausgewaehlt: ausgewaehlteProdrom.contains(opt),
+                            farbe: .indigo
+                        ) {
+                            if ausgewaehlteProdrom.contains(opt) { ausgewaehlteProdrom.remove(opt) }
+                            else { ausgewaehlteProdrom.insert(opt) }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Schritt 2: Charakter
 
     private var charakterSchritt: some View {
         VStack(spacing: 16) {
@@ -578,29 +624,12 @@ struct MigraeneAnfallForm: View {
                 }
             }
 
-            karte {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Prodromsymptome").font(.headline)
-                    Text("Was bemerkten Sie vor dem Anfall?")
-                        .font(.caption).foregroundStyle(.secondary)
-                    FlowLayout(prodromOptionen) { opt in
-                        ChipButton(
-                            label: opt,
-                            ausgewaehlt: ausgewaehlteProdrom.contains(opt),
-                            farbe: .indigo
-                        ) {
-                            if ausgewaehlteProdrom.contains(opt) { ausgewaehlteProdrom.remove(opt) }
-                            else { ausgewaehlteProdrom.insert(opt) }
-                        }
-                    }
-                }
-            }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
     }
 
-    // MARK: - Schritt 2: Symptome & Auslöser
+    // MARK: - Schritt 3: Symptome & Auslöser
 
     private var symptomeSchritt: some View {
         VStack(spacing: 16) {
@@ -978,6 +1007,9 @@ struct MigraeneAnfallForm: View {
                 NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: med.name)
             } else if !akutmedikament.isEmpty {
                 NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: akutmedikament)
+            }
+            if ausgewaehltePostdrom.isEmpty && !hatEndZeit {
+                NotificationManager.shared.planeMigraenePostdromErinnerung(nach: datum)
             }
         }
 

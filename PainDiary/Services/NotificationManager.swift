@@ -377,6 +377,20 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             UNNotificationRequest(identifier: id, content: content, trigger: trigger))
     }
 
+    func planeMigraenePostdromErinnerung(nach datum: Date) {
+        guard status == .authorized else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "🧠 Migräne-Nachphase erfassen"
+        content.body = "Wie geht es dir jetzt? Erfasse deine Postdrom-Symptome im Migräne-Tagebuch."
+        content.sound = .default
+        if #available(iOS 15.0, *) { content.interruptionLevel = .passive }
+        let verzoegerung = max(1, datum.timeIntervalSinceNow + 24 * 3600)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: verzoegerung, repeats: false)
+        let id = "migraene-postdrom-\(Int(datum.timeIntervalSince1970))"
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+
     func loescheZyklusErinnerungen() {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: ["zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung"])
