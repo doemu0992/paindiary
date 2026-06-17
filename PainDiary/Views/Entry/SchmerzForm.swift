@@ -668,7 +668,8 @@ struct SchmerzForm: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
         .background(.bar)
     }
 
