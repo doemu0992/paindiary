@@ -28,8 +28,8 @@ struct MigraeneAnalyseView: View {
     private var topAusloeser: [(name: String, anzahl: Int)] {
         var counts: [String: Int] = [:]
         anfaelle.flatMap(\.ausloeserListe).forEach { counts[$0, default: 0] += 1 }
-        return counts.map { ($0.key, $0.value) }
-            .sorted { $0.anzahl > $1.anzahl }
+        return counts.map { (name: $0.key, anzahl: $0.value) }
+            .sorted(by: { $0.anzahl > $1.anzahl })
             .prefix(6).map { $0 }
     }
 
