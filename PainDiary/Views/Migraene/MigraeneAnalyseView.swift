@@ -309,15 +309,13 @@ struct MigraeneAnalyseView: View {
                 .cornerRadius(4)
             }
             .chartXAxis {
-                let stride: Calendar.Component = zeitraum.verlaufMonate <= 6 ? .month : .quarter
-                let fmt: Date.FormatStyle = zeitraum.verlaufMonate <= 12
-                    ? .dateTime.month(.abbreviated)
-                    : .dateTime.month(.abbreviated).year(.twoDigits)
-                AxisMarks(values: .stride(by: stride)) {
-                    AxisValueLabel(format: fmt)
+                AxisMarks(values: .stride(by: .month)) {
+                    AxisValueLabel(format: .dateTime.month(.abbreviated).year(.twoDigits))
                     AxisGridLine()
                 }
             }
+            .chartScrollableAxes(.horizontal)
+            .chartXVisibleDomain(length: 60 * 60 * 24 * 30 * 6)
             .frame(height: 130)
         }
     }
