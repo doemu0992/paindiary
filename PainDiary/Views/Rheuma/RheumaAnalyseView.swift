@@ -141,7 +141,7 @@ struct RheumaAnalyseView: View {
             let wd = cal.component(.weekday, from: e.datum)
             counts[(wd + 5) % 7] += 1
         }
-        return tage.enumerated().map { (tage[$0.offset], $0.element) }
+        return zip(tage, counts).map { (tag: $0, anzahl: $1) }
     }
 
     // MARK: Computed — Top Gelenke
