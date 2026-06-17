@@ -17,6 +17,32 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "27", aenderungen: [
+        WhatsNewAenderung(icon: "chart.bar.xaxis.ascending", farbe: .purple,
+                          titel: "Migräne-Analyse",
+                          beschreibung: "Neuer Analyse-Sheet direkt aus dem Migräne-Profil: 8 Sektionen mit Verlauf, Tageszeit-Muster, Auslöser, Aura & Dauer, Medikament-Wirksamkeit, Wetter- und Zyklus-Korrelation – inkl. Zeitraum-Filter (30T / 3M / 6M / 1J / Alle)."),
+        WhatsNewAenderung(icon: "arrow.up.arrow.down.circle.fill", farbe: .indigo,
+                          titel: "Analyse frei anordnen",
+                          beschreibung: "Die Reihenfolge der Migräne-Analyse-Sektionen lässt sich per Drag & Drop individuell anpassen – genau wie die Dashboard-Kacheln."),
+        WhatsNewAenderung(icon: "chart.xyaxis.line", farbe: .teal,
+                          titel: "Verlauf scrollbar",
+                          beschreibung: "Der Verlauf-Chart in der Migräne-Analyse ist horizontal scrollbar und springt automatisch zum aktuellen Monat. Adaptiver X-Achsen-Abstand verhindert Überfüllung bei langen Zeiträumen."),
+        WhatsNewAenderung(icon: "info.circle.fill", farbe: .teal,
+                          titel: "Infotexte bei jedem Chart",
+                          beschreibung: "Jede Analyse-Sektion hat ein ⓘ-Symbol mit medizinischer Erklärung – was der Chart zeigt, wie er zu lesen ist und was die Werte bedeuten."),
+        WhatsNewAenderung(icon: "arrow.clockwise.circle.fill", farbe: .teal,
+                          titel: "Postdrom immer sichtbar",
+                          beschreibung: "Postdromsymptome erscheinen in der Anfall-Detailansicht immer – mit Push-Erinnerungszeit falls noch nicht erfasst und einem «Jetzt erfassen»-Button. Tippen auf die Benachrichtigung öffnet direkt das fokussierte Erfassungs-Sheet."),
+        WhatsNewAenderung(icon: "list.bullet.rectangle.fill", farbe: .purple,
+                          titel: "Tagebuch: einheitliches Layout",
+                          beschreibung: "Migräne-Einträge im Tagebuch zeigen jetzt dasselbe Layout wie Schmerzeinträge – SchmerzBadge, Überschrift mit Kopfschmerztyp, Charakter, Datum/Uhrzeit, Aura-Badge und Dauer auf einen Blick."),
+        WhatsNewAenderung(icon: "clock.fill", farbe: .orange,
+                          titel: "Heutige Einträge zeigen Uhrzeit",
+                          beschreibung: "Einträge von heute zeigen jetzt die genaue Uhrzeit statt «vor X Minuten» – gilt für Schmerz- und Migräne-Einträge im Tagebuch."),
+        WhatsNewAenderung(icon: "arrow.right.square.fill", farbe: .purple,
+                          titel: "Migräne-Profil öffnet Detailansicht",
+                          beschreibung: "Anfälle in der Migräne-Profil-Liste öffnen jetzt die Detailansicht (wie im Tagebuch) statt direkt den Bearbeitungs-Wizard."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "26", aenderungen: [
         WhatsNewAenderung(icon: "switch.2", farbe: .teal,
                           titel: "Modulverwaltung im Profil",
