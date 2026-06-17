@@ -1,4 +1,5 @@
 import Foundation
+#if canImport(UIKit)
 import UIKit
 
 enum FotoManager {
@@ -31,3 +32,4 @@ enum FotoManager {
         try? FileManager.default.removeItem(at: url)
     }
 }
+#endif
