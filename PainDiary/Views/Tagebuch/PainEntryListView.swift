@@ -303,6 +303,24 @@ private struct MigraeneTagesbuchZeile: View {
                     Image(systemName: "brain.head.profile")
                         .font(.caption)
                         .foregroundStyle(.purple)
+                    Text("Migräne")
+                        .font(.headline)
+                    if !anfall.kopfschmerzTyp.isEmpty && anfall.kopfschmerzTyp != "Migräne" {
+                        Text(anfall.kopfschmerzTyp)
+                            .font(.caption2.bold())
+                            .foregroundStyle(.indigo)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Color.indigo.opacity(0.12)).clipShape(Capsule())
+                    }
+                    if anfall.hatAura {
+                        Text("Aura")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.purple)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Color.purple.opacity(0.15)).clipShape(Capsule())
+                    }
+                }
+                HStack(spacing: 6) {
                     Group {
                         if Calendar.current.isDateInToday(anfall.datum) {
                             Text(anfall.datum, style: .time)
@@ -312,27 +330,9 @@ private struct MigraeneTagesbuchZeile: View {
                             Text(anfall.datum, style: .date)
                         }
                     }
-                    .font(.subheadline.bold())
-                    if anfall.hatAura {
-                        Text("Aura")
-                            .font(.caption2.bold())
-                            .foregroundStyle(.purple)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.purple.opacity(0.15)).clipShape(Capsule())
-                    }
-                    if !anfall.kopfschmerzTyp.isEmpty && anfall.kopfschmerzTyp != "Migräne" {
-                        Text(anfall.kopfschmerzTyp)
-                            .font(.caption2.bold())
-                            .foregroundStyle(.indigo)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.indigo.opacity(0.12)).clipShape(Capsule())
-                    }
-                }
-                HStack(spacing: 8) {
-                    if !anfall.seite.isEmpty {
-                        Text(anfall.seite).font(.caption).foregroundStyle(.secondary)
-                    }
+                    .font(.caption).foregroundStyle(.secondary)
                     if anfall.dauer > 0 {
+                        Text("·").font(.caption).foregroundStyle(.secondary)
                         Text(anfall.dauerText).font(.caption).foregroundStyle(.secondary)
                     }
                 }
