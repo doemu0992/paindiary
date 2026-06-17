@@ -3,6 +3,7 @@ import SwiftUI
 struct MigraeneAnfallDetailView: View {
     let anfall: MigraeneEintrag
     @State private var bearbeiten = false
+    @State private var zeigePostdrom = false
 
     var body: some View {
         ScrollView {
@@ -36,10 +37,7 @@ struct MigraeneAnfallDetailView: View {
                     medikamentKarte
                 }
 
-                if !anfall.postdrom.isEmpty {
-                    chipKarte("Postdromsymptome", symbol: "arrow.clockwise.circle.fill",
-                              farbe: .teal, chips: anfall.postdromListe)
-                }
+                postdromKarte
 
                 wetterKarte
 
@@ -62,6 +60,9 @@ struct MigraeneAnfallDetailView: View {
         }
         .sheet(isPresented: $bearbeiten) {
             MigraeneAnfallForm(anfall: anfall)
+        }
+        .sheet(isPresented: $zeigePostdrom) {
+            PostdromErfassungView(anfall: anfall)
         }
     }
 
@@ -229,6 +230,43 @@ struct MigraeneAnfallDetailView: View {
                 Text(anfall.zyklusPhase).font(.caption).foregroundStyle(.pink)
             }
             Spacer()
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    }
+
+    // MARK: - Postdrom
+
+    private var postdromKarte: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Postdromsymptome", systemImage: "arrow.clockwise.circle.fill")
+                .font(.headline).foregroundStyle(.teal)
+            Divider()
+            if !anfall.postdrom.isEmpty {
+                chipReihe(anfall.postdromListe, farbe: .teal)
+            } else {
+                let erinnerungsZeit = anfall.datum.addingTimeInterval(24 * 3600)
+                VStack(alignment: .leading, spacing: 10) {
+                    if erinnerungsZeit > Date() {
+                        HStack(spacing: 6) {
+                            Image(systemName: "bell.fill").foregroundStyle(.teal).font(.caption)
+                            Text("Push-Erinnerung um \(erinnerungsZeit.formatted(date: .omitted, time: .shortened)) Uhr")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Text("Noch nicht erfasst")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Button {
+                        zeigePostdrom = true
+                    } label: {
+                        Label("Jetzt erfassen", systemImage: "plus.circle")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.teal)
+                    }
+                }
+            }
         }
         .padding()
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
