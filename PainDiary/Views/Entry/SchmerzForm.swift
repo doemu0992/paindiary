@@ -334,6 +334,71 @@ struct SchmerzForm: View {
 
     private var intensitaetSchritt: some View {
         VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "waveform.path.ecg")
+                    .font(.largeTitle)
+                    .foregroundStyle(.red)
+                Text("Wie stark?")
+                    .font(.title2.bold())
+            }
+            .padding(.top, 8)
+
+            karte {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Schmerzstärke").font(.headline)
+
+                    HStack {
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .fill(staerkeFarbe.opacity(0.15))
+                                .frame(width: 104, height: 104)
+                            Circle()
+                                .strokeBorder(staerkeFarbe, lineWidth: 5)
+                                .frame(width: 104, height: 104)
+                            VStack(spacing: 1) {
+                                Text("\(schmerzstaerke)")
+                                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                                    .foregroundStyle(staerkeFarbe)
+                                Text("/ 10")
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: schmerzstaerke)
+                        Spacer()
+                    }
+
+                    Text(staerkeLabel)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(staerkeFarbe)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .animation(.easeInOut(duration: 0.2), value: staerkeLabel)
+
+                    Slider(
+                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
+                        in: 0...10, step: 1
+                    ).tint(staerkeFarbe)
+
+                    HStack {
+                        Text("Kein Schmerz").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("Extremer Schmerz").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            karte {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Dauer").font(.headline)
+                    HStack {
+                        Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
+                        Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
+                    }
+                    .font(.subheadline)
+                }
+            }
+
             karte {
                 VStack(alignment: .leading, spacing: 10) {
                     DatePicker("Datum & Uhrzeit", selection: $datum, displayedComponents: [.date, .hourAndMinute])
@@ -352,43 +417,6 @@ struct SchmerzForm: View {
                             Spacer()
                         }
                     }
-                }
-            }
-            .padding(.top, 8)
-
-            VStack(spacing: 6) {
-                Image(systemName: "waveform.path.ecg")
-                    .font(.largeTitle)
-                    .foregroundStyle(.red)
-                Text("Wie stark?")
-                    .font(.title2.bold())
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Schmerzstärke").font(.headline)
-                    HStack {
-                        Text("Stärke: \(schmerzstaerke) / 10")
-                        Spacer()
-                        Text(staerkeLabel)
-                            .font(.caption.bold())
-                            .foregroundStyle(staerkeFarbe)
-                    }
-                    Slider(
-                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
-                        in: 0...10, step: 1
-                    ).tint(staerkeFarbe)
-                }
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Dauer").font(.headline)
-                    HStack {
-                        Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
-                        Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
-                    }
-                    .font(.subheadline)
                 }
             }
         }
