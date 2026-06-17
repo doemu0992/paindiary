@@ -141,7 +141,9 @@ struct MigraeneView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
                     }
+                    .buttonStyle(.plain)
                     .gridCellColumns(2)
+                    .listRowInsets(EdgeInsets())
                 }
             }
             .padding(.vertical, 4)

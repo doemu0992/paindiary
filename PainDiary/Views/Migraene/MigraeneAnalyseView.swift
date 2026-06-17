@@ -1,12 +1,55 @@
 import SwiftUI
 import Charts
 
+enum AnalyseSektion: String, CaseIterable, Codable, Identifiable {
+    case zusammenfassung = "Zusammenfassung"
+    case verlauf         = "Verlauf (6 Monate)"
+    case tageszeit       = "Beginn nach Tageszeit"
+    case ausloeser       = "Top Auslöser"
+    case auraUndDauer    = "Aura & Dauer"
+    case medikament      = "Medikament-Wirksamkeit"
+    case wetter          = "Wetter bei Anfällen"
+    case zyklus          = "Zyklus-Korrelation"
+
+    var id: String { rawValue }
+    var symbol: String {
+        switch self {
+        case .zusammenfassung: return "chart.bar.fill"
+        case .verlauf:         return "chart.line.uptrend.xyaxis"
+        case .tageszeit:       return "clock.fill"
+        case .ausloeser:       return "exclamationmark.triangle.fill"
+        case .auraUndDauer:    return "eye.fill"
+        case .medikament:      return "pill.fill"
+        case .wetter:          return "cloud.sun.fill"
+        case .zyklus:          return "moon.stars.fill"
+        }
+    }
+}
+
+private let kSektionenKey = "migraeneAnalyseSektionen"
+
+private func sektionenLaden() -> [AnalyseSektion] {
+    guard let data = UserDefaults.standard.data(forKey: kSektionenKey),
+          let decoded = try? JSONDecoder().decode([AnalyseSektion].self, from: data)
+    else { return AnalyseSektion.allCases }
+    let existing = Set(decoded)
+    let missing = AnalyseSektion.allCases.filter { !existing.contains($0) }
+    return decoded + missing
+}
+
+private func sektionenSpeichern(_ sektionen: [AnalyseSektion]) {
+    if let data = try? JSONEncoder().encode(sektionen) {
+        UserDefaults.standard.set(data, forKey: kSektionenKey)
+    }
+}
+
 struct MigraeneAnalyseView: View {
     let anfaelle: [MigraeneEintrag]
     let zyklusAnalyse: ZyklusAnalyse
 
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("zyklusModulAktiv") private var zyklusModulAktiv = false
+    @State private var sektionen: [AnalyseSektion] = sektionenLaden()
+    @State private var zeigeAnpassen = false
 
     // MARK: - Computed
 
@@ -136,27 +179,46 @@ struct MigraeneAnalyseView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    summaryKarte
-                    verlaufKarte
-                    tageszeitKarte
-                    if !topAusloeser.isEmpty { ausloeserKarte }
-                    HStack(alignment: .top, spacing: 12) {
-                        auraKarte
-                        dauerKarte
+                    ForEach(sektionen) { sektion in
+                        sektionView(sektion)
                     }
-                    if !medWirksamkeit.isEmpty { medikamentKarte }
-                    if !wetterVerteilung.isEmpty { wetterKarte }
-                    zyklusKarte
                 }
                 .padding()
             }
             .navigationTitle("Migräne-Analyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { zeigeAnpassen = true } label: {
+                        Label("Anpassen", systemImage: "slider.horizontal.3")
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Fertig") { dismiss() }
                 }
             }
+            .sheet(isPresented: $zeigeAnpassen) {
+                AnalyseAnpassenView(sektionen: $sektionen)
+            }
+            .onChange(of: sektionen) { sektionenSpeichern(sektionen) }
+        }
+    }
+
+    @ViewBuilder
+    private func sektionView(_ sektion: AnalyseSektion) -> some View {
+        switch sektion {
+        case .zusammenfassung: summaryKarte
+        case .verlauf:         verlaufKarte
+        case .tageszeit:       tageszeitKarte
+        case .ausloeser:       if !topAusloeser.isEmpty { ausloeserKarte }
+        case .auraUndDauer:
+            HStack(alignment: .top, spacing: 12) {
+                auraKarte
+                dauerKarte
+            }
+        case .medikament:      if !medWirksamkeit.isEmpty { medikamentKarte }
+        case .wetter:          if !wetterVerteilung.isEmpty { wetterKarte }
+        case .zyklus:          zyklusKarte
         }
     }
 
@@ -482,5 +544,42 @@ struct MigraeneAnalyseView: View {
         .padding()
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    }
+}
+
+// MARK: - Anpassen Sheet
+
+struct AnalyseAnpassenView: View {
+    @Binding var sektionen: [AnalyseSektion]
+    @Environment(\.dismiss) private var dismiss
+    @State private var editMode: EditMode = .active
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(sektionen) { sektion in
+                    HStack(spacing: 12) {
+                        Image(systemName: sektion.symbol)
+                            .foregroundStyle(.purple)
+                            .frame(width: 24)
+                        Text(sektion.rawValue)
+                            .font(.subheadline)
+                    }
+                }
+                .onMove { from, to in
+                    sektionen.move(fromOffsets: from, toOffset: to)
+                    sektionenSpeichern(sektionen)
+                }
+            }
+            .environment(\.editMode, $editMode)
+            .navigationTitle("Reihenfolge anpassen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fertig") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
