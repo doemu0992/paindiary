@@ -1,13 +1,14 @@
 import SwiftUI
 
 private enum AuswahlTyp: String, Hashable, CaseIterable {
-    case schmerz, migraene, rheuma, diabetes
+    case schmerz, migraene, rheuma, haut, diabetes
 
     var label: String {
         switch self {
         case .schmerz:  return "Schmerz"
         case .migraene: return "Migräne"
         case .rheuma:   return "Rheuma & Gelenke"
+        case .haut:     return "Hautveränderung"
         case .diabetes: return "Diabetes"
         }
     }
@@ -17,6 +18,7 @@ private enum AuswahlTyp: String, Hashable, CaseIterable {
         case .schmerz:  return "Schmerzstärke, Ort & Verlauf"
         case .migraene: return "Anfall, Aura & Medikament"
         case .rheuma:   return "Gelenke, Schub & Fatigue"
+        case .haut:     return "Foto, Art & Verlauf"
         case .diabetes: return "Blutzucker & Insulindosis"
         }
     }
@@ -26,6 +28,7 @@ private enum AuswahlTyp: String, Hashable, CaseIterable {
         case .schmerz:  return "waveform.path.ecg"
         case .migraene: return "brain.head.profile"
         case .rheuma:   return "figure.arms.open"
+        case .haut:     return "bandage.fill"
         case .diabetes: return "drop.fill"
         }
     }
@@ -35,6 +38,7 @@ private enum AuswahlTyp: String, Hashable, CaseIterable {
         case .schmerz:  return .indigo
         case .migraene: return .purple
         case .rheuma:   return .teal
+        case .haut:     return .orange
         case .diabetes: return .orange
         }
     }
@@ -45,6 +49,7 @@ struct EintragAuswahlView: View {
     @AppStorage("migraeneModulAktiv") private var migraeneAktiv = false
     @AppStorage("rheumaModulAktiv")   private var rheumaAktiv   = false
     @AppStorage("diabetesModulAktiv") private var diabetesAktiv = false
+    @AppStorage("hautModulAktiv")     private var hautAktiv     = false
 
     @State private var auswahl: Set<AuswahlTyp> = []
 
@@ -52,23 +57,26 @@ struct EintragAuswahlView: View {
     @State private var zeigeMigraene = false
     @State private var zeigeSchmerz  = false
     @State private var zeigeRheuma   = false
+    @State private var zeigeHaut     = false
     @State private var zeigeDiabetes = false
 
     // Saved-Flags: unterscheiden Speichern vs. Abbrechen
     @State private var migraeneFertig = false
     @State private var schmerzFertig  = false
     @State private var rheumaFertig   = false
+    @State private var hautFertig     = false
     @State private var diabetesFertig = false
 
-    // Ablauf: Migräne → Schmerz → Rheuma → Diabetes
+    // Ablauf: Migräne → Schmerz → Rheuma → Haut → Diabetes
     private var ablauf: [AuswahlTyp] {
-        [.migraene, .schmerz, .rheuma, .diabetes].filter { auswahl.contains($0) }
+        [.migraene, .schmerz, .rheuma, .haut, .diabetes].filter { auswahl.contains($0) }
     }
 
     private var verfuegbareTypen: [AuswahlTyp] {
         var typen: [AuswahlTyp] = [.schmerz]
         if migraeneAktiv { typen.append(.migraene) }
         if rheumaAktiv   { typen.append(.rheuma) }
+        if hautAktiv     { typen.append(.haut) }
         if diabetesAktiv { typen.append(.diabetes) }
         return typen
     }
@@ -125,6 +133,11 @@ struct EintragAuswahlView: View {
             fertigHandler(typ: .rheuma, fertig: &rheumaFertig)
         }) {
             RheumaSchnellForm(onGespeichert: { rheumaFertig = true })
+        }
+        .sheet(isPresented: $zeigeHaut, onDismiss: {
+            fertigHandler(typ: .haut, fertig: &hautFertig)
+        }) {
+            HautForm(onGespeichert: { hautFertig = true })
         }
         .sheet(isPresented: $zeigeDiabetes, onDismiss: {
             fertigHandler(typ: .diabetes, fertig: &diabetesFertig)
@@ -202,6 +215,7 @@ struct EintragAuswahlView: View {
             case .migraene: zeigeMigraene = true
             case .schmerz:  zeigeSchmerz  = true
             case .rheuma:   zeigeRheuma   = true
+            case .haut:     zeigeHaut     = true
             case .diabetes: zeigeDiabetes = true
             }
         }

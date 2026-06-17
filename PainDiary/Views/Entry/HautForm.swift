@@ -1,0 +1,384 @@
+import SwiftUI
+import SwiftData
+
+struct HautForm: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    var onGespeichert: (() -> Void)? = nil
+
+    @StateObject private var scanService = BodyScanService.shared
+    @State private var schritt = 0
+    @State private var vorwaerts = true
+    @State private var datum = Date()
+    @State private var hautStellen = ""
+    @State private var scanSetupAnzeigen = false
+    @State private var hautArt = ""
+    @State private var fotoDateiname = ""
+    @State private var verlauf = ""
+    @State private var stimmung = 3
+    @State private var stressLevel = 3
+    @State private var schlafStunden = 7.0
+    @State private var notizen = ""
+    @State private var zeigeErfolg = false
+    @State private var wetterTemperatur: Double? = nil
+    @State private var wetterCode: Int? = nil
+    @State private var wetterWind: Double? = nil
+
+    private let wetter = WetterService.shared
+    private let maxSchritt = 2
+
+    private let schrittNamen = ["Körperstelle", "Hautbild", "Wohlbefinden"]
+    private let progressTint: Color = .orange
+    private let pflichtSchritte: Set<Int> = [0]
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Progress bar
+                progressBar
+                    .padding(.horizontal)
+                    .padding(.top, 10)
+
+                // Kopfzeile: DatePicker + Wetter
+                kopfZeile
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                // Step content with slide animation
+                Group {
+                    if schritt == 0 {
+                        schrittInhalt
+                            .frame(maxHeight: .infinity)
+                    } else {
+                        schrittInhalt
+                    }
+                }
+                .id(schritt)
+                .transition(.asymmetric(
+                    insertion: .move(edge: vorwaerts ? .trailing : .leading).combined(with: .opacity),
+                    removal: .move(edge: vorwaerts ? .leading : .trailing).combined(with: .opacity)
+                ))
+
+                // Custom bottom nav
+                navigationsLeiste
+            }
+            .navigationTitle("Hautveränderung")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+            }
+        }
+        .onAppear { laden() }
+        .sheet(isPresented: $scanSetupAnzeigen) { BodyScanSetupView() }
+        .overlay {
+            if zeigeErfolg {
+                ZStack {
+                    Color.black.opacity(0.25).ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 72, height: 72)
+                                .shadow(color: .green.opacity(0.4), radius: 16, y: 4)
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .scaleEffect(zeigeErfolg ? 1 : 0.3)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.55), value: zeigeErfolg)
+                        Text("Gespeichert")
+                            .font(.headline.bold())
+                            .foregroundStyle(.white)
+                            .opacity(zeigeErfolg ? 1 : 0)
+                            .animation(.easeIn.delay(0.1), value: zeigeErfolg)
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+    }
+
+    // MARK: - Progress bar
+
+    private var progressBar: some View {
+        VStack(spacing: 8) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(height: 3)
+                    Capsule()
+                        .fill(progressTint)
+                        .frame(
+                            width: geo.size.width * (maxSchritt > 0 ? CGFloat(schritt) / CGFloat(maxSchritt) : 0),
+                            height: 3
+                        )
+                        .animation(.spring(response: 0.4), value: schritt)
+                }
+            }
+            .frame(height: 3)
+
+            HStack {
+                Text("Schritt \(schritt + 1) von \(maxSchritt + 1)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(schritt < schrittNamen.count ? schrittNamen[schritt] : "")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Kopfzeile
+
+    private var kopfZeile: some View {
+        HStack {
+            DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
+                .labelsHidden()
+                .font(.caption)
+
+            Spacer()
+
+            wetterBadge
+        }
+    }
+
+    // MARK: - Weather badge
+
+    @ViewBuilder
+    private var wetterBadge: some View {
+        if let snap = wetter.aktuell {
+            HStack(spacing: 4) {
+                Image(systemName: snap.symbol)
+                    .foregroundStyle(.yellow)
+                Text(String(format: "%.0f°C", snap.temperatur))
+                    .font(.caption.bold())
+                if !snap.luftdruckText.isEmpty {
+                    Text(snap.luftdruckText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color(.secondarySystemBackground), in: Capsule())
+        }
+    }
+
+    // MARK: - Step content
+
+    @ViewBuilder
+    private var schrittInhalt: some View {
+        switch schritt {
+        case 0:
+            koerperstelleSchritt
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case 1:
+            ScrollView {
+                HautArtFotoStepView(hautArt: $hautArt, fotoDateiname: $fotoDateiname)
+                    .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        default:
+            ScrollView {
+                WohlbefindenStepView(
+                    stimmung: $stimmung,
+                    schlafStunden: $schlafStunden,
+                    stressLevel: $stressLevel,
+                    notizen: $notizen
+                )
+                .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        }
+    }
+
+    // MARK: - Schritt 0: Körperstelle (Vollbild)
+
+    private var koerperstelleSchritt: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Betroffene Hautstellen")
+                    .font(.subheadline.bold())
+                Spacer()
+                Button {
+                    scanSetupAnzeigen = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "figure.stand")
+                        Text("Proportionen")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal)
+            .padding(.top, 8)
+
+            KoerperPickerView(
+                auswahl: $hautStellen,
+                tintColor: .systemOrange,
+                subRegionenMap: SubRegionen.hautMap
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            let ausgewaehlt = Set(hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            if ausgewaehlt.isEmpty {
+                Text("Tippe auf das Modell um eine Stelle auszuwählen.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 12)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(ausgewaehlt.sorted(), id: \.self) { r in
+                            Button {
+                                var s = ausgewaehlt; s.remove(r)
+                                hautStellen = s.sorted().joined(separator: ", ")
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                                    Text(r).font(.caption)
+                                }
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(Color.orange.opacity(0.15))
+                                .clipShape(Capsule())
+                                .foregroundStyle(.orange)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.bottom, 12)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Navigation bar
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button {
+                    vorwaerts = false
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 46, height: 46)
+                        .background(Color(.secondarySystemBackground), in: Circle())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Spacer().frame(width: 46)
+            }
+
+            Spacer()
+
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    Text("Überspringen")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if schritt < maxSchritt {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    Text("Weiter ›")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 13)
+                        .background(progressTint, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    speichern()
+                } label: {
+                    Text("✓ Speichern")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 13)
+                        .background(Color.green, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.bar)
+    }
+
+    // MARK: - Load / Save
+
+    private func laden() {
+        if let snap = wetter.aktuell {
+            wetterTemperatur = snap.temperatur
+            wetterCode = snap.code
+            wetterWind = snap.windgeschwindigkeit
+        } else {
+            wetter.laden()
+        }
+
+        let heute = Calendar.current.startOfDay(for: Date())
+        let heuteDesc = FetchDescriptor<PainEntry>(
+            predicate: #Predicate { $0.datum >= heute },
+            sortBy: [SortDescriptor(\.datum, order: .reverse)]
+        )
+        if let letzterHeute = try? modelContext.fetch(heuteDesc).first {
+            schlafStunden = letzterHeute.schlafStunden
+        }
+    }
+
+    private func speichern() {
+        let snap = wetter.aktuell
+        let finalTemp = wetterTemperatur ?? snap?.temperatur
+        let finalCode = wetterCode ?? snap?.code
+        let finalWind = wetterWind ?? snap?.windgeschwindigkeit
+
+        let neu = PainEntry(
+            datum: datum,
+            schmerzstaerke: 0,
+            koerperstelle: hautStellen,
+            notizen: notizen,
+            stimmung: stimmung,
+            schlafStunden: schlafStunden,
+            stressLevel: stressLevel,
+            wetterTemperatur: finalTemp,
+            wetterCode: finalCode,
+            wetterWind: finalWind,
+            hautStellen: hautStellen,
+            hautArt: hautArt,
+            fotoDateiname: fotoDateiname,
+            verlauf: verlauf
+        )
+        neu.istHautEintrag = true
+        modelContext.insert(neu)
+
+#if os(iOS)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+#endif
+        zeigeErfolg = true
+        onGespeichert?()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
+    }
+}

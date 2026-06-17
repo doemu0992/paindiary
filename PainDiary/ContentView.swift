@@ -10,6 +10,7 @@ struct ContentView: View {
     @AppStorage("migraeneModulAktiv") private var migraeneModulAktiv = false
     @AppStorage("rheumaModulAktiv")   private var rheumaModulAktiv   = false
     @AppStorage("diabetesModulAktiv") private var diabetesModulAktiv = false
+    @AppStorage("hautModulAktiv")     private var hautModulAktiv     = false
     @State private var ausgewaehlterTab = 0
     @State private var neuerEintragAnzeigen = false
     @State private var entsperrt = false
@@ -171,7 +172,7 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $neuerEintragAnzeigen) {
-            if migraeneModulAktiv || rheumaModulAktiv || diabetesModulAktiv {
+            if migraeneModulAktiv || rheumaModulAktiv || diabetesModulAktiv || hautModulAktiv {
                 EintragAuswahlView()
             } else {
                 AddEntryView()

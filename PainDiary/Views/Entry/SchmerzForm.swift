@@ -11,6 +11,7 @@ struct SchmerzForm: View {
     @AppStorage("migraeneModulAktiv") private var migraeneModulAktiv = false
     @StateObject private var scanService = BodyScanService.shared
     @State private var schritt = 0
+    @State private var vorwaerts = true
     @State private var datum = Date()
     @State private var koerperstelle = ""
     @State private var scanSetupAnzeigen = false
@@ -49,6 +50,10 @@ struct SchmerzForm: View {
     private let wetter = WetterService.shared
     private let maxSchritt = 4
 
+    private let schrittNamen = ["Körperstelle", "Intensität", "Wie & Warum", "Was noch?", "Wohlbefinden"]
+    private let progressTint: Color = .red
+    private let pflichtSchritte: Set<Int> = [0, 1]
+
     private let charakterOptionen = [
         "Dumpf", "Stechend", "Brennend", "Drückend",
         "Pulsierend", "Krampfartig", "Ziehend", "Taubheitsgefühl"
@@ -72,45 +77,40 @@ struct SchmerzForm: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                switch schritt {
-                case 0: schritt1
-                case 1: schritt2
-                case 2: schritt3
-                case 3: schritt4
-                default: schritt5
+            VStack(spacing: 0) {
+                // Progress bar
+                progressBar
+                    .padding(.horizontal)
+                    .padding(.top, 10)
+
+                // Kopfzeile: DatePicker + Vorlage + Wetter
+                kopfZeile
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                // Step content with slide animation
+                Group {
+                    if schritt == 0 {
+                        schrittInhalt
+                            .frame(maxHeight: .infinity)
+                    } else {
+                        schrittInhalt
+                    }
                 }
+                .id(schritt)
+                .transition(.asymmetric(
+                    insertion: .move(edge: vorwaerts ? .trailing : .leading).combined(with: .opacity),
+                    removal: .move(edge: vorwaerts ? .leading : .trailing).combined(with: .opacity)
+                ))
+
+                // Custom bottom nav
+                navigationsLeiste
             }
             .navigationTitle(eintrag == nil ? "Neuer Schmerzeintrag" : "Schmerz bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    if schritt == 0 {
-                        Button("Abbrechen") { dismiss() }
-                    } else {
-                        Button {
-                            withAnimation { schritt -= 1 }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "chevron.left")
-                                Text("Zurück")
-                            }
-                        }
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("\(schritt + 1) / \(maxSchritt + 1)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    if schritt < maxSchritt {
-                        Button("Weiter") { withAnimation { schritt += 1 } }
-                            .fontWeight(.semibold)
-                    } else {
-                        Button("Speichern") { speichern() }
-                            .fontWeight(.semibold)
-                    }
+                    Button("Abbrechen") { dismiss() }
                 }
             }
         }
@@ -183,69 +183,138 @@ struct SchmerzForm: View {
         }
     }
 
-    // MARK: - Schritt 1: Zeitpunkt & Schmerzstärke
+    // MARK: - Progress bar
 
-    private var schritt1: some View {
-        Form {
-            Section("Zeitpunkt") {
-                DatePicker("Datum & Uhrzeit", selection: $datum)
-
-                if !vorlageAngewendet, let letzter = letzterEintrag, !letzter.koerperstelle.isEmpty {
-                    Button {
-                        wendeVorlageAn(letzter)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.counterclockwise")
-                            Text("Letzter Eintrag: \(letzter.koerperstelle)")
-                                .lineLimit(1).truncationMode(.tail)
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                }
-
-                if let snap = wetterAnzeige {
-                    HStack(spacing: 6) {
-                        Image(systemName: snap.symbol)
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                        Text(String(format: "%.0f°C · %@ · %.0f km/h",
-                                    snap.temperatur, snap.beschreibung, snap.windgeschwindigkeit))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+    private var progressBar: some View {
+        VStack(spacing: 8) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(height: 3)
+                    Capsule()
+                        .fill(progressTint)
+                        .frame(
+                            width: geo.size.width * (maxSchritt > 0 ? CGFloat(schritt) / CGFloat(maxSchritt) : 0),
+                            height: 3
+                        )
+                        .animation(.spring(response: 0.4), value: schritt)
                 }
             }
+            .frame(height: 3)
 
-            Section("Schmerzstärke") {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Stärke: \(schmerzstaerke) / 10")
-                        Spacer()
-                        Text(staerkeLabel)
-                            .font(.caption.bold())
-                            .foregroundStyle(staerkeFarbe)
-                    }
-                    Slider(
-                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
-                        in: 0...10, step: 1
-                    ).tint(staerkeFarbe)
-                }
-            }
-
-            Section("Dauer") {
-                HStack {
-                    Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
-                    Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
-                }
-                .font(.subheadline)
+            HStack {
+                Text("Schritt \(schritt + 1) von \(maxSchritt + 1)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(schritt < schrittNamen.count ? schrittNamen[schritt] : "")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
             }
         }
     }
 
-    // MARK: - Schritt 2: Körperstelle (Vollbild)
+    // MARK: - Kopfzeile
 
-    private var schritt2: some View {
+    private var kopfZeile: some View {
+        HStack {
+            DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
+                .labelsHidden()
+                .font(.caption)
+
+            Spacer()
+
+            if !vorlageAngewendet, let letzter = letzterEintrag, !letzter.koerperstelle.isEmpty {
+                Button {
+                    wendeVorlageAn(letzter)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text(letzter.koerperstelle)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.accentColor.opacity(0.12))
+                    .foregroundStyle(Color.accentColor)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: 160)
+                .transition(.opacity.combined(with: .scale))
+            }
+
+            wetterBadge
+        }
+    }
+
+    // MARK: - Weather badge
+
+    @ViewBuilder
+    private var wetterBadge: some View {
+        if let snap = wetter.aktuell {
+            HStack(spacing: 4) {
+                Image(systemName: snap.symbol)
+                    .foregroundStyle(.yellow)
+                Text(String(format: "%.0f°C", snap.temperatur))
+                    .font(.caption.bold())
+                if !snap.luftdruckText.isEmpty {
+                    Text(snap.luftdruckText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color(.secondarySystemBackground), in: Capsule())
+        }
+    }
+
+    // MARK: - Step content
+
+    @ViewBuilder
+    private var schrittInhalt: some View {
+        switch schritt {
+        case 0:
+            koerperstelleSchritt
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case 1:
+            ScrollView {
+                intensitaetSchritt
+                    .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        case 2:
+            ScrollView {
+                wieWarumSchritt
+                    .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        case 3:
+            ScrollView {
+                wasNochSchritt
+                    .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        default:
+            ScrollView {
+                wohlbefindenSchritt
+                    .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        }
+    }
+
+    // MARK: - Schritt 0: Körperstelle (Vollbild)
+
+    private var koerperstelleSchritt: some View {
         VStack(spacing: 0) {
             HStack {
                 Text("Wo tut es weh?")
@@ -303,201 +372,297 @@ struct SchmerzForm: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Schritt 3: Wie & Warum
+    // MARK: - Schritt 1: Intensität
 
-    private var schritt3: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                VStack(spacing: 6) {
-                    Image(systemName: "waveform.path.ecg")
-                        .font(.largeTitle)
-                        .foregroundStyle(.blue)
-                    Text("Wie und warum?")
-                        .font(.title2.bold())
-                }
-                .padding(.top, 8)
-
-                chipKarte(
-                    titel: "Schmerzart (mehrere möglich)",
-                    optionen: charakterOptionen,
-                    ausgewaehlt: $ausgewaehlterCharakter,
-                    farbe: .indigo,
-                    freitext: $charakterFreitext,
-                    platzhalter: "Eigene Beschreibung…"
-                )
-
-                chipKarte(
-                    titel: "Häufige Auslöser (mehrere möglich)",
-                    optionen: ausloeserOptionen,
-                    ausgewaehlt: $ausgewaehlteAusloeser,
-                    farbe: .orange,
-                    freitext: $ausloeserFreitext,
-                    platzhalter: "Eigene Auslöser…"
-                )
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
-        }
-        .background(Color(.systemGroupedBackground))
-    }
-
-    // MARK: - Schritt 4: Was noch?
-
-    private var schritt4: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                VStack(spacing: 6) {
-                    Image(systemName: "list.clipboard.fill")
-                        .font(.largeTitle)
-                        .foregroundStyle(.purple)
-                    Text("Was noch?")
-                        .font(.title2.bold())
-                }
-                .padding(.top, 8)
-
-                chipKarte(
-                    titel: "Begleiterscheinungen (mehrere möglich)",
-                    optionen: begleitOptionen,
-                    ausgewaehlt: $ausgewaehlteBegleit,
-                    farbe: .red,
-                    freitext: $begleitFreitext,
-                    platzhalter: "Eigene Angaben…"
-                )
-
-                chipKarte(
-                    titel: "Massnahmen (mehrere möglich)",
-                    optionen: massnahmenOptionen,
-                    ausgewaehlt: $ausgewaehlteMassnahmen,
-                    farbe: .green,
-                    freitext: $massnahmenFreitext,
-                    platzhalter: "Eigene Massnahmen…"
-                )
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
-        }
-        .background(Color(.systemGroupedBackground))
-    }
-
-    // MARK: - Schritt 5: Wohlbefinden
-
-    private var schritt5: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                Text("Wie geht es dir?")
+    private var intensitaetSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "waveform.path.ecg")
+                    .font(.largeTitle)
+                    .foregroundStyle(.red)
+                Text("Wie stark?")
                     .font(.title2.bold())
-                    .padding(.top, 8)
+            }
+            .padding(.top, 8)
 
-                // Stimmung
-                karte {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text("Stimmung").font(.headline)
-                        HStack(spacing: 0) {
-                            ForEach(0..<5) { i in
-                                let wert = i + 1
-                                Button { stimmung = wert } label: {
-                                    VStack(spacing: 6) {
-                                        Image(systemName: stimmung >= wert ? "heart.fill" : "heart")
-                                            .font(.system(size: 30))
-                                            .foregroundStyle(stimmung >= wert ? stimmungFarben[i] : Color.secondary)
-                                        Text(stimmungLabels[i])
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(stimmung >= wert ? .primary : .secondary)
-                                    }
-                                    .frame(maxWidth: .infinity)
+            karte {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Schmerzstärke").font(.headline)
+                    HStack {
+                        Text("Stärke: \(schmerzstaerke) / 10")
+                        Spacer()
+                        Text(staerkeLabel)
+                            .font(.caption.bold())
+                            .foregroundStyle(staerkeFarbe)
+                    }
+                    Slider(
+                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
+                        in: 0...10, step: 1
+                    ).tint(staerkeFarbe)
+                }
+            }
+
+            karte {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Dauer").font(.headline)
+                    HStack {
+                        Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
+                        Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
+                    }
+                    .font(.subheadline)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Schritt 2: Wie & Warum
+
+    private var wieWarumSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "waveform.path.ecg")
+                    .font(.largeTitle)
+                    .foregroundStyle(.blue)
+                Text("Wie und warum?")
+                    .font(.title2.bold())
+            }
+            .padding(.top, 8)
+
+            chipKarte(
+                titel: "Schmerzart (mehrere möglich)",
+                optionen: charakterOptionen,
+                ausgewaehlt: $ausgewaehlterCharakter,
+                farbe: .indigo,
+                freitext: $charakterFreitext,
+                platzhalter: "Eigene Beschreibung…"
+            )
+
+            chipKarte(
+                titel: "Häufige Auslöser (mehrere möglich)",
+                optionen: ausloeserOptionen,
+                ausgewaehlt: $ausgewaehlteAusloeser,
+                farbe: .orange,
+                freitext: $ausloeserFreitext,
+                platzhalter: "Eigene Auslöser…"
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Schritt 3: Was noch?
+
+    private var wasNochSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "list.clipboard.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.purple)
+                Text("Was noch?")
+                    .font(.title2.bold())
+            }
+            .padding(.top, 8)
+
+            chipKarte(
+                titel: "Begleiterscheinungen (mehrere möglich)",
+                optionen: begleitOptionen,
+                ausgewaehlt: $ausgewaehlteBegleit,
+                farbe: .red,
+                freitext: $begleitFreitext,
+                platzhalter: "Eigene Angaben…"
+            )
+
+            chipKarte(
+                titel: "Massnahmen (mehrere möglich)",
+                optionen: massnahmenOptionen,
+                ausgewaehlt: $ausgewaehlteMassnahmen,
+                farbe: .green,
+                freitext: $massnahmenFreitext,
+                platzhalter: "Eigene Massnahmen…"
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Schritt 4: Wohlbefinden
+
+    private var wohlbefindenSchritt: some View {
+        VStack(spacing: 16) {
+            Text("Wie geht es dir?")
+                .font(.title2.bold())
+                .padding(.top, 8)
+
+            karte {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Stimmung").font(.headline)
+                    HStack(spacing: 0) {
+                        ForEach(0..<5) { i in
+                            let wert = i + 1
+                            Button { stimmung = wert } label: {
+                                VStack(spacing: 6) {
+                                    Image(systemName: stimmung >= wert ? "heart.fill" : "heart")
+                                        .font(.system(size: 30))
+                                        .foregroundStyle(stimmung >= wert ? stimmungFarben[i] : Color.secondary)
+                                    Text(stimmungLabels[i])
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(stimmung >= wert ? .primary : .secondary)
                                 }
-                                .buttonStyle(.plain)
+                                .frame(maxWidth: .infinity)
                             }
+                            .buttonStyle(.plain)
                         }
-                    }
-                }
-
-                // Stresslevel
-                karte {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("Stresslevel").font(.headline)
-                            Spacer()
-                            Text(stressLabel)
-                                .font(.subheadline.bold())
-                                .foregroundStyle(stressFarbe)
-                        }
-                        HStack(spacing: 8) {
-                            ForEach(1...5, id: \.self) { n in
-                                Button { stressLevel = n } label: {
-                                    Text("\(n)")
-                                        .font(.headline)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
-                                        .background(stressLevel >= n ? stressFarbe : Color(.tertiarySystemBackground))
-                                        .foregroundStyle(stressLevel >= n ? .white : .primary)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        HStack {
-                            Text("Entspannt").font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Text("Extrem").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                // Schlaf
-                karte {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Schlaf letzte Nacht").font(.headline)
-                            Spacer()
-                            Text(String(format: "%.1f Std.", schlafStunden))
-                                .font(.subheadline.bold())
-                                .foregroundStyle(.blue)
-                        }
-                        Slider(value: $schlafStunden, in: 0...12, step: 0.5).tint(.blue)
-                        HStack {
-                            Text("0 Std.").font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Text("12 Std.").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                // Erschöpfung / Fatigue
-                karte {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Erschöpfung / Fatigue").font(.headline)
-                            Spacer()
-                            Text(fatigue == 0 ? "Nicht erfasst" : "\(fatigue) / 10")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(
-                            value: Binding(get: { Double(fatigue) }, set: { fatigue = Int($0) }),
-                            in: 0...10, step: 1
-                        ).tint(fatigueFarbe)
-                        HStack {
-                            Text("Keine").font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Text("Extrem").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                // Notizen
-                karte {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Notizen").font(.headline)
-                        TextEditor(text: $notizen)
-                            .frame(minHeight: 80)
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 24)
+
+            karte {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Stresslevel").font(.headline)
+                        Spacer()
+                        Text(stressLabel)
+                            .font(.subheadline.bold())
+                            .foregroundStyle(stressFarbe)
+                    }
+                    HStack(spacing: 8) {
+                        ForEach(1...5, id: \.self) { n in
+                            Button { stressLevel = n } label: {
+                                Text("\(n)")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(stressLevel >= n ? stressFarbe : Color(.tertiarySystemBackground))
+                                    .foregroundStyle(stressLevel >= n ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    HStack {
+                        Text("Entspannt").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("Extrem").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            karte {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Schlaf letzte Nacht").font(.headline)
+                        Spacer()
+                        Text(String(format: "%.1f Std.", schlafStunden))
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.blue)
+                    }
+                    Slider(value: $schlafStunden, in: 0...12, step: 0.5).tint(.blue)
+                    HStack {
+                        Text("0 Std.").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("12 Std.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            karte {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Erschöpfung / Fatigue").font(.headline)
+                        Spacer()
+                        Text(fatigue == 0 ? "Nicht erfasst" : "\(fatigue) / 10")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(
+                        value: Binding(get: { Double(fatigue) }, set: { fatigue = Int($0) }),
+                        in: 0...10, step: 1
+                    ).tint(fatigueFarbe)
+                    HStack {
+                        Text("Keine").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("Extrem").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            karte {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Notizen").font(.headline)
+                    TextEditor(text: $notizen)
+                        .frame(minHeight: 80)
+                }
+            }
         }
-        .background(Color(.systemGroupedBackground))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Navigation bar
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button {
+                    vorwaerts = false
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 46, height: 46)
+                        .background(Color(.secondarySystemBackground), in: Circle())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Spacer().frame(width: 46)
+            }
+
+            Spacer()
+
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    Text("Überspringen")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if schritt < maxSchritt {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    Text("Weiter ›")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 13)
+                        .background(progressTint, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    speichern()
+                } label: {
+                    Text("✓ Speichern")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 13)
+                        .background(Color.green, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.bar)
     }
 
     // MARK: - Card helpers

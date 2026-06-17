@@ -37,6 +37,7 @@ private struct ProfilInhaltView: View {
     @AppStorage("migraeneModulAktiv") private var migraeneModulAktiv = false
     @AppStorage("rheumaModulAktiv") private var rheumaModulAktiv = false
     @AppStorage("diabetesModulAktiv") private var diabetesModulAktiv = false
+    @AppStorage("hautModulAktiv") private var hautAktiv = false
     @State private var stammdatenAnzeigen = false
 
     var body: some View {
@@ -309,6 +310,16 @@ private struct ProfilInhaltView: View {
                     }
                 } icon: {
                     Image(systemName: "figure.arms.open").foregroundStyle(.teal)
+                }
+            }
+            Toggle(isOn: $hautAktiv) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Hautveränderungen")
+                        Text("Foto, Art & Verlauf").font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "bandage.fill").foregroundStyle(.orange)
                 }
             }
             Toggle(isOn: $diabetesModulAktiv) {
