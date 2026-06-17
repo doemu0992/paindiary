@@ -62,16 +62,16 @@ struct MigraeneView: View {
 
                 Section("Anfälle") {
                     ForEach(anfaelle) { anfall in
-                        MigraeneAnfallZeile(anfall: anfall)
-                            .contentShape(Rectangle())
-                            .onTapGesture { bearbeitet = anfall }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    modelContext.delete(anfall)
-                                } label: { Label("Löschen", systemImage: "trash") }
-                                Button { bearbeitet = anfall } label: { Label("Bearbeiten", systemImage: "pencil") }
-                                    .tint(.blue)
-                            }
+                        NavigationLink(destination: MigraeneAnfallDetailView(anfall: anfall)) {
+                            MigraeneAnfallZeile(anfall: anfall)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                modelContext.delete(anfall)
+                            } label: { Label("Löschen", systemImage: "trash") }
+                            Button { bearbeitet = anfall } label: { Label("Bearbeiten", systemImage: "pencil") }
+                                .tint(.blue)
+                        }
                     }
                     .onDelete { idx in idx.forEach { modelContext.delete(anfaelle[$0]) } }
                 }
