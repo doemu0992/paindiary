@@ -7,7 +7,6 @@ struct PainEntryListView: View {
     @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
 
     @State private var wizardAnzeigen = false
-    @State private var bearbeiteteMigraene: MigraeneEintrag? = nil
     @State private var suchtext = ""
     @State private var filterAnzeigen = false
     @State private var filterStaerkeMin = 0
@@ -105,18 +104,14 @@ struct PainEntryListView: View {
                             }
                         }
                     case .migraene(let anfall):
-                        MigraeneTagesbuchZeile(anfall: anfall)
-                            .contentShape(Rectangle())
-                            .onTapGesture { bearbeiteteMigraene = anfall }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) { modelContext.delete(anfall) } label: {
-                                    Label("Löschen", systemImage: "trash")
-                                }
-                                Button { bearbeiteteMigraene = anfall } label: {
-                                    Label("Bearbeiten", systemImage: "pencil")
-                                }
-                                .tint(.blue)
+                        NavigationLink(destination: MigraeneAnfallDetailView(anfall: anfall)) {
+                            MigraeneTagesbuchZeile(anfall: anfall)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) { modelContext.delete(anfall) } label: {
+                                Label("Löschen", systemImage: "trash")
                             }
+                        }
                     }
                 }
             }
@@ -142,7 +137,6 @@ struct PainEntryListView: View {
         }
         .sheet(isPresented: $wizardAnzeigen) { AddEntryView() }
         .sheet(isPresented: $filterAnzeigen) { filterSheet }
-        .sheet(item: $bearbeiteteMigraene) { MigraeneAnfallForm(anfall: $0) }
     }
 
     private var filterSheet: some View {
