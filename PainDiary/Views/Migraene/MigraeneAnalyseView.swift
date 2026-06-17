@@ -50,27 +50,60 @@ struct MigraeneAnalyseView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var sektionen: [AnalyseSektion] = sektionenLaden()
     @State private var zeigeAnpassen = false
+    @State private var zeitraum: Zeitraum = .alle
 
-    // MARK: - Computed
+    enum Zeitraum: String, CaseIterable {
+        case monat      = "30 T"
+        case dreiMonate = "3 M"
+        case sechsMonate = "6 M"
+        case jahr       = "1 J"
+        case alle       = "Alle"
 
-    private var anfaelle30: [MigraeneEintrag] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        var tage: Int? {
+            switch self {
+            case .monat:       return 30
+            case .dreiMonate:  return 90
+            case .sechsMonate: return 180
+            case .jahr:        return 365
+            case .alle:        return nil
+            }
+        }
+
+        var verlaufMonate: Int {
+            switch self {
+            case .monat:       return 1
+            case .dreiMonate:  return 3
+            case .sechsMonate: return 6
+            case .jahr:        return 12
+            case .alle:        return 24
+            }
+        }
+    }
+
+    // MARK: - Filtered base
+
+    private var gefiltert: [MigraeneEintrag] {
+        guard let tage = zeitraum.tage,
+              let cutoff = Calendar.current.date(byAdding: .day, value: -tage, to: Date())
+        else { return anfaelle }
         return anfaelle.filter { $0.datum >= cutoff }
     }
 
+    // MARK: - Computed (all use gefiltert)
+
     private var monatlicherVerlauf: [(monat: Date, anzahl: Int)] {
         let cal = Calendar.current
-        return (0..<6).reversed().compactMap { offset -> (Date, Int)? in
+        return (0..<zeitraum.verlaufMonate).reversed().compactMap { offset -> (Date, Int)? in
             guard let ref = cal.date(byAdding: .month, value: -offset, to: Date()),
                   let interval = cal.dateInterval(of: .month, for: ref) else { return nil }
-            let count = anfaelle.filter { $0.datum >= interval.start && $0.datum < interval.end }.count
+            let count = gefiltert.filter { $0.datum >= interval.start && $0.datum < interval.end }.count
             return (interval.start, count)
         }
     }
 
     private var topAusloeser: [(name: String, anzahl: Int)] {
         var counts: [String: Int] = [:]
-        anfaelle.flatMap(\.ausloeserListe).forEach { counts[$0, default: 0] += 1 }
+        gefiltert.flatMap(\.ausloeserListe).forEach { counts[$0, default: 0] += 1 }
         return counts.map { (name: $0.key, anzahl: $0.value) }
             .sorted(by: { $0.anzahl > $1.anzahl })
             .prefix(6).map { $0 }
@@ -85,7 +118,7 @@ struct MigraeneAnalyseView: View {
 
     private var tageszeitMuster: [TageszeitPunkt] {
         var n = 0, m = 0, mi = 0, na = 0, ab = 0
-        for a in anfaelle {
+        for a in gefiltert {
             switch Calendar.current.component(.hour, from: a.datum) {
             case 6..<11:  m  += 1
             case 11..<14: mi += 1
@@ -104,14 +137,14 @@ struct MigraeneAnalyseView: View {
     }
 
     private var avgDauerMin: Double? {
-        let mit = anfaelle.filter { $0.dauer > 0 }.map { Double($0.dauer) }
+        let mit = gefiltert.filter { $0.dauer > 0 }.map { Double($0.dauer) }
         guard !mit.isEmpty else { return nil }
         return mit.reduce(0, +) / Double(mit.count)
     }
 
     private var auraQuote: Double {
-        guard !anfaelle.isEmpty else { return 0 }
-        return Double(anfaelle.filter(\.hatAura).count) / Double(anfaelle.count) * 100
+        guard !gefiltert.isEmpty else { return 0 }
+        return Double(gefiltert.filter(\.hatAura).count) / Double(gefiltert.count) * 100
     }
 
     private struct MedWirksamkeit: Identifiable {
@@ -125,7 +158,7 @@ struct MigraeneAnalyseView: View {
 
     private var medWirksamkeit: [MedWirksamkeit] {
         var map: [String: (Int, Int, Int)] = [:]
-        for a in anfaelle where !a.akutmedikament.isEmpty {
+        for a in gefiltert where !a.akutmedikament.isEmpty {
             var (g, t, n) = map[a.akutmedikament] ?? (0, 0, 0)
             switch a.medikamentWirksam {
             case "Ja":        g += 1
@@ -141,7 +174,7 @@ struct MigraeneAnalyseView: View {
     }
 
     private var zyklusDaten: [(phase: ZyklusRechner.Zyklusphase, anzahl: Int, avgStaerke: Double)] {
-        ZyklusRechner.migraeneJePhase(anfaelle: anfaelle, analyse: zyklusAnalyse)
+        ZyklusRechner.migraeneJePhase(anfaelle: gefiltert, analyse: zyklusAnalyse)
     }
 
     private struct WetterPunkt: Identifiable {
@@ -153,7 +186,7 @@ struct MigraeneAnalyseView: View {
 
     private var wetterVerteilung: [WetterPunkt] {
         var counts: [Int: Int] = [:]
-        anfaelle.compactMap(\.wetterCode).forEach { counts[$0, default: 0] += 1 }
+        gefiltert.compactMap(\.wetterCode).forEach { counts[$0, default: 0] += 1 }
         return counts
             .map { WetterPunkt(beschreibung: WetterSnapshot.beschreibungFuerCode($0.key),
                                symbol: WetterSnapshot.symbolFuerCode($0.key),
@@ -162,13 +195,13 @@ struct MigraeneAnalyseView: View {
     }
 
     private var avgTemperatur: Double? {
-        let temps = anfaelle.compactMap(\.wetterTemperatur)
+        let temps = gefiltert.compactMap(\.wetterTemperatur)
         guard !temps.isEmpty else { return nil }
         return temps.reduce(0, +) / Double(temps.count)
     }
 
     private var avgWind: Double? {
-        let winds = anfaelle.compactMap(\.wetterWind).filter { $0 > 0 }
+        let winds = gefiltert.compactMap(\.wetterWind).filter { $0 > 0 }
         guard !winds.isEmpty else { return nil }
         return winds.reduce(0, +) / Double(winds.count)
     }
@@ -179,6 +212,13 @@ struct MigraeneAnalyseView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    Picker("Zeitraum", selection: $zeitraum) {
+                        ForEach(Zeitraum.allCases, id: \.self) {
+                            Text($0.rawValue).tag($0)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
                     ForEach(sektionen) { sektion in
                         sektionView(sektion)
                     }
@@ -225,15 +265,16 @@ struct MigraeneAnalyseView: View {
     // MARK: - Summary
 
     private var summaryKarte: some View {
-        let total = anfaelle.count
-        let avg = anfaelle.isEmpty ? 0.0
-            : Double(anfaelle.map(\.staerke).reduce(0, +)) / Double(anfaelle.count)
+        let count = gefiltert.count
+        let avg = gefiltert.isEmpty ? 0.0
+            : Double(gefiltert.map(\.staerke).reduce(0, +)) / Double(gefiltert.count)
+        let mitAura = gefiltert.filter(\.hatAura).count
         return HStack(spacing: 0) {
-            statZelle("\(total)", label: "Anfälle total", farbe: .purple)
+            statZelle("\(count)", label: "Anfälle", farbe: .purple)
             Divider().frame(height: 44)
-            statZelle("\(anfaelle30.count)", label: "Letzte 30 Tage", farbe: .orange)
+            statZelle(gefiltert.isEmpty ? "–" : String(format: "%.1f", avg), label: "Ø Stärke", farbe: .red)
             Divider().frame(height: 44)
-            statZelle(String(format: "%.1f", avg), label: "Ø Stärke", farbe: .red)
+            statZelle("\(mitAura)", label: "Mit Aura", farbe: .indigo)
         }
         .padding()
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
