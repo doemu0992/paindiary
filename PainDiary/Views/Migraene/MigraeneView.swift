@@ -101,27 +101,30 @@ struct MigraeneView: View {
             let mitAura = anfaelle30.filter(\.hatAura).count
             let letzterMidas = midas.first
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                MigraeneStatCard(
-                    wert: "\(anzahl)",
-                    label: "Anfälle (30 Tage)",
-                    farbe: anzahl == 0 ? .green : anzahl <= 4 ? .orange : .red
-                )
-                MigraeneStatCard(
-                    wert: anfaelle30.isEmpty ? "–" : String(format: "%.1f / 10", avgStaerke),
-                    label: "Ø Schmerzstärke",
-                    farbe: .orange
-                )
-                MigraeneStatCard(
-                    wert: "\(mitAura)",
-                    label: "Davon mit Aura",
-                    farbe: .purple
-                )
-                MigraeneStatCard(
-                    wert: letzterMidas.map { "\($0.score)" } ?? "–",
-                    label: "MIDAS Score",
-                    farbe: .blue
-                )
+            VStack(spacing: 12) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    MigraeneStatCard(
+                        wert: "\(anzahl)",
+                        label: "Anfälle (30 Tage)",
+                        farbe: anzahl == 0 ? .green : anzahl <= 4 ? .orange : .red
+                    )
+                    MigraeneStatCard(
+                        wert: anfaelle30.isEmpty ? "–" : String(format: "%.1f / 10", avgStaerke),
+                        label: "Ø Schmerzstärke",
+                        farbe: .orange
+                    )
+                    MigraeneStatCard(
+                        wert: "\(mitAura)",
+                        label: "Davon mit Aura",
+                        farbe: .purple
+                    )
+                    MigraeneStatCard(
+                        wert: letzterMidas.map { "\($0.score)" } ?? "–",
+                        label: "MIDAS Score",
+                        farbe: .blue
+                    )
+                }
+
                 if !anfaelle.isEmpty {
                     Button { zeigeAnalyse = true } label: {
                         HStack(spacing: 8) {
@@ -138,12 +141,10 @@ struct MigraeneView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity)
                         .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
                     }
                     .buttonStyle(.plain)
-                    .gridCellColumns(2)
-                    .listRowInsets(EdgeInsets())
                 }
             }
             .padding(.vertical, 4)
