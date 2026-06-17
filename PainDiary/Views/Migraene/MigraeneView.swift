@@ -45,6 +45,19 @@ struct MigraeneView: View {
                 }
             }
 
+            if !anfaelle.isEmpty {
+                Section {
+                    Button {
+                        zeigeAnalyse = true
+                    } label: {
+                        Label("Migräne-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.purple)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+
             if anfaelle.isEmpty {
                 Section {
                     ContentUnavailableView(
@@ -80,14 +93,6 @@ struct MigraeneView: View {
         }
         .navigationTitle("Migräne")
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    zeigeAnalyse = true
-                } label: {
-                    Label("Analyse", systemImage: "chart.bar.xaxis.ascending")
-                }
-                .disabled(anfaelle.isEmpty)
-            }
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }
             }
