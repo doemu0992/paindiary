@@ -11,6 +11,7 @@ enum DeepLink: Equatable {
     case medikamenteAnzeigen
     case wellnessAnzeigen
     case zyklusAnzeigen
+    case migraenePostdromNachfassen(datumInterval: Double)
 }
 
 @Observable
@@ -50,10 +51,11 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     ) {
         // Extract Sendable String values here — [AnyHashable: Any] is not Sendable
         // and cannot be captured across the actor boundary below.
-        let typeValue = response.notification.request.content.userInfo["type"] as? String
-        let nameValue = response.notification.request.content.userInfo["name"] as? String ?? ""
-        let dosValue  = response.notification.request.content.userInfo["dosierung"] as? String ?? ""
-        let id        = response.notification.request.identifier
+        let typeValue          = response.notification.request.content.userInfo["type"] as? String
+        let nameValue          = response.notification.request.content.userInfo["name"] as? String ?? ""
+        let dosValue           = response.notification.request.content.userInfo["dosierung"] as? String ?? ""
+        let datumIntervalValue = response.notification.request.content.userInfo["datum_interval"] as? Double ?? 0
+        let id                 = response.notification.request.identifier
 
         Task { @MainActor [weak self] in
             guard let self else { completionHandler(); return }
@@ -65,6 +67,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                     pendingDeepLink = .medikamentErfassen(name: nameValue, dosierung: dosValue)
                 case "wirkung":
                     pendingDeepLink = .medikamenteAnzeigen
+                case "migraene_postdrom":
+                    pendingDeepLink = .migraenePostdromNachfassen(datumInterval: datumIntervalValue)
                 default: break
                 }
             } else if id == "tages-erinnerung" {
@@ -383,6 +387,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         content.title = "🧠 Migräne-Nachphase erfassen"
         content.body = "Wie geht es dir jetzt? Erfasse deine Postdrom-Symptome im Migräne-Tagebuch."
         content.sound = .default
+        content.userInfo = ["type": "migraene_postdrom", "datum_interval": datum.timeIntervalSince1970]
         if #available(iOS 15.0, *) { content.interruptionLevel = .passive }
         let verzoegerung = max(1, datum.timeIntervalSinceNow + 24 * 3600)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: verzoegerung, repeats: false)

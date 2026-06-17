@@ -4,8 +4,10 @@ import SwiftData
 struct PainEntryListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
+    @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
 
     @State private var wizardAnzeigen = false
+    @State private var bearbeiteteMigraene: MigraeneEintrag? = nil
     @State private var suchtext = ""
     @State private var filterAnzeigen = false
     @State private var filterStaerkeMin = 0
@@ -28,27 +30,48 @@ struct PainEntryListView: View {
         }
     }
 
-    private var gefilterteEintraege: [PainEntry] {
-        eintraege.filter { eintrag in
-            let suchMatch = suchtext.isEmpty ||
-                eintrag.koerperstelle.localizedCaseInsensitiveContains(suchtext) ||
-                eintrag.schmerzart.localizedCaseInsensitiveContains(suchtext) ||
-                eintrag.ausloeser.localizedCaseInsensitiveContains(suchtext) ||
-                eintrag.notizen.localizedCaseInsensitiveContains(suchtext)
+    private enum TagesbuchItem: Identifiable {
+        case schmerz(PainEntry)
+        case migraene(MigraeneEintrag)
 
-            let staerkeMatch = eintrag.schmerzstaerke >= filterStaerkeMin &&
-                               eintrag.schmerzstaerke <= filterStaerkeMax
-
-            let datumMatch: Bool
-            if let tage = filterZeitraum.tage {
-                let grenze = Calendar.current.date(byAdding: .day, value: -tage, to: Date()) ?? Date()
-                datumMatch = eintrag.datum >= grenze
-            } else {
-                datumMatch = true
+        var id: String {
+            switch self {
+            case .schmerz(let e):  return "s-\(e.persistentModelID.hashValue)"
+            case .migraene(let e): return "m-\(e.persistentModelID.hashValue)"
             }
-
-            return suchMatch && staerkeMatch && datumMatch
         }
+        var datum: Date {
+            switch self {
+            case .schmerz(let e):  return e.datum
+            case .migraene(let e): return e.datum
+            }
+        }
+    }
+
+    private var gefilterte: [TagesbuchItem] {
+        let grenze: Date? = filterZeitraum.tage.map {
+            Calendar.current.date(byAdding: .day, value: -$0, to: Date()) ?? Date()
+        }
+        let schmerzItems: [TagesbuchItem] = eintraege.compactMap { e in
+            let suchMatch = suchtext.isEmpty ||
+                e.koerperstelle.localizedCaseInsensitiveContains(suchtext) ||
+                e.schmerzart.localizedCaseInsensitiveContains(suchtext) ||
+                e.ausloeser.localizedCaseInsensitiveContains(suchtext) ||
+                e.notizen.localizedCaseInsensitiveContains(suchtext)
+            let staerkeMatch = e.schmerzstaerke >= filterStaerkeMin && e.schmerzstaerke <= filterStaerkeMax
+            let datumMatch = grenze == nil || e.datum >= grenze!
+            return (suchMatch && staerkeMatch && datumMatch) ? .schmerz(e) : nil
+        }
+        let migraeneItems: [TagesbuchItem] = migraeneAnfaelle.compactMap { a in
+            let suchMatch = suchtext.isEmpty ||
+                a.seite.localizedCaseInsensitiveContains(suchtext) ||
+                a.charakter.localizedCaseInsensitiveContains(suchtext) ||
+                a.ausloeser.localizedCaseInsensitiveContains(suchtext) ||
+                a.notizen.localizedCaseInsensitiveContains(suchtext)
+            let datumMatch = grenze == nil || a.datum >= grenze!
+            return (suchMatch && datumMatch) ? .migraene(a) : nil
+        }
+        return (schmerzItems + migraeneItems).sorted { $0.datum > $1.datum }
     }
 
     private var filterAktiv: Bool {
@@ -57,8 +80,8 @@ struct PainEntryListView: View {
 
     var body: some View {
         List {
-            if gefilterteEintraege.isEmpty {
-                if eintraege.isEmpty {
+            if gefilterte.isEmpty {
+                if eintraege.isEmpty && migraeneAnfaelle.isEmpty {
                     ContentUnavailableView(
                         "Noch keine Einträge",
                         systemImage: "heart.text.clipboard",
@@ -70,12 +93,32 @@ struct PainEntryListView: View {
                         .listRowSeparator(.hidden)
                 }
             } else {
-                ForEach(gefilterteEintraege) { eintrag in
-                    NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
-                        PainEntryZeile(eintrag: eintrag)
+                ForEach(gefilterte) { item in
+                    switch item {
+                    case .schmerz(let eintrag):
+                        NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
+                            PainEntryZeile(eintrag: eintrag)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) { modelContext.delete(eintrag) } label: {
+                                Label("Löschen", systemImage: "trash")
+                            }
+                        }
+                    case .migraene(let anfall):
+                        MigraeneTagesbuchZeile(anfall: anfall)
+                            .contentShape(Rectangle())
+                            .onTapGesture { bearbeiteteMigraene = anfall }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) { modelContext.delete(anfall) } label: {
+                                    Label("Löschen", systemImage: "trash")
+                                }
+                                Button { bearbeiteteMigraene = anfall } label: {
+                                    Label("Bearbeiten", systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                            }
                     }
                 }
-                .onDelete(perform: loeschen)
             }
         }
         .navigationTitle("Schmerztagebuch")
@@ -83,14 +126,13 @@ struct PainEntryListView: View {
         .toolbar {
 #if os(iOS)
             ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    filterAnzeigen = true
-                } label: {
-                    Label("Filter", systemImage: filterAktiv ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                Button { filterAnzeigen = true } label: {
+                    Label("Filter", systemImage: filterAktiv
+                          ? "line.3.horizontal.decrease.circle.fill"
+                          : "line.3.horizontal.decrease.circle")
                         .foregroundStyle(filterAktiv ? Color.accentColor : Color.primary)
                 }
             }
-            ToolbarItem(placement: .navigationBarTrailing) { EditButton() }
 #endif
             ToolbarItem {
                 Button { wizardAnzeigen = true } label: {
@@ -100,12 +142,13 @@ struct PainEntryListView: View {
         }
         .sheet(isPresented: $wizardAnzeigen) { AddEntryView() }
         .sheet(isPresented: $filterAnzeigen) { filterSheet }
+        .sheet(item: $bearbeiteteMigraene) { MigraeneAnfallForm(anfall: $0) }
     }
 
     private var filterSheet: some View {
         NavigationStack {
             Form {
-                Section("Schmerzstärke") {
+                Section("Schmerzstärke (Schmerz-Einträge)") {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text("Von \(filterStaerkeMin)")
@@ -162,14 +205,9 @@ struct PainEntryListView: View {
         }
         .presentationDetents([.medium])
     }
-
-    private func loeschen(_ offsets: IndexSet) {
-        let zuLoeschen = offsets.map { gefilterteEintraege[$0] }
-        withAnimation {
-            zuLoeschen.forEach { modelContext.delete($0) }
-        }
-    }
 }
+
+// MARK: - Schmerz-Zeile
 
 private struct PainEntryZeile: View {
     let eintrag: PainEntry
@@ -223,33 +261,101 @@ private struct PainEntryZeile: View {
             VStack(alignment: .trailing, spacing: 3) {
                 if eintrag.istSchub {
                     HStack(spacing: 2) {
-                        Image(systemName: "flame.fill")
-                            .font(.caption2)
-                        Text("Schub")
-                            .font(.caption2.bold())
+                        Image(systemName: "flame.fill").font(.caption2)
+                        Text("Schub").font(.caption2.bold())
                     }
                     .foregroundStyle(Color.red)
                 }
                 if eintrag.stimmung > 0 {
                     HStack(spacing: 2) {
-                        Image(systemName: "heart.fill")
-                            .font(.caption2)
-                        Text("\(eintrag.stimmung)")
-                            .font(.caption2.bold())
+                        Image(systemName: "heart.fill").font(.caption2)
+                        Text("\(eintrag.stimmung)").font(.caption2.bold())
                     }
                     .foregroundStyle(stimmungFarbe(eintrag.stimmung))
                 }
                 if eintrag.morgensteifigkeit > 0 {
                     HStack(spacing: 2) {
-                        Image(systemName: "sunrise.fill")
-                            .font(.caption2)
-                        Text("\(eintrag.morgensteifigkeit)'")
-                            .font(.caption2.bold())
+                        Image(systemName: "sunrise.fill").font(.caption2)
+                        Text("\(eintrag.morgensteifigkeit)'").font(.caption2.bold())
                     }
                     .foregroundStyle(Color.orange)
                 }
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Migräne-Zeile
+
+private struct MigraeneTagesbuchZeile: View {
+    let anfall: MigraeneEintrag
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(staerkeFarbe.opacity(0.18)).frame(width: 46, height: 46)
+                VStack(spacing: 0) {
+                    Text("\(anfall.staerke)")
+                        .font(.title3.bold())
+                        .foregroundStyle(staerkeFarbe)
+                    Text("/10")
+                        .font(.system(size: 7))
+                        .foregroundStyle(staerkeFarbe.opacity(0.65))
+                }
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.caption)
+                        .foregroundStyle(.purple)
+                    Group {
+                        if Calendar.current.isDateInToday(anfall.datum) {
+                            Text(anfall.datum, style: .relative)
+                        } else if Calendar.current.isDateInYesterday(anfall.datum) {
+                            Text("Gestern")
+                        } else {
+                            Text(anfall.datum, style: .date)
+                        }
+                    }
+                    .font(.subheadline.bold())
+                    if anfall.hatAura {
+                        Text("Aura")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.purple)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Color.purple.opacity(0.15)).clipShape(Capsule())
+                    }
+                    if !anfall.kopfschmerzTyp.isEmpty && anfall.kopfschmerzTyp != "Migräne" {
+                        Text(anfall.kopfschmerzTyp)
+                            .font(.caption2.bold())
+                            .foregroundStyle(.indigo)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Color.indigo.opacity(0.12)).clipShape(Capsule())
+                    }
+                }
+                HStack(spacing: 8) {
+                    if !anfall.seite.isEmpty {
+                        Text(anfall.seite).font(.caption).foregroundStyle(.secondary)
+                    }
+                    if anfall.dauer > 0 {
+                        Text(anfall.dauerText).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                if !anfall.ausloeser.isEmpty {
+                    Text(anfall.ausloeser).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            Spacer()
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var staerkeFarbe: Color {
+        switch anfall.staerke {
+        case 1...3: return .green
+        case 4...6: return .orange
+        default:    return .red
+        }
     }
 }

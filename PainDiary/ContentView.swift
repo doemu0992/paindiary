@@ -19,7 +19,9 @@ struct ContentView: View {
     @State private var zeigeEinnahmeVerlauf = false
     @State private var zeigeMedikamente = false
     @State private var zeigeZyklus = false
+    @State private var zeigeMigraeneBearbeiten: MigraeneEintrag? = nil
     @Query(sort: \Dauermedikation.name) private var medikamente: [Dauermedikation]
+    @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneEintraege: [MigraeneEintrag]
     @Environment(\.scenePhase) private var scenePhase
 
     private var biometriAktiv: Bool { biometriAktivCache }
@@ -90,6 +92,9 @@ struct ContentView: View {
         .sheet(isPresented: $zeigeZyklus) {
             NavigationStack { ZyklusView() }
         }
+        .sheet(item: $zeigeMigraeneBearbeiten) { eintrag in
+            MigraeneAnfallForm(anfall: eintrag)
+        }
         // Pfad 1: App aktiv im Vordergrund — sofort reagieren
         .onChange(of: NotificationManager.shared.pendingDeepLink) { _, _ in
             verarbeiteDeepLink()
@@ -118,6 +123,10 @@ struct ContentView: View {
             ausgewaehlterTab = 3
         case .zyklusAnzeigen:
             zeigeZyklus = true
+        case .migraenePostdromNachfassen(let interval):
+            zeigeMigraeneBearbeiten = migraeneEintraege.first {
+                abs($0.datum.timeIntervalSince1970 - interval) < 1
+            }
         }
     }
 
