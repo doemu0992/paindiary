@@ -240,7 +240,7 @@ struct MigraeneAnalyseView: View {
             .sheet(isPresented: $zeigeAnpassen) {
                 AnalyseAnpassenView(sektionen: $sektionen)
             }
-            .onChange(of: sektionen) { sektionenSpeichern(sektionen) }
+            .onChange(of: sektionen) { _, new in sektionenSpeichern(new) }
         }
     }
 
@@ -250,15 +250,21 @@ struct MigraeneAnalyseView: View {
         case .zusammenfassung: summaryKarte
         case .verlauf:         verlaufKarte
         case .tageszeit:       tageszeitKarte
-        case .ausloeser:       if !topAusloeser.isEmpty { ausloeserKarte }
+        case .ausloeser:
+            if !topAusloeser.isEmpty { ausloeserKarte }
+            else { leerKarte(sektion) }
         case .auraUndDauer:
             HStack(alignment: .top, spacing: 12) {
                 auraKarte
                 dauerKarte
             }
-        case .medikament:      if !medWirksamkeit.isEmpty { medikamentKarte }
-        case .wetter:          if !wetterVerteilung.isEmpty { wetterKarte }
-        case .zyklus:          zyklusKarte
+        case .medikament:
+            if !medWirksamkeit.isEmpty { medikamentKarte }
+            else { leerKarte(sektion) }
+        case .wetter:
+            if !wetterVerteilung.isEmpty { wetterKarte }
+            else { leerKarte(sektion) }
+        case .zyklus: zyklusKarte
         }
     }
 
@@ -574,6 +580,23 @@ struct MigraeneAnalyseView: View {
     }
 
     // MARK: - Helper
+
+    private func leerKarte(_ sektion: AnalyseSektion) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: sektion.symbol)
+                .font(.title2).foregroundStyle(.secondary.opacity(0.4))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(sektion.rawValue)
+                    .font(.subheadline.bold()).foregroundStyle(.secondary)
+                Text("Keine Daten für diesen Zeitraum")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    }
 
     private func karte<Content: View>(titel: String, symbol: String, farbe: Color, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {

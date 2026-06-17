@@ -55,10 +55,6 @@ struct MigraeneView: View {
                     .listRowSeparator(.hidden)
                 }
             } else {
-                if !anfaelle30.isEmpty {
-                    ausloeserSektion
-                }
-
                 zyklusKorrelationSektion
 
                 Section("Anfälle") {
