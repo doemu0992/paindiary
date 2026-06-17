@@ -322,4 +322,33 @@ struct ZyklusRechner {
             return (phase: phase, avgSchmerz: Double(werte.reduce(0, +)) / Double(werte.count), anzahl: werte.count)
         }
     }
+
+    static func migraeneJePhase(
+        anfaelle: [MigraeneEintrag],
+        analyse: ZyklusAnalyse
+    ) -> [(phase: Zyklusphase, anzahl: Int, avgStaerke: Double)] {
+        guard !analyse.zyklusStarts.isEmpty else { return [] }
+        let kal = Calendar.current
+        let ovuOffset = analyse.gelernterOvulationsOffset ?? (Int(round(analyse.adaptierteZykluslaenge)) - 14)
+        let periodLen = Int(round(analyse.adaptiertePeriodendauer))
+        var map: [Zyklusphase: [Int]] = Dictionary(uniqueKeysWithValues: Zyklusphase.allCases.map { ($0, []) })
+
+        for anfall in anfaelle {
+            let tag = kal.startOfDay(for: anfall.datum)
+            guard let start = analyse.zyklusStarts.last(where: { $0 <= tag }) else { continue }
+            let zt = (kal.dateComponents([.day], from: start, to: tag).day ?? 0) + 1
+            let phase: Zyklusphase
+            if zt <= periodLen         { phase = .menstruation }
+            else if zt < ovuOffset - 2 { phase = .follikelphase }
+            else if zt <= ovuOffset + 2 { phase = .ovulation }
+            else                        { phase = .lutealphase }
+            map[phase, default: []].append(anfall.staerke)
+        }
+
+        return Zyklusphase.allCases.compactMap { p in
+            let w = map[p] ?? []
+            guard !w.isEmpty else { return nil }
+            return (p, w.count, Double(w.reduce(0, +)) / Double(w.count))
+        }
+    }
 }

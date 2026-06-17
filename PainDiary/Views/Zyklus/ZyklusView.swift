@@ -5,6 +5,7 @@ import Charts
 struct ZyklusView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var eintraege: [ZyklusEintrag]
     @Query(sort: \PainEntry.datum, order: .reverse) private var painEntries: [PainEntry]
+    @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
     @Environment(\.modelContext) private var modelContext
 
     @State private var anzeigeMonat = Date()
@@ -23,6 +24,9 @@ struct ZyklusView: View {
                 statistik
                 if !painEntries.isEmpty && !analyse.zyklusStarts.isEmpty {
                     schmerzKorrelation
+                }
+                if !migraeneAnfaelle.isEmpty && !analyse.zyklusStarts.isEmpty {
+                    migraeneKorrelation
                 }
             }
             .padding(.bottom, 30)
@@ -444,6 +448,50 @@ struct ZyklusView: View {
                             Spacer()
                             Text("\(d.anzahl) Einträge").font(.caption2).foregroundStyle(.secondary)
                             Text(String(format: "Ø %.1f", d.avgSchmerz)).font(.caption.bold())
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+    }
+
+    private var migraeneKorrelation: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Migräne & Zyklus").font(.headline)
+                Text("Anfälle je Zyklusphase")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            let daten = ZyklusRechner.migraeneJePhase(anfaelle: Array(migraeneAnfaelle), analyse: analyse)
+
+            if daten.isEmpty {
+                Text("Noch nicht genug überlappende Daten.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Chart(daten, id: \.phase.rawValue) { d in
+                    BarMark(x: .value("Phase", d.phase.rawValue), y: .value("Anfälle", d.anzahl))
+                        .foregroundStyle(phaseFarbe(d.phase).gradient)
+                        .cornerRadius(6)
+                        .annotation(position: .top) {
+                            Text("\(d.anzahl)")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                }
+                .chartYScale(domain: 0...(daten.map(\.anzahl).max().map { $0 + 1 } ?? 5))
+                .frame(height: 150)
+
+                VStack(spacing: 4) {
+                    ForEach(daten, id: \.phase.rawValue) { d in
+                        HStack {
+                            Circle().fill(phaseFarbe(d.phase)).frame(width: 8, height: 8)
+                            Text(d.phase.rawValue).font(.caption)
+                            Spacer()
+                            Text("\(d.anzahl) Anfälle").font(.caption2).foregroundStyle(.secondary)
+                            Text(String(format: "Ø %.1f", d.avgStaerke)).font(.caption.bold())
                         }
                     }
                 }

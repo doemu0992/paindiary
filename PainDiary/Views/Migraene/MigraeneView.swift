@@ -1,13 +1,20 @@
 import SwiftUI
 import SwiftData
+import Charts
 
 struct MigraeneView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var anfaelle: [MigraeneEintrag]
     @Query(sort: \MIDASBewertung.datum, order: .reverse) private var midas: [MIDASBewertung]
+    @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
+    @AppStorage("zyklusModulAktiv") private var zyklusModulAktiv = false
 
     @State private var zeigeForm = false
     @State private var bearbeitet: MigraeneEintrag? = nil
+
+    private var zyklusAnalyse: ZyklusAnalyse {
+        ZyklusRechner.analyse(eintraege: Array(zyklusEintraege))
+    }
 
     private var anfaelle30: [MigraeneEintrag] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
@@ -50,6 +57,8 @@ struct MigraeneView: View {
                 if !anfaelle30.isEmpty {
                     ausloeserSektion
                 }
+
+                zyklusKorrelationSektion
 
                 Section("Anfälle") {
                     ForEach(anfaelle) { anfall in
@@ -130,6 +139,65 @@ struct MigraeneView: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var zyklusKorrelationSektion: some View {
+        let daten = ZyklusRechner.migraeneJePhase(anfaelle: anfaelle, analyse: zyklusAnalyse)
+        if zyklusModulAktiv && !daten.isEmpty {
+            Section("Migräne & Zyklus") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Anfälle je Zyklusphase (gesamt)")
+                        .font(.caption).foregroundStyle(.secondary)
+
+                    Chart(daten, id: \.phase.rawValue) { d in
+                        BarMark(
+                            x: .value("Phase", d.phase.rawValue),
+                            y: .value("Anfälle", d.anzahl)
+                        )
+                        .foregroundStyle(phaseFarbe(d.phase).gradient)
+                        .cornerRadius(6)
+                        .annotation(position: .top) {
+                            Text("\(d.anzahl)")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .chartYScale(domain: 0...(daten.map(\.anzahl).max().map { $0 + 1 } ?? 5))
+                    .frame(height: 140)
+
+                    VStack(spacing: 4) {
+                        ForEach(daten, id: \.phase.rawValue) { d in
+                            HStack {
+                                Circle().fill(phaseFarbe(d.phase)).frame(width: 8, height: 8)
+                                Text(d.phase.rawValue).font(.caption)
+                                Spacer()
+                                Text("\(d.anzahl) Anfälle")
+                                    .font(.caption2).foregroundStyle(.secondary)
+                                Text(String(format: "Ø %.1f", d.avgStaerke))
+                                    .font(.caption.bold())
+                            }
+                        }
+                    }
+
+                    if let top = daten.max(by: { $0.anzahl < $1.anzahl }) {
+                        Label("Häufigste Phase: \(top.phase.rawValue)", systemImage: "exclamationmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(phaseFarbe(top.phase))
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    private func phaseFarbe(_ p: ZyklusRechner.Zyklusphase) -> Color {
+        switch p {
+        case .menstruation: return .red
+        case .follikelphase: return .yellow
+        case .ovulation: return .orange
+        case .lutealphase: return .purple
         }
     }
 }
