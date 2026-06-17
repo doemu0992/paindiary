@@ -9,6 +9,7 @@ struct RheumaView: View {
     @Query(sort: \Remissionsphase.beginn, order: .reverse) private var remissionsphasen: [Remissionsphase]
 
     @State private var zeigeForm = false
+    @State private var zeigeAnalyse = false
 
     var body: some View {
         List {
@@ -96,6 +97,9 @@ struct RheumaView: View {
             }
         }
         .sheet(isPresented: $zeigeForm) { RheumaSchnellForm() }
+        .sheet(isPresented: $zeigeAnalyse) {
+            RheumaAnalyseView(eintraege: eintraege, haqEintraege: haqEintraege)
+        }
     }
 
     private var schnellstatistiken: some View {
@@ -111,26 +115,38 @@ struct RheumaView: View {
         let avgMg = mgEintraege.isEmpty ? 0.0
             : Double(mgEintraege.map(\.morgensteifigkeit).reduce(0, +)) / Double(mgEintraege.count)
 
-        return VStack(alignment: .leading, spacing: 12) {
-            Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
-                .font(.headline).foregroundStyle(.purple)
-            Divider()
-            HStack(spacing: 0) {
-                statPill(letzter30.isEmpty ? "–" : String(format: "%.1f", avgSchmerz),
-                         label: "Ø Schmerz",
-                         farbe: avgSchmerz <= 3 ? .green : avgSchmerz <= 6 ? .orange : .red)
-                Divider().frame(height: 40)
-                statPill("\(schube)", label: "Schübe gesamt",
-                         farbe: schube == 0 ? .green : .orange)
-                Divider().frame(height: 40)
-                statPill(avgMg > 0 ? String(format: "%.0f'", avgMg) : "–",
-                         label: "Ø Steifigkeit",
-                         farbe: avgMg > 30 ? .orange : .green)
+        return VStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
+                    .font(.headline).foregroundStyle(.purple)
+                Divider()
+                HStack(spacing: 0) {
+                    statPill(letzter30.isEmpty ? "–" : String(format: "%.1f", avgSchmerz),
+                             label: "Ø Schmerz",
+                             farbe: avgSchmerz <= 3 ? .green : avgSchmerz <= 6 ? .orange : .red)
+                    Divider().frame(height: 40)
+                    statPill("\(schube)", label: "Schübe gesamt",
+                             farbe: schube == 0 ? .green : .orange)
+                    Divider().frame(height: 40)
+                    statPill(avgMg > 0 ? String(format: "%.0f'", avgMg) : "–",
+                             label: "Ø Steifigkeit",
+                             farbe: avgMg > 30 ? .orange : .green)
+                }
             }
+            .padding()
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+
+            Button { zeigeAnalyse = true } label: {
+                Label("Rheuma-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.purple, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
         }
-        .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
     private func statPill(_ wert: String, label: String, farbe: Color) -> some View {

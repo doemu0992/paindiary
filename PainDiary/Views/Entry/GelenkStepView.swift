@@ -124,13 +124,81 @@ struct GelenkStepView: View {
         }
     }
 
+    @ViewBuilder
     private func gelenkGrid(fuer gruppe: GelenkGruppe) -> some View {
         let gelenke = alleGelenke.filter { $0.gruppe == gruppe }
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: min(gelenke.count, 5)), spacing: 4) {
-            ForEach(gelenke) { gelenk in
-                gelenkTaste(gelenk)
+        if gruppe == .fingerRechts || gruppe == .fingerLinks {
+            fingerSpaltenAnsicht(gelenke: gelenke)
+        } else {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: min(gelenke.count, 5)), spacing: 4) {
+                ForEach(gelenke) { gelenk in
+                    gelenkTaste(gelenk)
+                }
             }
         }
+    }
+
+    private func fingerSpaltenAnsicht(gelenke: [Gelenk]) -> some View {
+        let grund  = gelenke.filter { $0.id.contains("MCP") }.sorted { $0.id < $1.id }
+        let mittel = gelenke.filter { $0.id.contains("PIP") }.sorted { $0.id < $1.id }
+        let namen  = ["Dau.", "Zeig.", "Mitt.", "Ring.", "Kl."]
+        return VStack(spacing: 3) {
+            HStack(spacing: 4) {
+                Text("").frame(width: 34)
+                ForEach(namen.indices, id: \.self) { i in
+                    Text(namen[i])
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
+            }
+            HStack(spacing: 4) {
+                Text("Grund.")
+                    .font(.system(size: 8))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 34, alignment: .trailing)
+                ForEach(grund) { gelenk in gelenkKachel(gelenk) }
+            }
+            HStack(spacing: 4) {
+                Text("Mittel.")
+                    .font(.system(size: 8))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 34, alignment: .trailing)
+                ForEach(mittel) { gelenk in gelenkKachel(gelenk) }
+            }
+        }
+    }
+
+    private func gelenkKachel(_ gelenk: Gelenk) -> some View {
+        let zustand = statusDict[gelenk.id] ?? .keiner
+        return Button {
+            withAnimation(.spring(response: 0.2)) {
+                let naechster = zustand.naechster
+                if naechster == .keiner {
+                    statusDict.removeValue(forKey: gelenk.id)
+                } else {
+                    statusDict[gelenk.id] = naechster
+                }
+            }
+#if os(iOS)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+#endif
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(zustand.farbe)
+                    .frame(minHeight: 30)
+                if zustand != .keiner {
+                    Text(zustand.kuerzel == "SG" ? "S+G" : zustand.kuerzel)
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
     }
 
     private func gelenkTaste(_ gelenk: Gelenk) -> some View {
