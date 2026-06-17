@@ -146,7 +146,7 @@ struct MigraeneAnalyseView: View {
                     }
                     if !medWirksamkeit.isEmpty { medikamentKarte }
                     if !wetterVerteilung.isEmpty { wetterKarte }
-                    if zyklusModulAktiv && !zyklusDaten.isEmpty { zyklusKarte }
+                    zyklusKarte
                 }
                 .padding()
             }
@@ -340,19 +340,66 @@ struct MigraeneAnalyseView: View {
 
     private var zyklusKarte: some View {
         karte(titel: "Zyklus-Korrelation", symbol: "moon.stars.fill", farbe: .pink) {
-            Chart(zyklusDaten, id: \.phase) { item in
-                BarMark(
-                    x: .value("Phase", item.phase.rawValue),
-                    y: .value("Anfälle", item.anzahl)
-                )
-                .foregroundStyle(phaseFarbe(item.phase).gradient)
-                .cornerRadius(4)
-                .annotation(position: .top) {
-                    Text("\(item.anzahl)").font(.caption2.bold())
-                        .foregroundStyle(phaseFarbe(item.phase))
+            if zyklusDaten.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "moon.stars.fill")
+                        .font(.title2).foregroundStyle(.pink.opacity(0.4))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Keine Daten verfügbar")
+                            .font(.subheadline.bold()).foregroundStyle(.secondary)
+                        Text("Erfasse Zyklusdaten im Zyklus-Modul um die Korrelation mit Migräne-Anfällen zu sehen.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    Chart(zyklusDaten, id: \.phase) { item in
+                        BarMark(
+                            x: .value("Phase", item.phase.rawValue),
+                            y: .value("Anfälle", item.anzahl)
+                        )
+                        .foregroundStyle(phaseFarbe(item.phase).gradient)
+                        .cornerRadius(4)
+                        .annotation(position: .top) {
+                            Text("\(item.anzahl)").font(.caption2.bold())
+                                .foregroundStyle(phaseFarbe(item.phase))
+                        }
+                    }
+                    .frame(height: 120)
+
+                    Divider()
+
+                    // Ø Stärke je Phase
+                    VStack(spacing: 8) {
+                        ForEach(zyklusDaten, id: \.phase) { item in
+                            HStack(spacing: 10) {
+                                Circle().fill(phaseFarbe(item.phase))
+                                    .frame(width: 8, height: 8)
+                                Text(item.phase.rawValue)
+                                    .font(.caption).foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text("\(item.anzahl) Anfall\(item.anzahl == 1 ? "" : "älle")")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                Text(String(format: "Ø %.1f", item.avgStaerke))
+                                    .font(.caption.bold())
+                                    .foregroundStyle(phaseFarbe(item.phase))
+                                    .frame(width: 50, alignment: .trailing)
+                            }
+                        }
+                    }
+
+                    if let risikoPhase = zyklusDaten.max(by: { $0.anzahl < $1.anzahl }) {
+                        Divider()
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.pink).font(.caption)
+                            Text("Höchstes Risiko: \(risikoPhase.phase.rawValue)")
+                                .font(.caption.bold()).foregroundStyle(.pink)
+                        }
+                    }
                 }
             }
-            .frame(height: 110)
         }
     }
 
