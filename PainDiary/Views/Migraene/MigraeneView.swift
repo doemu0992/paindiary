@@ -45,19 +45,6 @@ struct MigraeneView: View {
                 }
             }
 
-            if !anfaelle.isEmpty {
-                Section {
-                    Button {
-                        zeigeAnalyse = true
-                    } label: {
-                        Label("Migräne-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.purple)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-
             if anfaelle.isEmpty {
                 Section {
                     ContentUnavailableView(
@@ -135,6 +122,27 @@ struct MigraeneView: View {
                     label: "MIDAS Score",
                     farbe: .blue
                 )
+                if !anfaelle.isEmpty {
+                    Button { zeigeAnalyse = true } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "chart.bar.xaxis.ascending")
+                                .font(.title3.bold())
+                                .foregroundStyle(.purple)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Analyse").font(.subheadline.bold()).foregroundStyle(.purple)
+                                Text("Auswertung öffnen").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .gridCellColumns(2)
+                }
             }
             .padding(.vertical, 4)
         }
