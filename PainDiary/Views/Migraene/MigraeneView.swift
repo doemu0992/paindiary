@@ -219,18 +219,26 @@ struct MigraeneAnfallForm: View {
     var vorBegleit: Set<String> = []
     var onGespeichert: (() -> Void)? = nil
 
+    @Query private var zyklusEintraege: [ZyklusEintrag]
+    @AppStorage("zyklusModulAktiv") private var zyklusModulAktiv = false
+
     @State private var schritt = 0
     @State private var vorwaerts = true
     @State private var zeigeErfolg = false
     @State private var datum = Date()
     @State private var dauerStunden = 0
     @State private var dauerMinuten = 0
+    @State private var hatEndZeit = false
+    @State private var endZeit = Date()
     @State private var staerke = 6
+    @State private var kopfschmerzTyp = "Migräne"
     @State private var seite = "Einseitig links"
     @State private var hatAura = false
+    @State private var ausgewaehlteProdrom: Set<String> = []
     @State private var ausgewaehlterCharakter: Set<String> = []
     @State private var ausgewaehlteBegleitsymptome: Set<String> = []
     @State private var ausgewaehlteAusloeser: Set<String> = []
+    @State private var ausgewaehltePostdrom: Set<String> = []
     @State private var akutmedikament = ""
     @State private var ausgewaehltesMedikament: Dauermedikation? = nil
     @State private var medikamentWirksam = ""
@@ -241,9 +249,20 @@ struct MigraeneAnfallForm: View {
 
     private let wetter = WetterService.shared
     private let maxSchritt = 3
-    private let schrittNamen = ["Intensität", "Charakter", "Symptome & Auslöser", "Medikament"]
+    private let schrittNamen = ["Intensität", "Charakter", "Symptome & Auslöser", "Abschluss"]
     private let progressTint: Color = .purple
     private let pflichtSchritte: Set<Int> = [0]
+
+    private let kopfschmerzTypen = ["Migräne", "Spannungskopfschmerz", "Cluster"]
+    private let prodromOptionen = [
+        "Müdigkeit", "Nackensteife", "Stimmungsschwankungen", "Heisshunger",
+        "Lichtempfindlichkeit", "Konzentrationsprobleme", "Gähnen",
+        "Wassereinlagerungen", "Reizbarkeit"
+    ]
+    private let postdromOptionen = [
+        "Erschöpfung", "Konzentrationsprobleme", "Stimmungstief",
+        "Kopfhaut empfindlich", "Schwindel", "Helligkeitsempfindlichkeit", "Hunger"
+    ]
 
     private let seiten = ["Einseitig links", "Einseitig rechts", "Beidseitig"]
     private let charakterOptionen = ["Pulsierend", "Hämmernd", "Drückend", "Stechend", "Brennend"]
@@ -387,6 +406,26 @@ struct MigraeneAnfallForm: View {
             .padding(.top, 8)
 
             karte {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Kopfschmerztyp").font(.headline)
+                    HStack(spacing: 8) {
+                        ForEach(kopfschmerzTypen, id: \.self) { typ in
+                            Button { kopfschmerzTyp = typ } label: {
+                                Text(typ)
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                    .background(kopfschmerzTyp == typ ? Color.purple : Color(.tertiarySystemBackground))
+                                    .foregroundStyle(kopfschmerzTyp == typ ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            karte {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Stärke").font(.headline)
                     HStack {
@@ -427,13 +466,23 @@ struct MigraeneAnfallForm: View {
             }
 
             karte {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
                     Text("Dauer").font(.headline)
                     HStack {
                         Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
                         Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
                     }
                     .font(.subheadline)
+                    Divider()
+                    Toggle(isOn: $hatEndZeit) {
+                        Text("Endzeit erfassen")
+                            .font(.subheadline)
+                    }
+                    .tint(.purple)
+                    if hatEndZeit {
+                        DatePicker("Ende", selection: $endZeit, displayedComponents: [.date, .hourAndMinute])
+                            .font(.subheadline)
+                    }
                 }
             }
 
@@ -528,6 +577,24 @@ struct MigraeneAnfallForm: View {
                     }
                 }
             }
+
+            karte {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Prodromsymptome").font(.headline)
+                    Text("Was bemerkten Sie vor dem Anfall?")
+                        .font(.caption).foregroundStyle(.secondary)
+                    FlowLayout(prodromOptionen) { opt in
+                        ChipButton(
+                            label: opt,
+                            ausgewaehlt: ausgewaehlteProdrom.contains(opt),
+                            farbe: .indigo
+                        ) {
+                            if ausgewaehlteProdrom.contains(opt) { ausgewaehlteProdrom.remove(opt) }
+                            else { ausgewaehlteProdrom.insert(opt) }
+                        }
+                    }
+                }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
@@ -582,15 +649,15 @@ struct MigraeneAnfallForm: View {
         .padding(.bottom, 24)
     }
 
-    // MARK: - Schritt 3: Medikament
+    // MARK: - Schritt 3: Abschluss
 
     private var medikamentSchritt: some View {
         VStack(spacing: 16) {
             VStack(spacing: 6) {
-                Image(systemName: "pill.fill")
+                Image(systemName: "checkmark.seal.fill")
                     .font(.largeTitle)
-                    .foregroundStyle(.blue)
-                Text("Medikament")
+                    .foregroundStyle(.purple)
+                Text("Abschluss")
                     .font(.title2.bold())
             }
             .padding(.top, 8)
@@ -648,6 +715,39 @@ struct MigraeneAnfallForm: View {
                             Text("Nicht angegeben").tag("")
                             ForEach(["Ja", "Teilweise", "Nein"], id: \.self) { Text($0).tag($0) }
                         }
+                    }
+                }
+            }
+
+            karte {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Postdromsymptome").font(.headline)
+                    Text("Beschwerden nach dem Anfall")
+                        .font(.caption).foregroundStyle(.secondary)
+                    FlowLayout(postdromOptionen) { opt in
+                        ChipButton(
+                            label: opt,
+                            ausgewaehlt: ausgewaehltePostdrom.contains(opt),
+                            farbe: .teal
+                        ) {
+                            if ausgewaehltePostdrom.contains(opt) { ausgewaehltePostdrom.remove(opt) }
+                            else { ausgewaehltePostdrom.insert(opt) }
+                        }
+                    }
+                }
+            }
+
+            if zyklusModulAktiv && !autoZyklusPhase.isEmpty {
+                karte {
+                    HStack(spacing: 12) {
+                        Image(systemName: "moon.stars.fill").foregroundStyle(.pink)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Zyklusphase").font(.headline)
+                            Text(autoZyklusPhase)
+                                .font(.subheadline).foregroundStyle(.pink)
+                        }
+                        Spacer()
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                     }
                 }
             }
@@ -764,6 +864,16 @@ struct MigraeneAnfallForm: View {
         }
     }
 
+    private var autoZyklusPhase: String {
+        guard zyklusModulAktiv, !zyklusEintraege.isEmpty else { return "" }
+        let analyse = ZyklusRechner.analyse(eintraege: zyklusEintraege)
+        let tag = Calendar.current.startOfDay(for: datum)
+        if analyse.periodeTageSet.contains(tag)   { return "Menstruation" }
+        if analyse.ovulationsTageSet.contains(tag) { return "Eisprung" }
+        if analyse.fruchtbareTageSet.contains(tag) { return "Fruchtbar" }
+        return ""
+    }
+
     private func laden() {
         if let a = anfall {
             datum = a.datum
@@ -772,9 +882,14 @@ struct MigraeneAnfallForm: View {
             staerke = a.staerke
             seite = a.seite.isEmpty ? "Einseitig links" : a.seite
             hatAura = a.hatAura
+            kopfschmerzTyp = a.kopfschmerzTyp.isEmpty ? "Migräne" : a.kopfschmerzTyp
             ausgewaehlterCharakter = Set(a.charakterListe)
+            ausgewaehlteProdrom = Set(a.prodromListe)
             ausgewaehlteBegleitsymptome = Set(a.begleitsymptomeListe)
             ausgewaehlteAusloeser = Set(a.ausloeserListe)
+            ausgewaehltePostdrom = Set(a.postdromListe)
+            hatEndZeit = a.endZeit != nil
+            endZeit = a.endZeit ?? Date()
             akutmedikament = a.akutmedikament
             medikamentWirksam = a.medikamentWirksam
             notizen = a.notizen
@@ -810,9 +925,12 @@ struct MigraeneAnfallForm: View {
 
     private func speichern() {
         let dauer = dauerStunden * 60 + dauerMinuten
-        let charStr   = ausgewaehlterCharakter.sorted().joined(separator: ", ")
-        let beglStr   = ausgewaehlteBegleitsymptome.sorted().joined(separator: ", ")
-        let auslStr   = ausgewaehlteAusloeser.sorted().joined(separator: ", ")
+        let charStr    = ausgewaehlterCharakter.sorted().joined(separator: ", ")
+        let beglStr    = ausgewaehlteBegleitsymptome.sorted().joined(separator: ", ")
+        let auslStr    = ausgewaehlteAusloeser.sorted().joined(separator: ", ")
+        let prodromStr = ausgewaehlteProdrom.sorted().joined(separator: ", ")
+        let postdromStr = ausgewaehltePostdrom.sorted().joined(separator: ", ")
+        let zyklusPhase = autoZyklusPhase
 
         let wetterSnap = wetter.aktuell
         let finalTemp = wetterTemperatur ?? wetterSnap?.temperatur
@@ -827,6 +945,11 @@ struct MigraeneAnfallForm: View {
             a.wetterTemperatur = finalTemp
             a.wetterCode = finalCode
             a.wetterWind = finalWind
+            a.kopfschmerzTyp = kopfschmerzTyp
+            a.prodromsymptome = prodromStr
+            a.postdrom = postdromStr
+            a.endZeit = hatEndZeit ? endZeit : nil
+            a.zyklusPhase = zyklusPhase
         } else {
             let neu = MigraeneEintrag(datum: datum, dauer: dauer, staerke: staerke, seite: seite,
                                       charakter: charStr, begleitsymptome: beglStr, hatAura: hatAura,
@@ -834,6 +957,11 @@ struct MigraeneAnfallForm: View {
                                       medikamentWirksam: medikamentWirksam, notizen: notizen,
                                       wetterTemperatur: finalTemp, wetterCode: finalCode,
                                       wetterWind: finalWind)
+            neu.kopfschmerzTyp = kopfschmerzTyp
+            neu.prodromsymptome = prodromStr
+            neu.postdrom = postdromStr
+            neu.endZeit = hatEndZeit ? endZeit : nil
+            neu.zyklusPhase = zyklusPhase
             modelContext.insert(neu)
 
             if let med = ausgewaehltesMedikament {
