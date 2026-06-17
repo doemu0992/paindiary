@@ -17,6 +17,13 @@ import SwiftData
     var wetterCode: Int?
     var wetterWind: Double?
 
+    // Extended fields (lightweight migration — default values)
+    var kopfschmerzTyp: String = ""     // "Migräne", "Spannungskopfschmerz", "Cluster"
+    var prodromsymptome: String = ""    // kommagetrennt
+    var postdrom: String = ""           // kommagetrennt
+    var endZeit: Date? = nil            // optionaler Endzeitpunkt
+    var zyklusPhase: String = ""        // "Menstruation", "Fruchtbar", "Eisprung", ""
+
     init(datum: Date = Date(), dauer: Int = 0, staerke: Int = 6,
          seite: String = "Einseitig links", charakter: String = "",
          begleitsymptome: String = "", hatAura: Bool = false,
@@ -50,4 +57,6 @@ import SwiftData
     var charakterListe: [String]       { charakter.components(separatedBy: ", ").filter { !$0.isEmpty } }
     var begleitsymptomeListe: [String] { begleitsymptome.components(separatedBy: ", ").filter { !$0.isEmpty } }
     var ausloeserListe: [String]       { ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty } }
+    var prodromListe: [String]         { prodromsymptome.components(separatedBy: ", ").filter { !$0.isEmpty } }
+    var postdromListe: [String]        { postdrom.components(separatedBy: ", ").filter { !$0.isEmpty } }
 }

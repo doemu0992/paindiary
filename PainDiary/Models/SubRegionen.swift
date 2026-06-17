@@ -3,8 +3,12 @@ import Foundation
 enum SubRegionen {
     /// Pain-oriented sub-regions (includes internal anatomy)
     static let map: [String: [String]] = [
-        "Kopf": ["Stirn", "Scheitel", "Hinterkopf", "Schläfe links", "Schläfe rechts",
-                 "Auge links", "Auge rechts", "Nase", "Wange links", "Wange rechts",
+        "Kopf": ["Stirn", "Stirn links", "Stirn rechts",
+                 "Schläfe links", "Schläfe rechts",
+                 "Scheitel", "Hinterkopf", "Nacken",
+                 "Auge links", "Auge rechts",
+                 "Hinter dem Auge links", "Hinter dem Auge rechts",
+                 "Nase", "Wange links", "Wange rechts",
                  "Kinn", "Oberkiefer", "Unterkiefer"],
         "Hals": ["Kehlkopf", "Schilddrüse", "Hals links", "Hals rechts"],
         "Brust": ["Herz", "Brustbein", "Rippen links", "Rippen rechts",
