@@ -287,40 +287,17 @@ private struct MigraeneTagesbuchZeile: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(staerkeFarbe.opacity(0.18)).frame(width: 46, height: 46)
-                VStack(spacing: 0) {
-                    Text("\(anfall.staerke)")
-                        .font(.title3.bold())
-                        .foregroundStyle(staerkeFarbe)
-                    Text("/10")
-                        .font(.system(size: 7))
-                        .foregroundStyle(staerkeFarbe.opacity(0.65))
-                }
-            }
+            SchmerzBadge(staerke: anfall.staerke)
             VStack(alignment: .leading, spacing: 3) {
+                Text(anfall.kopfschmerzTyp.isEmpty ? "Migräne" : anfall.kopfschmerzTyp)
+                    .font(.headline)
                 HStack(spacing: 6) {
-                    Image(systemName: "brain.head.profile")
-                        .font(.caption)
-                        .foregroundStyle(.purple)
-                    Text("Migräne")
-                        .font(.headline)
-                    if !anfall.kopfschmerzTyp.isEmpty && anfall.kopfschmerzTyp != "Migräne" {
-                        Text(anfall.kopfschmerzTyp)
-                            .font(.caption2.bold())
-                            .foregroundStyle(.indigo)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.indigo.opacity(0.12)).clipShape(Capsule())
+                    if !anfall.charakter.isEmpty {
+                        Text(anfall.charakterListe.first ?? "")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Text("·").font(.caption).foregroundStyle(.secondary)
                     }
-                    if anfall.hatAura {
-                        Text("Aura")
-                            .font(.caption2.bold())
-                            .foregroundStyle(.purple)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.purple.opacity(0.15)).clipShape(Capsule())
-                    }
-                }
-                HStack(spacing: 6) {
                     Group {
                         if Calendar.current.isDateInToday(anfall.datum) {
                             Text(anfall.datum, style: .time)
@@ -331,35 +308,44 @@ private struct MigraeneTagesbuchZeile: View {
                         }
                     }
                     .font(.caption).foregroundStyle(.secondary)
-                    if anfall.dauer > 0 {
+                    if anfall.wetterCode != nil {
                         Text("·").font(.caption).foregroundStyle(.secondary)
-                        Text(anfall.dauerText).font(.caption).foregroundStyle(.secondary)
+                        Image(systemName: WetterSnapshot.symbolFuerCode(anfall.wetterCode!))
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 if !anfall.ausloeser.isEmpty {
-                    Text(anfall.ausloeser).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    Text(anfall.ausloeser)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
             Spacer()
-            if !anfall.postdrom.isEmpty {
-                VStack {
-                    Image(systemName: "arrow.clockwise.circle.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.teal)
-                    Text("Nach")
-                        .font(.system(size: 7))
-                        .foregroundStyle(.teal)
+            VStack(alignment: .trailing, spacing: 3) {
+                if anfall.hatAura {
+                    HStack(spacing: 2) {
+                        Image(systemName: "eye.fill").font(.caption2)
+                        Text("Aura").font(.caption2.bold())
+                    }
+                    .foregroundStyle(.purple)
+                }
+                if anfall.dauer > 0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "clock.fill").font(.caption2)
+                        Text(anfall.dauerText).font(.caption2.bold())
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                if !anfall.postdrom.isEmpty {
+                    HStack(spacing: 2) {
+                        Image(systemName: "arrow.clockwise.circle.fill").font(.caption2)
+                        Text("Nach").font(.caption2.bold())
+                    }
+                    .foregroundStyle(.teal)
                 }
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 
-    private var staerkeFarbe: Color {
-        switch anfall.staerke {
-        case 1...3: return .green
-        case 4...6: return .orange
-        default:    return .red
-        }
-    }
 }
