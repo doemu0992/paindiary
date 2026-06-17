@@ -51,6 +51,7 @@ struct MigraeneAnalyseView: View {
     @State private var sektionen: [AnalyseSektion] = sektionenLaden()
     @State private var zeigeAnpassen = false
     @State private var zeitraum: Zeitraum = .alle
+    @State private var verlaufScrollPosition: Date = Date().addingTimeInterval(-60*60*24*30*5)
 
     enum Zeitraum: String, CaseIterable {
         case monat      = "30 T"
@@ -316,7 +317,11 @@ struct MigraeneAnalyseView: View {
             }
             .chartScrollableAxes(.horizontal)
             .chartXVisibleDomain(length: 60 * 60 * 24 * 30 * 6)
+            .chartScrollPosition(x: $verlaufScrollPosition)
             .frame(height: 130)
+            .onChange(of: zeitraum) { _, _ in
+                verlaufScrollPosition = Date().addingTimeInterval(-60*60*24*30*5)
+            }
         }
     }
 
