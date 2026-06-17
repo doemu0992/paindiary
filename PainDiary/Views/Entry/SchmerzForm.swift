@@ -83,11 +83,6 @@ struct SchmerzForm: View {
                     .padding(.horizontal)
                     .padding(.top, 10)
 
-                // Kopfzeile: DatePicker + Vorlage + Wetter
-                kopfZeile
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
                 // Step content with slide animation
                 Group {
                     if schritt == 0 {
@@ -215,64 +210,6 @@ struct SchmerzForm: View {
         }
     }
 
-    // MARK: - Kopfzeile
-
-    private var kopfZeile: some View {
-        HStack {
-            DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
-                .labelsHidden()
-                .font(.caption)
-
-            Spacer()
-
-            if !vorlageAngewendet, let letzter = letzterEintrag, !letzter.koerperstelle.isEmpty {
-                Button {
-                    wendeVorlageAn(letzter)
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.counterclockwise")
-                        Text(letzter.koerperstelle)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.12))
-                    .foregroundStyle(Color.accentColor)
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: 160)
-                .transition(.opacity.combined(with: .scale))
-            }
-
-            wetterBadge
-        }
-    }
-
-    // MARK: - Weather badge
-
-    @ViewBuilder
-    private var wetterBadge: some View {
-        if let snap = wetter.aktuell {
-            HStack(spacing: 4) {
-                Image(systemName: snap.symbol)
-                    .foregroundStyle(.yellow)
-                Text(String(format: "%.0f°C", snap.temperatur))
-                    .font(.caption.bold())
-                if !snap.luftdruckText.isEmpty {
-                    Text(snap.luftdruckText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Color(.secondarySystemBackground), in: Capsule())
-        }
-    }
-
     // MARK: - Step content
 
     @ViewBuilder
@@ -316,10 +253,31 @@ struct SchmerzForm: View {
 
     private var koerperstelleSchritt: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 8) {
                 Text("Wo tut es weh?")
                     .font(.subheadline.bold())
                 Spacer()
+                if !vorlageAngewendet, let letzter = letzterEintrag, !letzter.koerperstelle.isEmpty {
+                    Button {
+                        wendeVorlageAn(letzter)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.counterclockwise")
+                            Text(letzter.koerperstelle)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .font(.caption)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.accentColor.opacity(0.12))
+                        .foregroundStyle(Color.accentColor)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: 140)
+                    .transition(.opacity.combined(with: .scale))
+                }
                 Button {
                     scanSetupAnzeigen = true
                 } label: {
@@ -376,6 +334,28 @@ struct SchmerzForm: View {
 
     private var intensitaetSchritt: some View {
         VStack(spacing: 16) {
+            karte {
+                VStack(alignment: .leading, spacing: 10) {
+                    DatePicker("Datum & Uhrzeit", selection: $datum, displayedComponents: [.date, .hourAndMinute])
+                    if let snap = wetterAnzeige {
+                        Divider()
+                        HStack(spacing: 6) {
+                            Image(systemName: snap.symbol)
+                                .foregroundStyle(.yellow)
+                            Text(String(format: "%.0f°C", snap.temperatur))
+                                .font(.caption.bold())
+                            if !snap.luftdruckText.isEmpty {
+                                Text(snap.luftdruckText)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .padding(.top, 8)
+
             VStack(spacing: 6) {
                 Image(systemName: "waveform.path.ecg")
                     .font(.largeTitle)
@@ -383,7 +363,6 @@ struct SchmerzForm: View {
                 Text("Wie stark?")
                     .font(.title2.bold())
             }
-            .padding(.top, 8)
 
             karte {
                 VStack(alignment: .leading, spacing: 6) {
