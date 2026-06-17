@@ -219,6 +219,9 @@ struct MigraeneAnfallForm: View {
     var vorBegleit: Set<String> = []
     var onGespeichert: (() -> Void)? = nil
 
+    @State private var schritt = 0
+    @State private var vorwaerts = true
+    @State private var zeigeErfolg = false
     @State private var datum = Date()
     @State private var dauerStunden = 0
     @State private var dauerMinuten = 0
@@ -237,6 +240,10 @@ struct MigraeneAnfallForm: View {
     @State private var wetterWind: Double? = nil
 
     private let wetter = WetterService.shared
+    private let maxSchritt = 3
+    private let schrittNamen = ["Intensität", "Charakter", "Symptome & Auslöser", "Medikament"]
+    private let progressTint: Color = .purple
+    private let pflichtSchritte: Set<Int> = [0]
 
     private let seiten = ["Einseitig links", "Einseitig rechts", "Beidseitig"]
     private let charakterOptionen = ["Pulsierend", "Hämmernd", "Drückend", "Stechend", "Brennend"]
@@ -252,119 +259,381 @@ struct MigraeneAnfallForm: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Anfall") {
-                    DatePicker("Datum & Uhrzeit", selection: $datum)
+            VStack(spacing: 0) {
+                progressBar
+                    .padding(.horizontal)
+                    .padding(.top, 10)
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Dauer").font(.subheadline)
-                        HStack {
-                            Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
-                            Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
+                schrittInhalt
+                    .frame(maxHeight: .infinity)
+                    .id(schritt)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: vorwaerts ? .trailing : .leading).combined(with: .opacity),
+                        removal: .move(edge: vorwaerts ? .leading : .trailing).combined(with: .opacity)
+                    ))
+
+                navigationsLeiste
+            }
+            .navigationTitle(anfall == nil ? "Neuer Anfall" : "Anfall bearbeiten")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
+            }
+        }
+        .onAppear { laden() }
+        .overlay {
+            if zeigeErfolg {
+                ZStack {
+                    Color.black.opacity(0.25).ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 72, height: 72)
+                                .shadow(color: .green.opacity(0.4), radius: 16, y: 4)
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundStyle(.white)
                         }
-                        .font(.subheadline)
+                        .scaleEffect(zeigeErfolg ? 1 : 0.3)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.55), value: zeigeErfolg)
+                        Text("Gespeichert")
+                            .font(.headline.bold())
+                            .foregroundStyle(.white)
+                            .opacity(zeigeErfolg ? 1 : 0)
+                            .animation(.easeIn.delay(0.1), value: zeigeErfolg)
                     }
+                }
+                .transition(.opacity)
+            }
+        }
+    }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Stärke: \(staerke) / 10")
-                            Spacer()
-                            Text(staerkeLabel).font(.caption).foregroundStyle(staerkeFarbe)
+    // MARK: - Progress bar
+
+    private var progressBar: some View {
+        VStack(spacing: 8) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(height: 3)
+                    Capsule()
+                        .fill(progressTint)
+                        .frame(
+                            width: geo.size.width * (maxSchritt > 0 ? CGFloat(schritt) / CGFloat(maxSchritt) : 0),
+                            height: 3
+                        )
+                        .animation(.spring(response: 0.4), value: schritt)
+                }
+            }
+            .frame(height: 3)
+
+            HStack {
+                Text("Schritt \(schritt + 1) von \(maxSchritt + 1)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(schritt < schrittNamen.count ? schrittNamen[schritt] : "")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Step content
+
+    @ViewBuilder
+    private var schrittInhalt: some View {
+        switch schritt {
+        case 0:
+            ScrollView {
+                intensitaetSchritt.padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        case 1:
+            ScrollView {
+                charakterSchritt.padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        case 2:
+            ScrollView {
+                symptomeSchritt.padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        default:
+            ScrollView {
+                medikamentSchritt.padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        }
+    }
+
+    // MARK: - Schritt 0: Intensität
+
+    private var intensitaetSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "brain.head.profile")
+                    .font(.largeTitle)
+                    .foregroundStyle(.purple)
+                Text("Wie stark?")
+                    .font(.title2.bold())
+            }
+            .padding(.top, 8)
+
+            karte {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Stärke").font(.headline)
+                    HStack {
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .fill(staerkeFarbe.opacity(0.15))
+                                .frame(width: 104, height: 104)
+                            Circle()
+                                .strokeBorder(staerkeFarbe, lineWidth: 5)
+                                .frame(width: 104, height: 104)
+                            VStack(spacing: 1) {
+                                Text("\(staerke)")
+                                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                                    .foregroundStyle(staerkeFarbe)
+                                Text("/ 10")
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                        Slider(value: Binding(get: { Double(staerke) }, set: { staerke = Int($0) }),
-                               in: 1...10, step: 1).tint(staerkeFarbe)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: staerke)
+                        Spacer()
                     }
-
-                    Picker("Seite", selection: $seite) {
-                        ForEach(seiten, id: \.self) { Text($0).tag($0) }
+                    Text(staerkeLabel)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(staerkeFarbe)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    Slider(
+                        value: Binding(get: { Double(staerke) }, set: { staerke = Int($0) }),
+                        in: 1...10, step: 1
+                    ).tint(staerkeFarbe)
+                    HStack {
+                        Text("Leicht").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("Extrem").font(.caption).foregroundStyle(.secondary)
                     }
+                }
+            }
 
-                    Toggle("Aura vorhanden", isOn: $hatAura)
+            karte {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Dauer").font(.headline)
+                    HStack {
+                        Stepper("\(dauerStunden) Std.", value: $dauerStunden, in: 0...72)
+                        Stepper("\(dauerMinuten) Min.", value: $dauerMinuten, in: 0...59, step: 15)
+                    }
+                    .font(.subheadline)
+                }
+            }
 
+            karte {
+                VStack(alignment: .leading, spacing: 10) {
+                    DatePicker("Datum & Uhrzeit", selection: $datum, displayedComponents: [.date, .hourAndMinute])
                     if let snap = wetterAnzeige {
+                        Divider()
                         HStack(spacing: 6) {
-                            Image(systemName: snap.symbol)
-                                .foregroundStyle(.secondary)
-                                .font(.caption)
-                            Text(String(format: "%.0f°C · %@", snap.temperatur, snap.beschreibung))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(String(format: "· %.0f km/h", snap.windgeschwindigkeit))
+                            Image(systemName: snap.symbol).foregroundStyle(.yellow)
+                            Text(String(format: "%.0f°C", snap.temperatur)).font(.caption.bold())
+                            if !snap.luftdruckText.isEmpty {
+                                Text(snap.luftdruckText).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Schritt 1: Charakter
+
+    private var charakterSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "waveform.path.ecg")
+                    .font(.largeTitle)
+                    .foregroundStyle(.purple)
+                Text("Wie & Wo?")
+                    .font(.title2.bold())
+            }
+            .padding(.top, 8)
+
+            karte {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Seite").font(.headline)
+                    VStack(spacing: 2) {
+                        ForEach(seiten, id: \.self) { s in
+                            Button {
+                                seite = s
+                            } label: {
+                                HStack {
+                                    Text(s).foregroundStyle(.primary)
+                                    Spacer()
+                                    if seite == s {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.purple)
+                                    }
+                                }
+                                .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.plain)
+                            if s != seiten.last { Divider() }
+                        }
+                    }
+                }
+            }
+
+            karte {
+                Toggle(isOn: $hatAura) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "eye.fill")
+                            .foregroundStyle(.purple)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Aura vorhanden")
+                                .font(.headline)
+                            Text("Sehstörungen, Kribbeln vor dem Anfall")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
+                .tint(.purple)
+            }
 
-                Section("Schmerzcharakter") {
+            karte {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Schmerzcharakter (mehrere möglich)").font(.headline)
                     FlowLayout(charakterOptionen) { opt in
-                        ChipButton(label: opt,
-                                   ausgewaehlt: ausgewaehlterCharakter.contains(opt),
-                                   farbe: .purple) {
+                        ChipButton(
+                            label: opt,
+                            ausgewaehlt: ausgewaehlterCharakter.contains(opt),
+                            farbe: .purple
+                        ) {
                             if ausgewaehlterCharakter.contains(opt) { ausgewaehlterCharakter.remove(opt) }
                             else { ausgewaehlterCharakter.insert(opt) }
                         }
                     }
-                    .padding(.vertical, 4)
                 }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
 
-                Section("Begleitsymptome") {
+    // MARK: - Schritt 2: Symptome & Auslöser
+
+    private var symptomeSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "list.clipboard.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.red)
+                Text("Symptome & Auslöser")
+                    .font(.title2.bold())
+            }
+            .padding(.top, 8)
+
+            karte {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Begleitsymptome (mehrere möglich)").font(.headline)
                     FlowLayout(begleitOptionen) { opt in
-                        ChipButton(label: opt,
-                                   ausgewaehlt: ausgewaehlteBegleitsymptome.contains(opt),
-                                   farbe: .red) {
+                        ChipButton(
+                            label: opt,
+                            ausgewaehlt: ausgewaehlteBegleitsymptome.contains(opt),
+                            farbe: .red
+                        ) {
                             if ausgewaehlteBegleitsymptome.contains(opt) { ausgewaehlteBegleitsymptome.remove(opt) }
                             else { ausgewaehlteBegleitsymptome.insert(opt) }
                         }
                     }
-                    .padding(.vertical, 4)
                 }
+            }
 
-                Section("Mögliche Auslöser") {
+            karte {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Mögliche Auslöser (mehrere möglich)").font(.headline)
                     FlowLayout(ausloeserOptionen) { opt in
-                        ChipButton(label: opt,
-                                   ausgewaehlt: ausgewaehlteAusloeser.contains(opt),
-                                   farbe: .orange) {
+                        ChipButton(
+                            label: opt,
+                            ausgewaehlt: ausgewaehlteAusloeser.contains(opt),
+                            farbe: .orange
+                        ) {
                             if ausgewaehlteAusloeser.contains(opt) { ausgewaehlteAusloeser.remove(opt) }
                             else { ausgewaehlteAusloeser.insert(opt) }
                         }
                     }
-                    .padding(.vertical, 4)
                 }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
 
-                Section("Akutmedikament") {
-                    let aktiveMeds = alleMedikamente.filter(\.aktiv)
+    // MARK: - Schritt 3: Medikament
+
+    private var medikamentSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "pill.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.blue)
+                Text("Medikament")
+                    .font(.title2.bold())
+            }
+            .padding(.top, 8)
+
+            let aktiveMeds = alleMedikamente.filter(\.aktiv)
+            karte {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Akutmedikament").font(.headline)
                     if !aktiveMeds.isEmpty {
-                        ForEach(aktiveMeds) { med in
-                            Button {
-                                if ausgewaehltesMedikament?.id == med.id {
-                                    ausgewaehltesMedikament = nil
-                                    akutmedikament = ""
-                                } else {
-                                    ausgewaehltesMedikament = med
-                                    akutmedikament = med.dosierung.isEmpty
-                                        ? med.name : "\(med.name) \(med.dosierung)"
-                                }
-                            } label: {
-                                HStack {
-                                    Image(systemName: med.typSymbol)
-                                        .foregroundStyle(.blue)
-                                        .frame(width: 24)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(med.name).foregroundStyle(.primary)
-                                        if !med.dosierung.isEmpty {
-                                            Text(med.dosierung)
-                                                .font(.caption).foregroundStyle(.secondary)
+                        VStack(spacing: 2) {
+                            ForEach(aktiveMeds) { med in
+                                Button {
+                                    if ausgewaehltesMedikament?.id == med.id {
+                                        ausgewaehltesMedikament = nil
+                                        akutmedikament = ""
+                                    } else {
+                                        ausgewaehltesMedikament = med
+                                        akutmedikament = med.dosierung.isEmpty
+                                            ? med.name : "\(med.name) \(med.dosierung)"
+                                    }
+                                } label: {
+                                    HStack {
+                                        Image(systemName: med.typSymbol)
+                                            .foregroundStyle(.blue)
+                                            .frame(width: 24)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(med.name).foregroundStyle(.primary)
+                                            if !med.dosierung.isEmpty {
+                                                Text(med.dosierung)
+                                                    .font(.caption).foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        Spacer()
+                                        if ausgewaehltesMedikament?.id == med.id {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundStyle(.blue)
                                         }
                                     }
-                                    Spacer()
-                                    if ausgewaehltesMedikament?.id == med.id {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(.blue)
-                                    }
+                                    .padding(.vertical, 4)
                                 }
+                                .buttonStyle(.plain)
+                                if med.id != aktiveMeds.last?.id { Divider() }
                             }
-                            .buttonStyle(.plain)
                         }
                         Divider()
                         TextField("Anderes Medikament", text: $akutmedikament)
@@ -374,27 +643,100 @@ struct MigraeneAnfallForm: View {
                         TextField("z.B. Sumatriptan 50 mg", text: $akutmedikament)
                     }
                     if !akutmedikament.isEmpty || ausgewaehltesMedikament != nil {
+                        Divider()
                         Picker("Wirksam?", selection: $medikamentWirksam) {
                             Text("Nicht angegeben").tag("")
                             ForEach(["Ja", "Teilweise", "Nein"], id: \.self) { Text($0).tag($0) }
                         }
                     }
                 }
-
-                Section("Notizen") {
-                    TextEditor(text: $notizen).frame(minHeight: 60)
-                }
             }
-            .navigationTitle(anfall == nil ? "Neuer Anfall" : "Anfall bearbeiten")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
+
+            karte {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Notizen").font(.headline)
+                    TextEditor(text: $notizen)
+                        .frame(minHeight: 80)
                 }
             }
         }
-        .onAppear { laden() }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Navigation bar
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button {
+                    vorwaerts = false
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .background(Color(.secondarySystemBackground), in: Circle())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Spacer().frame(width: 40)
+            }
+
+            Spacer()
+
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    Text("Überspringen")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if schritt < maxSchritt {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    Text("Weiter ›")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 10)
+                        .background(progressTint, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button { speichern() } label: {
+                    Text("✓ Speichern")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 10)
+                        .background(Color.green, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+        .background(.bar)
+    }
+
+    // MARK: - Card helper
+
+    @ViewBuilder
+    private func karte<C: View>(@ViewBuilder content: () -> C) -> some View {
+        content()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     private var wetterAnzeige: WetterSnapshot? {
@@ -510,7 +852,12 @@ struct MigraeneAnfallForm: View {
                 NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: akutmedikament)
             }
         }
+
+#if os(iOS)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+#endif
+        zeigeErfolg = true
         onGespeichert?()
-        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
     }
 }

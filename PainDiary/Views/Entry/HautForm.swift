@@ -27,7 +27,6 @@ struct HautForm: View {
 
     private let wetter = WetterService.shared
     private let maxSchritt = 2
-
     private let schrittNamen = ["Körperstelle", "Hautbild", "Wohlbefinden"]
     private let progressTint: Color = .orange
     private let pflichtSchritte: Set<Int> = [0]
@@ -35,17 +34,10 @@ struct HautForm: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Progress bar
                 progressBar
                     .padding(.horizontal)
                     .padding(.top, 10)
 
-                // Kopfzeile: DatePicker + Wetter
-                kopfZeile
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
-                // Step content with slide animation
                 Group {
                     if schritt == 0 {
                         schrittInhalt
@@ -60,7 +52,6 @@ struct HautForm: View {
                     removal: .move(edge: vorwaerts ? .leading : .trailing).combined(with: .opacity)
                 ))
 
-                // Custom bottom nav
                 navigationsLeiste
             }
             .navigationTitle("Hautveränderung")
@@ -133,42 +124,6 @@ struct HautForm: View {
         }
     }
 
-    // MARK: - Kopfzeile
-
-    private var kopfZeile: some View {
-        HStack {
-            DatePicker("", selection: $datum, displayedComponents: [.date, .hourAndMinute])
-                .labelsHidden()
-                .font(.caption)
-
-            Spacer()
-
-            wetterBadge
-        }
-    }
-
-    // MARK: - Weather badge
-
-    @ViewBuilder
-    private var wetterBadge: some View {
-        if let snap = wetter.aktuell {
-            HStack(spacing: 4) {
-                Image(systemName: snap.symbol)
-                    .foregroundStyle(.yellow)
-                Text(String(format: "%.0f°C", snap.temperatur))
-                    .font(.caption.bold())
-                if !snap.luftdruckText.isEmpty {
-                    Text(snap.luftdruckText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Color(.secondarySystemBackground), in: Capsule())
-        }
-    }
-
     // MARK: - Step content
 
     @ViewBuilder
@@ -179,8 +134,33 @@ struct HautForm: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case 1:
             ScrollView {
-                HautArtFotoStepView(hautArt: $hautArt, fotoDateiname: $fotoDateiname)
-                    .padding(.vertical, 24)
+                VStack(spacing: 16) {
+                    karte {
+                        VStack(alignment: .leading, spacing: 10) {
+                            DatePicker("Datum & Uhrzeit", selection: $datum, displayedComponents: [.date, .hourAndMinute])
+                            if let snap = wetterAnzeige {
+                                Divider()
+                                HStack(spacing: 6) {
+                                    Image(systemName: snap.symbol)
+                                        .foregroundStyle(.yellow)
+                                    Text(String(format: "%.0f°C", snap.temperatur))
+                                        .font(.caption.bold())
+                                    if !snap.luftdruckText.isEmpty {
+                                        Text(snap.luftdruckText)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, 8)
+
+                    HautArtFotoStepView(hautArt: $hautArt, fotoDateiname: $fotoDateiname)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
@@ -274,12 +254,12 @@ struct HautForm: View {
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 46, height: 46)
+                        .frame(width: 40, height: 40)
                         .background(Color(.secondarySystemBackground), in: Circle())
                 }
                 .buttonStyle(.plain)
             } else {
-                Spacer().frame(width: 46)
+                Spacer().frame(width: 40)
             }
 
             Spacer()
@@ -304,19 +284,17 @@ struct HautForm: View {
                     Text("Weiter ›")
                         .font(.subheadline.bold())
                         .padding(.horizontal, 22)
-                        .padding(.vertical, 13)
+                        .padding(.vertical, 10)
                         .background(progressTint, in: Capsule())
                         .foregroundStyle(.white)
                 }
                 .buttonStyle(.plain)
             } else {
-                Button {
-                    speichern()
-                } label: {
+                Button { speichern() } label: {
                     Text("✓ Speichern")
                         .font(.subheadline.bold())
                         .padding(.horizontal, 22)
-                        .padding(.vertical, 13)
+                        .padding(.vertical, 10)
                         .background(Color.green, in: Capsule())
                         .foregroundStyle(.white)
                 }
@@ -324,8 +302,29 @@ struct HautForm: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
         .background(.bar)
+    }
+
+    // MARK: - Card helper
+
+    @ViewBuilder
+    private func karte<C: View>(@ViewBuilder content: () -> C) -> some View {
+        content()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Computed
+
+    private var wetterAnzeige: WetterSnapshot? {
+        if let temp = wetterTemperatur, let code = wetterCode {
+            return WetterSnapshot(temperatur: temp, code: code, windgeschwindigkeit: wetterWind ?? 0)
+        }
+        return wetter.aktuell
     }
 
     // MARK: - Load / Save

@@ -198,6 +198,9 @@ struct BlutzuckerForm: View {
     var messung: BlutzuckerEintrag? = nil
     var onGespeichert: (() -> Void)? = nil
 
+    @State private var schritt = 0
+    @State private var vorwaerts = true
+    @State private var zeigeErfolg = false
     @State private var datum = Date()
     @State private var wert = 5.5
     @State private var messZeitpunkt = "Nüchtern"
@@ -209,59 +212,360 @@ struct BlutzuckerForm: View {
 
     private let zeitpunkte = ["Nüchtern", "Vor Essen", "2h nach Essen", "Vor Schlaf", "Beliebig"]
     private let insulinTypen = ["Kurzzeit", "Langzeit", "Mischung"]
+    private let maxSchritt = 2
+    private let schrittNamen = ["Messung", "Insulin & Mahlzeit", "Notizen"]
+    private let progressTint: Color = .blue
+    private let pflichtSchritte: Set<Int> = [0]
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Messung") {
-                    DatePicker("Datum & Uhrzeit", selection: $datum)
+            VStack(spacing: 0) {
+                progressBar
+                    .padding(.horizontal)
+                    .padding(.top, 10)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(String(format: "Blutzucker: %.1f mmol/L", wert))
-                            Spacer()
-                            Text(bewertungLabel)
-                                .font(.caption.bold())
-                                .foregroundStyle(bewertungFarbe)
-                        }
-                        Slider(value: $wert, in: 1.0...30.0, step: 0.1).tint(bewertungFarbe)
-                    }
+                schrittInhalt
+                    .frame(maxHeight: .infinity)
+                    .id(schritt)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: vorwaerts ? .trailing : .leading).combined(with: .opacity),
+                        removal: .move(edge: vorwaerts ? .leading : .trailing).combined(with: .opacity)
+                    ))
 
-                    Picker("Messzeitpunkt", selection: $messZeitpunkt) {
-                        ForEach(zeitpunkte, id: \.self) { Text($0).tag($0) }
-                    }
-                }
-
-                Section("Insulin") {
-                    Toggle("Insulin injiziert", isOn: $erfasseInsulin)
-                    if erfasseInsulin {
-                        Stepper(String(format: "%.0f IE", insulinEinheiten),
-                                value: $insulinEinheiten, in: 0...100, step: 0.5)
-                        Picker("Typ", selection: $insulinTyp) {
-                            ForEach(insulinTypen, id: \.self) { Text($0).tag($0) }
-                        }
-                    }
-                }
-
-                Section("Mahlzeit") {
-                    Stepper("\(kohlenhydrate) g Kohlenhydrate", value: $kohlenhydrate, in: 0...300, step: 5)
-                }
-
-                Section("Notizen") {
-                    TextEditor(text: $notizen).frame(minHeight: 60)
-                }
+                navigationsLeiste
             }
             .navigationTitle(messung == nil ? "Neue Messung" : "Messung bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }.disabled(wert <= 0)
-                }
             }
         }
         .onAppear { laden() }
+        .overlay {
+            if zeigeErfolg {
+                ZStack {
+                    Color.black.opacity(0.25).ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 72, height: 72)
+                                .shadow(color: .green.opacity(0.4), radius: 16, y: 4)
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 32, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .scaleEffect(zeigeErfolg ? 1 : 0.3)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.55), value: zeigeErfolg)
+                        Text("Gespeichert")
+                            .font(.headline.bold())
+                            .foregroundStyle(.white)
+                            .opacity(zeigeErfolg ? 1 : 0)
+                            .animation(.easeIn.delay(0.1), value: zeigeErfolg)
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
     }
+
+    // MARK: - Progress bar
+
+    private var progressBar: some View {
+        VStack(spacing: 8) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(height: 3)
+                    Capsule()
+                        .fill(progressTint)
+                        .frame(
+                            width: geo.size.width * (maxSchritt > 0 ? CGFloat(schritt) / CGFloat(maxSchritt) : 0),
+                            height: 3
+                        )
+                        .animation(.spring(response: 0.4), value: schritt)
+                }
+            }
+            .frame(height: 3)
+
+            HStack {
+                Text("Schritt \(schritt + 1) von \(maxSchritt + 1)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(schritt < schrittNamen.count ? schrittNamen[schritt] : "")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Step content
+
+    @ViewBuilder
+    private var schrittInhalt: some View {
+        switch schritt {
+        case 0:
+            ScrollView {
+                messungSchritt.padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        case 1:
+            ScrollView {
+                insulinMahlzeitSchritt.padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        default:
+            ScrollView {
+                notizenSchritt.padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        }
+    }
+
+    // MARK: - Schritt 0: Messung
+
+    private var messungSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "drop.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.blue)
+                Text("Blutzucker")
+                    .font(.title2.bold())
+            }
+            .padding(.top, 8)
+
+            karte {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Messwert").font(.headline)
+                    HStack {
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .fill(bewertungFarbe.opacity(0.15))
+                                .frame(width: 104, height: 104)
+                            Circle()
+                                .strokeBorder(bewertungFarbe, lineWidth: 5)
+                                .frame(width: 104, height: 104)
+                            VStack(spacing: 1) {
+                                Text(String(format: "%.1f", wert))
+                                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                                    .foregroundStyle(bewertungFarbe)
+                                Text("mmol/L")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: wert)
+                        Spacer()
+                    }
+                    Text(bewertungLabel)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(bewertungFarbe)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    Slider(value: $wert, in: 1.0...30.0, step: 0.1).tint(bewertungFarbe)
+                    HStack {
+                        Text("1.0").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("30.0 mmol/L").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            karte {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Messzeitpunkt").font(.headline)
+                    FlowLayout(zeitpunkte) { zp in
+                        Button {
+                            messZeitpunkt = zp
+                        } label: {
+                            Text(zp)
+                                .font(.subheadline)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(messZeitpunkt == zp ? Color.blue : Color(.tertiarySystemBackground))
+                                .foregroundStyle(messZeitpunkt == zp ? .white : .primary)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            karte {
+                DatePicker("Datum & Uhrzeit", selection: $datum, displayedComponents: [.date, .hourAndMinute])
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Schritt 1: Insulin & Mahlzeit
+
+    private var insulinMahlzeitSchritt: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 6) {
+                Image(systemName: "syringe.fill")
+                    .font(.largeTitle)
+                    .foregroundStyle(.blue)
+                Text("Insulin & Mahlzeit")
+                    .font(.title2.bold())
+            }
+            .padding(.top, 8)
+
+            karte {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(isOn: $erfasseInsulin) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "syringe")
+                                .foregroundStyle(.blue)
+                            Text("Insulin injiziert")
+                                .font(.headline)
+                        }
+                    }
+                    .tint(.blue)
+
+                    if erfasseInsulin {
+                        Divider()
+                        Stepper(String(format: "%.0f IE", insulinEinheiten),
+                                value: $insulinEinheiten, in: 0...100, step: 0.5)
+                            .font(.subheadline)
+
+                        HStack(spacing: 8) {
+                            ForEach(insulinTypen, id: \.self) { typ in
+                                Button {
+                                    insulinTyp = typ
+                                } label: {
+                                    Text(typ)
+                                        .font(.subheadline)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(insulinTyp == typ ? Color.blue : Color(.tertiarySystemBackground))
+                                        .foregroundStyle(insulinTyp == typ ? .white : .primary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+            }
+
+            karte {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Mahlzeit").font(.headline)
+                    Stepper("\(kohlenhydrate) g Kohlenhydrate",
+                            value: $kohlenhydrate, in: 0...300, step: 5)
+                        .font(.subheadline)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Schritt 2: Notizen
+
+    private var notizenSchritt: some View {
+        VStack(spacing: 16) {
+            Text("Notizen")
+                .font(.title2.bold())
+                .padding(.top, 8)
+
+            karte {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Notizen").font(.headline)
+                    TextEditor(text: $notizen)
+                        .frame(minHeight: 120)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Navigation bar
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button {
+                    vorwaerts = false
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .background(Color(.secondarySystemBackground), in: Circle())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Spacer().frame(width: 40)
+            }
+
+            Spacer()
+
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    Text("Überspringen")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if schritt < maxSchritt {
+                Button {
+                    vorwaerts = true
+                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                } label: {
+                    Text("Weiter ›")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 10)
+                        .background(progressTint, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button { speichern() } label: {
+                    Text("✓ Speichern")
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 10)
+                        .background(Color.green, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .disabled(wert <= 0)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+        .background(.bar)
+    }
+
+    // MARK: - Card helper
+
+    @ViewBuilder
+    private func karte<C: View>(@ViewBuilder content: () -> C) -> some View {
+        content()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Computed helpers
 
     private var bewertungLabel: String {
         switch wert {
@@ -279,6 +583,8 @@ struct BlutzuckerForm: View {
         default:        return .orange
         }
     }
+
+    // MARK: - Load / Save
 
     private func laden() {
         guard let m = messung else { return }
@@ -304,7 +610,11 @@ struct BlutzuckerForm: View {
             )
             modelContext.insert(neu)
         }
+#if os(iOS)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+#endif
+        zeigeErfolg = true
         onGespeichert?()
-        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
     }
 }
