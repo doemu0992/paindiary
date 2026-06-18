@@ -20,19 +20,19 @@ struct DiabetesKachel: View {
         messungen.prefix(14).reversed().map { (datum: $0.datum, wert: $0.wert) }
     }
 
+    private var hatDaten: Bool { !messungen30.isEmpty }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Diabetes", systemImage: "drop.fill")
                     .font(.headline)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.blue)
                 Spacer()
-                Button {
-                    zeigeForm = true
-                } label: {
+                Button { zeigeForm = true } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.blue)
                 }
                 .buttonStyle(.plain)
             }
@@ -45,9 +45,9 @@ struct DiabetesKachel: View {
                 )
                 Divider().frame(height: 32)
                 statBox(
-                    wert: messungen30.isEmpty ? "–" : "\(pctZielbereich)%",
+                    wert: hatDaten ? "\(pctZielbereich)%" : "–",
                     label: "Im Zielbereich",
-                    farbe: pctZielbereich >= 70 ? .green : .orange
+                    farbe: hatDaten ? (pctZielbereich >= 70 ? .green : .orange) : .secondary
                 )
                 Divider().frame(height: 32)
                 statBox(
@@ -63,7 +63,7 @@ struct DiabetesKachel: View {
                         x: .value("Datum", punkt.datum),
                         y: .value("mmol/L", punkt.wert)
                     )
-                    .foregroundStyle(Color.orange.opacity(0.8))
+                    .foregroundStyle(Color.blue.opacity(0.8))
                     .interpolationMethod(.catmullRom)
                     PointMark(
                         x: .value("Datum", punkt.datum),
@@ -75,6 +75,8 @@ struct DiabetesKachel: View {
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
                 .frame(height: 44)
+            } else {
+                placeholderChart
             }
 
             Divider()
@@ -83,11 +85,11 @@ struct DiabetesKachel: View {
                 HStack {
                     Text("Alle Messungen anzeigen")
                         .font(.caption.bold())
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.blue)
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption2.bold())
-                        .foregroundStyle(.orange.opacity(0.6))
+                        .foregroundStyle(Color.blue.opacity(0.6))
                 }
             }
         }
@@ -95,6 +97,29 @@ struct DiabetesKachel: View {
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .sheet(isPresented: $zeigeForm) { BlutzuckerForm() }
+    }
+
+    private var placeholderChart: some View {
+        let daten = (0..<14).map { i -> (datum: Date, wert: Double) in
+            let tag = Calendar.current.date(byAdding: .day, value: -i, to: Date()) ?? Date()
+            return (datum: tag, wert: 1.0)
+        }
+        return Chart(daten, id: \.datum) { punkt in
+            BarMark(
+                x: .value("Tag", punkt.datum, unit: .day),
+                y: .value("Wert", punkt.wert)
+            )
+            .foregroundStyle(Color.blue.opacity(0.07))
+            .cornerRadius(3)
+        }
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .frame(height: 44)
+        .overlay(alignment: .center) {
+            Text("Noch keine Einträge")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func wertFarbe(_ wert: Double) -> Color {

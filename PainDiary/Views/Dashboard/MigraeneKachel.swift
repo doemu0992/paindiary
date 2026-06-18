@@ -11,12 +11,12 @@ struct MigraeneKachel: View {
     }
 
     private var letzterAnfallText: String {
-        guard let letzter = anfaelle.first else { return "Noch keiner" }
+        guard let letzter = anfaelle.first else { return "–" }
         let tage = Calendar.current.dateComponents([.day], from: letzter.datum, to: Date()).day ?? 0
         switch tage {
         case 0:  return "Heute"
         case 1:  return "Gestern"
-        default: return "Vor \(tage) Tagen"
+        default: return "Vor \(tage) T."
         }
     }
 
@@ -31,6 +31,8 @@ struct MigraeneKachel: View {
         }
     }
 
+    private var hatDaten: Bool { !anfaelle30.isEmpty }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -38,9 +40,7 @@ struct MigraeneKachel: View {
                     .font(.headline)
                     .foregroundStyle(.purple)
                 Spacer()
-                Button {
-                    zeigeForm = true
-                } label: {
+                Button { zeigeForm = true } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
                         .foregroundStyle(.purple)
@@ -56,25 +56,34 @@ struct MigraeneKachel: View {
                 )
                 Divider().frame(height: 32)
                 statBox(wert: letzterAnfallText, label: "Letzter Anfall", farbe: .secondary)
-                if !anfaelle30.isEmpty {
+                Divider().frame(height: 32)
+                if hatDaten {
                     let avg = Double(anfaelle30.map(\.staerke).reduce(0, +)) / Double(anfaelle30.count)
-                    Divider().frame(height: 32)
                     statBox(wert: String(format: "%.1f/10", avg), label: "Ø Stärke", farbe: .orange)
+                } else {
+                    statBox(wert: "–", label: "Ø Stärke", farbe: .secondary)
                 }
             }
 
-            if anfaelle.count > 0 {
-                Chart(chartDaten, id: \.datum) { punkt in
-                    BarMark(
-                        x: .value("Tag", punkt.datum, unit: .day),
-                        y: .value("Anfälle", punkt.anzahl)
-                    )
-                    .foregroundStyle(Color.purple.opacity(punkt.anzahl > 0 ? 0.75 : 0.1))
-                    .cornerRadius(3)
+            Chart(chartDaten, id: \.datum) { punkt in
+                BarMark(
+                    x: .value("Tag", punkt.datum, unit: .day),
+                    y: .value("Anfälle", hatDaten ? Double(punkt.anzahl) : 1.0)
+                )
+                .foregroundStyle(hatDaten
+                    ? Color.purple.opacity(punkt.anzahl > 0 ? 0.75 : 0.1)
+                    : Color.purple.opacity(0.07))
+                .cornerRadius(3)
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .frame(height: 44)
+            .overlay(alignment: .center) {
+                if !hatDaten {
+                    Text("Noch keine Einträge")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                .chartXAxis(.hidden)
-                .chartYAxis(.hidden)
-                .frame(height: 44)
             }
 
             Divider()
@@ -87,7 +96,7 @@ struct MigraeneKachel: View {
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption2.bold())
-                        .foregroundStyle(.purple.opacity(0.6))
+                        .foregroundStyle(Color.purple.opacity(0.6))
                 }
             }
         }
