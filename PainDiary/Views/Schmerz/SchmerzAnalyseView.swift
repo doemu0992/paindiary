@@ -32,11 +32,12 @@ struct SchmerzAnalyseView: View {
     let eintraege: [PainEntry]
 
     @State private var sektionen: [SchmerzAnalyseSektion] = SchmerzAnalyseView.sektionenLaden()
-    @State private var zeitraum: Zeitraum = .monat
+    @State private var zeitraum: Zeitraum = .woche
     @State private var zeigeAnpassen = false
     @Environment(\.dismiss) private var dismiss
 
     enum Zeitraum: String, CaseIterable {
+        case woche       = "7 T"
         case monat       = "30 T"
         case dreiMonate  = "3 M"
         case sechsMonate = "6 M"
@@ -45,6 +46,7 @@ struct SchmerzAnalyseView: View {
 
         var tage: Int? {
             switch self {
+            case .woche:       return 7
             case .monat:       return 30
             case .dreiMonate:  return 90
             case .sechsMonate: return 180
@@ -69,29 +71,42 @@ struct SchmerzAnalyseView: View {
     private var maxSchmerz: Int { gefiltert.map(\.schmerzstaerke).max() ?? 0 }
     private var schube: [PainEntry] { gefiltert.filter(\.istSchub) }
 
-    // MARK: - Verlauf (monatlich)
+    // MARK: - Verlauf (adaptive Granularität)
 
-    private struct MonatsWert: Identifiable {
+    private struct VerlaufPunkt: Identifiable {
         let id = UUID()
-        let monat: Date
+        let datum: Date
         let avgSchmerz: Double
         let schube: Int
     }
 
-    private var monatlicherVerlauf: [MonatsWert] {
+    private var chartKomponente: Calendar.Component {
+        switch zeitraum {
+        case .woche:              return .day
+        case .monat:              return .weekOfYear
+        default:                  return .month
+        }
+    }
+
+    private var verlaufDaten: [VerlaufPunkt] {
         let cal = Calendar.current
         var grouped: [Date: [PainEntry]] = [:]
         for e in gefiltert {
-            let key = cal.date(from: cal.dateComponents([.year, .month], from: e.datum)) ?? e.datum
+            let comps: Set<Calendar.Component> = chartKomponente == .day
+                ? [.year, .month, .day]
+                : chartKomponente == .weekOfYear
+                    ? [.yearForWeekOfYear, .weekOfYear]
+                    : [.year, .month]
+            let key = cal.date(from: cal.dateComponents(comps, from: e.datum)) ?? e.datum
             grouped[key, default: []].append(e)
         }
         return grouped.map { key, entries in
-            MonatsWert(
-                monat: key,
+            VerlaufPunkt(
+                datum: key,
                 avgSchmerz: Double(entries.map(\.schmerzstaerke).reduce(0, +)) / Double(entries.count),
                 schube: entries.filter(\.istSchub).count
             )
-        }.sorted { $0.monat < $1.monat }
+        }.sorted { $0.datum < $1.datum }
     }
 
     // MARK: - Körperstellen
@@ -343,20 +358,26 @@ struct SchmerzAnalyseView: View {
 
     private var verlaufKarte: some View {
         Group {
-            if monatlicherVerlauf.isEmpty {
+            if verlaufDaten.isEmpty {
                 leerKarte(.verlauf)
             } else {
                 karte(titel: "Schmerzverlauf", symbol: "chart.line.uptrend.xyaxis", farbe: .red) {
-                    Chart(monatlicherVerlauf) { punkt in
+                    let komp = chartKomponente
+                    let xFormat: Date.FormatStyle = komp == .day
+                        ? .dateTime.day().month(.abbreviated)
+                        : komp == .weekOfYear
+                            ? .dateTime.day().month(.abbreviated)
+                            : .dateTime.month(.abbreviated)
+                    Chart(verlaufDaten) { punkt in
                         LineMark(
-                            x: .value("Monat", punkt.monat, unit: .month),
+                            x: .value("Datum", punkt.datum, unit: komp),
                             y: .value("Ø Schmerz", punkt.avgSchmerz)
                         )
                         .foregroundStyle(.red)
                         .interpolationMethod(.catmullRom)
 
                         PointMark(
-                            x: .value("Monat", punkt.monat, unit: .month),
+                            x: .value("Datum", punkt.datum, unit: komp),
                             y: .value("Ø Schmerz", punkt.avgSchmerz)
                         )
                         .foregroundStyle(.red)
@@ -364,7 +385,7 @@ struct SchmerzAnalyseView: View {
 
                         if punkt.schube > 0 {
                             PointMark(
-                                x: .value("Monat", punkt.monat, unit: .month),
+                                x: .value("Datum", punkt.datum, unit: komp),
                                 y: .value("Ø Schmerz", punkt.avgSchmerz)
                             )
                             .foregroundStyle(.red.opacity(0.3))
@@ -373,9 +394,9 @@ struct SchmerzAnalyseView: View {
                     }
                     .chartYScale(domain: 0...10)
                     .chartXAxis {
-                        AxisMarks(values: .stride(by: .month)) { _ in
+                        AxisMarks(values: .stride(by: komp)) { _ in
                             AxisGridLine()
-                            AxisValueLabel(format: .dateTime.month(.abbreviated), centered: true)
+                            AxisValueLabel(format: xFormat, centered: true)
                         }
                     }
                     .frame(height: 160)

@@ -58,11 +58,20 @@ private struct KIInsightContent: View {
             Divider()
 
             if hatGeneriert || isGenerating {
-                Text(antwort.isEmpty ? " " : antwort)
-                    .font(.subheadline)
-                    .lineSpacing(4)
-                    .foregroundStyle(.primary)
-                    .animation(.easeIn, value: antwort)
+                Group {
+                    if let attributed = try? AttributedString(
+                        markdown: antwort.isEmpty ? " " : antwort,
+                        options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+                    ) {
+                        Text(attributed)
+                    } else {
+                        Text(antwort.isEmpty ? " " : antwort)
+                    }
+                }
+                .font(.subheadline)
+                .lineSpacing(4)
+                .foregroundStyle(.primary)
+                .animation(.easeIn, value: antwort)
             } else if let f = fehler {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle")
