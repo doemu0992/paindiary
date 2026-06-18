@@ -99,11 +99,13 @@ class WetterService: NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        manager.stopUpdatingLocation()
         guard let loc = locations.first else { return }
         Task { await fetchWetter(lat: loc.coordinate.latitude, lon: loc.coordinate.longitude) }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        manager.stopUpdatingLocation()
         self.fehler = "Standort nicht verfügbar"
         self.isLoading = false
     }

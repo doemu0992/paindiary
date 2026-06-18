@@ -38,12 +38,6 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Wetterbedingungen zum Zeitpunkt deines Schmerzeintrags erfassen</string>
 
-	<!-- Background Modes — explizit gesetzt damit CloudKit Push korrekt funktioniert -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
-
 	<!-- Scene -->
 	<key>UIApplicationSceneManifest</key>
 	<dict>
