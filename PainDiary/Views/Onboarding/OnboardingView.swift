@@ -267,12 +267,12 @@ enum SchmerzTypOnboarding: String, CaseIterable, Identifiable {
         var kacheln: [KachelTyp] = []
         var gesehen = Set<KachelTyp>()
         func add(_ k: KachelTyp) { if gesehen.insert(k).inserted { kacheln.append(k) } }
-        if typen.contains(.migraene)  { [KachelTyp.midasKachel, .tageszeitVerteilung, .wetterSchmerz].forEach(add) }
-        if typen.contains(.ruecken)   { [KachelTyp.koerperstellen, .wetterSchmerz, .schlafSchmerz].forEach(add) }
-        if typen.contains(.chronisch) { [KachelTyp.stimmungsTrend, .stressSchmerz, .schlafSchmerz].forEach(add) }
-        if typen.contains(.haut)      { [KachelTyp.koerperstellen, .schmerzarten].forEach(add) }
-        if typen.contains(.gelenk)    { [KachelTyp.wetterSchmerz, .koerperstellen, .stimmungsTrend].forEach(add) }
-        if typen.contains(.andere)    { [KachelTyp.stressSchmerz, .stimmungsTrend].forEach(add) }
+        if typen.contains(.migraene)  { [KachelTyp.midasKachel, .wetterSchmerz, .stressSchmerz].forEach(add) }
+        if typen.contains(.ruecken)   { [KachelTyp.wetterSchmerz, .schlafSchmerz, .stressSchmerz].forEach(add) }
+        if typen.contains(.chronisch) { [KachelTyp.stressSchmerz, .schlafSchmerz, .wetterSchmerz].forEach(add) }
+        if typen.contains(.haut)      { [KachelTyp.stressSchmerz, .schlafSchmerz].forEach(add) }
+        if typen.contains(.gelenk)    { [KachelTyp.wetterSchmerz, .stressSchmerz, .schlafSchmerz].forEach(add) }
+        if typen.contains(.andere)    { [KachelTyp.stressSchmerz, .schlafSchmerz].forEach(add) }
         return kacheln
     }
 }
@@ -414,10 +414,6 @@ private struct DashboardVorschauSchritt: View {
         case .wetterSchmerz: return .cyan
         case .stressSchmerz: return .yellow
         case .schlafSchmerz: return .purple
-        case .tageszeitVerteilung: return .orange
-        case .koerperstellen: return .teal
-        case .schmerzarten: return .blue
-        case .stimmungsTrend: return .pink
         case .midasKachel: return .purple
         default: return Color.accentColor
         }
