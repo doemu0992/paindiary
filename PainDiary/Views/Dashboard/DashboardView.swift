@@ -32,11 +32,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 16) {
                 begrüssungsHeader
 
-                ForEach(Array(sichtbareKacheln.enumerated()), id: \.element.id) { index, kachel in
-                    let prevAbschnitt: String? = index > 0 ? sichtbareKacheln[index - 1].typ.abschnitt : nil
-                    if kachel.typ.abschnitt != prevAbschnitt {
-                        abschnittTitel(kachel.typ.abschnitt)
-                    }
+                ForEach(sichtbareKacheln, id: \.id) { kachel in
                     kachelView(kachel)
                 }
             }
@@ -130,15 +126,6 @@ struct DashboardView: View {
     }
 
     // MARK: - Helpers
-
-    private func abschnittTitel(_ titel: String) -> some View {
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2).fill(Color.indigo).frame(width: 3, height: 18)
-            Text(titel).font(.title3.bold())
-            Spacer()
-        }
-        .padding(.top, 4)
-    }
 
     @ViewBuilder
     private func miniStat(_ label: String, wert: String, farbe: Color) -> some View {

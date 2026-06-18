@@ -17,6 +17,23 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "28", aenderungen: [
+        WhatsNewAenderung(icon: "waveform.path.ecg", farbe: .red,
+                          titel: "Schmerztagebuch als eigenständiges Modul",
+                          beschreibung: "Das Schmerztagebuch hat jetzt eine eigene Modulseite mit 30-Tage-Statistik, Schub-Erkennung und einer vollständigen Analyseansicht – direkt aus dem Dashboard oder Profil erreichbar."),
+        WhatsNewAenderung(icon: "chart.bar.xaxis.ascending", farbe: .red,
+                          titel: "Schmerz-Analyse mit 7 Sektionen",
+                          beschreibung: "Die neue Schmerz-Analyseansicht zeigt Verlauf, Körperstellen, Auslöser, Tageszeit-Muster, Wohlbefinden-Korrelationen und einen KI-Einblick – mit Zeitraumfilter und frei anordenbaren Karten."),
+        WhatsNewAenderung(icon: "allergens", farbe: .orange,
+                          titel: "Haut-Kachel überarbeitet",
+                          beschreibung: "Die Hautveränderungs-Kachel im Dashboard folgt jetzt dem einheitlichen Modul-Design: 3 Statistiken, 14-Tage-Chart und direkter Einstieg ins Haut-Modul."),
+        WhatsNewAenderung(icon: "sparkles", farbe: .purple,
+                          titel: "Apple Intelligence KI-Einblick",
+                          beschreibung: "Alle Analyseansichten enthalten jetzt einen KI-Einblick via Apple Intelligence (iOS 26+): 3–4 personalisierte Sätze auf Basis deiner echten Daten – lokal, privat, ohne Cloud."),
+        WhatsNewAenderung(icon: "rectangle.stack.fill", farbe: .indigo,
+                          titel: "Dashboard aufgeräumt",
+                          beschreibung: "Überschriften zwischen den Kacheln wurden entfernt. Modul-spezifische Analyse-Kacheln (Tageszeit, Körperstellen, Schmerzarten, Stimmungs-Trend) sind jetzt direkt in der jeweiligen Modul-Analyse integriert."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "27", aenderungen: [
         WhatsNewAenderung(icon: "rectangle.stack.fill", farbe: .indigo,
                           titel: "Wizard komplett neu gestaltet",
