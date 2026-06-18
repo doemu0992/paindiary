@@ -159,51 +159,164 @@ struct ArztbesuchForm: View {
     @State private var naechsterTermin = Date()
     @State private var notizen = ""
 
+    @State private var schritt = 0
+    private let maxSchritt = 1
+    private let pflichtSchritte: Set<Int> = [0]
+
     private let fachgebiete = ["Rheumatologie", "Allgemeinmedizin", "Orthopädie", "Neurologie",
                                 "Augenheilkunde", "Dermatologie", "Kardiologie",
                                 "Gastroenterologie", "Innere Medizin"]
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Besuch") {
-                    DatePicker("Datum", selection: $datum, displayedComponents: [.date])
-                    TextField("Arzt / Ärztin", text: $arzt)
-                    Picker("Fachgebiet", selection: $fachgebiet) {
-                        Text("–").tag("")
-                        ForEach(fachgebiete, id: \.self) { Text($0).tag($0) }
+            VStack(spacing: 0) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.teal.opacity(0.15)).frame(height: 3)
+                        Capsule().fill(Color.teal)
+                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
+                            .animation(.easeInOut(duration: 0.3), value: schritt)
                     }
                 }
+                .frame(height: 3).padding(.horizontal).padding(.top, 10)
 
-                Section("Befund & Therapie") {
-                    TextField("Befund / Diagnose", text: $befund, axis: .vertical)
-                        .lineLimit(3...6)
-                    TextField("Therapieänderung / Medikamente", text: $therapieaenderung, axis: .vertical)
-                        .lineLimit(2...4)
-                }
-
-                Section("Nächster Termin") {
-                    Toggle("Nächsten Termin eintragen", isOn: $hatNaechstenTermin)
-                    if hatNaechstenTermin {
-                        DatePicker("Datum", selection: $naechsterTermin, in: Date()..., displayedComponents: [.date])
+                Group {
+                    switch schritt {
+                    case 0: schritt0
+                    default: schritt1
                     }
                 }
+                .frame(maxHeight: .infinity)
 
-                Section("Notizen") {
-                    TextField("Weitere Notizen…", text: $notizen, axis: .vertical)
-                        .lineLimit(2...4)
-                }
+                navigationsLeiste
             }
             .navigationTitle(besuch == nil ? "Neuer Besuch" : "Besuch bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
-                }
             }
         }
         .onAppear { laden() }
+    }
+
+    private var schritt0: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "stethoscope.circle.fill", titel: "Arztbesuch", untertitel: "Datum, Arzt und Fachgebiet")
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Datum").foregroundStyle(.secondary)
+                        Spacer()
+                        DatePicker("", selection: $datum, displayedComponents: [.date]).labelsHidden()
+                    }
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    TextField("Arzt / Ärztin", text: $arzt)
+                        .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Fachgebiet").font(.subheadline).foregroundStyle(.secondary)
+                            .padding(.horizontal, 16).padding(.top, 12)
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                            ForEach(fachgebiete, id: \.self) { fg in
+                                let sel = fachgebiet == fg
+                                Button { fachgebiet = fg } label: {
+                                    Text(fg).font(.caption2).multilineTextAlignment(.center)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                        .background(sel ? Color.teal : Color(.tertiarySystemGroupedBackground),
+                                                    in: RoundedRectangle(cornerRadius: 10))
+                                        .foregroundStyle(sel ? .white : .primary)
+                                        .animation(.easeInOut(duration: 0.15), value: sel)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 16).padding(.bottom, 12)
+                    }
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var schritt1: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "doc.text.fill", titel: "Details", untertitel: "Befund, Notizen und nächster Termin (optional)")
+
+                VStack(spacing: 0) {
+                    TextField("Befund / Diagnose", text: $befund, axis: .vertical)
+                        .lineLimit(3...6).font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    TextField("Therapieänderung / Medikamente", text: $therapieaenderung, axis: .vertical)
+                        .lineLimit(2...4).font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    TextField("Weitere Notizen…", text: $notizen, axis: .vertical)
+                        .lineLimit(2...4).font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("Nächsten Termin eintragen").foregroundStyle(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $hatNaechstenTermin).labelsHidden().tint(.teal)
+                    }
+                    .font(.subheadline).padding(16)
+                    if hatNaechstenTermin {
+                        Divider().padding(.leading, 16)
+                        HStack {
+                            Text("Nächster Termin").foregroundStyle(.secondary)
+                            Spacer()
+                            DatePicker("", selection: $naechsterTermin, in: Date()..., displayedComponents: [.date]).labelsHidden()
+                        }
+                        .font(.subheadline).padding(16)
+                    }
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button { withAnimation { schritt -= 1 } } label: {
+                    Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Überspringen").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            if schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            } else {
+                Button { speichern() } label: {
+                    Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding().background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func laden() {

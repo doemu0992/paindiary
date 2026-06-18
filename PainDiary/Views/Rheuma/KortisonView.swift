@@ -206,85 +206,108 @@ struct KortisonForm: View {
     @State private var istSchubTherapie = false
     @State private var notizen = ""
 
+    @State private var schritt = 0
     private let schrittGroesse = 0.5
     private let minDosis = 0.5
     private let maxDosis = 200.0
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Präparat") {
-                    Picker("Präparat", selection: $praeparat) {
-                        ForEach(KortisonEintrag.praeparate, id: \.self) { p in
-                            Text(p).tag(p)
-                        }
+            VStack(spacing: 0) {
+                schritt0
+                    .frame(maxHeight: .infinity)
+                speichernLeiste
+            }
+            .navigationTitle(eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
+            }
+        }
+        .onAppear { laden() }
+    }
+
+    private var schritt0: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "syringe", titel: "Kortison", untertitel: "Einnahme dokumentieren")
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Datum").foregroundStyle(.secondary)
+                        Spacer()
+                        DatePicker("", selection: $datum, in: ...Date(), displayedComponents: [.date]).labelsHidden()
                     }
-                    .pickerStyle(.menu)
-                }
-
-                Section("Datum") {
-                    DatePicker("Datum", selection: $datum, in: ...Date(), displayedComponents: [.date])
-                }
-
-                Section {
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("Präparat").foregroundStyle(.secondary)
+                        Spacer()
+                        Picker("", selection: $praeparat) {
+                            ForEach(KortisonEintrag.praeparate, id: \.self) { p in
+                                Text(p).tag(p)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
                     VStack(spacing: 12) {
                         Text(String(format: "%.1f mg", dosierungMg))
                             .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(.teal)
                             .frame(maxWidth: .infinity)
                             .padding(.top, 4)
-
-                        Stepper(
-                            value: $dosierungMg,
-                            in: minDosis...maxDosis,
-                            step: schrittGroesse
-                        ) {
+                        Stepper(value: $dosierungMg, in: minDosis...maxDosis, step: schrittGroesse) {
                             EmptyView()
                         }
-
-                        Slider(
-                            value: $dosierungMg,
-                            in: minDosis...maxDosis,
-                            step: schrittGroesse
-                        ) {
+                        Slider(value: $dosierungMg, in: minDosis...maxDosis, step: schrittGroesse) {
                             Text("Dosierung")
                         } minimumValueLabel: {
                             Text("0.5").font(.caption2).foregroundStyle(.secondary)
                         } maximumValueLabel: {
                             Text("200").font(.caption2).foregroundStyle(.secondary)
                         }
-                        .tint(.orange)
+                        .tint(.teal)
+                        Text("0.5er Schritte · 0.5 – 200 mg").font(.caption).foregroundStyle(.secondary)
                     }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text("Dosierung")
-                } footer: {
-                    Text("0.5er Schritte · 0.5 – 200 mg")
-                        .font(.caption)
-                }
-
-                Section {
-                    Toggle("Schubtherapie (erhöhte Dosis)", isOn: $istSchubTherapie)
-                        .tint(.red)
-                }
-
-                Section("Notizen") {
+                    .padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("Schubtherapie (erhöhte Dosis)").foregroundStyle(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $istSchubTherapie).labelsHidden().tint(.red)
+                    }
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
                     TextField("Hinweise, Nebenwirkungen…", text: $notizen, axis: .vertical)
-                        .lineLimit(2...4)
+                        .lineLimit(2...4).font(.subheadline).padding(16)
                 }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
             }
-            .navigationTitle(eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
-                }
-            }
+            .padding(.horizontal).padding(.vertical, 24)
         }
-        .onAppear { laden() }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var speichernLeiste: some View {
+        Button { speichern() } label: {
+            Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func laden() {

@@ -144,33 +144,71 @@ struct RemissionsFormView: View {
     @State private var beginn  = Date()
     @State private var notizen = ""
 
+    @State private var schritt = 0
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Remission beginnen") {
-                    DatePicker("Startdatum", selection: $beginn, displayedComponents: [.date])
-                }
-
-                Section("Notizen") {
-                    TextField("Optionale Anmerkungen", text: $notizen, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-
-                Section {
-                    Label("Eine Remission wird als aktiv markiert bis du sie manuell beendest.",
-                          systemImage: "info.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .listRowBackground(Color.clear)
+            VStack(spacing: 0) {
+                schritt0
+                    .frame(maxHeight: .infinity)
+                speichernLeiste
             }
             .navigationTitle("Neue Remissionsphase")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Beginnen") { speichern() } }
             }
         }
+    }
+
+    private var schritt0: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "checkmark.seal.fill", titel: "Remissionsphase", untertitel: "Startdatum und optionale Notizen")
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Startdatum").foregroundStyle(.secondary)
+                        Spacer()
+                        DatePicker("", selection: $beginn, displayedComponents: [.date]).labelsHidden()
+                    }
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    TextField("Optionale Anmerkungen", text: $notizen, axis: .vertical)
+                        .lineLimit(3...6).font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle").foregroundStyle(.secondary)
+                    Text("Eine Remission wird als aktiv markiert bis du sie manuell beendest.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 4)
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var speichernLeiste: some View {
+        Button { speichern() } label: {
+            Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func speichern() {

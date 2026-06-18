@@ -137,49 +137,162 @@ struct DiagnoseForm: View {
     @State private var notizen = ""
     @State private var zeigeVorschlaege = false
 
+    @State private var schritt = 0
+    private let maxSchritt = 1
+    private let pflichtSchritte: Set<Int> = [0]
+
+    private var kannWeiter: Bool {
+        !bezeichnung.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Diagnose") {
-                    TextField("Bezeichnung", text: $bezeichnung)
-
-                    Picker("Vorschlag", selection: $bezeichnung) {
-                        Text("Eigene Eingabe").tag("")
-                        ForEach(Diagnose.haeufigeVorschlaege, id: \.self) { name in
-                            Text(name).tag(name)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .foregroundStyle(.secondary)
-
-                    TextField("ICD-Code (z.B. M05)", text: $icdCode)
-                        .textInputAutocapitalization(.characters)
-                }
-
-                Section("Status & Datum") {
-                    Toggle("Aktive Diagnose", isOn: $aktiv)
-                    Toggle("Diagnosedatum bekannt", isOn: $hatDatum)
-                    if hatDatum {
-                        DatePicker("Datum", selection: $datum, in: ...Date(), displayedComponents: [.date])
+            VStack(spacing: 0) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.teal.opacity(0.15)).frame(height: 3)
+                        Capsule().fill(Color.teal)
+                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
+                            .animation(.easeInOut(duration: 0.3), value: schritt)
                     }
                 }
+                .frame(height: 3).padding(.horizontal).padding(.top, 10)
 
-                Section("Notizen") {
-                    TextField("Hinweise, Verlauf…", text: $notizen, axis: .vertical)
-                        .lineLimit(2...5)
+                Group {
+                    switch schritt {
+                    case 0: schritt0
+                    default: schritt1
+                    }
                 }
+                .frame(maxHeight: .infinity)
+
+                navigationsLeiste
             }
             .navigationTitle(diagnose == nil ? "Neue Diagnose" : "Diagnose bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
-                        .disabled(bezeichnung.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
             }
         }
         .onAppear { laden() }
+    }
+
+    private var schritt0: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "stethoscope", titel: "Diagnose", untertitel: "Bezeichnung und ICD-Code erfassen")
+
+                VStack(spacing: 0) {
+                    TextField("Bezeichnung", text: $bezeichnung)
+                        .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("Vorschlag").foregroundStyle(.secondary)
+                        Spacer()
+                        Picker("", selection: $bezeichnung) {
+                            Text("Eigene Eingabe").tag("")
+                            ForEach(Diagnose.haeufigeVorschlaege, id: \.self) { name in
+                                Text(name).tag(name)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .foregroundStyle(.secondary)
+                    }
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("ICD-Code").foregroundStyle(.secondary)
+                        Spacer()
+                        TextField("z.B. M05", text: $icdCode)
+                            .textInputAutocapitalization(.characters)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    .font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var schritt1: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "doc.text.fill", titel: "Details", untertitel: "Status, Datum und Notizen (optional)")
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Aktive Diagnose").foregroundStyle(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $aktiv).labelsHidden().tint(.teal)
+                    }
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("Diagnosedatum bekannt").foregroundStyle(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $hatDatum).labelsHidden().tint(.teal)
+                    }
+                    .font(.subheadline).padding(16)
+                    if hatDatum {
+                        Divider().padding(.leading, 16)
+                        HStack {
+                            Text("Datum").foregroundStyle(.secondary)
+                            Spacer()
+                            DatePicker("", selection: $datum, in: ...Date(), displayedComponents: [.date]).labelsHidden()
+                        }
+                        .font(.subheadline).padding(16)
+                    }
+                    Divider().padding(.leading, 16)
+                    TextField("Hinweise, Verlauf…", text: $notizen, axis: .vertical)
+                        .lineLimit(2...5).font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button { withAnimation { schritt -= 1 } } label: {
+                    Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Überspringen").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            if schritt < maxSchritt {
+                Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
+                    Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(kannWeiter ? Color.teal : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain).disabled(!kannWeiter)
+            } else {
+                Button { speichern() } label: {
+                    Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding().background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func laden() {

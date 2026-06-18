@@ -131,63 +131,170 @@ struct PhysioFormView: View {
     @State private var schmerzNachher = 0
     @State private var notizen        = ""
 
+    @State private var schritt = 0
+    private let maxSchritt = 1
+    private let pflichtSchritte: Set<Int> = [0, 1]
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Session") {
-                    DatePicker("Datum", selection: $datum, displayedComponents: [.date])
-
-                    Picker("Typ", selection: $typ) {
-                        ForEach(PhysioTyp.allCases, id: \.self) { t in
-                            Label(t.rawValue, systemImage: t.symbol).tag(t)
-                        }
+            VStack(spacing: 0) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.teal.opacity(0.15)).frame(height: 3)
+                        Capsule().fill(Color.teal)
+                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
+                            .animation(.easeInOut(duration: 0.3), value: schritt)
                     }
-
-                    Stepper("Dauer: \(dauerMinuten) min",
-                            value: $dauerMinuten, in: 5...180, step: 5)
                 }
+                .frame(height: 3).padding(.horizontal).padding(.top, 10)
 
-                Section("Übungen") {
-                    TextField("Durchgeführte Übungen", text: $uebungen, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-
-                Section("Schmerzentwicklung") {
-                    HStack {
-                        Text("Vorher")
-                        Spacer()
-                        Text("\(schmerzVorher)").font(.headline.bold()).foregroundStyle(schmerzFarbe(schmerzVorher))
+                Group {
+                    switch schritt {
+                    case 0: schritt0
+                    default: schritt1
                     }
-                    Slider(value: Binding(
-                        get: { Double(schmerzVorher) },
-                        set: { schmerzVorher = Int($0) }
-                    ), in: 0...10, step: 1)
-                    .tint(schmerzFarbe(schmerzVorher))
-
-                    HStack {
-                        Text("Nachher")
-                        Spacer()
-                        Text("\(schmerzNachher)").font(.headline.bold()).foregroundStyle(schmerzFarbe(schmerzNachher))
-                    }
-                    Slider(value: Binding(
-                        get: { Double(schmerzNachher) },
-                        set: { schmerzNachher = Int($0) }
-                    ), in: 0...10, step: 1)
-                    .tint(schmerzFarbe(schmerzNachher))
                 }
+                .frame(maxHeight: .infinity)
 
-                Section("Notizen") {
-                    TextField("Optionale Notizen", text: $notizen, axis: .vertical)
-                        .lineLimit(3...6)
-                }
+                navigationsLeiste
             }
-            .navigationTitle("Neue Session")
+            .navigationTitle(schritt == 0 ? "Neue Session" : "Bewertung")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Speichern") { speichern() } }
             }
         }
+    }
+
+    private var schritt0: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "figure.walk", titel: "Physiotherapie", untertitel: "Session-Daten erfassen")
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Datum").foregroundStyle(.secondary)
+                        Spacer()
+                        DatePicker("", selection: $datum, displayedComponents: [.date]).labelsHidden()
+                    }
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("Dauer").foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(dauerMinuten) min").font(.subheadline.bold())
+                        Stepper("", value: $dauerMinuten, in: 5...180, step: 5).labelsHidden()
+                    }
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Übungsart").font(.subheadline).foregroundStyle(.secondary)
+                            .padding(.horizontal, 16).padding(.top, 12)
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                            ForEach(PhysioTyp.allCases, id: \.self) { t in
+                                let sel = typ == t
+                                Button { typ = t } label: {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: t.symbol).font(.title3)
+                                        Text(t.rawValue).font(.caption2).multilineTextAlignment(.center)
+                                    }
+                                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                    .background(sel ? Color.teal : Color(.tertiarySystemGroupedBackground),
+                                                in: RoundedRectangle(cornerRadius: 10))
+                                    .foregroundStyle(sel ? .white : .primary)
+                                    .animation(.easeInOut(duration: 0.15), value: sel)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 16).padding(.bottom, 12)
+                    }
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var schritt1: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "chart.bar.fill", titel: "Bewertung", untertitel: "Schmerzentwicklung & Notizen")
+
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Schmerz vorher").foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(schmerzVorher)").font(.headline.bold()).foregroundStyle(schmerzFarbe(schmerzVorher))
+                        }
+                        .font(.subheadline)
+                        Slider(value: Binding(get: { Double(schmerzVorher) }, set: { schmerzVorher = Int($0) }),
+                               in: 0...10, step: 1).tint(schmerzFarbe(schmerzVorher))
+                    }
+                    .padding(16)
+                    Divider().padding(.leading, 16)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Schmerz nachher").foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(schmerzNachher)").font(.headline.bold()).foregroundStyle(schmerzFarbe(schmerzNachher))
+                        }
+                        .font(.subheadline)
+                        Slider(value: Binding(get: { Double(schmerzNachher) }, set: { schmerzNachher = Int($0) }),
+                               in: 0...10, step: 1).tint(schmerzFarbe(schmerzNachher))
+                    }
+                    .padding(16)
+                    Divider().padding(.leading, 16)
+                    TextField("Optionale Notizen", text: $notizen, axis: .vertical)
+                        .lineLimit(3...6).font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button { withAnimation { schritt -= 1 } } label: {
+                    Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Überspringen").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            if schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            } else {
+                Button { speichern() } label: {
+                    Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding().background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func schmerzFarbe(_ wert: Int) -> Color {

@@ -164,48 +164,92 @@ struct ImpfForm: View {
     @State private var intervallMonate = 12
     @State private var notizen = ""
 
+    @State private var schritt = 0
     private let intervalle = [6: "6 Monate", 12: "1 Jahr", 24: "2 Jahre",
                                36: "3 Jahre", 60: "5 Jahre", 120: "10 Jahre", 0: "Einmalig"]
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Impfstoff") {
-                    TextField("Name (z.B. Influenza)", text: $impfstoff)
-                }
-
-                Section("Letzte Impfung") {
-                    Toggle("Datum bekannt", isOn: $hatLetzte)
-                    if hatLetzte {
-                        DatePicker("Datum", selection: $letzteImpfung, in: ...Date(), displayedComponents: [.date])
-                    }
-                }
-
-                Section("Wiederholungsintervall") {
-                    Picker("Intervall", selection: $intervallMonate) {
-                        ForEach(Array(intervalle.keys).sorted(), id: \.self) { k in
-                            Text(intervalle[k]!).tag(k)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                }
-
-                Section("Notizen") {
-                    TextField("Hinweise, Chargen-Nr…", text: $notizen, axis: .vertical)
-                        .lineLimit(2...4)
-                }
+            VStack(spacing: 0) {
+                schritt0
+                    .frame(maxHeight: .infinity)
+                speichernLeiste
             }
             .navigationTitle(impfung == nil ? "Neue Impfung" : "Impfung bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
-                        .disabled(impfstoff.isEmpty)
-                }
             }
         }
         .onAppear { laden() }
+    }
+
+    private var schritt0: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "syringe.fill", titel: "Impfung", untertitel: "Impfdaten erfassen")
+
+                VStack(spacing: 0) {
+                    TextField("Name (z.B. Influenza)", text: $impfstoff)
+                        .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("Datum bekannt").foregroundStyle(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $hatLetzte).labelsHidden().tint(.teal)
+                    }
+                    .font(.subheadline).padding(16)
+                    if hatLetzte {
+                        Divider().padding(.leading, 16)
+                        HStack {
+                            Text("Datum").foregroundStyle(.secondary)
+                            Spacer()
+                            DatePicker("", selection: $letzteImpfung, in: ...Date(), displayedComponents: [.date]).labelsHidden()
+                        }
+                        .font(.subheadline).padding(16)
+                    }
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("Intervall").foregroundStyle(.secondary)
+                        Spacer()
+                        Picker("", selection: $intervallMonate) {
+                            ForEach(Array(intervalle.keys).sorted(), id: \.self) { k in
+                                Text(intervalle[k]!).tag(k)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    TextField("Hinweise, Chargen-Nr…", text: $notizen, axis: .vertical)
+                        .lineLimit(2...4).font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var speichernLeiste: some View {
+        Button { speichern() } label: {
+            Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(impfstoff.isEmpty ? Color.secondary : Color.teal, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .disabled(impfstoff.isEmpty)
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func laden() {

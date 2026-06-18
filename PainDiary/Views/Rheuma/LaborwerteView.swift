@@ -169,48 +169,39 @@ struct LaborwertForm: View {
     @State private var notizen = ""
     @State private var zeigePicker = false
 
+    @State private var schritt = 0
+    private let maxSchritt = 1
+    private let pflichtSchritte: Set<Int> = [0]
+
+    private var kannWeiter: Bool { !typ.isEmpty && !wertStr.isEmpty }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Zeitpunkt") {
-                    DatePicker("Datum", selection: $datum, displayedComponents: [.date])
-                }
-
-                Section("Laborwert") {
-                    HStack {
-                        TextField("Typ (z.B. CRP)", text: $typ)
-                        Button { zeigePicker = true } label: {
-                            Image(systemName: "list.bullet").foregroundStyle(Color.accentColor)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    HStack {
-                        TextField("Wert", text: $wertStr).keyboardType(.decimalPad)
-                        TextField("Einheit", text: $einheit)
+            VStack(spacing: 0) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.teal.opacity(0.15)).frame(height: 3)
+                        Capsule().fill(Color.teal)
+                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
+                            .animation(.easeInOut(duration: 0.3), value: schritt)
                     }
                 }
+                .frame(height: 3).padding(.horizontal).padding(.top, 10)
 
-                Section("Referenzbereich (optional)") {
-                    HStack {
-                        TextField("Min", text: $refMinStr).keyboardType(.decimalPad)
-                        Text("–")
-                        TextField("Max", text: $refMaxStr).keyboardType(.decimalPad)
+                Group {
+                    switch schritt {
+                    case 0: schritt0
+                    default: schritt1
                     }
                 }
+                .frame(maxHeight: .infinity)
 
-                Section {
-                    TextField("Notizen", text: $notizen, axis: .vertical)
-                        .lineLimit(3...6)
-                }
+                navigationsLeiste
             }
             .navigationTitle(wert == nil ? "Neuer Wert" : "Wert bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
-                        .disabled(typ.isEmpty || wertStr.isEmpty)
-                }
             }
             .sheet(isPresented: $zeigePicker) {
                 NavigationStack {
@@ -237,6 +228,108 @@ struct LaborwertForm: View {
             }
         }
         .onAppear { ladeWerte() }
+    }
+
+    private var schritt0: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "drop.fill", titel: "Laborwert", untertitel: "Parameter, Wert und Datum erfassen")
+
+                VStack(spacing: 0) {
+                    HStack {
+                        TextField("Typ (z.B. CRP)", text: $typ)
+                            .font(.subheadline)
+                        Button { zeigePicker = true } label: {
+                            Image(systemName: "list.bullet").foregroundStyle(Color.teal)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack(spacing: 8) {
+                        TextField("Wert", text: $wertStr).keyboardType(.decimalPad).font(.subheadline)
+                        Text("·").foregroundStyle(.secondary)
+                        TextField("Einheit", text: $einheit).font(.subheadline)
+                    }
+                    .padding(16)
+                    Divider().padding(.leading, 16)
+                    HStack {
+                        Text("Datum").foregroundStyle(.secondary)
+                        Spacer()
+                        DatePicker("", selection: $datum, displayedComponents: [.date]).labelsHidden()
+                    }
+                    .font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var schritt1: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "chart.bar.fill", titel: "Referenzwerte", untertitel: "Normbereich und Notizen (optional)")
+
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        Text("Min").foregroundStyle(.secondary).font(.subheadline)
+                        TextField("Min", text: $refMinStr).keyboardType(.decimalPad).font(.subheadline)
+                        Text("–").foregroundStyle(.secondary)
+                        TextField("Max", text: $refMaxStr).keyboardType(.decimalPad).font(.subheadline)
+                        Text("Max").foregroundStyle(.secondary).font(.subheadline)
+                    }
+                    .padding(16)
+                    Divider().padding(.leading, 16)
+                    TextField("Notizen", text: $notizen, axis: .vertical)
+                        .lineLimit(3...6).font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button { withAnimation { schritt -= 1 } } label: {
+                    Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Überspringen").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            if schritt < maxSchritt {
+                Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
+                    Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(kannWeiter ? Color.teal : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain).disabled(!kannWeiter)
+            } else {
+                Button { speichern() } label: {
+                    Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding().background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func ladeWerte() {
