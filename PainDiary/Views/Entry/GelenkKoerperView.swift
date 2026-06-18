@@ -58,6 +58,10 @@ struct GelenkKoerperView: UIViewRepresentable {
                                           action: #selector(Coordinator.handlePan(_:)))
         v.addGestureRecognizer(pan)
 
+        let pinch = UIPinchGestureRecognizer(target: context.coordinator,
+                                               action: #selector(Coordinator.handlePinch(_:)))
+        v.addGestureRecognizer(pinch)
+
         let doubleTap = UITapGestureRecognizer(target: context.coordinator,
                                                 action: #selector(Coordinator.handleDoubleTap(_:)))
         doubleTap.numberOfTapsRequired = 2
@@ -176,6 +180,14 @@ struct GelenkKoerperView: UIViewRepresentable {
                 camNode.position.y = max(-1.0, min(1.0, newY))
             }
             g.setTranslation(.zero, in: v)
+        }
+
+        @objc func handlePinch(_ g: UIPinchGestureRecognizer) {
+            guard let cam = scnView?.scene?.rootNode
+                    .childNodes.first(where: { $0.camera != nil })?.camera else { return }
+            let newFOV = cam.fieldOfView / CGFloat(g.scale)
+            cam.fieldOfView = max(12, min(55, newFOV))
+            g.scale = 1
         }
 
         @objc func handleDoubleTap(_ g: UITapGestureRecognizer) {
