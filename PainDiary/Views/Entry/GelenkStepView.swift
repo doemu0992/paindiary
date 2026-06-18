@@ -46,7 +46,7 @@ struct GelenkStepView: View {
 
             case .koerper:
                 GelenkKoerperView(statusDict: statusDict, onTap: handleTap)
-                    .frame(height: 360)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 Text("Tippen zum Markieren · Wischen zum Drehen · Doppeltippen zum Zurücksetzen · Rücken/Wirbelsäule: Figur drehen")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -54,6 +54,7 @@ struct GelenkStepView: View {
                     .padding(.horizontal)
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .onAppear { statusDict = GelenkStatusCoder.decode(gelenkStatus) }
         .onChange(of: statusDict) { _, neu in gelenkStatus = GelenkStatusCoder.encode(neu) }
         .sheet(item: $ausgewaehltesGelenk) { gelenk in
