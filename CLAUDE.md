@@ -18,6 +18,25 @@ Every new screen, module, and edit must follow these rules.
 
 **Neues Modul:** einfach nächste freie Farbe aus SwiftUI-Palette wählen (z.B. `.indigo`, `.mint`, `.cyan`, `.pink`). Farbe in diese Tabelle eintragen. Niemals eine bereits vergebene Farbe wiederverwenden.
 
+### Farbkonsistenz-Regel (bindend)
+
+> **Alle Views eines Moduls verwenden exakt dieselbe Modul-Tintfarbe.**
+
+Das gilt ausnahmslos für:
+- Dashboard-Kachel (Icon, Text, Chart, Plus-Button)
+- Modul-Hauptseite (Header-Label, Analyse-Button)
+- AnalyseView (Karten-Titel, Chart-Farbe, Anpassen-Icon)
+- Alle Sub-Views des Moduls (HAQ, FACIT, Kortison, Biologika, …)
+- Wizard/Form `progressTint`
+
+**Semantische Ausnahmen** (erlaubt, weil inhaltlich begründet):
+- `.red` / `.orange` / `.green` für Statuswerte (Hypo, Hyper, gut/schlecht)
+- `.indigo` für HAQ-Score (etablierter medizinischer Kontext)
+- `.orange` für Morgensteifigkeit > 30 Min. (Warnfarbe)
+- `.red` für Schübe / Gefahrenwerte
+
+Bei einem neuen Modul: **zuerst Farbe in Tabelle eintragen**, dann konsequent durch alle Views ziehen — Kachel, Hauptseite, Analyse, Sub-Views.
+
 ---
 
 ## Dashboard-Kacheln (Übersicht)
@@ -251,9 +270,11 @@ private func statPill(_ wert: String, label: String, farbe: Color) -> some View 
 
 Vor dem Merge eines neuen Moduls prüfen:
 - [ ] Neue Modul-Farbe gewählt (noch nicht vergeben) und in Farbtabelle eingetragen
+- [ ] **Modul-Tintfarbe durch alle Views gezogen** (Kachel / Hauptseite / AnalyseView / alle Sub-Views)
 - [ ] Card-Hintergrund `secondarySystemGroupedBackground`
 - [ ] Wohlbefinden-Schritt via `WohlbefindenStepView` (kein Inline-Code)
 - [ ] Wizard-Navigationsmuster identisch zu bestehenden Wizards
 - [ ] Keine doppelten `fatigueFarbe`, `stressLabel`, `stimmungFarben` etc.
 - [ ] Modul-Hauptseite als `List` mit Stats-Header + `.navigationBarTitleDisplayMode(.large)`
 - [ ] Dashboard-Kachel nach Template (3 Stats / Mini-Chart / Nav-Link / Plus-Button)
+- [ ] Grep nach alter/falscher Farbe im Modul-Ordner vor Merge (`grep -r "\.wrongColor" Views/MeinModul/`)
