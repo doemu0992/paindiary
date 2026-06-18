@@ -579,7 +579,7 @@ private struct MedikamentZeile: View {
     }
 }
 
-// MARK: - Formular
+// MARK: - Formular (Wizard)
 
 struct MedikamentFormView: View {
     @Environment(\.modelContext) private var modelContext
@@ -603,8 +603,12 @@ struct MedikamentFormView: View {
     @State private var vorratSchwelle: Int = 7
     @State private var ablaufAktiv: Bool = false
     @State private var ablaufDatumState: Date = Date()
+    @State private var schritt = 0
 
     private let notif = NotificationManager.shared
+    private let maxSchritt = 2
+    private let pflichtSchritte: Set<Int> = [0, 1]
+
     private let frequenzOptionen = [
         "1× täglich", "2× täglich", "3× täglich",
         "Morgens", "Abends", "Morgens & Abends",
@@ -617,134 +621,338 @@ struct MedikamentFormView: View {
 
     private var anzahlZeiten: Int { notif.anzahlDosen(frequenz) }
 
+    private var kannWeiter: Bool {
+        switch schritt {
+        case 0: return !name.trimmingCharacters(in: .whitespaces).isEmpty
+        case 1: return !frequenz.isEmpty
+        default: return true
+        }
+    }
+
+    // MARK: - Body
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Medikament") {
-                    TextField("Name (z.B. Ibuprofen)", text: $name)
-                    TextField("Dosierung (z.B. 400 mg)", text: $dosierung)
-                    Picker("Art", selection: $medikamentTyp) {
-                        ForEach(MedikamentTyp.allCases, id: \.rawValue) { typ in
-                            Label(typ.rawValue, systemImage: typ.symbol).tag(typ.rawValue)
-                        }
-                    }
-                    .onChange(of: medikamentTyp) { _, neue in
-                        guard let typ = MedikamentTyp(rawValue: neue) else { return }
-                        if typ.istInjektion { wirkungsAbfrageStunden = 24 }
-                        else if wirkungsAbfrageStunden == 24 { wirkungsAbfrageStunden = 2 }
-                    }
-                    Picker("Einnahmehinweis", selection: $einnahmeHinweis) {
-                        ForEach(hinweisOptionen, id: \.self) { opt in
-                            Text(opt.isEmpty ? "Kein Hinweis" : opt).tag(opt)
-                        }
+            VStack(spacing: 0) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.blue.opacity(0.15)).frame(height: 3)
+                        Capsule().fill(Color.blue)
+                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
+                            .animation(.easeInOut(duration: 0.3), value: schritt)
                     }
                 }
+                .frame(height: 3)
+                .padding(.horizontal)
+                .padding(.top, 10)
 
-                Section {
-                    Toggle("Vorrat verfolgen", isOn: $vorratAktiv)
-                    if vorratAktiv {
-                        Stepper("Aktueller Vorrat: \(vorratAnzahl)", value: $vorratAnzahl, in: 0...999)
-                        Stepper("Warnung ab: \(vorratSchwelle) Stück", value: $vorratSchwelle, in: 1...99)
-                    }
-                } header: {
-                    Text("Vorrat")
-                } footer: {
-                    if vorratAktiv {
-                        Text("Du erhältst eine Benachrichtigung wenn der Vorrat auf \(vorratSchwelle) Stück fällt.")
+                Group {
+                    switch schritt {
+                    case 0: schritt0
+                    case 1: schritt1
+                    default: schritt2
                     }
                 }
+                .frame(maxHeight: .infinity)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing),
+                    removal: .move(edge: .leading)
+                ))
 
-                Section {
-                    Toggle("Ablaufdatum setzen", isOn: $ablaufAktiv)
-                    if ablaufAktiv {
-                        DatePicker("Ablaufdatum", selection: $ablaufDatumState, displayedComponents: .date)
-                    }
-                } header: {
-                    Text("Verfallsdatum")
-                } footer: {
-                    if ablaufAktiv {
-                        Text("Du erhältst eine Erinnerung 7 Tage vor dem Ablaufdatum.")
-                    }
-                }
-
-                Section("Einnahme") {
-                    Picker("Frequenz", selection: $frequenz) {
-                        Text("Bitte wählen").tag("")
-                        ForEach(frequenzOptionen, id: \.self) { Text($0).tag($0) }
-                    }
-                    .onChange(of: frequenz) { old, neue in
-                        // old is "" during initial load from ladeWerte() — skip to preserve saved times
-                        guard medikament == nil || !old.isEmpty else { return }
-                        aktualisiereStandardZeiten(neue)
-                    }
-                    DatePicker("Seit", selection: $startDatum, displayedComponents: .date)
-                }
-
-                Section {
-                    Toggle("Aktiv / Wird eingenommen", isOn: $aktiv)
-                    if !aktiv {
-                        DatePicker("Abgesetzt am", selection: $endDatum, displayedComponents: .date)
-                    }
-                }
-
-                if !frequenz.isEmpty && frequenz != "Bei Bedarf" {
-                    Section {
-                        Toggle(isOn: $erinnerungAktiv) {
-                            Label("Push-Erinnerung", systemImage: "bell.badge")
-                        }
-                        .onChange(of: erinnerungAktiv) { _, an in
-                            if an && notif.status == .notDetermined {
-                                Task { await notif.berechtigungAnfordern() }
-                            }
-                        }
-
-                        if erinnerungAktiv {
-                            ForEach(0..<max(1, anzahlZeiten), id: \.self) { i in
-                                if i < erinnerungsZeiten.count {
-                                    DatePicker(
-                                        anzahlZeiten > 1 ? "Zeit \(i + 1)" : "Uhrzeit",
-                                        selection: $erinnerungsZeiten[i],
-                                        displayedComponents: .hourAndMinute
-                                    )
-                                }
-                            }
-                        }
-                    } header: {
-                        Text("Erinnerungen")
-                    } footer: {
-                        if erinnerungAktiv && anzahlZeiten > 0 {
-                            Text("Du erhältst täglich \(anzahlZeiten == 1 ? "eine" : "\(anzahlZeiten)") Erinnerung\(anzahlZeiten > 1 ? "en" : "") zur eingestellten Zeit.")
-                        }
-                    }
-                }
-
-                if !frequenz.isEmpty {
-                    Section {
-                        Picker("Wirksamkeits-Abfrage", selection: $wirkungsAbfrageStunden) {
-                            Text("Nach 2 Stunden").tag(2)
-                            Text("Nach 24 Stunden").tag(24)
-                            Text("Nach 48 Stunden").tag(48)
-                        }
-                    } header: {
-                        Text("Wirkung")
-                    } footer: {
-                        Text(frequenz == "Wöchentlich" || frequenz == "Monatlich"
-                             ? "Empfohlen: 24–48h nach der Einnahme. Du wirst dann nach der Wirkung gefragt."
-                             : "Nach dieser Zeit erhältst du eine Abfrage, ob das Medikament gewirkt hat.")
-                    }
-                }
+                navigationsLeiste
             }
             .navigationTitle(medikament == nil ? "Neues Medikament" : "Medikament bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || frequenz.isEmpty)
-                }
             }
             .onAppear { ladeWerte() }
         }
+    }
+
+    // MARK: - Schritt 0: Medikament
+
+    private var schritt0: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "pill.fill", titel: "Medikament", untertitel: "Name, Typ und Einnahmehinweis")
+
+                VStack(spacing: 0) {
+                    TextField("Name (z.B. Ibuprofen)", text: $name)
+                        .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    TextField("Dosierung (z.B. 400 mg)", text: $dosierung)
+                        .font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Art").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                        ForEach(MedikamentTyp.allCases, id: \.rawValue) { typ in
+                            let ausgewaehlt = medikamentTyp == typ.rawValue
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) { medikamentTyp = typ.rawValue }
+                                if typ.istInjektion { wirkungsAbfrageStunden = 24 }
+                                else if wirkungsAbfrageStunden == 24 { wirkungsAbfrageStunden = 2 }
+                            } label: {
+                                VStack(spacing: 6) {
+                                    Image(systemName: typ.symbol)
+                                        .font(.title3)
+                                        .foregroundStyle(ausgewaehlt ? .white : .blue)
+                                    Text(typ.rawValue)
+                                        .font(.caption2)
+                                        .foregroundStyle(ausgewaehlt ? .white : .primary)
+                                        .multilineTextAlignment(.center)
+                                        .lineLimit(2)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Einnahmehinweis").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(hinweisOptionen, id: \.self) { opt in
+                                let ausgewaehlt = einnahmeHinweis == opt
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.15)) { einnahmeHinweis = opt }
+                                } label: {
+                                    Text(opt.isEmpty ? "Kein Hinweis" : opt)
+                                        .font(.caption.bold())
+                                        .padding(.horizontal, 12).padding(.vertical, 7)
+                                        .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                        .foregroundStyle(ausgewaehlt ? .white : .primary)
+                                        .clipShape(Capsule())
+                                        .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: - Schritt 1: Einnahme
+
+    private var schritt1: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "calendar.badge.clock", titel: "Einnahme", untertitel: "Frequenz und Startdatum")
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Wie oft?").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                        ForEach(frequenzOptionen, id: \.self) { opt in
+                            let ausgewaehlt = frequenz == opt
+                            Button {
+                                let alt = frequenz
+                                frequenz = opt
+                                if medikament == nil || !alt.isEmpty { aktualisiereStandardZeiten(opt) }
+                            } label: {
+                                Text(opt)
+                                    .font(.caption.bold())
+                                    .multilineTextAlignment(.center)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 11)
+                                    .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                    .foregroundStyle(ausgewaehlt ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                VStack(spacing: 0) {
+                    HStack {
+                        DatePicker("Seit", selection: $startDatum, displayedComponents: .date)
+                            .font(.subheadline)
+                    }
+                    .padding(16)
+                    Divider().padding(.leading, 16)
+                    Toggle("Aktiv / Wird eingenommen", isOn: $aktiv)
+                        .font(.subheadline).padding(16)
+                    if !aktiv {
+                        Divider().padding(.leading, 16)
+                        DatePicker("Abgesetzt am", selection: $endDatum, displayedComponents: .date)
+                            .font(.subheadline).padding(16)
+                    }
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                if !frequenz.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Wirksamkeits-Abfrage").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                        HStack(spacing: 8) {
+                            ForEach([(2, "Nach 2 Std."), (24, "Nach 24 Std."), (48, "Nach 48 Std.")], id: \.0) { std, label in
+                                let ausgewaehlt = wirkungsAbfrageStunden == std
+                                Button { wirkungsAbfrageStunden = std } label: {
+                                    Text(label)
+                                        .font(.caption.bold())
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                        .foregroundStyle(ausgewaehlt ? .white : .primary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: - Schritt 2: Extras
+
+    private var schritt2: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "bell.badge.fill", titel: "Extras", untertitel: "Erinnerungen, Vorrat & Ablaufdatum")
+
+                if !frequenz.isEmpty && frequenz != "Bei Bedarf" {
+                    VStack(spacing: 0) {
+                        Toggle(isOn: $erinnerungAktiv) {
+                            Label("Push-Erinnerung", systemImage: "bell.badge").font(.subheadline)
+                        }
+                        .padding(16)
+                        .onChange(of: erinnerungAktiv) { _, an in
+                            if an && notif.status == .notDetermined {
+                                Task { await notif.berechtigungAnfordern() }
+                            }
+                        }
+                        if erinnerungAktiv {
+                            ForEach(0..<max(1, anzahlZeiten), id: \.self) { i in
+                                if i < erinnerungsZeiten.count {
+                                    Divider().padding(.leading, 16)
+                                    DatePicker(
+                                        anzahlZeiten > 1 ? "Zeit \(i + 1)" : "Uhrzeit",
+                                        selection: $erinnerungsZeiten[i],
+                                        displayedComponents: .hourAndMinute
+                                    )
+                                    .font(.subheadline).padding(16)
+                                }
+                            }
+                        }
+                    }
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }
+
+                VStack(spacing: 0) {
+                    Toggle("Vorrat verfolgen", isOn: $vorratAktiv)
+                        .font(.subheadline).padding(16)
+                    if vorratAktiv {
+                        Divider().padding(.leading, 16)
+                        Stepper("Aktueller Vorrat: \(vorratAnzahl)", value: $vorratAnzahl, in: 0...999)
+                            .font(.subheadline).padding(16)
+                        Divider().padding(.leading, 16)
+                        Stepper("Warnung ab: \(vorratSchwelle) Stück", value: $vorratSchwelle, in: 1...99)
+                            .font(.subheadline).padding(16)
+                    }
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                VStack(spacing: 0) {
+                    Toggle("Ablaufdatum setzen", isOn: $ablaufAktiv)
+                        .font(.subheadline).padding(16)
+                    if ablaufAktiv {
+                        Divider().padding(.leading, 16)
+                        DatePicker("Ablaufdatum", selection: $ablaufDatumState, displayedComponents: .date)
+                            .font(.subheadline).padding(16)
+                    }
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: - Navigation
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button {
+                    withAnimation { schritt -= 1 }
+                } label: {
+                    Text("Zurück")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Überspringen")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+
+            if schritt < maxSchritt {
+                Button {
+                    guard kannWeiter else { return }
+                    withAnimation { schritt += 1 }
+                } label: {
+                    Text("Weiter ›")
+                        .font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(kannWeiter ? Color.blue : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .disabled(!kannWeiter)
+            } else {
+                Button { speichern() } label: {
+                    Label("Speichern", systemImage: "checkmark")
+                        .font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || frequenz.isEmpty)
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    // MARK: - Header Helper
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.blue)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.bottom, 4)
     }
 
     private func aktualisiereStandardZeiten(_ frequenz: String) {
