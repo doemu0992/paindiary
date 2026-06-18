@@ -12,6 +12,7 @@ enum DeepLink: Equatable {
     case wellnessAnzeigen
     case zyklusAnzeigen
     case migraenePostdromNachfassen(datumInterval: Double)
+    case biologikaAnzeigen
 }
 
 @Observable
@@ -81,6 +82,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 pendingDeepLink = .wellnessAnzeigen
             } else if id.hasPrefix("zyklus-") {
                 pendingDeepLink = .zyklusAnzeigen
+            } else if id.hasPrefix("biologika-") {
+                pendingDeepLink = .biologikaAnzeigen
             }
             completionHandler()
         }
@@ -223,6 +226,32 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func loescheWasserErinnerung() {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: ["wasser-erinnerung"])
+    }
+
+    // MARK: - Biologika-Erinnerung
+
+    func planeBiologikaErinnerung(injektion: BiologikaInjektion) {
+        guard status == .authorized, let naechste = injektion.naechsteDosis, naechste > Date() else { return }
+        loescheBiologikaErinnerung(injektion: injektion)
+        let id = biologikaNotifID(injektion)
+        let kal = Calendar.current
+        var dc = kal.dateComponents([.year, .month, .day], from: naechste)
+        dc.hour = 9; dc.minute = 0
+        scheduleEinmalig(
+            id: id,
+            titel: "💉 \(injektion.praeparat)",
+            body: "Heute ist deine nächste Biologika-Dosis fällig.",
+            components: dc
+        )
+    }
+
+    func loescheBiologikaErinnerung(injektion: BiologikaInjektion) {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: [biologikaNotifID(injektion)])
+    }
+
+    private func biologikaNotifID(_ injektion: BiologikaInjektion) -> String {
+        "biologika-\(Int(injektion.datum.timeIntervalSince1970))"
     }
 
     // MARK: - Tages-Erinnerung

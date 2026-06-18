@@ -301,7 +301,9 @@ struct BiologikaForm: View {
 
     private func speichern() {
         let name = gewaehltesPreaparat
+        let nm = NotificationManager.shared
         if let i = injektion {
+            nm.loescheBiologikaErinnerung(injektion: i)
             i.praeparat = name
             i.datum = datum
             i.dosierungMg = dosierungMg
@@ -309,6 +311,7 @@ struct BiologikaForm: View {
             i.injektionsstelle = injektionsstelle
             i.naechsteDosis = hatErinnerung ? naechsteDosis : nil
             i.notizen = notizen
+            if hatErinnerung { nm.planeBiologikaErinnerung(injektion: i) }
         } else {
             let neu = BiologikaInjektion()
             neu.praeparat = name
@@ -319,6 +322,7 @@ struct BiologikaForm: View {
             neu.naechsteDosis = hatErinnerung ? naechsteDosis : nil
             neu.notizen = notizen
             modelContext.insert(neu)
+            if hatErinnerung { nm.planeBiologikaErinnerung(injektion: neu) }
         }
         dismiss()
     }

@@ -14,6 +14,7 @@ struct RheumaSchnellForm: View {
     @State private var gelenkStatus = ""
     @State private var morgensteifigkeit = 0
     @State private var fatigue = 0
+    @State private var schlafStunden: Double = 0
     @State private var stimmung = 3
     @State private var notizen = ""
     @State private var zeigeErfolg = false
@@ -259,6 +260,40 @@ struct RheumaSchnellForm: View {
             }
 
             karte {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Schlaf letzte Nacht").font(.headline)
+                        Spacer()
+                        if schlafStunden > 0 {
+                            Text(schlafStunden < 9 ? "\(Int(schlafStunden)) Stunden" : "9+ Stunden")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        ForEach([0.0, 5.0, 6.0, 7.0, 8.0, 9.0], id: \.self) { h in
+                            Button {
+                                schlafStunden = h
+                            } label: {
+                                Text(h == 0 ? "–" : h < 9 ? "\(Int(h))h" : "9h+")
+                                    .font(.subheadline.bold())
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        schlafStunden == h
+                                            ? Color.indigo
+                                            : Color(.tertiarySystemBackground)
+                                    )
+                                    .foregroundStyle(schlafStunden == h ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            karte {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Stimmung").font(.headline)
                     HStack(spacing: 0) {
@@ -406,6 +441,7 @@ struct RheumaSchnellForm: View {
             koerperstelle: "Rheuma",
             notizen: notizen,
             stimmung: stimmung,
+            schlafStunden: schlafStunden,
             morgensteifigkeit: morgensteifigkeit,
             istSchub: istSchub,
             fatigue: fatigue,

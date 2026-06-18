@@ -7,6 +7,7 @@ struct ArztbesuchView: View {
 
     @State private var zeigeForm = false
     @State private var bearbeitet: Arztbesuch? = nil
+    @State private var zeigeGuide = false
 
     var body: some View {
         List {
@@ -73,9 +74,17 @@ struct ArztbesuchView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Button {
+                    zeigeGuide = true
+                } label: {
+                    Label("Termin vorbereiten", systemImage: "doc.text.magnifyingglass")
+                }
+            }
         }
         .sheet(isPresented: $zeigeForm) { ArztbesuchForm() }
         .sheet(item: $bearbeitet) { ArztbesuchForm(besuch: $0) }
+        .sheet(isPresented: $zeigeGuide) { KonsultationsGuideView() }
     }
 
     private var letzterAugenarztBesuch: Arztbesuch? {
