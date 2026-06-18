@@ -350,7 +350,7 @@ struct RheumaAnalyseView: View {
                 .chartScrollPosition(x: $verlaufScrollPosition)
                 .chartYScale(domain: 0...10)
                 .chartXAxis {
-                    AxisMarks(values: .stride(by: zeitraum.verlaufMonate > 6 ? .quarter : .month)) { _ in
+                    AxisMarks(values: .stride(by: .month, count: zeitraum.verlaufMonate > 6 ? 3 : 1)) { _ in
                         AxisValueLabel(
                             format: zeitraum.verlaufMonate > 6
                                 ? .dateTime.month(.abbreviated).year()
