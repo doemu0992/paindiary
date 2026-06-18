@@ -17,6 +17,20 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "29", aenderungen: [
+        WhatsNewAenderung(icon: "pill.fill", farbe: .blue,
+                          titel: "Medikamente komplett überarbeitet",
+                          beschreibung: "Die Medikamenten-Übersicht zeigt jetzt Adherenz, Tages-Fortschritt und Streak. Die Dashboard-Kachel folgt dem einheitlichen Modul-Design mit 3 Stats und 14-Tage-Chart."),
+        WhatsNewAenderung(icon: "chart.bar.xaxis.ascending", farbe: .blue,
+                          titel: "Medikamenten-Analyse",
+                          beschreibung: "Neue Analyseansicht für Medikamente: Adherenz-Verlauf (farbkodiert), Wirksamkeits-Auswertung pro Medikament, Bei-Bedarf-Frequenz und KI-Einblick."),
+        WhatsNewAenderung(icon: "list.bullet.rectangle.portrait.fill", farbe: .teal,
+                          titel: "Alle Formulare als Wizard",
+                          beschreibung: "11 Formulare wurden auf das neue Wizard-Design umgestellt: Diagnosen, Physiotherapie, Arztbesuche, Biologika, Labormessung, Kortison, Impfpass, Ärzte, Allergien, Notfallkontakte und Remissionsphasen – mit Schritt-Navigation, Button-Grids und klarer Struktur."),
+        WhatsNewAenderung(icon: "wand.and.stars", farbe: .indigo,
+                          titel: "Medikament hinzufügen als Wizard",
+                          beschreibung: "Das neue Medikament-Formular führt in 3 Schritten durch: Medikament & Typ, Einnahme & Frequenz, und optionale Extras wie Erinnerungen, Vorrat und Ablaufdatum."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "28", aenderungen: [
         WhatsNewAenderung(icon: "waveform.path.ecg", farbe: .red,
                           titel: "Schmerztagebuch als eigenständiges Modul",
