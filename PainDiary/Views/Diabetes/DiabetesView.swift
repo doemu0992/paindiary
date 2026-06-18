@@ -7,6 +7,7 @@ struct DiabetesView: View {
 
     @State private var zeigeForm = false
     @State private var bearbeitet: BlutzuckerEintrag? = nil
+    @State private var zeigeAnalyse = false
 
     private var messungen30: [BlutzuckerEintrag] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
@@ -67,6 +68,7 @@ struct DiabetesView: View {
         }
         .sheet(isPresented: $zeigeForm) { BlutzuckerForm() }
         .sheet(item: $bearbeitet) { BlutzuckerForm(messung: $0) }
+        .sheet(isPresented: $zeigeAnalyse) { DiabetesAnalyseView(messungen: messungen) }
     }
 
     // MARK: - Stats
@@ -108,6 +110,16 @@ struct DiabetesView: View {
                 .padding()
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+
+                if !messungen.isEmpty {
+                    Button { zeigeAnalyse = true } label: {
+                        Label("Diabetes-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(.vertical, 4)
         }
