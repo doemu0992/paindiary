@@ -9,6 +9,7 @@ struct HautView: View {
     ) private var eintraege: [PainEntry]
 
     @State private var zeigeForm = false
+    @State private var zeigeAnalyse = false
 
     private var eintraege30: [PainEntry] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
@@ -49,6 +50,9 @@ struct HautView: View {
             }
         }
         .sheet(isPresented: $zeigeForm) { HautForm() }
+        .sheet(isPresented: $zeigeAnalyse) {
+            HautAnalyseView(eintraege: Array(eintraege))
+        }
     }
 
     // MARK: - Statistik
@@ -83,6 +87,16 @@ struct HautView: View {
                 .padding()
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+
+                Button { zeigeAnalyse = true } label: {
+                    Label("Haut-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.orange, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
             }
             .padding(.vertical, 4)
         }

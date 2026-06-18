@@ -276,16 +276,24 @@ private struct ProfilInhaltView: View {
     private var erkrankungenSektion: some View {
         Section("Erkrankungen") {
             NavigationLink(destination: RheumaView()) {
-                Label("Rheuma & Gelenke", systemImage: "figure.arms.open")
+                Label { Text("Rheuma & Gelenke") } icon: {
+                    Image(systemName: "figure.arms.open").foregroundStyle(.teal)
+                }
             }
             NavigationLink(destination: MigraeneView()) {
-                Label("Migräne", systemImage: "brain.head.profile")
+                Label { Text("Migräne") } icon: {
+                    Image(systemName: "brain.head.profile").foregroundStyle(.purple)
+                }
             }
             NavigationLink(destination: HautView()) {
-                Label("Hautveränderungen", systemImage: "bandage.fill")
+                Label { Text("Hautveränderungen") } icon: {
+                    Image(systemName: "bandage.fill").foregroundStyle(.orange)
+                }
             }
             NavigationLink(destination: DiabetesView()) {
-                Label("Diabetes", systemImage: "drop.fill")
+                Label { Text("Diabetes") } icon: {
+                    Image(systemName: "drop.fill").foregroundStyle(.blue)
+                }
             }
         }
     }
@@ -334,7 +342,7 @@ private struct ProfilInhaltView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 } icon: {
-                    Image(systemName: "drop.fill").foregroundStyle(.orange)
+                    Image(systemName: "drop.fill").foregroundStyle(.blue)
                 }
             }
         } header: {

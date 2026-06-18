@@ -37,6 +37,28 @@ Das gilt ausnahmslos für:
 
 Bei einem neuen Modul: **zuerst Farbe in Tabelle eintragen**, dann konsequent durch alle Views ziehen — Kachel, Hauptseite, Analyse, Sub-Views.
 
+### ProfilView-Konsistenz (bindend)
+
+> **Erkrankungen-Section und Meine-Module-Toggles verwenden exakt die Modul-Tintfarbe als Icon-Farbe.**
+
+```swift
+// Erkrankungen-Section
+NavigationLink(destination: RheumaView()) {
+    Label { Text("Rheuma & Gelenke") } icon: {
+        Image(systemName: "figure.arms.open").foregroundStyle(.teal)   // Rheuma-Tint
+    }
+}
+
+// Meine-Module-Toggles
+Toggle(isOn: $rheumaModulAktiv) {
+    Label { VStack { ... } } icon: {
+        Image(systemName: "figure.arms.open").foregroundStyle(.teal)   // Rheuma-Tint
+    }
+}
+```
+
+Bei jedem neuen Modul: Icon-Farbe in beiden Stellen (Erkrankungen-NavigationLink + Toggle) = Modul-Tint.
+
 ---
 
 ## Dashboard-Kacheln (Übersicht)
@@ -277,4 +299,6 @@ Vor dem Merge eines neuen Moduls prüfen:
 - [ ] Keine doppelten `fatigueFarbe`, `stressLabel`, `stimmungFarben` etc.
 - [ ] Modul-Hauptseite als `List` mit Stats-Header + `.navigationBarTitleDisplayMode(.large)`
 - [ ] Dashboard-Kachel nach Template (3 Stats / Mini-Chart / Nav-Link / Plus-Button)
+- [ ] ProfilView `erkrankungenSektion`: NavigationLink-Icon mit Modul-Tint
+- [ ] ProfilView `moduleSektion`: Toggle-Icon mit Modul-Tint
 - [ ] Grep nach alter/falscher Farbe im Modul-Ordner vor Merge (`grep -r "\.wrongColor" Views/MeinModul/`)
