@@ -332,6 +332,47 @@ Generiert einen formellen Arztbrief auf Basis der Rohdaten. Kopieren-Button im H
 
 ---
 
+## Zeitraum-Filter Standard (bindend)
+
+Alle AnalyseViews und der SchmerzVerlauf verwenden **"7 T" (7 Tage) als Standard-Zeitraum**.
+
+### Pflicht-Enum-Muster für jede AnalyseView:
+
+```swift
+enum Zeitraum: String, CaseIterable {
+    case woche       = "7 T"   // MUSS als erster Case und Default stehen
+    case monat       = "30 T"
+    case dreiMonate  = "3 M"
+    case sechsMonate = "6 M"
+    case jahr        = "1 J"
+    case alle        = "Alle"
+
+    var tage: Int? {
+        switch self {
+        case .woche:       return 7
+        case .monat:       return 30
+        // ...
+        case .alle:        return nil
+        }
+    }
+}
+
+@State private var zeitraum: Zeitraum = .woche  // immer .woche als Default
+```
+
+**Zusatz-Properties je View:**
+- `verlaufMonate: Int` (Migräne, Rheuma, Diabetes): `.woche → 1`
+- `wochen: Int` (Haut): `.woche → 2`
+
+**Gilt für:** SchmerzAnalyseView, MigraeneAnalyseView, RheumaAnalyseView, DiabetesAnalyseView, HautAnalyseView, KorrelationsView
+
+**SchmerzAnalyseView zusätzlich:** Adaptive Chart-Granularität:
+- 7 T → täglich (`chartKomponente = .day`)
+- 30 T → wöchentlich (`chartKomponente = .weekOfYear`)
+- 3 M+ → monatlich (`chartKomponente = .month`)
+
+---
+
 ## Neue Features / Module – Checkliste
 
 Vor dem Merge eines neuen Moduls prüfen:

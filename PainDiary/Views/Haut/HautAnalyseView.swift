@@ -30,11 +30,12 @@ struct HautAnalyseView: View {
     let eintraege: [PainEntry]
 
     @State private var sektionen: [HautAnalyseSektion] = HautAnalyseView.sektionenLaden()
-    @State private var zeitraum: Zeitraum = .monat
+    @State private var zeitraum: Zeitraum = .woche
     @State private var zeigeAnpassen = false
     @Environment(\.dismiss) private var dismiss
 
     enum Zeitraum: String, CaseIterable {
+        case woche       = "7 T"
         case monat       = "30 T"
         case dreiMonate  = "3 M"
         case sechsMonate = "6 M"
@@ -43,6 +44,7 @@ struct HautAnalyseView: View {
 
         var tage: Int? {
             switch self {
+            case .woche:       return 7
             case .monat:       return 30
             case .dreiMonate:  return 90
             case .sechsMonate: return 180
@@ -52,6 +54,7 @@ struct HautAnalyseView: View {
         }
         var wochen: Int {
             switch self {
+            case .woche:       return 2
             case .monat:       return 5
             case .dreiMonate:  return 13
             case .sechsMonate: return 26

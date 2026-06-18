@@ -9,13 +9,13 @@ struct KorrelationsView: View {
     @Query(filter: #Predicate<Dauermedikation> { $0.aktiv }) private var dauermedikationen: [Dauermedikation]
     @Query(sort: \Dauermedikation.name) private var alleDauermedikationen: [Dauermedikation]
 
-    @State private var zeitfilter: Zeitfilter = .alle
+    @State private var zeitfilter: Zeitfilter = .woche
     @State private var aktiverTab: Int = 0
 
     private enum Zeitfilter: String, CaseIterable {
-        case monat = "30 T"; case dreiMonate = "90 T"; case alle = "Alle"
+        case woche = "7 T"; case monat = "30 T"; case dreiMonate = "90 T"; case alle = "Alle"
         var tage: Int? {
-            switch self { case .monat: return 30; case .dreiMonate: return 90; case .alle: return nil }
+            switch self { case .woche: return 7; case .monat: return 30; case .dreiMonate: return 90; case .alle: return nil }
         }
     }
 

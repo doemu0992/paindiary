@@ -32,12 +32,13 @@ struct DiabetesAnalyseView: View {
     let messungen: [BlutzuckerEintrag]
 
     @State private var sektionen: [DiabetesAnalyseSektion] = DiabetesAnalyseView.sektionenLaden()
-    @State private var zeitraum: Zeitraum = .monat
+    @State private var zeitraum: Zeitraum = .woche
     @State private var zeigeAnpassen = false
-    @State private var verlaufScrollPosition: Date = Date().addingTimeInterval(-60*60*24*30)
+    @State private var verlaufScrollPosition: Date = Date().addingTimeInterval(-60*60*24*7)
     @Environment(\.dismiss) private var dismiss
 
     enum Zeitraum: String, CaseIterable {
+        case woche       = "7 T"
         case monat       = "30 T"
         case dreiMonate  = "3 M"
         case sechsMonate = "6 M"
@@ -46,6 +47,7 @@ struct DiabetesAnalyseView: View {
 
         var tage: Int? {
             switch self {
+            case .woche:       return 7
             case .monat:       return 30
             case .dreiMonate:  return 90
             case .sechsMonate: return 180
@@ -56,6 +58,7 @@ struct DiabetesAnalyseView: View {
 
         var verlaufMonate: Int {
             switch self {
+            case .woche:       return 1
             case .monat:       return 1
             case .dreiMonate:  return 3
             case .sechsMonate: return 6
