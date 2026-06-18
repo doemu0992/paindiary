@@ -72,9 +72,6 @@ struct SchmerzForm: View {
         "Bewegung / Dehnen", "Massage", "Schlaf", "Ablenkung"
     ]
 
-    private let stimmungFarben: [Color] = [.red, .orange, .yellow, .green, .teal]
-    private let stimmungLabels = ["Schlecht", "Mässig", "Okay", "Gut", "Super"]
-
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -241,8 +238,14 @@ struct SchmerzForm: View {
             .background(Color(.systemGroupedBackground))
         default:
             ScrollView {
-                wohlbefindenSchritt
-                    .padding(.vertical, 24)
+                WohlbefindenStepView(
+                    stimmung: $stimmung,
+                    schlafStunden: $schlafStunden,
+                    stressLevel: $stressLevel,
+                    notizen: $notizen,
+                    fatigue: $fatigue
+                )
+                .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
@@ -494,119 +497,6 @@ struct SchmerzForm: View {
         .padding(.bottom, 24)
     }
 
-    // MARK: - Schritt 4: Wohlbefinden
-
-    private var wohlbefindenSchritt: some View {
-        VStack(spacing: 16) {
-            Text("Wie geht es dir?")
-                .font(.title2.bold())
-                .padding(.top, 8)
-
-            karte {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Stimmung").font(.headline)
-                    HStack(spacing: 0) {
-                        ForEach(0..<5) { i in
-                            let wert = i + 1
-                            Button { stimmung = wert } label: {
-                                VStack(spacing: 6) {
-                                    Image(systemName: stimmung >= wert ? "heart.fill" : "heart")
-                                        .font(.system(size: 30))
-                                        .foregroundStyle(stimmung >= wert ? stimmungFarben[i] : Color.secondary)
-                                    Text(stimmungLabels[i])
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(stimmung >= wert ? .primary : .secondary)
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Stresslevel").font(.headline)
-                        Spacer()
-                        Text(stressLabel)
-                            .font(.subheadline.bold())
-                            .foregroundStyle(stressFarbe)
-                    }
-                    HStack(spacing: 8) {
-                        ForEach(1...5, id: \.self) { n in
-                            Button { stressLevel = n } label: {
-                                Text("\(n)")
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(stressLevel >= n ? stressFarbe : Color(.tertiarySystemBackground))
-                                    .foregroundStyle(stressLevel >= n ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    HStack {
-                        Text("Entspannt").font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Text("Extrem").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Schlaf letzte Nacht").font(.headline)
-                        Spacer()
-                        Text(String(format: "%.1f Std.", schlafStunden))
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.blue)
-                    }
-                    Slider(value: $schlafStunden, in: 0...12, step: 0.5).tint(.blue)
-                    HStack {
-                        Text("0 Std.").font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Text("12 Std.").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Erschöpfung / Fatigue").font(.headline)
-                        Spacer()
-                        Text(fatigue == 0 ? "Nicht erfasst" : "\(fatigue) / 10")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(
-                        value: Binding(get: { Double(fatigue) }, set: { fatigue = Int($0) }),
-                        in: 0...10, step: 1
-                    ).tint(fatigueFarbe)
-                    HStack {
-                        Text("Keine").font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Text("Extrem").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Notizen").font(.headline)
-                    TextEditor(text: $notizen)
-                        .frame(minHeight: 80)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 24)
-    }
-
     // MARK: - Navigation bar
 
     private var navigationsLeiste: some View {
@@ -745,28 +635,6 @@ struct SchmerzForm: View {
         }
     }
 
-    private var stressLabel: String {
-        ["", "Entspannt", "Ruhig", "Mässig", "Gestresst", "Extrem"][stressLevel]
-    }
-
-    private var stressFarbe: Color {
-        switch stressLevel {
-        case 1:     return .green
-        case 2:     return .yellow
-        case 3:     return .orange
-        default:    return .red
-        }
-    }
-
-    private var fatigueFarbe: Color {
-        switch fatigue {
-        case 0:     return .secondary
-        case 1...3: return .green
-        case 4...6: return .yellow
-        case 7...8: return .orange
-        default:    return .red
-        }
-    }
 
     // MARK: - Template
 

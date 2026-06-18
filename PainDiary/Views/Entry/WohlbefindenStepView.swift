@@ -38,7 +38,7 @@ struct WohlbefindenStepView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
                 // Stresslevel
                 VStack(alignment: .leading, spacing: 10) {
@@ -71,7 +71,7 @@ struct WohlbefindenStepView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
                 // Schlaf
                 VStack(alignment: .leading, spacing: 10) {
@@ -107,7 +107,7 @@ struct WohlbefindenStepView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             }
 
             if let fBinding = fatigue {
@@ -132,7 +132,7 @@ struct WohlbefindenStepView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             }
 
             if let mgBinding = morgensteifigkeit {
@@ -170,7 +170,7 @@ struct WohlbefindenStepView: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -190,7 +190,7 @@ struct WohlbefindenStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
             Text("Optional – du kannst diesen Schritt überspringen.")
                 .font(.caption)
@@ -225,8 +225,8 @@ struct WohlbefindenStepView: View {
         case 1: return .red
         case 2: return .orange
         case 3: return .yellow
-        case 4: return .mint
-        case 5: return .green
+        case 4: return .green
+        case 5: return .teal
         default: return .secondary
         }
     }

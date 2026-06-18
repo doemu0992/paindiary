@@ -16,6 +16,7 @@ struct RheumaSchnellForm: View {
     @State private var fatigue = 0
     @State private var schlafStunden: Double = 0
     @State private var stimmung = 3
+    @State private var stressLevel = 3
     @State private var notizen = ""
     @State private var zeigeErfolg = false
     @State private var wetterTemperatur: Double? = nil
@@ -27,9 +28,6 @@ struct RheumaSchnellForm: View {
     private let schrittNamen = ["Allgemein", "Gelenke", "Wohlbefinden"]
     private let progressTint: Color = .teal
     private let pflichtSchritte: Set<Int> = [0]
-
-    private let stimmungFarben: [Color] = [.red, .orange, .yellow, .green, .teal]
-    private let stimmungLabels = ["Schlecht", "Mässig", "Okay", "Gut", "Super"]
 
     var body: some View {
         NavigationStack {
@@ -134,8 +132,14 @@ struct RheumaSchnellForm: View {
                 .background(Color(.systemGroupedBackground))
         default:
             ScrollView {
-                wohlbefindenSchritt
-                    .padding(.vertical, 24)
+                WohlbefindenStepView(
+                    stimmung: $stimmung,
+                    schlafStunden: $schlafStunden,
+                    stressLevel: $stressLevel,
+                    notizen: $notizen,
+                    fatigue: $fatigue
+                )
+                .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
@@ -230,104 +234,6 @@ struct RheumaSchnellForm: View {
         .padding(.bottom, 24)
     }
 
-    // MARK: - Schritt 2: Wohlbefinden
-
-    private var wohlbefindenSchritt: some View {
-        VStack(spacing: 16) {
-            Text("Wohlbefinden")
-                .font(.title2.bold())
-                .padding(.top, 8)
-
-            karte {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Erschöpfung / Fatigue").font(.headline)
-                        Spacer()
-                        Text(fatigue == 0 ? "Nicht erfasst" : "\(fatigue) / 10")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(
-                        value: Binding(get: { Double(fatigue) }, set: { fatigue = Int($0) }),
-                        in: 0...10, step: 1
-                    ).tint(fatigueFarbe)
-                    HStack {
-                        Text("Keine").font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Text("Extrem").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Schlaf letzte Nacht").font(.headline)
-                        Spacer()
-                        if schlafStunden > 0 {
-                            Text(schlafStunden < 9 ? "\(Int(schlafStunden)) Stunden" : "9+ Stunden")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    HStack(spacing: 8) {
-                        ForEach([0.0, 5.0, 6.0, 7.0, 8.0, 9.0], id: \.self) { h in
-                            Button {
-                                schlafStunden = h
-                            } label: {
-                                Text(h == 0 ? "–" : h < 9 ? "\(Int(h))h" : "9h+")
-                                    .font(.subheadline.bold())
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        schlafStunden == h
-                                            ? Color.indigo
-                                            : Color(.tertiarySystemBackground)
-                                    )
-                                    .foregroundStyle(schlafStunden == h ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Stimmung").font(.headline)
-                    HStack(spacing: 0) {
-                        ForEach(0..<5) { i in
-                            let wert = i + 1
-                            Button { stimmung = wert } label: {
-                                VStack(spacing: 6) {
-                                    Image(systemName: stimmung >= wert ? "heart.fill" : "heart")
-                                        .font(.system(size: 30))
-                                        .foregroundStyle(stimmung >= wert ? stimmungFarben[i] : Color.secondary)
-                                    Text(stimmungLabels[i])
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(stimmung >= wert ? .primary : .secondary)
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Notizen").font(.headline)
-                    TextEditor(text: $notizen)
-                        .frame(minHeight: 80)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 24)
-    }
-
     // MARK: - Navigation bar
 
     private var navigationsLeiste: some View {
@@ -412,16 +318,6 @@ struct RheumaSchnellForm: View {
         return wetter.aktuell
     }
 
-    private var fatigueFarbe: Color {
-        switch fatigue {
-        case 0:     return .secondary
-        case 1...3: return .green
-        case 4...6: return .yellow
-        case 7...8: return .orange
-        default:    return .red
-        }
-    }
-
     // MARK: - Load / Save
 
     private func laden() {
@@ -442,6 +338,7 @@ struct RheumaSchnellForm: View {
             notizen: notizen,
             stimmung: stimmung,
             schlafStunden: schlafStunden,
+            stressLevel: stressLevel,
             morgensteifigkeit: morgensteifigkeit,
             istSchub: istSchub,
             fatigue: fatigue,
