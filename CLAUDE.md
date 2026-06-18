@@ -13,11 +13,89 @@ Every new screen, module, and edit must follow these rules.
 | Rheuma | `.teal` | `.teal` |
 | Migräne | `.purple` | `.purple` |
 | Haut | `.orange` | `.orange` |
+| Diabetes | `.blue` | `.blue` |
 | Wellness | Multi-Color (kein einzelner Tint) | — |
+
+**Neues Modul:** einfach nächste freie Farbe aus SwiftUI-Palette wählen (z.B. `.indigo`, `.mint`, `.cyan`, `.pink`). Farbe in diese Tabelle eintragen. Niemals eine bereits vergebene Farbe wiederverwenden.
 
 ---
 
-## Card / Section Style
+## Dashboard-Kacheln (Übersicht)
+
+Jedes Modul bekommt eine `*Kachel`-View im `Dashboard/`-Ordner. Alle Kacheln folgen **exakt** diesem Template:
+
+```swift
+struct MeinModulKachel: View {
+    let eintraege: [MeinEintrag]        // Daten von aussen übergeben
+    @State private var zeigeForm = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // 1. Header: Titel + Plus-Button
+            HStack {
+                Label("Modulname", systemImage: "symbol")
+                    .font(.headline).foregroundStyle(.modulTint)
+                Spacer()
+                Button { zeigeForm = true } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3).foregroundStyle(.modulTint)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // 2. Drei Stat-Boxes (immer 3, ggf. "–" als Platzhalt)
+            HStack(spacing: 0) {
+                statBox(wert: "...", label: "Label1", farbe: .someColor)
+                Divider().frame(height: 32)
+                statBox(wert: "...", label: "Label2", farbe: .secondary)
+                Divider().frame(height: 32)
+                statBox(wert: "...", label: "Label3", farbe: .secondary)
+            }
+
+            // 3. Mini-Chart 14 Tage (immer anzeigen, Platzhalt wenn leer)
+            Chart(chartDaten, id: \.datum) { punkt in
+                BarMark(x: .value("Tag", punkt.datum, unit: .day),
+                        y: .value("Wert", hatDaten ? punkt.wert : 1.0))
+                .foregroundStyle(hatDaten
+                    ? Color.modulTint.opacity(punkt.wert > 0 ? 0.75 : 0.1)
+                    : Color.modulTint.opacity(0.07))
+                .cornerRadius(3)
+            }
+            .chartXAxis(.hidden).chartYAxis(.hidden)
+            .frame(height: 44)
+            .overlay(alignment: .center) {
+                if !hatDaten {
+                    Text("Noch keine Einträge").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+
+            Divider()
+
+            // 4. NavigationLink zum Modul
+            NavigationLink(destination: MeinModulView()) {
+                HStack {
+                    Text("Modul öffnen").font(.caption.bold()).foregroundStyle(.modulTint)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.bold()).foregroundStyle(Color.modulTint.opacity(0.6))
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .sheet(isPresented: $zeigeForm) { MeinModulForm() }
+    }
+}
+```
+
+**Regeln:**
+- Immer **genau 3** `statBox`-Spalten — leere zeigen `"–"` mit `farbe: .secondary`
+- Mini-Chart **immer sichtbar** (nie in `if`-Block verstecken) — Platzhalt-Balken wenn keine Daten
+- Kachelfarbe = Modul-Tint aus der Farbtabelle oben — gilt für Icon, Text, Chart, Plus-Button
+- `statBox`-Helper ist **lokal** in jeder Kachel (kein globales Component nötig)
+
+---
 
 ```swift
 content()
@@ -172,9 +250,10 @@ private func statPill(_ wert: String, label: String, farbe: Color) -> some View 
 ## Neue Features / Module – Checkliste
 
 Vor dem Merge eines neuen Moduls prüfen:
-- [ ] Modul-Tint aus obiger Tabelle verwendet
+- [ ] Neue Modul-Farbe gewählt (noch nicht vergeben) und in Farbtabelle eingetragen
 - [ ] Card-Hintergrund `secondarySystemGroupedBackground`
 - [ ] Wohlbefinden-Schritt via `WohlbefindenStepView` (kein Inline-Code)
 - [ ] Wizard-Navigationsmuster identisch zu bestehenden Wizards
 - [ ] Keine doppelten `fatigueFarbe`, `stressLabel`, `stimmungFarben` etc.
-- [ ] Modul-Hauptseite als `List` mit Stats-Header
+- [ ] Modul-Hauptseite als `List` mit Stats-Header + `.navigationBarTitleDisplayMode(.large)`
+- [ ] Dashboard-Kachel nach Template (3 Stats / Mini-Chart / Nav-Link / Plus-Button)
