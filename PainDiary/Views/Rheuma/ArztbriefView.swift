@@ -46,6 +46,7 @@ struct ArztbriefView: View {
             }
         }
         .navigationTitle("Arztbrief")
+        .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $zeigeTeilen) {
             TextShareSheet(text: erzeugeBrief())
         }

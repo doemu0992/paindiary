@@ -62,6 +62,7 @@ struct AerzteView: View {
             }
         }
         .navigationTitle("Ärzte")
+        .navigationBarTitleDisplayMode(.large)
         .sheet(item: $bearbeitet) { arzt in
             ArztFormView(existing: arzt) { name, praxis, fachgebiet, adresse, telefon, email, istHausarzt, notizen in
                 arzt.name = name; arzt.praxis = praxis; arzt.fachgebiet = fachgebiet

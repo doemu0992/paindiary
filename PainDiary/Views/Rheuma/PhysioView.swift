@@ -40,6 +40,7 @@ struct PhysioView: View {
             }
         }
         .navigationTitle("Physiotherapie")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

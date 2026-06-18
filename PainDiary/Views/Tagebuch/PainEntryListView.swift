@@ -117,6 +117,7 @@ struct PainEntryListView: View {
             }
         }
         .navigationTitle("Schmerztagebuch")
+        .navigationBarTitleDisplayMode(.large)
         .searchable(text: $suchtext, prompt: "Körperstelle, Schmerzart, Auslöser…")
         .toolbar {
 #if os(iOS)

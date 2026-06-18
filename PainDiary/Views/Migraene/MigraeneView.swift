@@ -75,6 +75,7 @@ struct MigraeneView: View {
             }
         }
         .navigationTitle("Migräne")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

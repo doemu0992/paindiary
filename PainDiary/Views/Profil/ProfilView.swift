@@ -15,6 +15,7 @@ struct ProfilView: View {
             } else {
                 ProgressView("Lade Profil…")
                     .navigationTitle("Profil")
+                    .navigationBarTitleDisplayMode(.large)
             }
         }
         .onAppear {
@@ -50,6 +51,7 @@ private struct ProfilInhaltView: View {
             einstellungen
         }
         .navigationTitle("Profil")
+        .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $stammdatenAnzeigen) {
             StammdatenSheet(profil: profil)
         }

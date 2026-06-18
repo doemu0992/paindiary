@@ -78,6 +78,7 @@ struct HAQView: View {
             }
         }
         .navigationTitle("HAQ & DAS28")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

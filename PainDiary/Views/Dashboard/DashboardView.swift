@@ -43,6 +43,7 @@ struct DashboardView: View {
             .padding()
         }
         .navigationTitle("Übersicht")
+        .navigationBarTitleDisplayMode(.large)
         .onChange(of: eintraege)    { _, neu in viewModel.eintraege = neu }
         .onChange(of: scenePhase)   { _, phase in if phase == .active { tagesstart = Calendar.current.startOfDay(for: Date()) } }
         .onChange(of: kachelKonfig) { _, neu in neu.speichern() }

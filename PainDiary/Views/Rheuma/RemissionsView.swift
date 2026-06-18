@@ -58,6 +58,7 @@ struct RemissionsView: View {
             }
         }
         .navigationTitle("Remissionsphasen")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

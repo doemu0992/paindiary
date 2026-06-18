@@ -75,6 +75,7 @@ struct DiagnoseView: View {
             }
         }
         .navigationTitle("Diagnosen")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

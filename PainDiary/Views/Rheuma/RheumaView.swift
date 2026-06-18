@@ -91,6 +91,7 @@ struct RheumaView: View {
             }
         }
         .navigationTitle("Rheuma & Gelenke")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

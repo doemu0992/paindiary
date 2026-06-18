@@ -75,6 +75,7 @@ struct ImpfpassView: View {
             }
         }
         .navigationTitle("Impfpass")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

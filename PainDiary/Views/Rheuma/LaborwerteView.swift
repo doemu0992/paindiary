@@ -96,6 +96,7 @@ struct LaborwerteView: View {
             }
         }
         .navigationTitle("Laborwerte")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

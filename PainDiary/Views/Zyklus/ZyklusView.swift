@@ -32,6 +32,7 @@ struct ZyklusView: View {
             .padding(.bottom, 30)
         }
         .navigationTitle("Zyklus")
+        .navigationBarTitleDisplayMode(.large)
         .sheet(item: $ausgewaehlterTag) { auswahl in
             ZyklusEintragSheet(
                 datum: auswahl.datum,

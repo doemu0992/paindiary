@@ -58,6 +58,7 @@ struct NotfallkontakteView: View {
             }
         }
         .navigationTitle("Notfallkontakte")
+        .navigationBarTitleDisplayMode(.large)
         .sheet(item: $bearbeitet) { kontakt in
             NotfallKontaktFormView(existing: kontakt) { name, phone, beziehung in
                 kontakt.name = name; kontakt.phone = phone; kontakt.beziehung = beziehung

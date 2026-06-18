@@ -109,6 +109,7 @@ struct WellnessView: View {
             .padding(.bottom, 30)
         }
         .navigationTitle("Wohlbefinden")
+        .navigationBarTitleDisplayMode(.large)
         .onAppear {
             ladeDaten()
             Task {

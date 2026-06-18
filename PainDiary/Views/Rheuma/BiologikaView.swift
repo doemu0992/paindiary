@@ -40,6 +40,8 @@ struct BiologikaView: View {
                     .listRowSeparator(.hidden)
                 }
             } else {
+                statistikSektion
+
                 // Nächste Dosis
                 if let naechste = naechsteDosis {
                     Section("Nächste Dosis") {
@@ -120,6 +122,7 @@ struct BiologikaView: View {
             }
         }
         .navigationTitle("Biologika / Injektionen")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }
@@ -127,6 +130,54 @@ struct BiologikaView: View {
         }
         .sheet(isPresented: $zeigeForm) { BiologikaForm() }
         .sheet(item: $bearbeitet) { BiologikaForm(injektion: $0) }
+    }
+    // MARK: - Stats
+
+    private var statistikSektion: some View {
+        Section {
+            VStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("Überblick", systemImage: "chart.bar.fill")
+                        .font(.headline).foregroundStyle(.teal)
+                    Divider()
+                    HStack(spacing: 0) {
+                        statPill("\(injektionen.count)", label: "Injektionen", farbe: .teal)
+                        Divider().frame(height: 40)
+                        statPill(tagesSeitLetzter, label: "Seit letzter", farbe: .secondary)
+                        Divider().frame(height: 40)
+                        statPill(naechsteDosisText, label: "Nächste",
+                                 farbe: naechsteDosis != nil ? .teal : .secondary)
+                    }
+                }
+                .padding()
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+            }
+            .padding(.vertical, 4)
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(Color.clear)
+    }
+
+    private var tagesSeitLetzter: String {
+        guard let erste = injektionen.first else { return "–" }
+        let tage = Calendar.current.dateComponents([.day], from: erste.datum, to: Date()).day ?? 0
+        return "\(tage) T."
+    }
+
+    private var naechsteDosisText: String {
+        guard let nd = naechsteDosis, let n = nd.naechsteDosis else { return "–" }
+        let tage = Calendar.current.dateComponents([.day], from: Date(), to: n).day ?? 0
+        if tage <= 0 { return "heute" }
+        return "in \(tage) T."
+    }
+
+    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
+            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

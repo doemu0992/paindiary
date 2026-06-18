@@ -70,6 +70,7 @@ struct ArztbesuchView: View {
             }
         }
         .navigationTitle("Arztbesuche")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

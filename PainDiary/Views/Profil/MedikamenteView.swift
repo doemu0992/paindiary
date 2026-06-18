@@ -67,6 +67,7 @@ struct MedikamenteView: View {
             }
         }
         .navigationTitle("Medikamente")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
 #if os(iOS)
             ToolbarItem(placement: .navigationBarTrailing) { EditButton() }

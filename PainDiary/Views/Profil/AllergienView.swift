@@ -43,6 +43,7 @@ struct AllergienView: View {
             }
         }
         .navigationTitle("Allergien & Unverträglichkeiten")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }

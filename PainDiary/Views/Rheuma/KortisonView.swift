@@ -25,6 +25,8 @@ struct KortisonView: View {
                     .listRowSeparator(.hidden)
                 }
             } else {
+                statistikSektion
+
                 // Verlaufschart
                 if chartDaten.count >= 2 {
                     Section("Verlauf") {
@@ -86,6 +88,7 @@ struct KortisonView: View {
             }
         }
         .navigationTitle("Kortison-Tagebuch")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }
@@ -93,6 +96,53 @@ struct KortisonView: View {
         }
         .sheet(isPresented: $zeigeForm) { KortisonForm() }
         .sheet(item: $bearbeitet) { KortisonForm(eintrag: $0) }
+    }
+    // MARK: - Stats
+
+    private var eintraege30: [KortisonEintrag] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        return eintraege.filter { $0.datum >= cutoff }
+    }
+
+    private var avgDosis30: Double {
+        guard !eintraege30.isEmpty else { return 0 }
+        return eintraege30.map(\.dosierungMg).reduce(0, +) / Double(eintraege30.count)
+    }
+
+    private var statistikSektion: some View {
+        Section {
+            let schubAnzahl = eintraege.filter(\.istSchubTherapie).count
+            VStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
+                        .font(.headline).foregroundStyle(.orange)
+                    Divider()
+                    HStack(spacing: 0) {
+                        statPill("\(eintraege.count)", label: "Einträge", farbe: .orange)
+                        Divider().frame(height: 40)
+                        statPill("\(schubAnzahl)", label: "Schub-Einnahmen",
+                                 farbe: schubAnzahl > 0 ? .red : .green)
+                        Divider().frame(height: 40)
+                        statPill(eintraege30.isEmpty ? "–" : String(format: "%.0f mg", avgDosis30),
+                                 label: "Ø Dosis (30 T.)", farbe: .orange)
+                    }
+                }
+                .padding()
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+            }
+            .padding(.vertical, 4)
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(Color.clear)
+    }
+
+    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
+            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
