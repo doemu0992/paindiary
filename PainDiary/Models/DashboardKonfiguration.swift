@@ -15,10 +15,6 @@ enum KachelTyp: String, Codable, CaseIterable {
     case wetterSchmerz
     case stressSchmerz
     case schlafSchmerz
-    case tageszeitVerteilung
-    case koerperstellen
-    case schmerzarten
-    case stimmungsTrend
     case midasKachel
     // Module
     case schmerzKachel
@@ -40,10 +36,6 @@ enum KachelTyp: String, Codable, CaseIterable {
         case .wetterSchmerz:       return "Wetter & Schmerz"
         case .stressSchmerz:       return "Stress & Schmerz"
         case .schlafSchmerz:       return "Schlaf & Schmerz"
-        case .tageszeitVerteilung: return "Tageszeit-Verteilung"
-        case .koerperstellen:      return "Häufige Körperstellen"
-        case .schmerzarten:        return "Häufige Schmerzarten"
-        case .stimmungsTrend:      return "Stimmungs-Trend"
         case .midasKachel:         return "MIDAS-Score"
         case .schmerzKachel:       return "Schmerztagebuch"
         case .migraeneKachel:      return "Migräne-Verlauf"
@@ -65,10 +57,6 @@ enum KachelTyp: String, Codable, CaseIterable {
         case .wetterSchmerz:       return "cloud.sun.fill"
         case .stressSchmerz:       return "bolt.fill"
         case .schlafSchmerz:       return "moon.zzz.fill"
-        case .tageszeitVerteilung: return "clock.fill"
-        case .koerperstellen:      return "figure.stand"
-        case .schmerzarten:        return "waveform"
-        case .stimmungsTrend:      return "heart.fill"
         case .midasKachel:         return "brain.head.profile"
         case .schmerzKachel:       return "waveform.path.ecg"
         case .migraeneKachel:      return "bolt.horizontal.fill"
@@ -89,8 +77,7 @@ enum KachelTyp: String, Codable, CaseIterable {
         case .schmerzKachel, .migraeneKachel, .rheumaKachel, .diabetesKachel:
             return "Module"
         case .wetterSchmerz, .stressSchmerz, .schlafSchmerz,
-             .tageszeitVerteilung, .koerperstellen, .schmerzarten,
-             .stimmungsTrend, .midasKachel, .konfigKorrelation:
+             .midasKachel, .konfigKorrelation:
             return "Analyse"
         }
     }

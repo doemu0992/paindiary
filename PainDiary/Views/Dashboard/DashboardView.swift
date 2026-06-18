@@ -110,15 +110,11 @@ struct DashboardView: View {
         case .stimmungStress:      stimmungStressKarte
         case .medikamente:         medikamentenKarte
         case .zyklus:              zyklusKarte
-        case .hautveraenderung:    hautVeraenderungKarte
+        case .hautveraenderung:    HautKachel(eintraege: Array(eintraege.filter { $0.istHautEintrag }))
         case .schnellLinks:        schnellLinks
         case .wetterSchmerz:       WetterSchmerzKachel(eintraege: Array(eintraege))
         case .stressSchmerz:       StressSchmerzKachel(eintraege: Array(eintraege))
         case .schlafSchmerz:       SchlafSchmerzKachel(eintraege: Array(eintraege))
-        case .tageszeitVerteilung: TageszeitKachel(eintraege: Array(eintraege))
-        case .koerperstellen:      KoerperstellenKachel(eintraege: Array(eintraege))
-        case .schmerzarten:        SchmerzartenKachel(eintraege: Array(eintraege))
-        case .stimmungsTrend:      StimmungsTrendKachel(eintraege: Array(eintraege))
         case .midasKachel:         MidasKachel(bewertungen: Array(midasBewertungen))
         case .schmerzKachel:       SchmerzKachel(eintraege: Array(eintraege))
         case .migraeneKachel:      MigraeneKachel(anfaelle: Array(migraeneAnfaelle))
@@ -334,59 +330,6 @@ struct DashboardView: View {
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
         .buttonStyle(.plain)
-    }
-
-    // MARK: - Hautveränderungen
-
-    @ViewBuilder
-    private var hautVeraenderungKarte: some View {
-        let hautEintraege = eintraege.filter { $0.istHautEintrag }
-        if !hautEintraege.isEmpty {
-            let wStart = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-            let dieseWoche = hautEintraege.filter { $0.datum >= wStart }
-            let alleArten = hautEintraege.flatMap { $0.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty } }
-            let topArt = Dictionary(grouping: alleArten, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key
-            let alleStellen = hautEintraege.flatMap { $0.hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty } }
-            let topStellen = Dictionary(grouping: alleStellen, by: { $0 })
-                .sorted { $0.value.count > $1.value.count }.prefix(3).map(\.key)
-
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("Hautveränderungen", systemImage: "allergens")
-                        .font(.headline).foregroundStyle(.orange)
-                    InfoButton(
-                        titel: "Hautveränderungen",
-                        text: "Zusammenfassung deiner Hautveränderungs-Einträge. Häufig betroffene Stellen und Arten helfen Muster und Zusammenhänge zu erkennen."
-                    )
-                    Spacer()
-                }
-                Divider()
-                HStack(spacing: 0) {
-                    miniStat("Diese Woche", wert: "\(dieseWoche.count)",    farbe: .orange)
-                    Divider().frame(height: 36)
-                    miniStat("Gesamt",      wert: "\(hautEintraege.count)", farbe: .orange)
-                    Divider().frame(height: 36)
-                    miniStat("Häufigste Art", wert: topArt ?? "–",          farbe: .orange)
-                }
-                if !topStellen.isEmpty {
-                    Divider()
-                    Text("Häufig betroffene Stellen").font(.caption).foregroundStyle(.secondary)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(topStellen, id: \.self) { stelle in
-                                Text(stelle).font(.caption)
-                                    .padding(.horizontal, 10).padding(.vertical, 5)
-                                    .background(Color.orange.opacity(0.12), in: Capsule())
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-                    }
-                }
-            }
-            .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
-        }
     }
 
     // MARK: - Schmerzverlauf

@@ -9,11 +9,8 @@ struct DashboardAnpassenView: View {
 
     private var analyseHinzufuegbar: [KachelTyp] {
         let bereitsIds = Set(kacheln.map(\.id))
-        return [
-            .wetterSchmerz, .stressSchmerz, .schlafSchmerz,
-            .tageszeitVerteilung, .koerperstellen, .schmerzarten,
-            .stimmungsTrend, .midasKachel
-        ].filter { !bereitsIds.contains($0.rawValue) }
+        return [.wetterSchmerz, .stressSchmerz, .schlafSchmerz, .midasKachel]
+            .filter { !bereitsIds.contains($0.rawValue) }
     }
 
     private var moduleHinzufuegbar: [KachelTyp] {
@@ -170,14 +167,14 @@ struct DashboardAnpassenView: View {
 
     private func kachelFarbe(_ typ: KachelTyp) -> Color {
         switch typ {
-        case .schmerzUebersicht, .hautveraenderung, .tageszeitVerteilung: return .orange
-        case .schmerzverlauf, .medikamente, .schmerzarten: return .blue
-        case .stimmungStress, .zyklus, .stimmungsTrend: return .pink
+        case .schmerzUebersicht: return .red
+        case .hautveraenderung: return .orange
+        case .schmerzverlauf, .medikamente: return .blue
+        case .stimmungStress, .zyklus: return .pink
         case .schnellLinks, .konfigKorrelation: return .indigo
         case .wetterSchmerz: return .cyan
         case .stressSchmerz: return .yellow
         case .schlafSchmerz: return .purple
-        case .koerperstellen: return .teal
         case .midasKachel: return .purple
         case .schmerzKachel: return .red
         case .migraeneKachel: return .purple
