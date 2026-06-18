@@ -38,6 +38,12 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Wetterbedingungen zum Zeitpunkt deines Schmerzeintrags erfassen</string>
 
+	<!-- Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+
 	<!-- Scene -->
 	<key>UIApplicationSceneManifest</key>
 	<dict>

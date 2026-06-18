@@ -100,20 +100,22 @@ private func makeContainer() -> ModelContainer {
         ])
     }
 
-    let config = ModelConfiguration(
-        "hauptdaten",
-        schema: schema,
-        url: appSupport.appendingPathComponent("default.store"),
-        cloudKitDatabase: .none
-    )
+    let storeURL = appSupport.appendingPathComponent("default.store")
 
-    if let c = try? ModelContainer(for: schema, configurations: [config]) { return c }
+    let configCloud = ModelConfiguration(
+        "hauptdaten", schema: schema, url: storeURL, cloudKitDatabase: .automatic)
+    if let c = try? ModelContainer(for: schema, configurations: [configCloud]) { return c }
+
+    let configLokal = ModelConfiguration(
+        "hauptdaten", schema: schema, url: storeURL, cloudKitDatabase: .none)
+    if let c = try? ModelContainer(for: schema, configurations: [configLokal]) { return c }
 
     // Fallback: Alte Stores löschen + neu starten
     for name in ["default.store", "default.store-shm", "default.store-wal"] {
         try? FileManager.default.removeItem(at: appSupport.appendingPathComponent(name))
     }
-    if let c = try? ModelContainer(for: schema, configurations: [config]) { return c }
+    if let c = try? ModelContainer(for: schema, configurations: [configCloud]) { return c }
+    if let c = try? ModelContainer(for: schema, configurations: [configLokal]) { return c }
 
     // In-Memory — App startet immer
     return try! ModelContainer(for: schema, configurations: [
