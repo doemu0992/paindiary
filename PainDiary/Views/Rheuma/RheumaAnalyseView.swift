@@ -288,7 +288,7 @@ struct RheumaAnalyseView: View {
     // MARK: Zusammenfassung
 
     private var summaryKarte: some View {
-        karte(titel: "Zusammenfassung", symbol: "chart.bar.fill", farbe: .purple,
+        karte(titel: "Zusammenfassung", symbol: "chart.bar.fill", farbe: .teal,
               info: "Überblick über den gewählten Zeitraum. Schübe sind Einträge mit aktiviertem Schub-Marker. Morgensteifigkeit wird nur eingerechnet, wenn sie erfasst wurde. Der HAQ-Score zeigt den letzten Messwert im Zeitraum.") {
             if gefiltert.isEmpty {
                 Text("Keine Einträge in diesem Zeitraum")
@@ -297,7 +297,7 @@ struct RheumaAnalyseView: View {
                     .padding(.vertical, 8)
             } else {
                 HStack(spacing: 0) {
-                    statZelle("\(gefiltert.count)", label: "Einträge", farbe: .purple)
+                    statZelle("\(gefiltert.count)", label: "Einträge", farbe: .teal)
                     Divider().frame(height: 44)
                     statZelle("\(mitSchub.count)", label: "Schübe",
                               farbe: mitSchub.isEmpty ? .secondary : .red)
@@ -329,7 +329,7 @@ struct RheumaAnalyseView: View {
     // MARK: Verlauf
 
     private var verlaufKarte: some View {
-        karte(titel: "Schmerzverlauf", symbol: "chart.line.uptrend.xyaxis", farbe: .purple,
+        karte(titel: "Schmerzverlauf", symbol: "chart.line.uptrend.xyaxis", farbe: .teal,
               info: "Durchschnittliche Schmerzstärke pro Monat. Monate mit mindestens einem Schub sind orange markiert. Scrolle nach links für ältere Monate.") {
             if monatlicherVerlauf.isEmpty {
                 Text("Keine Daten für diesen Zeitraum")
@@ -342,7 +342,7 @@ struct RheumaAnalyseView: View {
                         x: .value("Monat", p.monat, unit: .month),
                         y: .value("Schmerz", p.avgSchmerz)
                     )
-                    .foregroundStyle(p.schube > 0 ? Color.orange : Color.purple.opacity(0.7))
+                    .foregroundStyle(p.schube > 0 ? Color.orange : Color.teal.opacity(0.7))
                     .cornerRadius(4)
                 }
                 .chartScrollableAxes(.horizontal)
@@ -362,7 +362,7 @@ struct RheumaAnalyseView: View {
                 .frame(height: 160)
                 HStack(spacing: 12) {
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.purple.opacity(0.7)).frame(width: 12, height: 12)
+                        RoundedRectangle(cornerRadius: 2).fill(Color.teal.opacity(0.7)).frame(width: 12, height: 12)
                         Text("Ø Schmerz").font(.caption2).foregroundStyle(.secondary)
                     }
                     HStack(spacing: 4) {
@@ -458,7 +458,7 @@ struct RheumaAnalyseView: View {
         if topGelenke.isEmpty {
             leerKarte(.gelenke)
         } else {
-            karte(titel: "Betroffene Gelenke", symbol: "figure.arms.open", farbe: .purple,
+            karte(titel: "Betroffene Gelenke", symbol: "figure.arms.open", farbe: .teal,
                   info: "Die häufigsten betroffenen Gelenke aus allen Einträgen mit Gelenkstatus – sowohl schmerzhafte als auch geschwollene Gelenke werden gezählt. Hilft dir und deinem Arzt, Muster in der Gelenkbeteiligung zu erkennen.") {
                 VStack(spacing: 8) {
                     ForEach(topGelenke) { g in
@@ -474,7 +474,7 @@ struct RheumaAnalyseView: View {
                                         .fill(Color.secondary.opacity(0.12))
                                         .frame(height: 18)
                                     RoundedRectangle(cornerRadius: 4)
-                                        .fill(Color.purple.opacity(0.7))
+                                        .fill(Color.teal.opacity(0.7))
                                         .frame(
                                             width: geo.size.width * CGFloat(g.anzahl) / CGFloat(topGelenke.first?.anzahl ?? 1),
                                             height: 18
