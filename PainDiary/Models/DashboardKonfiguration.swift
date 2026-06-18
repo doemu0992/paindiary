@@ -68,13 +68,13 @@ enum KachelTyp: String, Codable, CaseIterable {
 
     var abschnitt: String {
         switch self {
-        case .schmerzUebersicht, .medikamente, .zyklus, .hautveraenderung:
+        case .schmerzUebersicht, .medikamente, .zyklus:
             return "Heute"
         case .schmerzverlauf:
             return "Verlauf"
         case .stimmungStress, .schnellLinks:
             return "Zuletzt"
-        case .schmerzKachel, .migraeneKachel, .rheumaKachel, .diabetesKachel:
+        case .hautveraenderung, .schmerzKachel, .migraeneKachel, .rheumaKachel, .diabetesKachel:
             return "Module"
         case .wetterSchmerz, .stressSchmerz, .schlafSchmerz,
              .midasKachel, .konfigKorrelation:
@@ -85,7 +85,7 @@ enum KachelTyp: String, Codable, CaseIterable {
     // Basiskacheln können nur ausgeblendet, nicht gelöscht werden
     static let basisKacheln: Set<KachelTyp> = [
         .schmerzUebersicht, .schmerzverlauf, .stimmungStress,
-        .medikamente, .zyklus, .hautveraenderung, .schnellLinks
+        .medikamente, .zyklus, .schnellLinks
     ]
 }
 
@@ -114,7 +114,6 @@ struct KachelKonfiguration: Codable, Identifiable, Hashable, Equatable {
         KachelKonfiguration(id: KachelTyp.schmerzUebersicht.rawValue,  typ: .schmerzUebersicht),
         KachelKonfiguration(id: KachelTyp.medikamente.rawValue,        typ: .medikamente),
         KachelKonfiguration(id: KachelTyp.zyklus.rawValue,             typ: .zyklus),
-        KachelKonfiguration(id: KachelTyp.hautveraenderung.rawValue,   typ: .hautveraenderung),
         KachelKonfiguration(id: KachelTyp.schmerzverlauf.rawValue,     typ: .schmerzverlauf),
         KachelKonfiguration(id: KachelTyp.stimmungStress.rawValue,     typ: .stimmungStress),
         KachelKonfiguration(id: KachelTyp.schnellLinks.rawValue,       typ: .schnellLinks),
