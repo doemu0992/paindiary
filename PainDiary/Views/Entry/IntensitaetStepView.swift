@@ -51,7 +51,7 @@ struct IntensitaetStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
             // Schub / Flare toggle
             toggleZeile(
@@ -196,7 +196,7 @@ private struct VerlaufSektionView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     private var zeitAbstand: String {

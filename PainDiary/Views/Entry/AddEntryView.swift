@@ -701,7 +701,7 @@ private struct OrtTypStepView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal)
             .frame(maxHeight: .infinity)
             .layoutPriority(1)

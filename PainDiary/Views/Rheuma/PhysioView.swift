@@ -71,7 +71,7 @@ struct PhysioView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func statPill(_ wert: String, label: String, farbe: Color) -> some View {

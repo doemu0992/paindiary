@@ -86,7 +86,7 @@ struct CharakterAusloeserStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
             // Card 2: Dauer
             VStack(alignment: .leading, spacing: 12) {
@@ -109,7 +109,7 @@ struct CharakterAusloeserStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
             // Card 3: Auslöser
             VStack(alignment: .leading, spacing: 12) {
@@ -144,7 +144,7 @@ struct CharakterAusloeserStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         }
         .padding(.horizontal)
         .onAppear { ladeWerte() }

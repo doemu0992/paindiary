@@ -186,7 +186,7 @@ struct EintragAuswahlView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 18)
-            .background(Color(.secondarySystemBackground))
+            .background(Color(.secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)

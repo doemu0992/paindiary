@@ -133,7 +133,7 @@ struct NotfallausweisView: View {
             Spacer()
         }
         .padding(16)
-        .background(Color(.secondarySystemBackground))
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -404,7 +404,7 @@ private struct AusweisSektion<Content: View>: View {
             inhalt()
         }
         .padding(16)
-        .background(Color(.secondarySystemBackground))
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }

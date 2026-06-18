@@ -41,7 +41,7 @@ struct BodyScanSetupView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
                 .padding(.horizontal)
 
                 Spacer()

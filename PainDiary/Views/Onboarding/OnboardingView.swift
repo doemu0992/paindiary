@@ -199,7 +199,7 @@ private struct NameSchritt: View {
                         .font(.title3)
                         .multilineTextAlignment(.center)
                         .padding()
-                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
                         .focused($fokus)
                         .submitLabel(.done)
                         .onSubmit { fokus = false }
@@ -321,7 +321,7 @@ private struct SchmerzTypSchritt: View {
                         .padding(.vertical, 16)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(aktiv ? typ.farbe.opacity(0.1) : Color(.secondarySystemBackground))
+                                .fill(aktiv ? typ.farbe.opacity(0.1) : Color(.secondarySystemGroupedBackground))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16)
                                         .stroke(aktiv ? typ.farbe : Color.clear, lineWidth: 2)
@@ -393,7 +393,7 @@ private struct DashboardVorschauSchritt: View {
                         Spacer()
                     }
                     .padding(12)
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                 }
             }
             .padding(.horizontal, 24)
@@ -482,7 +482,7 @@ private struct DatenschutzSchritt: View {
                         Spacer()
                     }
                     .padding()
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 24)

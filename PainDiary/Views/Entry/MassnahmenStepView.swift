@@ -88,7 +88,7 @@ struct MassnahmenStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
             Text("Optional – du kannst diesen Schritt überspringen.")
                 .font(.caption)

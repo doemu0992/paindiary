@@ -235,7 +235,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -279,7 +279,7 @@ struct DashboardView: View {
                 if aktive.count > 3 { Text("+ \(aktive.count - 3) weitere").font(.caption).foregroundStyle(.secondary) }
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
         .buttonStyle(.plain)
@@ -328,7 +328,7 @@ struct DashboardView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
         .buttonStyle(.plain)
@@ -382,7 +382,7 @@ struct DashboardView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
     }
@@ -460,7 +460,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -476,7 +476,7 @@ struct DashboardView: View {
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .buttonStyle(.plain)
@@ -488,7 +488,7 @@ struct DashboardView: View {
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .buttonStyle(.plain)

@@ -62,7 +62,7 @@ struct PostdromErfassungView: View {
                             }
                         }
                         .padding()
-                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
                     }
 
                     Spacer(minLength: 0)

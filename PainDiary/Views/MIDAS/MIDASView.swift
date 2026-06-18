@@ -107,7 +107,7 @@ struct MIDASView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func gradFarbe(_ score: Int) -> Color {
@@ -136,7 +136,7 @@ struct MIDASView: View {
                 .font(.subheadline).foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func infoPill(_ wert: String, label: String, farbe: Color) -> some View {
