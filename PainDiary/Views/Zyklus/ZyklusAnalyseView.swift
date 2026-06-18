@@ -29,12 +29,28 @@ struct ZyklusAnalyseView: View {
                         basaltemperaturChart
                         ovulationstestKarte
                         schmerzKorrelation
+                        KIAnalyseKarte(prompt: kiPrompt, modulTint: .pink)
                     }
                     .padding()
                 }
             }
         }
         .navigationTitle("Zyklusanalyse")
+    }
+
+    private var kiPrompt: String {
+        let zyklen = max(analyse.zyklusStarts.count - 1, 0)
+        let schmerzAnPeriodeTagen = painEntries.filter {
+            analyse.periodeTageSet.contains(Calendar.current.startOfDay(for: $0.datum))
+        }.count
+        return """
+        Zyklus-Analyse:
+        - \(zyklen) vollständige Zyklen erfasst
+        - Ø Zykluslänge: \(Int(analyse.zykluslaenge.rounded())) Tage, Variation: ±\(String(format: "%.1f", analyse.variation)) Tage
+        - Ø Periodendauer: \(Int(analyse.periodendauer.rounded())) Tage
+        - Schmerzeinträge an Periodentagen: \(schmerzAnPeriodeTagen)
+        Gib 2–3 kurze Einblicke zu Mustern und möglichen Zusammenhängen auf Deutsch.
+        """
     }
 
     // MARK: - Statistik Karten

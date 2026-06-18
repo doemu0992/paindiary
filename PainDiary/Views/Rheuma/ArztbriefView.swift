@@ -39,7 +39,14 @@ struct ArztbriefView: View {
                 }
             }
 
-            Section("Vorschau") {
+            Section("KI-Arztbrief") {
+                KIArztbriefKarte(rohdaten: erzeugeBrief(), patientenName: patientenName)
+                    .id(zeitraum)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowBackground(Color.clear)
+            }
+
+            Section("Strukturierte Vorschau") {
                 Text(erzeugeBrief())
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -50,6 +57,11 @@ struct ArztbriefView: View {
         .sheet(isPresented: $zeigeTeilen) {
             TextShareSheet(text: erzeugeBrief())
         }
+    }
+
+    private var patientenName: String {
+        guard let p = profile.first, !p.vorname.isEmpty else { return "" }
+        return "\(p.vorname) \(p.nachname)"
     }
 
     private func erzeugeBrief() -> String {
@@ -131,5 +143,121 @@ struct ArztbriefView: View {
 
         text += "Erstellt mit PainDiary · \(df.string(from: heute))\n"
         return text
+    }
+}
+
+// MARK: - KI Arztbrief Karte
+
+struct KIArztbriefKarte: View {
+    let rohdaten: String
+    let patientenName: String
+
+    var body: some View {
+        if #available(iOS 26, *) {
+            KIArztbriefContent(rohdaten: rohdaten, patientenName: patientenName)
+        }
+    }
+}
+
+@available(iOS 26, *)
+private struct KIArztbriefContent: View {
+    let rohdaten: String
+    let patientenName: String
+
+    @State private var session: LanguageModelSession? = nil
+    @State private var brief = ""
+    @State private var isGenerating = false
+    @State private var hatGeneriert = false
+    @State private var fehler: String? = nil
+
+    private var systemPrompt: String {
+        "Du bist ein medizinischer Schreibassistent für PainDiary. " +
+        "Erstelle auf Basis der Rohdaten einen formellen, professionellen Arztbrief auf Deutsch. " +
+        "Struktur: Briefkopf (Datum, Patient), Betreff, Anrede, Anamnese, aktueller Befund, " +
+        "Medikation, Laborwerte (falls vorhanden), Verlauf, freundliche Schlussformel. " +
+        "Klar und sachlich formulieren. Keine Diagnosen stellen."
+    }
+
+    private var prompt: String {
+        "Erstelle einen Arztbrief für \(patientenName.isEmpty ? "den Patienten" : patientenName) " +
+        "basierend auf diesen PainDiary-Daten:\n\n\(rohdaten)"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Label("KI-Arztbrief", systemImage: "sparkles")
+                    .font(.headline).foregroundStyle(.teal)
+                Spacer()
+                if isGenerating {
+                    ProgressView().scaleEffect(0.75)
+                } else if hatGeneriert {
+                    HStack(spacing: 12) {
+                        Button {
+                            UIPasteboard.general.string = brief
+                        } label: {
+                            Image(systemName: "doc.on.doc").font(.caption.bold()).foregroundStyle(.teal)
+                        }
+                        .buttonStyle(.plain)
+                        Button { Task { await generieren() } } label: {
+                            Image(systemName: "arrow.clockwise").font(.caption.bold()).foregroundStyle(.teal)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            Divider()
+
+            if hatGeneriert || isGenerating {
+                Text(brief.isEmpty ? " " : brief)
+                    .font(.subheadline)
+                    .lineSpacing(4)
+                    .animation(.easeIn, value: brief)
+            } else if let f = fehler {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
+                    Text(f).font(.caption).foregroundStyle(.secondary)
+                }
+                Button("Erneut versuchen") { Task { await generieren() } }
+                    .font(.caption.bold()).foregroundStyle(.teal)
+            } else {
+                Text("Apple Intelligence erstellt einen formellen Arztbrief aus deinen PainDiary-Daten.")
+                    .font(.caption).foregroundStyle(.secondary).padding(.bottom, 4)
+                Button { Task { await generieren() } } label: {
+                    Label("Arztbrief generieren", systemImage: "sparkles")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .disabled(isGenerating)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    }
+
+    private func generieren() async {
+        if session == nil {
+            session = LanguageModelSession(instructions: systemPrompt)
+        }
+        guard let session else { return }
+        isGenerating = true
+        hatGeneriert = true
+        brief = ""
+        fehler = nil
+        do {
+            let stream = session.streamResponse(to: prompt)
+            for try await partial in stream {
+                brief = partial.content
+            }
+        } catch {
+            fehler = "Apple Intelligence nicht verfügbar. Aktiviere es unter Einstellungen → Apple Intelligence."
+            hatGeneriert = false
+        }
+        isGenerating = false
     }
 }

@@ -288,6 +288,50 @@ private func statPill(_ wert: String, label: String, farbe: Color) -> some View 
 
 ---
 
+## Apple Intelligence Integration (Standard)
+
+Jede AnalyseView und ArztbriefView enthält einen **KI-Einblick** via `FoundationModels` (iOS 26+).
+
+### AnalyseViews
+
+Jede AnalyseView hat eine `.kiInsicht`-Section in der Sektions-Enum + einen `kiPrompt: String`:
+
+```swift
+// 1. Enum-Case hinzufügen
+case kiInsicht = "KI-Einblick"
+// + symbol: return "sparkles"
+
+// 2. Dispatcher-Case
+case .kiInsicht: KIAnalyseKarte(prompt: kiPrompt, modulTint: .modulTint)
+
+// 3. Prompt-Property (kompakte Datenzusammenfassung auf Deutsch)
+private var kiPrompt: String {
+    """
+    Modul-Analyse (Zeitraum):
+    - Kennzahl 1: Wert
+    - Kennzahl 2: Wert
+    Identifiziere Muster und gib 3–4 kurze Einblicke.
+    """
+}
+```
+
+Für AnalyseViews ohne Sektions-Enum (z.B. ZyklusAnalyseView): `KIAnalyseKarte(prompt: kiPrompt, modulTint: .pink)` am Ende der Cards-VStack.
+
+### ArztbriefView
+
+`KIArztbriefKarte(rohdaten: erzeugeBrief(), patientenName: ...)` in einer eigenen Section.
+Generiert einen formellen Arztbrief auf Basis der Rohdaten. Kopieren-Button im Header.
+
+### KIAnalyseKarte (Shared Component)
+
+`Views/Components/KIAnalyseKarte.swift` — nie duplizieren.
+- iOS 26+ only, ältere iOS: unsichtbar (kein Fallback nötig)
+- `.id(prompt)`: View wird bei Zeitraum-Änderung neu erstellt → Nutzer muss neu generieren
+- Systemsprompt: medizinischer Assistent, 3–4 Sätze Deutsch, keine Diagnosen
+- Streaming via `session.streamResponse(to:)`, Reload-Button nach Generierung
+
+---
+
 ## Neue Features / Module – Checkliste
 
 Vor dem Merge eines neuen Moduls prüfen:
@@ -301,4 +345,5 @@ Vor dem Merge eines neuen Moduls prüfen:
 - [ ] Dashboard-Kachel nach Template (3 Stats / Mini-Chart / Nav-Link / Plus-Button)
 - [ ] ProfilView `erkrankungenSektion`: NavigationLink-Icon mit Modul-Tint
 - [ ] ProfilView `moduleSektion`: Toggle-Icon mit Modul-Tint
+- [ ] AnalyseView: `.kiInsicht`-Section + `kiPrompt` + `KIAnalyseKarte` eingebunden
 - [ ] Grep nach alter/falscher Farbe im Modul-Ordner vor Merge (`grep -r "\.wrongColor" Views/MeinModul/`)

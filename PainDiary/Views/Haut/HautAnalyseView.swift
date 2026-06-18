@@ -9,6 +9,7 @@ enum HautAnalyseSektion: String, CaseIterable, Codable, Identifiable {
     case stellen         = "Körperstellen"
     case arten           = "Hautbild-Arten"
     case wohlbefinden    = "Wohlbefinden-Muster"
+    case kiInsicht       = "KI-Einblick"
 
     var id: String { rawValue }
     var symbol: String {
@@ -18,6 +19,7 @@ enum HautAnalyseSektion: String, CaseIterable, Codable, Identifiable {
         case .stellen:         return "figure.stand"
         case .arten:           return "bandage.fill"
         case .wohlbefinden:    return "heart.text.square.fill"
+        case .kiInsicht:       return "sparkles"
         }
     }
 }
@@ -203,7 +205,22 @@ struct HautAnalyseView: View {
         case .wohlbefinden:
             if avgStress == nil && avgSchlaf == nil { leerKarte(sektion) }
             else { wohlbefindenKarte }
+        case .kiInsicht: KIAnalyseKarte(prompt: kiPrompt, modulTint: .orange)
         }
+    }
+
+    private var kiPrompt: String {
+        let topArten   = topListe(aus: \.hautArt).prefix(3).map(\.name).joined(separator: ", ")
+        let topStellen = topListe(aus: \.hautStellen).prefix(3).map(\.name).joined(separator: ", ")
+        return """
+        Hautveränderungs-Analyse (\(zeitraum.rawValue)):
+        - \(gefiltert.count) Einträge
+        - Häufigste Arten: \(topArten.isEmpty ? "–" : topArten)
+        - Häufigste Körperstellen: \(topStellen.isEmpty ? "–" : topStellen)
+        - Ø Stress: \(avgStress.map { String(format: "%.1f", $0) } ?? "–")/5
+        - Ø Schlaf: \(avgSchlaf.map { String(format: "%.1f h", $0) } ?? "–")
+        Identifiziere Muster und gib 3–4 kurze Einblicke.
+        """
     }
 
     // MARK: Helpers

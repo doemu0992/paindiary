@@ -10,6 +10,7 @@ enum DiabetesAnalyseSektion: String, CaseIterable, Codable, Identifiable {
     case ereignisse       = "Hypo- & Hyper-Ereignisse"
     case tageszeitMuster  = "Tageszeit-Muster"
     case insulin          = "Insulin-Überblick"
+    case kiInsicht        = "KI-Einblick"
 
     var id: String { rawValue }
     var symbol: String {
@@ -20,6 +21,7 @@ enum DiabetesAnalyseSektion: String, CaseIterable, Codable, Identifiable {
         case .ereignisse:      return "exclamationmark.triangle.fill"
         case .tageszeitMuster: return "clock.fill"
         case .insulin:         return "syringe.fill"
+        case .kiInsicht:       return "sparkles"
         }
     }
 }
@@ -294,7 +296,20 @@ struct DiabetesAnalyseView: View {
         case .insulin:
             if mitInsulin.isEmpty { leerKarte(sektion) }
             else { insulinKarte }
+        case .kiInsicht: KIAnalyseKarte(prompt: kiPrompt, modulTint: .blue)
         }
+    }
+
+    private var kiPrompt: String {
+        """
+        Diabetes-Analyse (\(zeitraum.rawValue)):
+        - \(gefiltert.count) Messungen, Ø Glukose: \(avgGesamt.map { String(format: "%.1f mmol/L", $0) } ?? "–")
+        - Zeit im Zielbereich (TIR): \(pctZielbereich)%
+        - Hypos (< 3.9 mmol/L): \(hypos.count), Hypers (> 7.8 mmol/L): \(hypers.count)
+        - Ø Nüchternwert: \(avgNuechtern.map { String(format: "%.1f mmol/L", $0) } ?? "–")
+        - Mit Insulin: \(mitInsulin.count) Messungen
+        Identifiziere Muster und gib 3–4 kurze Einblicke.
+        """
     }
 
     // MARK: Helpers

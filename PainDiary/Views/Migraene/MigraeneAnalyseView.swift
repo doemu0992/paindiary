@@ -10,6 +10,7 @@ enum AnalyseSektion: String, CaseIterable, Codable, Identifiable {
     case medikament      = "Medikament-Wirksamkeit"
     case wetter          = "Wetter bei Anfällen"
     case zyklus          = "Zyklus-Korrelation"
+    case kiInsicht       = "KI-Einblick"
 
     var id: String { rawValue }
     var symbol: String {
@@ -22,6 +23,7 @@ enum AnalyseSektion: String, CaseIterable, Codable, Identifiable {
         case .medikament:      return "pill.fill"
         case .wetter:          return "cloud.sun.fill"
         case .zyklus:          return "moon.stars.fill"
+        case .kiInsicht:       return "sparkles"
         }
     }
 }
@@ -266,7 +268,24 @@ struct MigraeneAnalyseView: View {
             if !wetterVerteilung.isEmpty { wetterKarte }
             else { leerKarte(sektion) }
         case .zyklus: zyklusKarte
+        case .kiInsicht: KIAnalyseKarte(prompt: kiPrompt, modulTint: .purple)
         }
+    }
+
+    private var kiPrompt: String {
+        let avg = gefiltert.isEmpty ? "–" : String(format: "%.1f", Double(gefiltert.map(\.staerke).reduce(0,+)) / Double(gefiltert.count))
+        let ausloeser = topAusloeser.prefix(3).map(\.name).joined(separator: ", ")
+        let dauer = avgDauerMin.map { String(format: "%.0f Min.", $0) } ?? "–"
+        let topTageszeit = tageszeitMuster.max(by: { $0.anzahl < $1.anzahl })?.label ?? "–"
+        return """
+        Migräne-Analyse (\(zeitraum.rawValue)):
+        - \(gefiltert.count) Anfälle, Ø Stärke: \(avg)/10
+        - Aura: \(String(format: "%.0f", auraQuote * 100))% der Anfälle
+        - Ø Dauer: \(dauer)
+        - Häufige Auslöser: \(ausloeser.isEmpty ? "–" : ausloeser)
+        - Häufigste Tageszeit: \(topTageszeit)
+        Identifiziere Muster und gib 3–4 kurze Einblicke.
+        """
     }
 
     // MARK: - Summary

@@ -10,6 +10,7 @@ enum RheumaAnalyseSektion: String, CaseIterable, Codable, Identifiable {
     case schubMuster       = "Schub-Muster"
     case gelenke           = "Betroffene Gelenke"
     case haqVerlauf        = "HAQ-Verlauf"
+    case kiInsicht         = "KI-Einblick"
 
     var id: String { rawValue }
     var symbol: String {
@@ -20,6 +21,7 @@ enum RheumaAnalyseSektion: String, CaseIterable, Codable, Identifiable {
         case .schubMuster:       return "flame.fill"
         case .gelenke:           return "figure.arms.open"
         case .haqVerlauf:        return "chart.line.downtrend.xyaxis"
+        case .kiInsicht:         return "sparkles"
         }
     }
 }
@@ -240,7 +242,24 @@ struct RheumaAnalyseView: View {
         case .schubMuster:       schubMusterKarte
         case .gelenke:           gelenkHaeufigkeitKarte
         case .haqVerlauf:        haqVerlaufKarte
+        case .kiInsicht:         KIAnalyseKarte(prompt: kiPrompt, modulTint: .teal)
         }
+    }
+
+    private var kiPrompt: String {
+        let avg = gefiltert.isEmpty ? "–" : String(format: "%.1f", avgSchmerz)
+        let mg = mitMorgen.isEmpty ? "–" : String(format: "%.0f", avgMorgen)
+        let haq = gefilterteHAQ.first.map { String(format: "%.2f", $0.haqScore) } ?? "–"
+        let gelenke = topGelenke.prefix(3).map(\.name).joined(separator: ", ")
+        return """
+        Rheuma-Tagebuch Analyse (\(zeitraum.rawValue)):
+        - \(gefiltert.count) Einträge, Ø Schmerzstärke: \(avg)/10
+        - Schübe: \(mitSchub.count)
+        - Morgensteifigkeit: Ø \(mg) Min. (\(mitMorgen.count) Einträge)
+        - Letzter HAQ-Score: \(haq)
+        - Top-Gelenke: \(gelenke.isEmpty ? "–" : gelenke)
+        Identifiziere Muster und gib 3–4 kurze Einblicke.
+        """
     }
 
     // MARK: Helpers
