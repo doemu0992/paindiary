@@ -124,8 +124,6 @@ struct GelenkKoerperView: UIViewRepresentable {
         let bauchTop  = huefteTop + p.bauchHoehe
         let brustTop  = bauchTop  + p.brustHoehe
         let kopfMitte = brustTop  + p.halsLaenge + p.kopfRadius
-        let beinX     = p.huefteBreite * 0.28
-
         func addJointMarker(_ name: String, _ pos: SCNVector3, radius: Float = 0.032) {
             let geo = SCNSphere(radius: CGFloat(radius))
             let mat = SCNMaterial()

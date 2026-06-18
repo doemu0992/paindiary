@@ -127,6 +127,8 @@ struct ContentView: View {
             zeigeMigraeneBearbeiten = migraeneEintraege.first {
                 abs($0.datum.timeIntervalSince1970 - interval) < 1
             }
+        case .biologikaAnzeigen:
+            ausgewaehlterTab = 2
         }
     }
 
