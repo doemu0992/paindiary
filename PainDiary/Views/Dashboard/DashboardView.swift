@@ -225,48 +225,130 @@ struct DashboardView: View {
 
     // MARK: - Medikamente
 
-    private var medikamentenKarte: some View {
-        let aktive = medikamente.filter(\.aktiv)
+    private var medAktivePlan: [Dauermedikation] {
+        let notif = NotificationManager.shared
+        return medikamente.filter { $0.aktiv && $0.frequenz != "Bei Bedarf" && notif.anzahlDosen($0.frequenz) > 0 }
+    }
+
+    private var medAdherenz7T: Double {
+        let notif = NotificationManager.shared
+        let kal = Calendar.current
+        var erwartet = 0; var eingenommen = 0
+        for offset in 0..<7 {
+            guard let tag = kal.date(byAdding: .day, value: -offset, to: tagesstart),
+                  let tagEnde = kal.date(byAdding: .day, value: 1, to: tag) else { continue }
+            for med in medAktivePlan {
+                let n = notif.anzahlDosen(med.frequenz)
+                erwartet += n
+                let g = einnahmeLogs.filter {
+                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
+                }.count
+                eingenommen += min(g, n)
+            }
+        }
+        return erwartet > 0 ? Double(eingenommen) / Double(erwartet) * 100 : 0
+    }
+
+    private var medHeuteErwartet: Int {
+        let notif = NotificationManager.shared
+        return medikamente.filter(\.aktiv).map { notif.anzahlDosen($0.frequenz) }.reduce(0, +)
+    }
+
+    private var medHeuteEingenommen: Int {
         let notif = NotificationManager.shared
         let tagesende = Calendar.current.date(byAdding: .day, value: 1, to: tagesstart) ?? tagesstart
         let heuteLogs = einnahmeLogs.filter { $0.datum >= tagesstart && $0.datum < tagesende && $0.eingenommen }
+        return medikamente.filter(\.aktiv).map { med in
+            let n = notif.anzahlDosen(med.frequenz)
+            guard n > 0 else { return 0 }
+            return min(n, heuteLogs.filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung }.count)
+        }.reduce(0, +)
+    }
 
-        return NavigationLink(destination: MedikamenteView()) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("Medikamente heute", systemImage: "pill.fill")
-                        .font(.headline).foregroundStyle(.blue)
-                    InfoButton(
-                        titel: "Medikamente heute",
-                        text: "Deine aktiven Dauermedikamente und deren heutiger Einnahmestatus. Hake Einnahmen im Medikamenten-Tab ab."
-                    )
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                }
-                ForEach(aktive.prefix(3)) { med in
-                    let erwartet = notif.anzahlDosen(med.frequenz)
-                    let eingenommen = heuteLogs.filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung }.count
-                    let fertig = erwartet > 0 ? eingenommen >= erwartet : eingenommen > 0
-                    HStack(spacing: 10) {
-                        Image(systemName: fertig ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(fertig ? .green : .secondary).font(.body)
-                        Text(med.name).font(.subheadline).foregroundStyle(fertig ? .secondary : .primary)
-                        if !med.dosierung.isEmpty { Text(med.dosierung).font(.caption).foregroundStyle(.secondary) }
-                        Spacer()
-                        if erwartet > 1 {
-                            Text("\(eingenommen)/\(erwartet)").font(.caption).foregroundStyle(fertig ? .green : .secondary)
-                        } else if erwartet == 0 && eingenommen > 0 {
-                            Text("\(eingenommen)×").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                if aktive.count > 3 { Text("+ \(aktive.count - 3) weitere").font(.caption).foregroundStyle(.secondary) }
+    private var medChartDaten: [(datum: Date, prozent: Double, hatDaten: Bool)] {
+        let notif = NotificationManager.shared
+        let kal = Calendar.current
+        return (0..<14).compactMap { offset -> (datum: Date, prozent: Double, hatDaten: Bool)? in
+            guard let tag = kal.date(byAdding: .day, value: -(13 - offset), to: tagesstart),
+                  let tagEnde = kal.date(byAdding: .day, value: 1, to: tag) else { return nil }
+            var erw = 0; var ein = 0
+            for med in medAktivePlan {
+                guard med.startDatum <= tagEnde else { continue }
+                let n = notif.anzahlDosen(med.frequenz)
+                erw += n
+                let g = einnahmeLogs.filter {
+                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
+                }.count
+                ein += min(g, n)
             }
-            .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+            let p = erw > 0 ? Double(ein) / Double(erw) * 100 : 0
+            return (datum: tag, prozent: p, hatDaten: erw > 0)
         }
-        .buttonStyle(.plain)
+    }
+
+    private var medikamentenKarte: some View {
+        let hatDaten = medChartDaten.contains { $0.hatDaten && $0.prozent > 0 }
+        let adFarbe: Color = medAdherenz7T >= 80 ? .green : medAdherenz7T >= 50 ? .orange : medAdherenz7T > 0 ? .red : .secondary
+        let heuteFarbe: Color = medHeuteErwartet == 0 ? .secondary : medHeuteEingenommen >= medHeuteErwartet ? .green : .blue
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Medikamente", systemImage: "pill.fill")
+                    .font(.headline).foregroundStyle(.blue)
+                Spacer()
+                NavigationLink(destination: MedikamenteView()) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3).foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(spacing: 0) {
+                miniStat("Adherenz", wert: medAdherenz7T > 0 ? String(format: "%.0f%%", medAdherenz7T) : "–", farbe: adFarbe)
+                Divider().frame(height: 32)
+                miniStat("Heute", wert: medHeuteErwartet > 0 ? "\(medHeuteEingenommen)/\(medHeuteErwartet)" : "–", farbe: heuteFarbe)
+                Divider().frame(height: 32)
+                miniStat("Aktiv", wert: "\(medikamente.filter(\.aktiv).count)", farbe: .secondary)
+            }
+
+            Chart(medChartDaten, id: \.datum) { punkt in
+                BarMark(
+                    x: .value("Tag", punkt.datum, unit: .day),
+                    y: .value("Adherenz", hatDaten ? (punkt.hatDaten ? max(punkt.prozent, 4) : 0) : 1.0)
+                )
+                .foregroundStyle(
+                    hatDaten && punkt.hatDaten
+                        ? (punkt.prozent >= 80 ? Color.green.opacity(0.75)
+                           : punkt.prozent >= 50 ? Color.orange.opacity(0.75)
+                           : Color.red.opacity(0.75))
+                        : Color.blue.opacity(0.07)
+                )
+                .cornerRadius(3)
+            }
+            .chartXAxis(.hidden).chartYAxis(.hidden)
+            .frame(height: 44)
+            .overlay(alignment: .center) {
+                if !hatDaten {
+                    Text("Noch keine Einträge").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+
+            Divider()
+
+            NavigationLink(destination: MedikamenteView()) {
+                HStack {
+                    Text("Medikamente öffnen").font(.caption.bold()).foregroundStyle(.blue)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption2.bold()).foregroundStyle(Color.blue.opacity(0.6))
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
     // MARK: - Zyklus
