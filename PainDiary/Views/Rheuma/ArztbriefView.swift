@@ -132,12 +132,3 @@ struct ArztbriefView: View {
         return text
     }
 }
-
-// UIKit share sheet for plain text
-private struct TextShareSheet: UIViewControllerRepresentable {
-    let text: String
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [text], applicationActivities: nil)
-    }
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}

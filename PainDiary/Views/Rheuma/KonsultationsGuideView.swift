@@ -202,12 +202,3 @@ struct KonsultationsGuideView: View {
     }
 }
 
-// MARK: - TextShareSheet
-
-struct TextShareSheet: UIViewControllerRepresentable {
-    let text: String
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [text], applicationActivities: nil)
-    }
-    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
-}
