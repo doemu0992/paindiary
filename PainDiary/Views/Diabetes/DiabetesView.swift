@@ -111,15 +111,13 @@ struct DiabetesView: View {
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
-                if !messungen.isEmpty {
-                    Button { zeigeAnalyse = true } label: {
-                        Label("Diabetes-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                            .font(.subheadline.bold()).foregroundStyle(.white)
-                            .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
+                Button { zeigeAnalyse = true } label: {
+                    Label("Diabetes-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                        .font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
                 }
+                .buttonStyle(.plain)
             }
             .padding(.vertical, 4)
         }
