@@ -145,8 +145,17 @@ struct ArztFormView: View {
     @State private var email: String
     @State private var istHausarzt: Bool
     @State private var notizen: String
+    @State private var schritt = 0
     private let isEdit: Bool
     let onSave: (String, String, String, String, String, String, Bool, String) -> Void
+
+    private let TINT: Color = .indigo
+    private let maxSchritt = 1
+    private let pflichtSchritte: Set<Int> = [0]
+
+    private let fachrichtungen = ["Allgemeinmedizin", "Innere Medizin", "Rheumatologie",
+                                   "Neurologie", "Kardiologie", "Orthopädie", "Dermatologie",
+                                   "Diabetologie"]
 
     init(existing: ArztKontakt? = nil, onSave: @escaping (String, String, String, String, String, String, Bool, String) -> Void) {
         self.isEdit = existing != nil
@@ -161,34 +170,178 @@ struct ArztFormView: View {
         _notizen     = State(initialValue: existing?.notizen ?? "")
     }
 
+    private var kannWeiter: Bool { !name.isEmpty || !praxis.isEmpty }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Praxis / Klinik", text: $praxis)
-                    TextField("Name des Arztes", text: $name)
-                    TextField("Fachgebiet", text: $fachgebiet)
-                    TextField("Adresse", text: $adresse)
+            VStack(spacing: 0) {
+                // Progress bar
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.secondary.opacity(0.2)).frame(height: 3)
+                        Capsule().fill(TINT)
+                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
+                            .animation(.easeInOut(duration: 0.3), value: schritt)
+                    }
                 }
-                Section {
-                    TextField("Telefon", text: $telefon).keyboardType(.phonePad)
-                    TextField("E-Mail", text: $email).keyboardType(.emailAddress)
-                    Toggle("Hausarzt", isOn: $istHausarzt)
-                }
-                Section("Notizen") { TextEditor(text: $notizen).frame(minHeight: 60) }
+                .frame(height: 3)
+                .padding(.horizontal)
+                .padding(.top, 10)
+
+                schrittInhalt
+                    .frame(maxHeight: .infinity)
+
+                navigationsLeiste
             }
             .navigationTitle(isEdit ? "Arzt bearbeiten" : "Neuer Arzt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") {
-                        onSave(name, praxis, fachgebiet, adresse, telefon, email, istHausarzt, notizen)
-                        dismiss()
-                    }
-                    .disabled(name.isEmpty && praxis.isEmpty)
-                }
             }
         }
+    }
+
+    @ViewBuilder
+    private var schrittInhalt: some View {
+        switch schritt {
+        case 0:
+            ScrollView {
+                VStack(spacing: 20) {
+                    schrittHeader(symbol: "stethoscope", titel: "Arzt",
+                                  untertitel: "Name und Fachrichtung des Arztes")
+
+                    // Name & Praxis card
+                    VStack(spacing: 0) {
+                        TextField("Name des Arztes", text: $name)
+                            .font(.subheadline).padding(16)
+                        Divider().padding(.leading, 16)
+                        TextField("Praxis / Klinik", text: $praxis)
+                            .font(.subheadline).padding(16)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 12))
+
+                    // Fachrichtung grid
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Fachrichtung").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                            ForEach(fachrichtungen, id: \.self) { opt in
+                                let sel = fachgebiet == opt
+                                Button { fachgebiet = opt } label: {
+                                    Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
+                                        .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                        .foregroundStyle(sel ? .white : .primary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .animation(.easeInOut(duration: 0.15), value: sel)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                        // Custom fachgebiet field if none of the grid options match
+                        TextField("Oder eigene Fachrichtung", text: $fachgebiet)
+                            .font(.subheadline).padding(16)
+                            .background(Color(.secondarySystemGroupedBackground),
+                                        in: RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+            .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+
+        default:
+            ScrollView {
+                VStack(spacing: 20) {
+                    schrittHeader(symbol: "phone.fill", titel: "Kontakt",
+                                  untertitel: "Adresse, Telefon und weitere Infos")
+
+                    // Address & contact card
+                    VStack(spacing: 0) {
+                        TextField("Adresse", text: $adresse)
+                            .font(.subheadline).padding(16)
+                        Divider().padding(.leading, 16)
+                        TextField("Telefon", text: $telefon)
+                            .keyboardType(.phonePad)
+                            .font(.subheadline).padding(16)
+                        Divider().padding(.leading, 16)
+                        TextField("E-Mail", text: $email)
+                            .keyboardType(.emailAddress)
+                            .font(.subheadline).padding(16)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 12))
+
+                    // Hausarzt toggle
+                    VStack(spacing: 0) {
+                        Toggle("Hausarzt", isOn: $istHausarzt)
+                            .font(.subheadline).padding(16)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 12))
+
+                    // Notizen card
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Notizen")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .padding(.horizontal, 16).padding(.top, 12)
+                        TextEditor(text: $notizen)
+                            .font(.subheadline)
+                            .frame(minHeight: 80)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 12)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+            .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+        }
+    }
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button { withAnimation { schritt -= 1 } } label: {
+                    Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Überspringen").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            if schritt < maxSchritt {
+                Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
+                    Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(kannWeiter ? TINT : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain).disabled(!kannWeiter)
+            } else {
+                Button {
+                    onSave(name, praxis, fachgebiet, adresse, telefon, email, istHausarzt, notizen)
+                    dismiss()
+                } label: {
+                    Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(TINT, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(TINT)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 }

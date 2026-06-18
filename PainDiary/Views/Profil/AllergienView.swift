@@ -113,45 +113,115 @@ struct AllergieForm: View {
     @State private var reaktion = ""
     @State private var schwere = "Mittel"
 
+    private let TINT: Color = .orange
     private let typen = ["Medikament", "Nahrungsmittel", "Umwelt", "Kontakt", "Sonstiges"]
     private let schwereGrade = ["Leicht", "Mittel", "Schwer", "Lebensbedrohlich"]
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Allergen / Substanz") {
-                    TextField("Substanz / Allergen", text: $substanz)
-                    Picker("Typ", selection: $typ) {
-                        Text("Bitte wählen").tag("")
-                        ForEach(typen, id: \.self) { Text($0).tag($0) }
-                    }
-                }
-                Section("Reaktion & Schwere") {
-                    TextField("Reaktion (z.B. Hautausschlag, Atemnot)", text: $reaktion, axis: .vertical)
-                        .lineLimit(2...4)
-                    Picker("Schwere", selection: $schwere) {
-                        ForEach(schwereGrade, id: \.self) { grad in
-                            HStack {
-                                AllergieSchwereBadge(schwere: grad)
-                            }
-                            .tag(grad)
-                        }
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                }
+            VStack(spacing: 0) {
+                schrittInhalt
+                    .frame(maxHeight: .infinity)
+
+                speichernLeiste
             }
             .navigationTitle(allergie == nil ? "Neue Allergie" : "Allergie bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
-                        .disabled(substanz.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
             }
         }
         .onAppear { laden() }
+    }
+
+    private var schrittInhalt: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "allergens", titel: "Allergie",
+                              untertitel: "Allergen, Typ und Schweregrad eintragen")
+
+                // Substanz card
+                VStack(spacing: 0) {
+                    TextField("Substanz / Allergen", text: $substanz)
+                        .font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground),
+                            in: RoundedRectangle(cornerRadius: 12))
+
+                // Typ button grid
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Typ").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                        ForEach(typen, id: \.self) { opt in
+                            let sel = typ == opt
+                            Button { typ = opt } label: {
+                                Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
+                                    .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                    .foregroundStyle(sel ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .animation(.easeInOut(duration: 0.15), value: sel)
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Schweregrad button grid
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Schweregrad").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
+                        ForEach(schwereGrade, id: \.self) { grad in
+                            let sel = schwere == grad
+                            Button { schwere = grad } label: {
+                                Text(grad).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
+                                    .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                    .foregroundStyle(sel ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .animation(.easeInOut(duration: 0.15), value: sel)
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Reaktion card
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Reaktion")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .padding(.horizontal, 16).padding(.top, 12)
+                    TextField("z.B. Hautausschlag, Atemnot", text: $reaktion, axis: .vertical)
+                        .font(.subheadline)
+                        .lineLimit(2...4)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                }
+                .background(Color(.secondarySystemGroupedBackground),
+                            in: RoundedRectangle(cornerRadius: 12))
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var speichernLeiste: some View {
+        Button { speichern() } label: {
+            Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(substanz.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary : TINT,
+                            in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .disabled(substanz.trimmingCharacters(in: .whitespaces).isEmpty)
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(TINT)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func laden() {

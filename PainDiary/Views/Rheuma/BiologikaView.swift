@@ -244,7 +244,11 @@ struct BiologikaForm: View {
     @State private var hatErinnerung = false
     @State private var naechsteDosis = Date().addingTimeInterval(14 * 24 * 3600)
     @State private var notizen = ""
+    @State private var schritt = 0
 
+    private let TINT: Color = .teal
+    private let maxSchritt = 1
+    private let pflichtSchritte: Set<Int> = [0]
     private let andereOption = "Anderes..."
 
     private var praeparatListe: [String] {
@@ -255,65 +259,28 @@ struct BiologikaForm: View {
         praeparat == andereOption ? eigenesPraeparat : praeparat
     }
 
+    private var kannWeiter: Bool { !gewaehltesPreaparat.isEmpty }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Präparat") {
-                    Picker("Präparat", selection: $praeparat) {
-                        ForEach(praeparatListe, id: \.self) { p in
-                            Text(p).tag(p)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    if praeparat == andereOption {
-                        TextField("Präparatname eingeben", text: $eigenesPraeparat)
+            VStack(spacing: 0) {
+                // Progress bar
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.secondary.opacity(0.2)).frame(height: 3)
+                        Capsule().fill(TINT)
+                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
+                            .animation(.easeInOut(duration: 0.3), value: schritt)
                     }
                 }
+                .frame(height: 3)
+                .padding(.horizontal)
+                .padding(.top, 10)
 
-                Section("Datum & Dosis") {
-                    DatePicker("Datum", selection: $datum, in: ...Date(), displayedComponents: [.date])
-                    HStack {
-                        Text("Dosierung")
-                        Spacer()
-                        TextField("mg", text: $dosierungStr)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 70)
-                            .onChange(of: dosierungStr) { _, neu in
-                                if let d = Double(neu.replacingOccurrences(of: ",", with: ".")) {
-                                    dosierungMg = d
-                                }
-                            }
-                        Text("mg").foregroundStyle(.secondary)
-                    }
-                    TextField("Chargen-Nummer (optional)", text: $chargenNummer)
-                }
+                schrittInhalt
+                    .frame(maxHeight: .infinity)
 
-                Section("Injektionsstelle") {
-                    Picker("Stelle", selection: $injektionsstelle) {
-                        ForEach(BiologikaInjektion.injektionsStellen, id: \.self) { s in
-                            Text(s).tag(s)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                }
-
-                Section("Nächste Dosis") {
-                    Toggle("Erinnerung setzen", isOn: $hatErinnerung)
-                    if hatErinnerung {
-                        DatePicker(
-                            "Nächste Dosis",
-                            selection: $naechsteDosis,
-                            in: Date()...,
-                            displayedComponents: [.date]
-                        )
-                    }
-                }
-
-                Section("Notizen") {
-                    TextField("Hinweise, Reaktionen…", text: $notizen, axis: .vertical)
-                        .lineLimit(2...4)
-                }
+                navigationsLeiste
             }
             .navigationTitle(injektion == nil ? "Neue Injektion" : "Injektion bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
@@ -321,13 +288,181 @@ struct BiologikaForm: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
-                        .disabled(gewaehltesPreaparat.isEmpty)
-                }
             }
         }
         .onAppear { laden() }
+    }
+
+    @ViewBuilder
+    private var schrittInhalt: some View {
+        switch schritt {
+        case 0:
+            ScrollView {
+                VStack(spacing: 20) {
+                    schrittHeader(symbol: "syringe", titel: "Biologika-Injektion",
+                                  untertitel: "Präparat, Datum, Dosis und Injektionsort")
+
+                    // Präparat card
+                    VStack(spacing: 0) {
+                        Picker("Präparat", selection: $praeparat) {
+                            ForEach(praeparatListe, id: \.self) { p in
+                                Text(p).tag(p)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .font(.subheadline)
+                        .padding(16)
+                        if praeparat == andereOption {
+                            Divider().padding(.leading, 16)
+                            TextField("Präparatname eingeben", text: $eigenesPraeparat)
+                                .font(.subheadline).padding(16)
+                        }
+                    }
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 12))
+
+                    // Datum & Dosis card
+                    VStack(spacing: 0) {
+                        DatePicker("Datum", selection: $datum, in: ...Date(), displayedComponents: [.date])
+                            .font(.subheadline).padding(16)
+                        Divider().padding(.leading, 16)
+                        HStack {
+                            Text("Dosierung").font(.subheadline)
+                            Spacer()
+                            TextField("mg", text: $dosierungStr)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 70)
+                                .font(.subheadline)
+                                .onChange(of: dosierungStr) { _, neu in
+                                    if let d = Double(neu.replacingOccurrences(of: ",", with: ".")) {
+                                        dosierungMg = d
+                                    }
+                                }
+                            Text("mg").foregroundStyle(.secondary).font(.subheadline)
+                        }
+                        .padding(16)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 12))
+
+                    // Injektionsort button grid
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Injektionsort").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                            ForEach(BiologikaInjektion.injektionsStellen, id: \.self) { opt in
+                                let sel = injektionsstelle == opt
+                                Button { injektionsstelle = opt } label: {
+                                    Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
+                                        .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                        .foregroundStyle(sel ? .white : .primary)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .animation(.easeInOut(duration: 0.15), value: sel)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+            .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+
+        default:
+            ScrollView {
+                VStack(spacing: 20) {
+                    schrittHeader(symbol: "doc.text", titel: "Zusatzinfos",
+                                  untertitel: "Charge, nächste Dosis und Nebenwirkungen (optional)")
+
+                    // Charge card
+                    VStack(spacing: 0) {
+                        TextField("Chargen-Nummer (optional)", text: $chargenNummer)
+                            .font(.subheadline).padding(16)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 12))
+
+                    // Nächste Dosis card
+                    VStack(spacing: 0) {
+                        Toggle("Erinnerung für nächste Dosis", isOn: $hatErinnerung)
+                            .font(.subheadline).padding(16)
+                        if hatErinnerung {
+                            Divider().padding(.leading, 16)
+                            DatePicker(
+                                "Nächste Dosis",
+                                selection: $naechsteDosis,
+                                in: Date()...,
+                                displayedComponents: [.date]
+                            )
+                            .font(.subheadline)
+                            .padding(16)
+                        }
+                    }
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 12))
+
+                    // Nebenwirkungen card
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Nebenwirkungen / Notizen")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .padding(.horizontal, 16).padding(.top, 12)
+                        TextField("Hinweise, Reaktionen…", text: $notizen, axis: .vertical)
+                            .font(.subheadline)
+                            .lineLimit(2...4)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 12)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+            .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+        }
+    }
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button { withAnimation { schritt -= 1 } } label: {
+                    Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Überspringen").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            if schritt < maxSchritt {
+                Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
+                    Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(kannWeiter ? TINT : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain).disabled(!kannWeiter)
+            } else {
+                Button { speichern() } label: {
+                    Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(TINT, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(TINT)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func laden() {

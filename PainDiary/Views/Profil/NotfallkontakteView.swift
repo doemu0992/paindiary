@@ -118,6 +118,9 @@ struct NotfallKontaktFormView: View {
     private let isEdit: Bool
     let onSave: (String, String, String) -> Void
 
+    private let TINT: Color = .red
+    private let beziehungsOptionen = ["Partner", "Elternteil", "Kind", "Freund", "Arzt", "Sonstiges"]
+
     init(existing: NotfallKontakt? = nil, onSave: @escaping (String, String, String) -> Void) {
         self.isEdit = existing != nil
         self.onSave = onSave
@@ -128,20 +131,79 @@ struct NotfallKontaktFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                TextField("Name", text: $name)
-                TextField("Telefon", text: $phone).keyboardType(.phonePad)
-                TextField("Beziehung (z.B. Partner)", text: $beziehung)
+            VStack(spacing: 0) {
+                schrittInhalt
+                    .frame(maxHeight: .infinity)
+
+                speichernLeiste
             }
             .navigationTitle(isEdit ? "Kontakt bearbeiten" : "Notfallkontakt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { onSave(name, phone, beziehung); dismiss() }
-                        .disabled(name.isEmpty)
-                }
             }
         }
+    }
+
+    private var schrittInhalt: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "person.crop.circle.badge.plus", titel: "Notfallkontakt",
+                              untertitel: "Name, Telefonnummer und Beziehung")
+
+                // Name & Telefon card
+                VStack(spacing: 0) {
+                    TextField("Name", text: $name)
+                        .font(.subheadline).padding(16)
+                    Divider().padding(.leading, 16)
+                    TextField("Telefon", text: $phone)
+                        .keyboardType(.phonePad)
+                        .font(.subheadline).padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground),
+                            in: RoundedRectangle(cornerRadius: 12))
+
+                // Beziehung button grid
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Beziehung").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                        ForEach(beziehungsOptionen, id: \.self) { opt in
+                            let sel = beziehung == opt
+                            Button { beziehung = opt } label: {
+                                Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
+                                    .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                    .foregroundStyle(sel ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .animation(.easeInOut(duration: 0.15), value: sel)
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var speichernLeiste: some View {
+        Button { onSave(name, phone, beziehung); dismiss() } label: {
+            Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(name.isEmpty ? Color.secondary : TINT, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .disabled(name.isEmpty)
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(TINT)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 }
