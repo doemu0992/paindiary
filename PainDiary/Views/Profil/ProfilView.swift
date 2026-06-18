@@ -281,9 +281,11 @@ private struct ProfilInhaltView: View {
             NavigationLink(destination: MigraeneView()) {
                 Label("Migräne", systemImage: "brain.head.profile")
             }
+            NavigationLink(destination: HautView()) {
+                Label("Hautveränderungen", systemImage: "bandage.fill")
+            }
             NavigationLink(destination: DiabetesView()) {
                 Label("Diabetes", systemImage: "drop.fill")
-                    .foregroundStyle(.orange)
             }
         }
     }
