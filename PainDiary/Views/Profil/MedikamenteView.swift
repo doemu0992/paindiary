@@ -9,7 +9,7 @@ struct MedikamenteView: View {
 
     @State private var formAnzeigen = false
     @State private var zuBearbeiten: Dauermedikation? = nil
-    @State private var logAnzeigen = false
+    @State private var zeigeAnalyse = false
     @State private var tagesstart = Calendar.current.startOfDay(for: Date())
     @State private var medZuLoggen: Dauermedikation? = nil
     @State private var loeschenZiel: (liste: [Dauermedikation], offsets: IndexSet)?
@@ -18,60 +18,83 @@ struct MedikamenteView: View {
     private var aktive: [Dauermedikation] { medikamente.filter(\.aktiv) }
     private var inaktive: [Dauermedikation] { medikamente.filter { !$0.aktiv } }
 
-    private var heutigeLogsHeute: [EinnahmeLog] {
-        let tagesende = Calendar.current.date(byAdding: .day, value: 1, to: tagesstart) ?? tagesstart
-        return logs.filter { $0.datum >= tagesstart && $0.datum < tagesende }
+    private var heutigeLogs: [EinnahmeLog] {
+        let ende = Calendar.current.date(byAdding: .day, value: 1, to: tagesstart) ?? tagesstart
+        return logs.filter { $0.datum >= tagesstart && $0.datum < ende }
     }
+
+    // MARK: - Statistiken
+
+    private var adherenz7T: Double {
+        let kal = Calendar.current
+        var erwartet = 0; var eingenommen = 0
+        for offset in 0..<7 {
+            guard let tag = kal.date(byAdding: .day, value: -offset, to: tagesstart),
+                  let tagEnde = kal.date(byAdding: .day, value: 1, to: tag) else { continue }
+            for med in aktive {
+                let n = notif.anzahlDosen(med.frequenz)
+                guard n > 0 else { continue }
+                erwartet += n
+                let genommen = logs.filter {
+                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
+                }.count
+                eingenommen += min(genommen, n)
+            }
+        }
+        return erwartet > 0 ? Double(eingenommen) / Double(erwartet) * 100 : 0
+    }
+
+    private var heuteErwartet: Int {
+        aktive.map { notif.anzahlDosen($0.frequenz) }.reduce(0, +)
+    }
+
+    private var heuteEingenommen: Int {
+        aktive.map { med in
+            let n = notif.anzahlDosen(med.frequenz)
+            guard n > 0 else { return 0 }
+            return min(n, heutigeLogs.filter {
+                $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen
+            }.count)
+        }.reduce(0, +)
+    }
+
+    private var streak: Int {
+        let kal = Calendar.current
+        var tag = tagesstart; var count = 0
+        while count < 365 {
+            let tagEnde = kal.date(byAdding: .day, value: 1, to: tag) ?? tag
+            let vollst = aktive.allSatisfy { med in
+                let n = notif.anzahlDosen(med.frequenz)
+                guard n > 0 else { return true }
+                return logs.filter {
+                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
+                }.count >= n
+            }
+            guard vollst else { break }
+            count += 1
+            guard let prev = kal.date(byAdding: .day, value: -1, to: tag) else { break }
+            tag = prev
+        }
+        return count
+    }
+
+    // MARK: - Body
 
     var body: some View {
         List {
+            statistikSektion
             berechtigungBanner
             uebergebrauchWarnung
             vorratsAblaufWarnung
             bewertungsSektion
             heuteSektion
-            if !aktive.isEmpty {
-                Section("Aktiv") {
-                    ForEach(aktive) { med in
-                        MedikamentZeile(medikament: med, notif: notif)
-                            .contentShape(Rectangle())
-                            .onTapGesture { zuBearbeiten = med }
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                Button {
-                                    medZuLoggen = med
-                                } label: {
-                                    Label("Einnahme erfassen", systemImage: "calendar.badge.plus")
-                                }
-                                .tint(.blue)
-                            }
-                    }
-                    .onDelete { loeschen(aus: aktive, offsets: $0) }
-                }
-            }
-            if !inaktive.isEmpty {
-                Section("Pausiert / Abgesetzt") {
-                    ForEach(inaktive) { med in
-                        MedikamentZeile(medikament: med, notif: notif)
-                            .contentShape(Rectangle())
-                            .onTapGesture { zuBearbeiten = med }
-                    }
-                    .onDelete { loeschen(aus: inaktive, offsets: $0) }
-                }
-            }
-            if !logs.isEmpty {
-                Section {
-                    NavigationLink("Einnahme-Verlauf anzeigen") {
-                        EinnahmeLogView()
-                    }
-                }
-            }
+            if !inaktive.isEmpty { inaktiveSektion }
         }
         .navigationTitle("Medikamente")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
-#if os(iOS)
-            ToolbarItem(placement: .navigationBarTrailing) { EditButton() }
-#endif
             ToolbarItem(placement: .primaryAction) {
                 Button { formAnzeigen = true } label: {
                     Label("Hinzufügen", systemImage: "plus")
@@ -79,25 +102,21 @@ struct MedikamenteView: View {
             }
         }
         .sheet(isPresented: $formAnzeigen) { MedikamentFormView() }
-        .sheet(item: $zuBearbeiten) { med in MedikamentFormView(medikament: med) }
-        .sheet(item: $medZuLoggen) { med in
-            EinnahmeLogSheet(med: med)
+        .sheet(item: $zuBearbeiten) { MedikamentFormView(medikament: $0) }
+        .sheet(item: $medZuLoggen) { EinnahmeLogSheet(med: $0) }
+        .sheet(isPresented: $zeigeAnalyse) {
+            MedikamenteAnalyseView(medikamente: Array(medikamente), logs: Array(logs))
         }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                tagesstart = Calendar.current.startOfDay(for: Date())
-            }
+        .onChange(of: scenePhase) { _, p in
+            if p == .active { tagesstart = Calendar.current.startOfDay(for: Date()) }
         }
         .alert("Medikament löschen?", isPresented: Binding(
             get: { loeschenZiel != nil },
             set: { if !$0 { loeschenZiel = nil } }
         )) {
             Button("Löschen", role: .destructive) {
-                if let ziel = loeschenZiel {
-                    ziel.offsets.forEach { i in
-                        notif.loescheErinnerungen(fuer: ziel.liste[i])
-                        modelContext.delete(ziel.liste[i])
-                    }
+                if let z = loeschenZiel {
+                    z.offsets.forEach { notif.loescheErinnerungen(fuer: z.liste[$0]); modelContext.delete(z.liste[$0]) }
                 }
                 loeschenZiel = nil
             }
@@ -106,6 +125,173 @@ struct MedikamenteView: View {
             Text("Das Medikament wird unwiderruflich gelöscht. Einnahme-Logs bleiben erhalten.")
         }
     }
+
+    // MARK: - Statistik-Sektion
+
+    private var statistikSektion: some View {
+        Section {
+            VStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("7-Tage-Überblick", systemImage: "pill.fill")
+                        .font(.headline).foregroundStyle(.blue)
+                    Divider()
+                    HStack(spacing: 0) {
+                        let adFarbe: Color = adherenz7T >= 80 ? .green : adherenz7T >= 50 ? .orange : adherenz7T > 0 ? .red : .secondary
+                        statPill(adherenz7T > 0 ? String(format: "%.0f%%", adherenz7T) : "–", label: "Adherenz", farbe: adFarbe)
+                        Divider().frame(height: 40)
+                        let heuteFarbe: Color = heuteErwartet == 0 ? .secondary : heuteEingenommen >= heuteErwartet ? .green : .blue
+                        statPill(heuteErwartet > 0 ? "\(heuteEingenommen)/\(heuteErwartet)" : "–", label: "Heute", farbe: heuteFarbe)
+                        Divider().frame(height: 40)
+                        let streakFarbe: Color = streak >= 7 ? .green : streak >= 3 ? .orange : .secondary
+                        statPill(streak > 0 ? "\(streak)T" : "–", label: "Streak", farbe: streakFarbe)
+                    }
+                }
+                .padding()
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+
+                if !logs.isEmpty {
+                    Button { zeigeAnalyse = true } label: {
+                        Label("Medikamenten-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(Color.clear)
+    }
+
+    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
+            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Heute-Sektion (zeitlich sortiert, kein Duplikat)
+
+    @ViewBuilder
+    private var heuteSektion: some View {
+        if !aktive.isEmpty {
+            let planmaessig = aktive
+                .filter { $0.frequenz != "Bei Bedarf" }
+                .sorted {
+                    let s0 = notif.gueltigeZeiten(fuer: $0).first?.stunde ?? 99
+                    let s1 = notif.gueltigeZeiten(fuer: $1).first?.stunde ?? 99
+                    return s0 < s1
+                }
+            let beiBedarf = aktive.filter { $0.frequenz == "Bei Bedarf" }
+
+            Section {
+                ForEach(planmaessig) { med in
+                    heuteZeile(med)
+                }
+                if !beiBedarf.isEmpty {
+                    if !planmaessig.isEmpty {
+                        HStack(spacing: 8) {
+                            Rectangle().fill(Color.secondary.opacity(0.25)).frame(height: 1)
+                            Text("Bei Bedarf")
+                                .font(.caption2.bold()).foregroundStyle(.secondary)
+                                .fixedSize()
+                            Rectangle().fill(Color.secondary.opacity(0.25)).frame(height: 1)
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 16))
+                    }
+                    ForEach(beiBedarf) { med in
+                        heuteZeile(med)
+                    }
+                }
+                if !logs.isEmpty {
+                    NavigationLink {
+                        EinnahmeLogView()
+                    } label: {
+                        Label("Einnahme-Verlauf anzeigen", systemImage: "list.bullet.rectangle")
+                            .font(.subheadline).foregroundStyle(.blue)
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("Heute").textCase(nil).font(.subheadline.bold()).foregroundStyle(.primary)
+                    Spacer()
+                    Text(Date(), format: .dateTime.weekday(.abbreviated).day().month(.abbreviated))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func heuteZeile(_ med: Dauermedikation) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: med.typSymbol)
+                .foregroundStyle(.blue)
+                .font(.body)
+                .frame(width: 26)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(med.name).font(.subheadline).fontWeight(.medium)
+                HStack(spacing: 4) {
+                    if !med.dosierung.isEmpty {
+                        Text(med.dosierung).font(.caption).foregroundStyle(.secondary)
+                    }
+                    let zeiten = notif.gueltigeZeiten(fuer: med)
+                    if !zeiten.isEmpty {
+                        if !med.dosierung.isEmpty {
+                            Text("·").font(.caption).foregroundStyle(.tertiary)
+                        }
+                        Text(zeiten.map(\.anzeigeText).joined(separator: ", "))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                if !med.einnahmeHinweis.isEmpty {
+                    Text(med.einnahmeHinweis).font(.caption2).foregroundStyle(.blue)
+                }
+                if let vorrat = med.vorrat, vorrat <= med.vorratSchwelle {
+                    Label("\(vorrat) Stück verbleibend", systemImage: "exclamationmark.circle.fill")
+                        .font(.caption2).foregroundStyle(.orange)
+                }
+            }
+
+            Spacer()
+            einnahmeKontrolle(med: med)
+        }
+        .padding(.vertical, 3)
+        .swipeActions(edge: .trailing) {
+            Button { zuBearbeiten = med } label: {
+                Label("Bearbeiten", systemImage: "pencil")
+            }
+            .tint(.blue)
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button { medZuLoggen = med } label: {
+                Label("Manuell erfassen", systemImage: "calendar.badge.plus")
+            }
+            .tint(.green)
+        }
+    }
+
+    // MARK: - Inaktive Sektion
+
+    @ViewBuilder
+    private var inaktiveSektion: some View {
+        Section("Pausiert / Abgesetzt") {
+            ForEach(inaktive) { med in
+                MedikamentZeile(medikament: med, notif: notif)
+                    .contentShape(Rectangle())
+                    .onTapGesture { zuBearbeiten = med }
+                    .opacity(0.6)
+            }
+            .onDelete { loeschen(aus: inaktive, offsets: $0) }
+        }
+    }
+
+    // MARK: - Warnungen
 
     @ViewBuilder
     private var vorratsAblaufWarnung: some View {
@@ -154,7 +340,6 @@ struct MedikamenteView: View {
         }
     }
 
-    // Unrated Bei Bedarf logs from today (older than 1h) waiting for effectiveness rating
     @ViewBuilder
     private var bewertungsSektion: some View {
         let zuBewerten = logs.filter { log in
@@ -166,7 +351,7 @@ struct MedikamenteView: View {
             return alter >= schwelle && alter < 7 * 24 * 3600
         }.prefix(3)
         if !zuBewerten.isEmpty {
-            Section {
+            Section("Wirksamkeit bewerten") {
                 ForEach(Array(zuBewerten)) { log in
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
@@ -185,8 +370,6 @@ struct MedikamenteView: View {
                     }
                     .padding(.vertical, 4)
                 }
-            } header: {
-                Text("Wirksamkeit bewerten")
             }
         }
     }
@@ -197,9 +380,7 @@ struct MedikamenteView: View {
             withAnimation(.easeInOut(duration: 0.15)) { log.wirkung = wert }
         } label: {
             HStack(spacing: 4) {
-                if ausgewaehlt {
-                    Image(systemName: "checkmark").font(.caption2.bold())
-                }
+                if ausgewaehlt { Image(systemName: "checkmark").font(.caption2.bold()) }
                 Text(label).font(.caption.bold())
             }
             .frame(maxWidth: .infinity)
@@ -212,7 +393,6 @@ struct MedikamenteView: View {
         .buttonStyle(.plain)
     }
 
-    // Warn if any med was logged > 10x in the last 30 days (medication overuse threshold)
     @ViewBuilder
     private var uebergebrauchWarnung: some View {
         let grenze = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
@@ -227,11 +407,9 @@ struct MedikamenteView: View {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Möglicher Medikamenten-Übergebrauch", systemImage: "exclamationmark.triangle.fill")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.orange)
-                    Text("Folgende Medikamente wurden in den letzten 30 Tagen mehr als 10-mal eingenommen. Häufiger Gebrauch von Schmerzmedikamenten kann Übergebrauchskopfschmerzen verursachen. Bitte sprich mit deinem Arzt.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.subheadline.bold()).foregroundStyle(.orange)
+                    Text("Häufiger Gebrauch von Schmerzmedikamenten kann Übergebrauchskopfschmerzen verursachen. Bitte sprich mit deinem Arzt.")
+                        .font(.caption).foregroundStyle(.secondary)
                     ForEach(probleme, id: \.key) { name, anzahl in
                         HStack {
                             Text(name).font(.caption.bold())
@@ -241,110 +419,6 @@ struct MedikamenteView: View {
                     }
                 }
                 .padding(.vertical, 4)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var heuteSektion: some View {
-        if !aktive.isEmpty {
-            Section("Heute") {
-                ForEach(aktive) { med in
-                    HStack(spacing: 12) {
-                        Image(systemName: med.typSymbol)
-                            .foregroundStyle(.blue)
-                            .frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(med.name).font(.subheadline).fontWeight(.medium)
-                            if !med.dosierung.isEmpty {
-                                Text(med.dosierung).font(.caption).foregroundStyle(.secondary)
-                            }
-                            if !med.einnahmeHinweis.isEmpty {
-                                Text(med.einnahmeHinweis)
-                                    .font(.caption2).foregroundStyle(.blue)
-                            }
-                        }
-                        Spacer()
-                        einnahmeKontrolle(med: med)
-                    }
-                    .padding(.vertical, 2)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func einnahmeKontrolle(med: Dauermedikation) -> some View {
-        if med.frequenz == "Wöchentlich" || med.frequenz == "Monatlich" {
-            let intervall = med.frequenz == "Monatlich" ? 30 : 7
-            let letzteEinnahme = logs.first { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
-            let tageSeit: Int? = letzteEinnahme.map {
-                max(0, Calendar.current.dateComponents([.day], from: $0.datum, to: Date()).day ?? 0)
-            }
-            HStack(spacing: 8) {
-                if let tage = tageSeit {
-                    VStack(alignment: .trailing, spacing: 1) {
-                        if tage == 0 {
-                            Text("Heute eingenommen").font(.caption).foregroundStyle(.green)
-                        } else if tage < intervall {
-                            Text("Vor \(tage) Tag\(tage == 1 ? "" : "en")")
-                                .font(.caption2).foregroundStyle(.secondary)
-                            Text("In \(intervall - tage) Tag\(intervall - tage == 1 ? "" : "en")")
-                                .font(.caption).foregroundStyle(tage >= intervall - 1 ? .orange : .blue)
-                        } else {
-                            Text("Fällig!").font(.caption.bold()).foregroundStyle(.orange)
-                        }
-                    }
-                } else {
-                    Text("Noch nicht erfasst").font(.caption).foregroundStyle(.secondary)
-                }
-                if tageSeit == nil || (tageSeit ?? 0) >= 1 {
-                    Button {
-                        medZuLoggen = med
-                    } label: {
-                        Image(systemName: med.typSymbol)
-                            .font(.title3).foregroundStyle(.blue)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        } else {
-            let anzahlErwartet = notif.anzahlDosen(med.frequenz)
-            let anzahlHeute = heutigeLogsHeute.filter {
-                $0.medikamentName == med.name && $0.dosierung == med.dosierung
-            }.count
-
-            if anzahlErwartet == 0 {
-                // Bei Bedarf: Freitext-Zähler + Plus-Button
-                HStack(spacing: 8) {
-                    if anzahlHeute > 0 {
-                        Text("\(anzahlHeute)× heute")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Button {
-                        loggeMedikament(med)
-                    } label: {
-                        Image(systemName: "plus.circle")
-                            .font(.title3).foregroundStyle(.blue)
-                    }
-                    .buttonStyle(.plain)
-                }
-            } else {
-                // Reguläre Dosen: ein Kreis pro erwarteter Dosis
-                HStack(spacing: 6) {
-                    ForEach(0..<anzahlErwartet, id: \.self) { i in
-                        let bestaetigt = i < anzahlHeute
-                        Button {
-                            guard !bestaetigt else { return }
-                            loggeMedikament(med)
-                        } label: {
-                            Image(systemName: bestaetigt ? "checkmark.circle.fill" : "circle")
-                                .font(.title3)
-                                .foregroundStyle(bestaetigt ? .green : .secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
             }
         }
     }
@@ -373,6 +447,73 @@ struct MedikamenteView: View {
         }
     }
 
+    // MARK: - Einnahme-Kontrolle
+
+    @ViewBuilder
+    private func einnahmeKontrolle(med: Dauermedikation) -> some View {
+        if med.frequenz == "Wöchentlich" || med.frequenz == "Monatlich" {
+            let intervall = med.frequenz == "Monatlich" ? 30 : 7
+            let letzteEinnahme = logs.first { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
+            let tageSeit: Int? = letzteEinnahme.map {
+                max(0, Calendar.current.dateComponents([.day], from: $0.datum, to: Date()).day ?? 0)
+            }
+            HStack(spacing: 8) {
+                if let tage = tageSeit {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        if tage == 0 {
+                            Text("Heute").font(.caption).foregroundStyle(.green)
+                        } else if tage < intervall {
+                            Text("Vor \(tage)T").font(.caption2).foregroundStyle(.secondary)
+                            Text("In \(intervall - tage)T")
+                                .font(.caption).foregroundStyle(tage >= intervall - 1 ? .orange : .blue)
+                        } else {
+                            Text("Fällig!").font(.caption.bold()).foregroundStyle(.orange)
+                        }
+                    }
+                } else {
+                    Text("Noch nicht erfasst").font(.caption).foregroundStyle(.secondary)
+                }
+                if tageSeit == nil || (tageSeit ?? 0) >= 1 {
+                    Button { medZuLoggen = med } label: {
+                        Image(systemName: med.typSymbol).font(.title3).foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        } else {
+            let anzahlErwartet = notif.anzahlDosen(med.frequenz)
+            let anzahlHeute = heutigeLogs.filter {
+                $0.medikamentName == med.name && $0.dosierung == med.dosierung
+            }.count
+
+            if anzahlErwartet == 0 {
+                HStack(spacing: 8) {
+                    if anzahlHeute > 0 {
+                        Text("\(anzahlHeute)×").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Button { loggeMedikament(med) } label: {
+                        Image(systemName: "plus.circle").font(.title3).foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                HStack(spacing: 6) {
+                    ForEach(0..<anzahlErwartet, id: \.self) { i in
+                        let bestaetigt = i < anzahlHeute
+                        Button {
+                            guard !bestaetigt else { return }
+                            loggeMedikament(med)
+                        } label: {
+                            Image(systemName: bestaetigt ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(bestaetigt ? .green : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
 
     private func loggeMedikament(_ med: Dauermedikation) {
         let log = EinnahmeLog(medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
@@ -389,7 +530,7 @@ struct MedikamenteView: View {
     }
 }
 
-// MARK: - Zeile
+// MARK: - Zeile (Pausiert / Abgesetzt)
 
 private struct MedikamentZeile: View {
     let medikament: Dauermedikation
@@ -397,68 +538,38 @@ private struct MedikamentZeile: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(medikament.aktiv ? Color.blue.opacity(0.15) : Color.secondary.opacity(0.1))
-                    .frame(width: 44, height: 44)
-                Image(systemName: medikament.typSymbol)
-                    .foregroundStyle(medikament.aktiv ? .blue : .secondary)
-            }
+            Image(systemName: medikament.typSymbol)
+                .foregroundStyle(medikament.aktiv ? .blue : .secondary)
+                .font(.body)
+                .frame(width: 26)
+
             VStack(alignment: .leading, spacing: 3) {
-                HStack {
-                    Text(medikament.name).font(.headline)
+                HStack(spacing: 6) {
+                    Text(medikament.name).font(.subheadline).fontWeight(.medium)
                     if medikament.erinnerungAktiv {
-                        Image(systemName: "bell.fill").font(.caption).foregroundStyle(.orange)
+                        Image(systemName: "bell.fill").font(.caption2).foregroundStyle(.orange)
                     }
                     if !medikament.aktiv {
-                        Text("Pausiert").font(.caption2)
+                        Text("Pausiert")
+                            .font(.caption2)
                             .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(Color.secondary.opacity(0.2)).clipShape(Capsule())
+                            .background(Color.secondary.opacity(0.15))
+                            .clipShape(Capsule())
                             .foregroundStyle(.secondary)
                     }
                 }
                 if !medikament.dosierung.isEmpty {
-                    Text(medikament.dosierung).font(.subheadline).foregroundStyle(.secondary)
+                    Text(medikament.dosierung).font(.caption).foregroundStyle(.secondary)
                 }
-                if !medikament.frequenz.isEmpty {
-                    let zeiten = notif.gueltigeZeiten(fuer: medikament)
-                    let zeitText = zeiten.isEmpty ? medikament.frequenz : zeiten.map(\.anzeigeText).joined(separator: ", ")
-                    Label(zeitText, systemImage: "clock").font(.caption).foregroundStyle(.secondary)
-                }
-                if !medikament.einnahmeHinweis.isEmpty {
-                    Label(medikament.einnahmeHinweis, systemImage: "fork.knife")
-                        .font(.caption).foregroundStyle(.blue)
-                }
-                if let ablauf = medikament.ablaufDatum {
-                    let tage = Calendar.current.dateComponents(
-                        [.day],
-                        from: Calendar.current.startOfDay(for: Date()),
-                        to: Calendar.current.startOfDay(for: ablauf)
-                    ).day ?? 0
-                    Label {
-                        Text(ablauf, format: .dateTime.day().month(.abbreviated).year())
-                    } icon: {
-                        Image(systemName: tage <= 14 ? "exclamationmark.triangle.fill" : "calendar.badge.clock")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(tage <= 14 ? .orange : .secondary)
-                }
-                if let vorrat = medikament.vorrat {
-                    Label {
-                        Text("\(vorrat) Stück verbleibend")
-                    } icon: {
-                        Image(systemName: vorrat <= medikament.vorratSchwelle ? "exclamationmark.circle.fill" : "shippingbox.fill")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(vorrat <= medikament.vorratSchwelle ? .orange : .secondary)
+                let zeiten = notif.gueltigeZeiten(fuer: medikament)
+                let zeitText = zeiten.isEmpty ? medikament.frequenz : zeiten.map(\.anzeigeText).joined(separator: ", ")
+                if !zeitText.isEmpty {
+                    Label(zeitText, systemImage: "clock").font(.caption2).foregroundStyle(.tertiary)
                 }
                 if !medikament.aktiv, let ende = medikament.endDatum {
-                    Label {
-                        Text(ende, format: .dateTime.day().month(.abbreviated).year())
-                    } icon: {
-                        Image(systemName: "calendar.badge.minus")
-                    }
-                    .font(.caption).foregroundStyle(.secondary)
+                    Label(ende.formatted(.dateTime.day().month(.abbreviated).year()),
+                          systemImage: "calendar.badge.minus")
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
             Spacer()
