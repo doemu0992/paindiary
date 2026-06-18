@@ -79,30 +79,47 @@ struct DiabetesView: View {
             let pctZiel = messungen30.isEmpty ? 0
                 : Int(Double(imZiel) / Double(messungen30.count) * 100)
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                DiabetesStatCard(
-                    wert: avgNuechtern.map { String(format: "%.1f", $0) } ?? "–",
-                    label: "Ø Nüchtern mmol/L",
-                    farbe: nuechternFarbe(avgNuechtern)
-                )
-                DiabetesStatCard(
-                    wert: messungen.first.map { String(format: "%.1f", $0.wert) } ?? "–",
-                    label: "Letzte Messung",
-                    farbe: messungen.first.map { wertFarbe($0.wert) } ?? .secondary
-                )
-                DiabetesStatCard(
-                    wert: "\(messungen30.count)",
-                    label: "Messungen (30 T.)",
-                    farbe: .secondary
-                )
-                DiabetesStatCard(
-                    wert: messungen30.isEmpty ? "–" : "\(pctZiel)%",
-                    label: "Im Zielbereich",
-                    farbe: pctZiel >= 70 ? .green : .orange
-                )
+            VStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
+                        .font(.headline).foregroundStyle(.blue)
+                    Divider()
+                    HStack(spacing: 0) {
+                        statPill(
+                            avgNuechtern.map { String(format: "%.1f", $0) } ?? "–",
+                            label: "Ø Nüchtern",
+                            farbe: nuechternFarbe(avgNuechtern)
+                        )
+                        Divider().frame(height: 40)
+                        statPill(
+                            messungen.first.map { String(format: "%.1f", $0.wert) } ?? "–",
+                            label: "Letzte Messung",
+                            farbe: messungen.first.map { wertFarbe($0.wert) } ?? .secondary
+                        )
+                        Divider().frame(height: 40)
+                        statPill(
+                            messungen30.isEmpty ? "–" : "\(pctZiel)%",
+                            label: "Im Zielbereich",
+                            farbe: pctZiel >= 70 ? .green : .orange
+                        )
+                    }
+                }
+                .padding()
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .padding(.vertical, 4)
         }
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(Color.clear)
+    }
+
+    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
+            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func nuechternFarbe(_ wert: Double?) -> Color {
@@ -170,22 +187,6 @@ private struct BlutzuckerZeile: View {
         case 3.9..<7.8: return .green
         default:        return .orange
         }
-    }
-}
-
-// MARK: - Stat Card
-
-private struct DiabetesStatCard: View {
-    let wert: String; let label: String; let farbe: Color
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
-            Text(label).font(.caption).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(farbe.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
 

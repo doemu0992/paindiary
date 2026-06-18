@@ -89,62 +89,65 @@ struct MigraeneView: View {
 
     // MARK: - Sections
 
+    private var avgStaerke30: Double {
+        anfaelle30.isEmpty ? 0 : Double(anfaelle30.map(\.staerke).reduce(0, +)) / Double(anfaelle30.count)
+    }
+
     private var statistikSektion: some View {
         Section {
-            let anzahl = anfaelle30.count
-            let avgStaerke = anfaelle30.isEmpty ? 0.0
-                : Double(anfaelle30.map(\.staerke).reduce(0, +)) / Double(anfaelle30.count)
-            let mitAura = anfaelle30.filter(\.hatAura).count
-            let letzterMidas = midas.first
-
             VStack(spacing: 12) {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    MigraeneStatCard(
-                        wert: "\(anzahl)",
-                        label: "Anfälle (30 Tage)",
-                        farbe: anzahl == 0 ? .green : anzahl <= 4 ? .orange : .red
-                    )
-                    MigraeneStatCard(
-                        wert: anfaelle30.isEmpty ? "–" : String(format: "%.1f / 10", avgStaerke),
-                        label: "Ø Schmerzstärke",
-                        farbe: .orange
-                    )
-                    MigraeneStatCard(
-                        wert: "\(mitAura)",
-                        label: "Davon mit Aura",
-                        farbe: .purple
-                    )
-                    MigraeneStatCard(
-                        wert: letzterMidas.map { "\($0.score)" } ?? "–",
-                        label: "MIDAS Score",
-                        farbe: .blue
-                    )
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
+                        .font(.headline).foregroundStyle(.purple)
+                    Divider()
+                    HStack(spacing: 0) {
+                        statPill(
+                            "\(anfaelle30.count)",
+                            label: "Anfälle",
+                            farbe: anfaelle30.count == 0 ? .green : anfaelle30.count <= 4 ? .orange : .red
+                        )
+                        Divider().frame(height: 40)
+                        statPill(
+                            anfaelle30.isEmpty ? "–" : String(format: "%.1f", avgStaerke30),
+                            label: "Ø Schmerzstärke",
+                            farbe: anfaelle30.isEmpty ? .secondary : avgStaerke30 <= 4 ? .orange : .red
+                        )
+                        Divider().frame(height: 40)
+                        statPill(
+                            midas.first.map { "\($0.score)" } ?? "–",
+                            label: "MIDAS Score",
+                            farbe: midas.first.map { $0.score <= 5 ? Color.green : $0.score <= 20 ? .orange : .red } ?? .secondary
+                        )
+                    }
                 }
+                .padding()
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 if !anfaelle.isEmpty {
                     Button { zeigeAnalyse = true } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "chart.bar.xaxis.ascending")
-                                .font(.title3.bold())
-                                .foregroundStyle(.purple)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Analyse").font(.subheadline.bold()).foregroundStyle(.purple)
-                                Text("Auswertung öffnen").font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.bold())
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(12)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                        Label("Migräne-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.purple, in: RoundedRectangle(cornerRadius: 12))
                     }
                     .buttonStyle(.plain)
                 }
             }
             .padding(.vertical, 4)
         }
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(Color.clear)
+    }
+
+    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
+            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -279,22 +282,6 @@ private struct MigraeneAnfallZeile: View {
         case 4...6: return .orange
         default:    return .red
         }
-    }
-}
-
-// MARK: - Stat Card
-
-private struct MigraeneStatCard: View {
-    let wert: String; let label: String; let farbe: Color
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
-            Text(label).font(.caption).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(farbe.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
 

@@ -93,9 +93,61 @@ VStack(spacing: 0) {
 | Element | Standard |
 |---|---|
 | Layout | `List` (nicht `ScrollView+VStack`) |
-| Statistik-Header | Erste Section: gerundete Chips / `scoreChip`-Pattern |
+| Statistik-Header | Erste Section: Rheuma-Style (3 `statPill`-Spalten + optionaler Analyse-Button) |
 | Action | Toolbar `.primaryAction` Button (kein FAB) |
 | Titel | `.navigationTitle("...")` + `.navigationBarTitleDisplayMode(.large)` |
+
+### Header-Muster (Rheuma-Style)
+
+```swift
+private var statistikSektion: some View {
+    Section {
+        VStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
+                    .font(.headline).foregroundStyle(.modulTint)
+                Divider()
+                HStack(spacing: 0) {
+                    statPill("Wert1", label: "Label1", farbe: .someColor)
+                    Divider().frame(height: 40)
+                    statPill("Wert2", label: "Label2", farbe: .someColor)
+                    Divider().frame(height: 40)
+                    statPill("Wert3", label: "Label3", farbe: .someColor)
+                }
+            }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+
+            // Nur wenn AnalyseView existiert:
+            if !eintraege.isEmpty {
+                Button { zeigeAnalyse = true } label: {
+                    Label("Modul-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                        .font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(Color.modulTint, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+    .listRowBackground(Color.clear)
+}
+
+private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
+    VStack(spacing: 4) {
+        Text(wert).font(.title2.bold()).foregroundStyle(farbe)
+        Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+    }
+    .frame(maxWidth: .infinity)
+}
+```
+
+- Genau **3 statPills** mit `Divider().frame(height: 40)` zwischen ihnen
+- Analyse-Button nur wenn ein `AnalyseView` für dieses Modul existiert
+- Section bekommt `.listRowInsets` + `.listRowBackground(Color.clear)`
 
 ---
 
