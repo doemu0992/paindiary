@@ -1,20 +1,26 @@
 import SwiftUI
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 /// Reusable Apple Intelligence analysis card.
-/// Wrap with `.id(prompt)` in callers — SwiftUI resets state when prompt changes.
+/// Requires iOS 26+ / Xcode 26 SDK. Hidden on older OS versions.
+/// Pass `.id(prompt)` at call site — SwiftUI resets state when prompt changes.
 struct KIAnalyseKarte: View {
     let prompt: String
     let modulTint: Color
 
     var body: some View {
+#if canImport(FoundationModels)
         if #available(iOS 26, *) {
             KIInsightContent(prompt: prompt, modulTint: modulTint)
                 .id(prompt)
         }
-        // Older iOS: card hidden (no fallback needed — feature simply unavailable)
+#endif
     }
 }
 
+#if canImport(FoundationModels)
 @available(iOS 26, *)
 private struct KIInsightContent: View {
     let prompt: String
@@ -107,3 +113,4 @@ private struct KIInsightContent: View {
         isGenerating = false
     }
 }
+#endif

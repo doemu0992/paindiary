@@ -1,6 +1,9 @@
 import SwiftUI
 import SwiftData
 import UIKit
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 struct ArztbriefView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
@@ -153,12 +156,15 @@ struct KIArztbriefKarte: View {
     let patientenName: String
 
     var body: some View {
+#if canImport(FoundationModels)
         if #available(iOS 26, *) {
             KIArztbriefContent(rohdaten: rohdaten, patientenName: patientenName)
         }
+#endif
     }
 }
 
+#if canImport(FoundationModels)
 @available(iOS 26, *)
 private struct KIArztbriefContent: View {
     let rohdaten: String
@@ -261,3 +267,4 @@ private struct KIArztbriefContent: View {
         isGenerating = false
     }
 }
+#endif
