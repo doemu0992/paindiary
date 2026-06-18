@@ -275,6 +275,11 @@ private struct ProfilInhaltView: View {
 
     private var erkrankungenSektion: some View {
         Section("Erkrankungen") {
+            NavigationLink(destination: SchmerzView()) {
+                Label { Text("Schmerztagebuch") } icon: {
+                    Image(systemName: "waveform.path.ecg").foregroundStyle(.red)
+                }
+            }
             NavigationLink(destination: RheumaView()) {
                 Label { Text("Rheuma & Gelenke") } icon: {
                     Image(systemName: "figure.arms.open").foregroundStyle(.teal)

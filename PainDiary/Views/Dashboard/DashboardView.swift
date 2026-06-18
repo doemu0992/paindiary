@@ -120,6 +120,7 @@ struct DashboardView: View {
         case .schmerzarten:        SchmerzartenKachel(eintraege: Array(eintraege))
         case .stimmungsTrend:      StimmungsTrendKachel(eintraege: Array(eintraege))
         case .midasKachel:         MidasKachel(bewertungen: Array(midasBewertungen))
+        case .schmerzKachel:       SchmerzKachel(eintraege: Array(eintraege))
         case .migraeneKachel:      MigraeneKachel(anfaelle: Array(migraeneAnfaelle))
         case .rheumaKachel:        RheumaKachel(eintraege: Array(eintraege), haqEintraege: Array(haqEintraege))
         case .diabetesKachel:      DiabetesKachel(messungen: Array(blutzuckerMessungen))

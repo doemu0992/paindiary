@@ -21,6 +21,7 @@ enum KachelTyp: String, Codable, CaseIterable {
     case stimmungsTrend
     case midasKachel
     // Module
+    case schmerzKachel
     case migraeneKachel
     case rheumaKachel
     case diabetesKachel
@@ -44,6 +45,7 @@ enum KachelTyp: String, Codable, CaseIterable {
         case .schmerzarten:        return "Häufige Schmerzarten"
         case .stimmungsTrend:      return "Stimmungs-Trend"
         case .midasKachel:         return "MIDAS-Score"
+        case .schmerzKachel:       return "Schmerztagebuch"
         case .migraeneKachel:      return "Migräne-Verlauf"
         case .rheumaKachel:        return "Rheuma & Gelenke"
         case .diabetesKachel:      return "Diabetes-Verlauf"
@@ -68,6 +70,7 @@ enum KachelTyp: String, Codable, CaseIterable {
         case .schmerzarten:        return "waveform"
         case .stimmungsTrend:      return "heart.fill"
         case .midasKachel:         return "brain.head.profile"
+        case .schmerzKachel:       return "waveform.path.ecg"
         case .migraeneKachel:      return "bolt.horizontal.fill"
         case .rheumaKachel:        return "figure.arms.open"
         case .diabetesKachel:      return "drop.fill"
@@ -83,7 +86,7 @@ enum KachelTyp: String, Codable, CaseIterable {
             return "Verlauf"
         case .stimmungStress, .schnellLinks:
             return "Zuletzt"
-        case .migraeneKachel, .rheumaKachel, .diabetesKachel:
+        case .schmerzKachel, .migraeneKachel, .rheumaKachel, .diabetesKachel:
             return "Module"
         case .wetterSchmerz, .stressSchmerz, .schlafSchmerz,
              .tageszeitVerteilung, .koerperstellen, .schmerzarten,
