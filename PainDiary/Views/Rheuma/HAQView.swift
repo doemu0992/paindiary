@@ -34,12 +34,12 @@ struct HAQView: View {
                             y: .value("HAQ-DI", e.haqScore)
                         )
                         .interpolationMethod(.catmullRom)
-                        .foregroundStyle(Color.purple)
+                        .foregroundStyle(Color.teal)
                         PointMark(
                             x: .value("Datum", e.datum, unit: .day),
                             y: .value("HAQ-DI", e.haqScore)
                         )
-                        .foregroundStyle(Color.purple)
+                        .foregroundStyle(Color.teal)
                     }
                     .chartYScale(domain: 0...3)
                     .chartYAxis {
@@ -99,11 +99,11 @@ struct HAQView: View {
 
         VStack(alignment: .leading, spacing: 12) {
             Label("DAS28 Aktivitätsscore", systemImage: "chart.bar.fill")
-                .font(.headline).foregroundStyle(.purple)
+                .font(.headline).foregroundStyle(.teal)
             Divider()
 
             HStack(spacing: 12) {
-                scoreBox(label: "HAQ-DI", wert: String(format: "%.2f", letzterHAQ.haqScore), farbe: .purple)
+                scoreBox(label: "HAQ-DI", wert: String(format: "%.2f", letzterHAQ.haqScore), farbe: .teal)
                 if hatGelenke {
                     scoreBox(label: "TJC", wert: "\(tjc)", farbe: .red)
                     scoreBox(label: "SJC", wert: "\(sjc)", farbe: .blue)
@@ -247,7 +247,7 @@ private struct HAQZeile: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
                 Text(String(format: "%.2f", eintrag.haqScore))
-                    .font(.subheadline.bold()).foregroundStyle(.purple)
+                    .font(.subheadline.bold()).foregroundStyle(.teal)
                 Text("HAQ-DI").font(.caption2).foregroundStyle(.secondary)
             }
         }

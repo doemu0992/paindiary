@@ -123,7 +123,7 @@ struct KonsultationsGuideView: View {
                         statChip(label: "Ø Steifigkeit", wert: String(format: "%.0f min", avgMorgensteifigkeit), farbe: .yellow)
                     }
                     if avgFatigue > 0 {
-                        statChip(label: "Ø Fatigue", wert: String(format: "%.1f/10", avgFatigue), farbe: .purple)
+                        statChip(label: "Ø Fatigue", wert: String(format: "%.1f/10", avgFatigue), farbe: .teal)
                     }
                     if avgSchlaf > 0 {
                         statChip(label: "Ø Schlaf", wert: String(format: "%.1f h", avgSchlaf), farbe: .indigo)

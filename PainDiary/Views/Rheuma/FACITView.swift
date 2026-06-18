@@ -27,12 +27,12 @@ struct FACITView: View {
                             y: .value("FACIT", e.facitScore)
                         )
                         .interpolationMethod(.catmullRom)
-                        .foregroundStyle(Color.purple)
+                        .foregroundStyle(Color.teal)
                         PointMark(
                             x: .value("Datum", e.datum, unit: .day),
                             y: .value("FACIT", e.facitScore)
                         )
-                        .foregroundStyle(Color.purple)
+                        .foregroundStyle(Color.teal)
                     }
                     .chartYScale(domain: 0...52)
                     .chartYAxis {
@@ -88,7 +88,7 @@ struct FACITView: View {
     private func scoreKarte(_ e: FACITEintrag) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Letzter FACIT-Score", systemImage: "bolt.heart.fill")
-                .font(.headline).foregroundStyle(.purple)
+                .font(.headline).foregroundStyle(.teal)
             Divider()
             HStack(spacing: 16) {
                 VStack(spacing: 4) {

@@ -134,7 +134,7 @@ private struct ArztbesuchZeile: View {
             if !besuch.therapieaenderung.isEmpty {
                 Label(besuch.therapieaenderung, systemImage: "pills.fill")
                     .font(.caption)
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(.teal)
                     .lineLimit(1)
             }
         }

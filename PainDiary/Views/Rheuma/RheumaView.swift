@@ -32,7 +32,7 @@ struct RheumaView: View {
                             }
                         }
                     } icon: {
-                        Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(.purple)
+                        Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(.teal)
                     }
                 }
                 NavigationLink(destination: FACITView()) {
@@ -119,7 +119,7 @@ struct RheumaView: View {
         return VStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 12) {
                 Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
-                    .font(.headline).foregroundStyle(.purple)
+                    .font(.headline).foregroundStyle(.teal)
                 Divider()
                 HStack(spacing: 0) {
                     statPill(letzter30.isEmpty ? "–" : String(format: "%.1f", avgSchmerz),
@@ -144,7 +144,7 @@ struct RheumaView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.purple, in: RoundedRectangle(cornerRadius: 12))
+                    .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
         }
