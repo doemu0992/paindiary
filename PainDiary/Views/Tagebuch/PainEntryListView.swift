@@ -5,6 +5,10 @@ struct PainEntryListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
+    @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
+    @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerMessungen: [BlutzuckerEintrag]
+    @AppStorage("zyklusModulAktiv") private var zyklusModulAktiv = false
+    @AppStorage("diabetesModulAktiv") private var diabetesModulAktiv = false
 
     @State private var wizardAnzeigen = false
     @State private var suchtext = ""
@@ -32,17 +36,23 @@ struct PainEntryListView: View {
     private enum TagesbuchItem: Identifiable {
         case schmerz(PainEntry)
         case migraene(MigraeneEintrag)
+        case zyklus(ZyklusEintrag)
+        case diabetes(BlutzuckerEintrag)
 
         var id: String {
             switch self {
             case .schmerz(let e):  return "s-\(e.persistentModelID.hashValue)"
             case .migraene(let e): return "m-\(e.persistentModelID.hashValue)"
+            case .zyklus(let e):   return "z-\(e.persistentModelID.hashValue)"
+            case .diabetes(let e): return "d-\(e.persistentModelID.hashValue)"
             }
         }
         var datum: Date {
             switch self {
             case .schmerz(let e):  return e.datum
             case .migraene(let e): return e.datum
+            case .zyklus(let e):   return e.datum
+            case .diabetes(let e): return e.datum
             }
         }
     }
@@ -70,7 +80,19 @@ struct PainEntryListView: View {
             let datumMatch = grenze == nil || a.datum >= grenze!
             return (suchMatch && datumMatch) ? .migraene(a) : nil
         }
-        return (schmerzItems + migraeneItems).sorted { $0.datum > $1.datum }
+        let zyklusItems: [TagesbuchItem] = zyklusModulAktiv ? zyklusEintraege.compactMap { e in
+            let datumMatch = grenze == nil || e.datum >= grenze!
+            let suchMatch = suchtext.isEmpty || e.notizen.localizedCaseInsensitiveContains(suchtext)
+            return (suchMatch && datumMatch) ? .zyklus(e) : nil
+        } : []
+        let diabetesItems: [TagesbuchItem] = diabetesModulAktiv ? blutzuckerMessungen.compactMap { e in
+            let datumMatch = grenze == nil || e.datum >= grenze!
+            let suchMatch = suchtext.isEmpty ||
+                e.messZeitpunkt.localizedCaseInsensitiveContains(suchtext) ||
+                e.notizen.localizedCaseInsensitiveContains(suchtext)
+            return (suchMatch && datumMatch) ? .diabetes(e) : nil
+        } : []
+        return (schmerzItems + migraeneItems + zyklusItems + diabetesItems).sorted { $0.datum > $1.datum }
     }
 
     private var filterAktiv: Bool {
@@ -80,7 +102,7 @@ struct PainEntryListView: View {
     var body: some View {
         List {
             if gefilterte.isEmpty {
-                if eintraege.isEmpty && migraeneAnfaelle.isEmpty {
+                if eintraege.isEmpty && migraeneAnfaelle.isEmpty && zyklusEintraege.isEmpty && blutzuckerMessungen.isEmpty {
                     ContentUnavailableView(
                         "Noch keine Einträge",
                         systemImage: "heart.text.clipboard",
@@ -115,6 +137,20 @@ struct PainEntryListView: View {
                                 Label("Löschen", systemImage: "trash")
                             }
                         }
+                    case .zyklus(let eintrag):
+                        ZyklusTagesbuchZeile(eintrag: eintrag)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { modelContext.delete(eintrag) } label: {
+                                    Label("Löschen", systemImage: "trash")
+                                }
+                            }
+                    case .diabetes(let messung):
+                        DiabetesTagesbuchZeile(messung: messung)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { modelContext.delete(messung) } label: {
+                                    Label("Löschen", systemImage: "trash")
+                                }
+                            }
                     }
                 }
             }
@@ -281,6 +317,97 @@ private struct PainEntryZeile: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Zyklus row
+
+struct ZyklusTagesbuchZeile: View {
+    let eintrag: ZyklusEintrag
+    @State private var zeigeBearbeiten = false
+
+    var body: some View {
+        Button { zeigeBearbeiten = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: eintrag.istPeriode ? "drop.fill" : "circle.dotted")
+                    .font(.title3)
+                    .foregroundStyle(eintrag.istPeriode ? .pink : .secondary)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(eintrag.istPeriode ? "Periode" : "Zyklus-Eintrag")
+                        .font(.subheadline.bold())
+                    HStack(spacing: 4) {
+                        Text(eintrag.datum, style: .date)
+                        if !eintrag.blutungsfluss.isEmpty && eintrag.istPeriode {
+                            Text("·").foregroundStyle(.secondary)
+                            Text(eintrag.blutungsfluss.capitalized)
+                        } else if !eintrag.symptome.isEmpty {
+                            Text("·").foregroundStyle(.secondary)
+                            Text(eintrag.symptome.components(separatedBy: ", ").prefix(2).joined(separator: ", "))
+                                .lineLimit(1)
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $zeigeBearbeiten) {
+            ZyklusEintragSheet(datum: eintrag.datum, bestehend: eintrag)
+        }
+    }
+}
+
+// MARK: - Diabetes row
+
+struct DiabetesTagesbuchZeile: View {
+    let messung: BlutzuckerEintrag
+    @State private var zeigeBearbeiten = false
+
+    private var wertFarbe: Color {
+        messung.wert < 3.9 ? .red : messung.wert <= 7.8 ? .green : .orange
+    }
+
+    var body: some View {
+        Button { zeigeBearbeiten = true } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(wertFarbe.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Text(String(format: "%.1f", messung.wert))
+                        .font(.caption.bold())
+                        .foregroundStyle(wertFarbe)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(messung.wertText)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(wertFarbe)
+                    HStack(spacing: 4) {
+                        Text(messung.datum, style: .date)
+                        Text("·").foregroundStyle(.secondary)
+                        Text(messung.messZeitpunkt)
+                        if messung.insulinEinheiten > 0 {
+                            Text("·").foregroundStyle(.secondary)
+                            Text("\(String(format: "%.0f", messung.insulinEinheiten)) IE")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $zeigeBearbeiten) {
+            BlutzuckerForm(messung: messung)
+        }
     }
 }
 

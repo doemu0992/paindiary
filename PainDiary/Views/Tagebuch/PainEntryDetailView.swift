@@ -3,6 +3,7 @@ import SwiftUI
 struct PainEntryDetailView: View {
     let eintrag: PainEntry
     @State private var bearbeiten = false
+    @State private var zeigeRheumaBearbeiten = false
 
     private var displayLocation: String {
         if !eintrag.koerperstelle.isEmpty { return eintrag.koerperstelle }
@@ -38,11 +39,20 @@ struct PainEntryDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Bearbeiten") { bearbeiten = true }
+                Button("Bearbeiten") {
+                    if eintrag.koerperstelle == "Rheuma" {
+                        zeigeRheumaBearbeiten = true
+                    } else {
+                        bearbeiten = true
+                    }
+                }
             }
         }
         .sheet(isPresented: $bearbeiten) {
             AddEntryView(eintrag: eintrag)
+        }
+        .sheet(isPresented: $zeigeRheumaBearbeiten) {
+            RheumaSchnellForm(eintrag: eintrag)
         }
     }
 

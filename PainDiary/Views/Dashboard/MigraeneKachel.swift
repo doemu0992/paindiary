@@ -4,6 +4,7 @@ import Charts
 struct MigraeneKachel: View {
     let anfaelle: [MigraeneEintrag]
     @State private var zeigeForm = false
+    @State private var ausgewaehltTag: Date? = nil
 
     private var anfaelle30: [MigraeneEintrag] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
@@ -20,14 +21,16 @@ struct MigraeneKachel: View {
         }
     }
 
-    private var chartDaten: [(datum: Date, anzahl: Int)] {
+    private var chartDaten: [(datum: Date, wert: Double)] {
         let cal = Calendar.current
         return (0..<14).reversed().map { offset in
             let tag = cal.date(byAdding: .day, value: -offset, to: Date()) ?? Date()
             let start = cal.startOfDay(for: tag)
             let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
-            let n = anfaelle.filter { $0.datum >= start && $0.datum < end }.count
-            return (datum: start, anzahl: n)
+            let tagesAnfaelle = anfaelle.filter { $0.datum >= start && $0.datum < end }
+            let avg = tagesAnfaelle.isEmpty ? 0.0
+                : Double(tagesAnfaelle.map(\.staerke).reduce(0, +)) / Double(tagesAnfaelle.count)
+            return (datum: start, wert: avg)
         }
     }
 
@@ -68,21 +71,44 @@ struct MigraeneKachel: View {
             Chart(chartDaten, id: \.datum) { punkt in
                 BarMark(
                     x: .value("Tag", punkt.datum, unit: .day),
-                    y: .value("Anfälle", hatDaten ? Double(punkt.anzahl) : 1.0)
+                    y: .value("Stärke", hatDaten ? punkt.wert : 1.0)
                 )
-                .foregroundStyle(hatDaten
-                    ? Color.purple.opacity(punkt.anzahl > 0 ? 0.75 : 0.1)
-                    : Color.purple.opacity(0.07))
+                .foregroundStyle(hatDaten ? staerkeFarbe(punkt.wert) : Color.purple.opacity(0.07))
                 .cornerRadius(3)
             }
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
+            .chartYScale(domain: 0...10)
             .frame(height: 44)
+            .chartOverlay { proxy in
+                GeometryReader { geo in
+                    Rectangle().fill(.clear).contentShape(Rectangle())
+                        .gesture(DragGesture(minimumDistance: 0).onChanged { value in
+                            let x = value.location.x - geo[proxy.plotAreaFrame].origin.x
+                            guard x >= 0, let date: Date = proxy.value(atX: x) else { return }
+                            ausgewaehltTag = Calendar.current.startOfDay(for: date)
+                        })
+                }
+            }
             .overlay(alignment: .center) {
                 if !hatDaten {
                     Text("Noch keine Einträge")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            if let tag = ausgewaehltTag, let punkt = chartDaten.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: tag) }) {
+                HStack(spacing: 6) {
+                    Text(tag, format: .dateTime.day().month(.abbreviated))
+                        .font(.caption2.bold())
+                        .foregroundStyle(.secondary)
+                    if punkt.wert > 0 {
+                        Text("Ø \(String(format: "%.1f", punkt.wert))")
+                            .font(.caption2)
+                            .foregroundStyle(staerkeFarbe(punkt.wert))
+                    }
+                    Spacer()
                 }
             }
 
@@ -104,6 +130,13 @@ struct MigraeneKachel: View {
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .sheet(isPresented: $zeigeForm) { MigraeneAnfallForm() }
+    }
+
+    private func staerkeFarbe(_ wert: Double) -> Color {
+        guard wert > 0 else { return Color.purple.opacity(0.1) }
+        if wert <= 3 { return .green.opacity(0.75) }
+        if wert <= 6 { return .orange.opacity(0.75) }
+        return .red.opacity(0.85)
     }
 
     private func statBox(wert: String, label: String, farbe: Color) -> some View {
