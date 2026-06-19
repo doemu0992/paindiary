@@ -10,6 +10,7 @@ struct ZyklusView: View {
 
     @State private var anzeigeMonat = Date()
     @State private var ausgewaehlterTag: ZyklusTagAuswahl? = nil
+    @State private var zeigeAnalyse = false
     @State private var notifManager = NotificationManager.shared
 
     private var analyse: ZyklusAnalyse { ZyklusRechner.analyse(eintraege: Array(eintraege)) }
@@ -77,6 +78,7 @@ struct ZyklusView: View {
                 bestehend: eintraege.first { Calendar.current.isDate($0.datum, inSameDayAs: auswahl.datum) }
             )
         }
+        .sheet(isPresented: $zeigeAnalyse) { ZyklusAnalyseView() }
         .onChange(of: eintraege) { _, _ in planeZyklusNotifs() }
         .onAppear { planeZyklusNotifs() }
     }
@@ -166,7 +168,7 @@ struct ZyklusView: View {
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
             if !analyse.zyklusStarts.isEmpty {
-                NavigationLink(destination: ZyklusAnalyseView()) {
+                Button { zeigeAnalyse = true } label: {
                     Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
                         .font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
