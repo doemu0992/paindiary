@@ -25,10 +25,8 @@ struct RheumaSchnellForm: View {
     @State private var wetterWind: Double? = nil
 
     private let wetter = WetterService.shared
-    private let maxSchritt = 2
-    private let schrittNamen = ["Allgemein", "Gelenke", "Wohlbefinden"]
-    private let progressTint: Color = .teal
-    private let pflichtSchritte: Set<Int> = [0]
+    private let maxSchritt = 3
+    private let pflichtSchritte: Set<Int> = [0, 1]
 
     var body: some View {
         NavigationStack {
@@ -87,33 +85,21 @@ struct RheumaSchnellForm: View {
     // MARK: - Progress bar
 
     private var progressBar: some View {
-        VStack(spacing: 8) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.2))
-                        .frame(height: 3)
-                    Capsule()
-                        .fill(progressTint)
-                        .frame(
-                            width: geo.size.width * (maxSchritt > 0 ? CGFloat(schritt) / CGFloat(maxSchritt) : 0),
-                            height: 3
-                        )
-                        .animation(.spring(response: 0.4), value: schritt)
-                }
-            }
-            .frame(height: 3)
-
-            HStack {
-                Text("Schritt \(schritt + 1) von \(maxSchritt + 1)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(schritt < schrittNamen.count ? schrittNamen[schritt] : "")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.teal.opacity(0.15))
+                    .frame(height: 3)
+                Capsule()
+                    .fill(Color.teal)
+                    .frame(
+                        width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1),
+                        height: 3
+                    )
+                    .animation(.easeInOut(duration: 0.3), value: schritt)
             }
         }
+        .frame(height: 3)
     }
 
     // MARK: - Step content
@@ -129,6 +115,13 @@ struct RheumaSchnellForm: View {
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
         case 1:
+            ScrollView {
+                schmerzMorgenSchritt
+                    .padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        case 2:
             GelenkStepView(gelenkStatus: $gelenkStatus)
                 .background(Color(.systemGroupedBackground))
         default:
@@ -150,15 +143,8 @@ struct RheumaSchnellForm: View {
     // MARK: - Schritt 0: Allgemein
 
     private var allgemeinSchritt: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 6) {
-                Image(systemName: "cross.case.fill")
-                    .font(.largeTitle)
-                    .foregroundStyle(.teal)
-                Text("Wie heute?")
-                    .font(.title2.bold())
-            }
-            .padding(.top, 8)
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "cross.case.fill", titel: "Rheuma & Gelenke", untertitel: "Heutigen Zustand erfassen")
 
             karte {
                 Toggle(isOn: $istSchub) {
@@ -175,65 +161,6 @@ struct RheumaSchnellForm: View {
                     }
                 }
                 .tint(.red)
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack {
-                        Text("Schmerzstärke").font(.headline)
-                        Spacer()
-                        Text("\(schmerzstaerke)/10")
-                            .font(.title3.bold())
-                            .foregroundStyle(schmerzFarbe)
-                            .animation(.easeInOut(duration: 0.15), value: schmerzstaerke)
-                    }
-                    Slider(
-                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
-                        in: 0...10, step: 1
-                    )
-                    .tint(schmerzFarbe)
-                    HStack {
-                        Text("Kein Schmerz").font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Text(schmerzLabel).font(.caption.bold()).foregroundStyle(schmerzFarbe)
-                            .animation(.easeInOut(duration: 0.15), value: schmerzLabel)
-                        Spacer()
-                        Text("Extrem").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            karte {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Morgensteifigkeit").font(.headline)
-                    HStack(spacing: 8) {
-                        ForEach([0, 15, 30, 60, 90], id: \.self) { min in
-                            Button {
-                                morgensteifigkeit = min
-                            } label: {
-                                Text(min == 0 ? "–" : min < 90 ? "\(min)'" : "90'+")
-                                    .font(.subheadline.bold())
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        morgensteifigkeit == min
-                                            ? Color.teal
-                                            : Color(.tertiarySystemBackground)
-                                    )
-                                    .foregroundStyle(morgensteifigkeit == min ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    if morgensteifigkeit > 0 {
-                        Text(morgensteifigkeit < 90
-                             ? "Dauer: \(morgensteifigkeit) Minuten"
-                             : "Dauer: über 90 Minuten")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
             }
 
             karte {
@@ -261,6 +188,93 @@ struct RheumaSchnellForm: View {
         .padding(.bottom, 24)
     }
 
+    // MARK: - Schritt 1: Schmerz & Morgensteifigkeit
+
+    private var schmerzMorgenSchritt: some View {
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "waveform.path.ecg", titel: "Wie stark?", untertitel: "Schmerzstärke und Morgensteifigkeit")
+
+            karte {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Schmerzstärke").font(.headline)
+
+                    HStack {
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .fill(schmerzFarbe.opacity(0.15))
+                                .frame(width: 104, height: 104)
+                            Circle()
+                                .strokeBorder(schmerzFarbe, lineWidth: 5)
+                                .frame(width: 104, height: 104)
+                            VStack(spacing: 1) {
+                                Text("\(schmerzstaerke)")
+                                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                                    .foregroundStyle(schmerzFarbe)
+                                Text("/ 10")
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: schmerzstaerke)
+                        Spacer()
+                    }
+
+                    Text(schmerzLabel)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(schmerzFarbe)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .animation(.easeInOut(duration: 0.2), value: schmerzLabel)
+
+                    Slider(
+                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
+                        in: 0...10, step: 1
+                    )
+                    .tint(schmerzFarbe)
+
+                    HStack {
+                        Text("Kein Schmerz").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text("Extremer Schmerz").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Morgensteifigkeit")
+                    .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                HStack(spacing: 8) {
+                    ForEach([0, 15, 30, 60, 90], id: \.self) { min in
+                        Button {
+                            morgensteifigkeit = min
+                        } label: {
+                            Text(min == 0 ? "–" : min < 90 ? "\(min)'" : "90'+")
+                                .font(.subheadline.bold())
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(
+                                    morgensteifigkeit == min ? Color.teal : Color(.secondarySystemGroupedBackground)
+                                )
+                                .foregroundStyle(morgensteifigkeit == min ? .white : .primary)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                if morgensteifigkeit > 0 {
+                    Text(morgensteifigkeit < 90
+                         ? "Dauer: \(morgensteifigkeit) Minuten"
+                         : "Dauer: über 90 Minuten")
+                        .font(.caption)
+                        .foregroundStyle(morgensteifigkeit >= 30 ? .orange : .secondary)
+                        .padding(.horizontal, 4)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 24)
+    }
+
     // MARK: - Navigation bar
 
     private var navigationsLeiste: some View {
@@ -270,18 +284,14 @@ struct RheumaSchnellForm: View {
                     vorwaerts = false
                     withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
                 } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .background(Color(.secondarySystemBackground), in: Circle())
+                    Text("Zurück")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-            } else {
-                Spacer().frame(width: 40)
             }
-
-            Spacer()
-
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
                 Button {
                     vorwaerts = true
@@ -291,9 +301,7 @@ struct RheumaSchnellForm: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
             }
-
             if schritt < maxSchritt {
                 Button {
                     vorwaerts = true
@@ -301,28 +309,26 @@ struct RheumaSchnellForm: View {
                 } label: {
                     Text("Weiter ›")
                         .font(.subheadline.bold())
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(progressTint, in: Capsule())
                         .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
             } else {
                 Button { speichern() } label: {
-                    Text("✓ Speichern")
+                    Label("Speichern", systemImage: "checkmark")
                         .font(.subheadline.bold())
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(Color.green, in: Capsule())
                         .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
-        .background(.bar)
+        .padding()
+        .background(.ultraThinMaterial)
     }
 
     // MARK: - Card helper
@@ -334,6 +340,23 @@ struct RheumaSchnellForm: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - schrittHeader helper
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 32))
+                .foregroundStyle(.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Computed helpers
@@ -368,6 +391,14 @@ struct RheumaSchnellForm: View {
             wetterWind = snap.windgeschwindigkeit
         } else {
             wetter.laden()
+        }
+        let heute = Calendar.current.startOfDay(for: Date())
+        let heuteDesc = FetchDescriptor<PainEntry>(
+            predicate: #Predicate { $0.datum >= heute },
+            sortBy: [SortDescriptor(\.datum, order: .reverse)]
+        )
+        if let letzterHeute = try? modelContext.fetch(heuteDesc).first {
+            schlafStunden = letzterHeute.schlafStunden
         }
     }
 

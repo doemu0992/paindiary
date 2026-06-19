@@ -95,7 +95,21 @@ struct PainEntryFormView: View {
                     Button("Speichern") { speichern() }
                 }
             }
-            .onAppear { ladeVorhandeneWerte() }
+            .onAppear {
+                ladeVorhandeneWerte()
+                if eintrag == nil { ladeTagesSchlaf() }
+            }
+        }
+    }
+
+    private func ladeTagesSchlaf() {
+        let heute = Calendar.current.startOfDay(for: Date())
+        let desc = FetchDescriptor<PainEntry>(
+            predicate: #Predicate { $0.datum >= heute },
+            sortBy: [SortDescriptor(\.datum, order: .reverse)]
+        )
+        if let letzterHeute = try? modelContext.fetch(desc).first {
+            schlafStunden = letzterHeute.schlafStunden
         }
     }
 

@@ -183,6 +183,31 @@ ScrollView {
 | Stress | 5 farbige Balken-Buttons, Farben: green/mint/yellow/orange/red |
 | Fatigue | Slider 0–10, Schritt 1, dynamischer Tint |
 
+### Schlafstunden-Vorbelegung (bindend)
+
+> **Jedes Formular/Wizard, das `schlafStunden` enthält, muss beim Öffnen den heutigen Wert aus der Datenbank vorausfüllen.**
+
+In der `laden()`-Funktion (oder `onAppear`) des Wizards, **nur bei neuen Einträgen** (`eintrag == nil`):
+
+```swift
+private func laden() {
+    // ... Wetter etc. ...
+
+    // Schlafstunden vom heutigen letzten Eintrag übernehmen
+    let heute = Calendar.current.startOfDay(for: Date())
+    let heuteDesc = FetchDescriptor<PainEntry>(
+        predicate: #Predicate { $0.datum >= heute },
+        sortBy: [SortDescriptor(\.datum, order: .reverse)]
+    )
+    if let letzterHeute = try? modelContext.fetch(heuteDesc).first {
+        schlafStunden = letzterHeute.schlafStunden
+    }
+}
+```
+
+**Gilt für:** SchmerzForm ✅, HautForm ✅, RheumaSchnellForm ✅
+**Modelle ohne PainEntry** (z.B. MigraeneEintrag, ZyklusEintrag): dasselbe Muster mit dem entsprechenden Modell-Typ in `FetchDescriptor<T>`.
+
 ---
 
 ## Wizard-Navigationsmuster
