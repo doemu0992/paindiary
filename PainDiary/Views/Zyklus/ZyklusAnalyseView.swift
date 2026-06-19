@@ -6,6 +6,10 @@ struct ZyklusAnalyseView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .forward) private var eintraege: [ZyklusEintrag]
     @Query(sort: \PainEntry.datum, order: .reverse) private var painEntries: [PainEntry]
     @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
+    @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
+    @Query(sort: \FACITEintrag.datum, order: .reverse) private var facitEintraege: [FACITEintrag]
+    @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerEintraege: [BlutzuckerEintrag]
+    @Query(sort: \KortisonEintrag.datum, order: .reverse) private var kortisonEintraege: [KortisonEintrag]
     @Environment(\.dismiss) private var dismiss
 
     @State private var zeitraum: Zeitraum = .woche
@@ -92,33 +96,127 @@ struct ZyklusAnalyseView: View {
         }
     }
 
+    // MARK: - Phasen-Aggregation (generisch)
+
+    private func phasenAggregat<T>(
+        _ items: [T],
+        datum: KeyPath<T, Date>,
+        wert: (T) -> Double?
+    ) -> [(phase: ZyklusRechner.Zyklusphase, avg: Double, count: Int)] {
+        var map: [ZyklusRechner.Zyklusphase: [Double]] = [:]
+        for item in items {
+            guard let phase = ZyklusRechner.phase(for: item[keyPath: datum], analyse: analyse),
+                  let w = wert(item) else { continue }
+            map[phase, default: []].append(w)
+        }
+        return ZyklusRechner.Zyklusphase.allCases.compactMap { phase in
+            guard let werte = map[phase], !werte.isEmpty else { return nil }
+            return (phase: phase, avg: werte.reduce(0, +) / Double(werte.count), count: werte.count)
+        }
+    }
+
+    private func phasenAnzahl<T>(
+        _ items: [T],
+        datum: KeyPath<T, Date>,
+        filter: (T) -> Bool = { _ in true }
+    ) -> [(phase: ZyklusRechner.Zyklusphase, count: Int)] {
+        var map: [ZyklusRechner.Zyklusphase: Int] = [:]
+        for item in items where filter(item) {
+            guard let phase = ZyklusRechner.phase(for: item[keyPath: datum], analyse: analyse) else { continue }
+            map[phase, default: 0] += 1
+        }
+        return ZyklusRechner.Zyklusphase.allCases.compactMap { phase in
+            guard let c = map[phase], c > 0 else { return nil }
+            return (phase: phase, count: c)
+        }
+    }
+
+    private func fmt(_ data: [(phase: ZyklusRechner.Zyklusphase, avg: Double, count: Int)],
+                     _ format: String, _ unit: String) -> String {
+        data.map { "\($0.phase.rawValue): Ø \(String(format: format, $0.avg))\(unit)" }
+            .joined(separator: "; ")
+    }
+
     // MARK: - KI Prompt
 
     private var kiPrompt: String {
         let zyklen = max(analyse.zyklusStarts.count - 1, 0)
+        var zeilen: [String] = [
+            "Zyklus-Analyse (\(zeitraum.rawValue)):",
+            "- \(zyklen) vollständige Zyklen erfasst",
+            "- Ø Zykluslänge: \(Int(analyse.zykluslaenge.rounded())) Tage, Variation: ±\(String(format: "%.1f", analyse.variation)) Tage",
+            "- Ø Periodendauer: \(Int(analyse.periodendauer.rounded())) Tage",
+            "",
+            "Modul-Daten je Zyklusphase:"
+        ]
 
-        let schmerzPhasen = ZyklusRechner.schmerzJePhase(painEntries: Array(painEntries), analyse: analyse)
-        let schmerzStr = schmerzPhasen.isEmpty
-            ? "keine Daten"
-            : schmerzPhasen.map { "\($0.phase.rawValue): Ø \(String(format: "%.1f", $0.avgSchmerz))/10 (\($0.anzahl) Einträge)" }
-                           .joined(separator: "; ")
+        // Schmerz
+        let sp = ZyklusRechner.schmerzJePhase(painEntries: Array(painEntries), analyse: analyse)
+        if !sp.isEmpty {
+            let s = sp.map { "\($0.phase.rawValue): Ø \(String(format: "%.1f", $0.avgSchmerz))/10 (\($0.anzahl)×)" }.joined(separator: "; ")
+            zeilen.append("- Schmerzstärke: \(s)")
+        }
 
-        let migraenePhasen = ZyklusRechner.migraeneJePhase(anfaelle: Array(migraeneAnfaelle), analyse: analyse)
-        let migraeneStr = migraenePhasen.filter { $0.anzahl > 0 }.isEmpty
-            ? "keine Daten"
-            : migraenePhasen.filter { $0.anzahl > 0 }
-                            .map { "\($0.phase.rawValue): \($0.anzahl) Anfälle (Ø Stärke \(String(format: "%.1f", $0.avgStaerke)))" }
-                            .joined(separator: "; ")
+        // Fatigue, Stimmung, Stress aus PainEntry
+        let fatigue = phasenAggregat(Array(painEntries), datum: \.datum) { $0.fatigue > 0 ? Double($0.fatigue) : nil }
+        if !fatigue.isEmpty { zeilen.append("- Erschöpfung (0–10): \(fmt(fatigue, "%.1f", ""))") }
 
-        return """
-        Zyklus-Analyse (\(zeitraum.rawValue)):
-        - \(zyklen) vollständige Zyklen erfasst
-        - Ø Zykluslänge: \(Int(analyse.zykluslaenge.rounded())) Tage, Variation: ±\(String(format: "%.1f", analyse.variation)) Tage
-        - Ø Periodendauer: \(Int(analyse.periodendauer.rounded())) Tage
-        - Schmerz je Zyklusphase: \(schmerzStr)
-        - Migräne je Zyklusphase: \(migraeneStr)
-        Identifiziere hormonelle Muster sowie Schmerz- und Migräne-Zusammenhänge mit dem Zyklus. Gib 3–4 kurze, konkrete Einblicke auf Deutsch. Keine Diagnosen.
-        """
+        let stimmung = phasenAggregat(Array(painEntries), datum: \.datum) { $0.stimmung > 0 ? Double($0.stimmung) : nil }
+        if !stimmung.isEmpty { zeilen.append("- Stimmung (1–5): \(fmt(stimmung, "%.1f", ""))") }
+
+        let stress = phasenAggregat(Array(painEntries), datum: \.datum) { $0.stressLevel > 0 ? Double($0.stressLevel) : nil }
+        if !stress.isEmpty { zeilen.append("- Stress (1–5): \(fmt(stress, "%.1f", ""))") }
+
+        let schlaf = phasenAggregat(Array(painEntries), datum: \.datum) { $0.schlafStunden > 0 ? $0.schlafStunden : nil }
+        if !schlaf.isEmpty { zeilen.append("- Schlaf: \(fmt(schlaf, "%.1f", " h"))") }
+
+        // Morgensteifigkeit & Schübe (Rheuma)
+        let steif = phasenAggregat(Array(painEntries), datum: \.datum) { $0.morgensteifigkeit > 0 ? Double($0.morgensteifigkeit) : nil }
+        if !steif.isEmpty { zeilen.append("- Morgensteifigkeit: \(fmt(steif, "%.0f", " Min."))") }
+
+        let schube = phasenAnzahl(Array(painEntries), datum: \.datum) { $0.istSchub }
+        if !schube.isEmpty {
+            let s = schube.map { "\($0.phase.rawValue): \($0.count)×" }.joined(separator: "; ")
+            zeilen.append("- Rheumaschübe: \(s)")
+        }
+
+        // Haut-Verschlechterungen
+        let hautFlares = phasenAnzahl(Array(painEntries), datum: \.datum) { $0.istHautEintrag && $0.verlauf == "schlechter" }
+        if !hautFlares.isEmpty {
+            let s = hautFlares.map { "\($0.phase.rawValue): \($0.count)×" }.joined(separator: "; ")
+            zeilen.append("- Hautflares: \(s)")
+        }
+
+        // Migräne
+        let mp = ZyklusRechner.migraeneJePhase(anfaelle: Array(migraeneAnfaelle), analyse: analyse).filter { $0.anzahl > 0 }
+        if !mp.isEmpty {
+            let s = mp.map { "\($0.phase.rawValue): \($0.anzahl) Anfälle (Ø \(String(format: "%.1f", $0.avgStaerke))/10)" }.joined(separator: "; ")
+            zeilen.append("- Migräne: \(s)")
+        }
+
+        // HAQ (Gelenkfunktion)
+        let haq = phasenAggregat(Array(haqEintraege), datum: \.datum) { $0.haqScore }
+        if !haq.isEmpty { zeilen.append("- Gelenkfunktion HAQ (0=gut, 3=schlecht): \(fmt(haq, "%.2f", "/3"))") }
+
+        // FACIT (Erschöpfung klinisch)
+        let facit = phasenAggregat(Array(facitEintraege), datum: \.datum) { Double($0.facitScore) }
+        if !facit.isEmpty { zeilen.append("- FACIT-Fatigue (0=erschöpft, 52=fit): \(fmt(facit, "%.0f", "/52"))") }
+
+        // Blutzucker
+        let bz = phasenAggregat(Array(blutzuckerEintraege), datum: \.datum) { $0.wert }
+        if !bz.isEmpty { zeilen.append("- Blutzucker: \(fmt(bz, "%.1f", " mmol/L"))") }
+
+        // Kortison
+        let krt = phasenAggregat(Array(kortisonEintraege), datum: \.datum) { $0.dosierungMg }
+        if !krt.isEmpty {
+            let s = krt.map { "\($0.phase.rawValue): Ø \(String(format: "%.1f", $0.avg)) mg (\($0.count)×)" }.joined(separator: "; ")
+            zeilen.append("- Kortison: \(s)")
+        }
+
+        zeilen.append("")
+        zeilen.append("Analysiere hormonelle Einflüsse auf alle erfassten Bereiche. Identifiziere in welchen Zyklusphasen sich Symptome häufen oder verbessern. Gib 3–5 kurze, konkrete Einblicke auf Deutsch. Keine Diagnosen.")
+
+        return zeilen.joined(separator: "\n")
     }
 
     // MARK: - Übersicht

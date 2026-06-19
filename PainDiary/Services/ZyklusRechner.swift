@@ -323,6 +323,20 @@ struct ZyklusRechner {
         }
     }
 
+    static func phase(for date: Date, analyse: ZyklusAnalyse) -> Zyklusphase? {
+        guard !analyse.zyklusStarts.isEmpty else { return nil }
+        let kal = Calendar.current
+        let tag = kal.startOfDay(for: date)
+        guard let start = analyse.zyklusStarts.last(where: { $0 <= tag }) else { return nil }
+        let zt = (kal.dateComponents([.day], from: start, to: tag).day ?? 0) + 1
+        let periodLen = Int(round(analyse.adaptiertePeriodendauer))
+        let ovuOffset = analyse.gelernterOvulationsOffset ?? (Int(round(analyse.adaptierteZykluslaenge)) - 14)
+        if zt <= periodLen          { return .menstruation }
+        else if zt < ovuOffset - 2  { return .follikelphase }
+        else if zt <= ovuOffset + 2 { return .ovulation }
+        else                        { return .lutealphase }
+    }
+
     static func migraeneJePhase(
         anfaelle: [MigraeneEintrag],
         analyse: ZyklusAnalyse
