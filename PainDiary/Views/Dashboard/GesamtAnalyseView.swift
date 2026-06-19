@@ -265,6 +265,7 @@ extension GesamtAnalyseView {
     @ViewBuilder
     private func schmerzVerlaufChart(alleSchmerzEintraege: [PainEntry]) -> some View {
         let punkte = berechneTagesPunkte(aus: alleSchmerzEintraege)
+        let cal = Calendar.current
         let migraeneCopy = gefilterteMigraene
         let zeitraumCopy = zeitraum
 
