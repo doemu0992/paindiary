@@ -13,8 +13,13 @@ struct HautStepView: View {
 
     @State private var artAusgewaehlt: Set<String> = []
     @State private var eigenerText = ""
+    @State private var customArt: [String] = []
     @State private var photoItem: PhotosPickerItem? = nil
     @State private var fotoBild: UIImage? = nil
+
+    private var alleArtVorschlaege: [String] {
+        artVorschlaege + customArt.filter { !artVorschlaege.contains($0) }
+    }
 
     var body: some View {
         VStack(spacing: 24) {
@@ -33,7 +38,7 @@ struct HautStepView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Art der Veränderung")
                     .font(.headline)
-                FlowLayout(artVorschlaege) { art in
+                FlowLayout(alleArtVorschlaege) { art in
                     ChipButton(label: art, ausgewaehlt: artAusgewaehlt.contains(art)) {
                         if artAusgewaehlt.contains(art) { artAusgewaehlt.remove(art) }
                         else { artAusgewaehlt.insert(art) }
@@ -46,8 +51,11 @@ struct HautStepView: View {
                     if !eigenerText.isEmpty {
                         Button {
                             let t = eigenerText.trimmingCharacters(in: .whitespaces)
+                            guard !t.isEmpty else { return }
                             artAusgewaehlt.insert(t); eigenerText = ""
                             hautArt = artAusgewaehlt.sorted().joined(separator: ", ")
+                            ChipSpeicher.hinzufuegen(t, schluessel: "hautCustomArt")
+                            customArt = ChipSpeicher.laden(schluessel: "hautCustomArt")
                         } label: {
                             Image(systemName: "plus.circle.fill").foregroundStyle(Color.accentColor)
                         }
@@ -102,6 +110,7 @@ struct HautStepView: View {
         .onAppear {
             artAusgewaehlt = Set(hautArt.components(separatedBy: ", ").filter { !$0.isEmpty })
             fotoBild = FotoManager.laden(dateiname: fotoDateiname)
+            customArt = ChipSpeicher.laden(schluessel: "hautCustomArt")
         }
         .onChange(of: photoItem) {
             Task {

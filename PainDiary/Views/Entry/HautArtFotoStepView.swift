@@ -7,6 +7,7 @@ struct HautArtFotoStepView: View {
 
     @State private var ausgewaehlt: Set<String> = []
     @State private var freitext = ""
+    @State private var customArt: [String] = []
     @State private var photoItem: PhotosPickerItem? = nil
     @State private var geladensBild: UIImage? = nil
 
@@ -15,6 +16,10 @@ struct HautArtFotoStepView: View {
         "Hämatom", "Wunde", "Juckreiz", "Trockene Haut", "Verbrennung", "Bläschen"
     ]
 
+    private var alleArtVorschlaege: [String] {
+        artVorschlaege + customArt.filter { !artVorschlaege.contains($0) }
+    }
+
     var body: some View {
         VStack(spacing: 20) {
             // Art der Hautveränderung (direkt auf Hintergrund, kein Card-Wrapper)
@@ -22,7 +27,7 @@ struct HautArtFotoStepView: View {
                 Text("Art der Veränderung (mehrere möglich)")
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    ForEach(artVorschlaege, id: \.self) { art in
+                    ForEach(alleArtVorschlaege, id: \.self) { art in
                         let sel = ausgewaehlt.contains(art)
                         Button {
                             if sel { ausgewaehlt.remove(art) } else { ausgewaehlt.insert(art) }
@@ -53,9 +58,13 @@ struct HautArtFotoStepView: View {
                         .submitLabel(.done)
                     if !freitext.isEmpty {
                         Button {
-                            ausgewaehlt.insert(freitext.trimmingCharacters(in: .whitespaces))
+                            let term = freitext.trimmingCharacters(in: .whitespaces)
+                            guard !term.isEmpty else { return }
+                            ausgewaehlt.insert(term)
                             freitext = ""
                             aktualisiereBinding()
+                            ChipSpeicher.hinzufuegen(term, schluessel: "hautCustomArt")
+                            customArt = ChipSpeicher.laden(schluessel: "hautCustomArt")
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.orange)
@@ -112,6 +121,7 @@ struct HautArtFotoStepView: View {
         }
         .onAppear {
             ladeWerte()
+            customArt = ChipSpeicher.laden(schluessel: "hautCustomArt")
             if let bild = FotoManager.laden(dateiname: fotoDateiname) {
                 geladensBild = bild
             }
