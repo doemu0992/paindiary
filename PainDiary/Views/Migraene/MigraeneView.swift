@@ -339,7 +339,6 @@ struct MigraeneAnfallForm: View {
 
     private let wetter = WetterService.shared
     private let maxSchritt = 5
-    private let schrittNamen = ["Intensität", "Prodrom", "Charakter", "Symptome & Auslöser", "Abschluss", "Wohlbefinden"]
     private let progressTint: Color = .purple
     private let pflichtSchritte: Set<Int> = [0]
 
@@ -425,33 +424,21 @@ struct MigraeneAnfallForm: View {
     // MARK: - Progress bar
 
     private var progressBar: some View {
-        VStack(spacing: 8) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.2))
-                        .frame(height: 3)
-                    Capsule()
-                        .fill(progressTint)
-                        .frame(
-                            width: geo.size.width * (maxSchritt > 0 ? CGFloat(schritt) / CGFloat(maxSchritt) : 0),
-                            height: 3
-                        )
-                        .animation(.spring(response: 0.4), value: schritt)
-                }
-            }
-            .frame(height: 3)
-
-            HStack {
-                Text("Schritt \(schritt + 1) von \(maxSchritt + 1)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(schritt < schrittNamen.count ? schrittNamen[schritt] : "")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(progressTint.opacity(0.15))
+                    .frame(height: 3)
+                Capsule()
+                    .fill(progressTint)
+                    .frame(
+                        width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1),
+                        height: 3
+                    )
+                    .animation(.easeInOut(duration: 0.3), value: schritt)
             }
         }
+        .frame(height: 3)
     }
 
     // MARK: - Step content
@@ -889,18 +876,14 @@ struct MigraeneAnfallForm: View {
                     vorwaerts = false
                     withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
                 } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .background(Color(.secondarySystemBackground), in: Circle())
+                    Text("Zurück")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-            } else {
-                Spacer().frame(width: 40)
             }
-
-            Spacer()
-
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
                 Button {
                     vorwaerts = true
@@ -910,9 +893,7 @@ struct MigraeneAnfallForm: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
             }
-
             if schritt < maxSchritt {
                 Button {
                     vorwaerts = true
@@ -920,28 +901,26 @@ struct MigraeneAnfallForm: View {
                 } label: {
                     Text("Weiter ›")
                         .font(.subheadline.bold())
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(progressTint, in: Capsule())
                         .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
             } else {
                 Button { speichern() } label: {
-                    Text("✓ Speichern")
+                    Label("Speichern", systemImage: "checkmark")
                         .font(.subheadline.bold())
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(Color.green, in: Capsule())
                         .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
-        .background(.bar)
+        .padding()
+        .background(.ultraThinMaterial)
     }
 
     // MARK: - Card helper
