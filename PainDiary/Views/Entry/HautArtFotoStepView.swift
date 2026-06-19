@@ -17,10 +17,10 @@ struct HautArtFotoStepView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            // Card 1: Art der Hautveränderung
-            VStack(alignment: .leading, spacing: 12) {
+            // Art der Hautveränderung (direkt auf Hintergrund, kein Card-Wrapper)
+            VStack(alignment: .leading, spacing: 10) {
                 Text("Art der Veränderung (mehrere möglich)")
-                    .font(.headline)
+                    .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     ForEach(artVorschlaege, id: \.self) { art in
                         let sel = ausgewaehlt.contains(art)
@@ -47,7 +47,10 @@ struct HautArtFotoStepView: View {
                 }
                 HStack(spacing: 8) {
                     TextField("Eigene Beschreibung…", text: $freitext)
-                        .textFieldStyle(.roundedBorder)
+                        .font(.subheadline)
+                        .padding(14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .submitLabel(.done)
                     if !freitext.isEmpty {
                         Button {
                             ausgewaehlt.insert(freitext.trimmingCharacters(in: .whitespaces))
@@ -61,13 +64,11 @@ struct HautArtFotoStepView: View {
                     }
                 }
             }
-            .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
-            // Card 2: Foto
+            // Foto (als Card, da komplexeres UI)
             VStack(alignment: .leading, spacing: 12) {
                 Text("Foto (optional)")
-                    .font(.headline)
+                    .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
 
                 if let bild = geladensBild {
                     ZStack(alignment: .topTrailing) {
@@ -109,7 +110,6 @@ struct HautArtFotoStepView: View {
             .padding()
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         }
-        .padding(.horizontal)
         .onAppear {
             ladeWerte()
             if let bild = FotoManager.laden(dateiname: fotoDateiname) {

@@ -520,39 +520,38 @@ struct SchmerzForm: View {
         freitext: Binding<String>? = nil,
         platzhalter: String? = nil
     ) -> some View {
-        karte {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(titel).font(.headline)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    ForEach(optionen, id: \.self) { opt in
-                        let sel = ausgewaehlt.wrappedValue.contains(opt)
-                        Button {
-                            var s = ausgewaehlt.wrappedValue
-                            if s.contains(opt) { s.remove(opt) } else { s.insert(opt) }
-                            ausgewaehlt.wrappedValue = s
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: sel ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(sel ? farbe : .secondary)
-                                    .font(.caption)
-                                Text(opt).font(.caption).lineLimit(1)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 10).padding(.vertical, 8)
-                            .background(
-                                sel ? farbe.opacity(0.12) : Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 10)
-                            )
+        VStack(alignment: .leading, spacing: 10) {
+            Text(titel).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                ForEach(optionen, id: \.self) { opt in
+                    let sel = ausgewaehlt.wrappedValue.contains(opt)
+                    Button {
+                        var s = ausgewaehlt.wrappedValue
+                        if s.contains(opt) { s.remove(opt) } else { s.insert(opt) }
+                        ausgewaehlt.wrappedValue = s
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: sel ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(sel ? farbe : .secondary)
+                                .font(.caption)
+                            Text(opt).font(.caption).lineLimit(1)
+                            Spacer()
                         }
-                        .buttonStyle(.plain)
-                        .animation(.easeInOut(duration: 0.15), value: sel)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(
+                            sel ? farbe.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
                     }
+                    .buttonStyle(.plain)
+                    .animation(.easeInOut(duration: 0.15), value: sel)
                 }
-                if let ft = freitext, let ph = platzhalter {
-                    TextField(ph, text: ft)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.subheadline)
-                }
+            }
+            if let ft = freitext, let ph = platzhalter {
+                TextField(ph, text: ft)
+                    .font(.subheadline)
+                    .padding(14)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
             }
         }
     }
