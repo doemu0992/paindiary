@@ -1228,7 +1228,12 @@ struct EinnahmeLogView: View {
                 }
                 .padding(.vertical, 2)
             }
-            .onDelete { idx in idx.forEach { modelContext.delete(logs[$0]) } }
+            .onDelete { idx in
+                idx.forEach {
+                    NotificationManager.shared.loescheWirkungsAbfrage(fuer: logs[$0])
+                    modelContext.delete(logs[$0])
+                }
+            }
         }
         .navigationTitle("Einnahme-Verlauf")
         .toolbar {

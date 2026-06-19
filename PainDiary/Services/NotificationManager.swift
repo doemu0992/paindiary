@@ -425,6 +425,19 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             UNNotificationRequest(identifier: id, content: content, trigger: trigger))
     }
 
+    func loescheMigraeneErinnerungen(fuer datum: Date) {
+        let ts = Int(datum.timeIntervalSince1970)
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [
+            "migraene-wirkung-\(ts)",
+            "migraene-postdrom-\(ts)"
+        ])
+    }
+
+    func loescheWirkungsAbfrage(fuer log: EinnahmeLog) {
+        let id = "wirkung-\(Int(log.datum.timeIntervalSince1970))"
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+    }
+
     func loescheZyklusErinnerungen() {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: ["zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung"])

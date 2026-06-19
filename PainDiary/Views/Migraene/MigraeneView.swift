@@ -64,13 +64,19 @@ struct MigraeneView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
+                                NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfall.datum)
                                 modelContext.delete(anfall)
                             } label: { Label("Löschen", systemImage: "trash") }
                             Button { bearbeitet = anfall } label: { Label("Bearbeiten", systemImage: "pencil") }
                                 .tint(.blue)
                         }
                     }
-                    .onDelete { idx in idx.forEach { modelContext.delete(anfaelle[$0]) } }
+                    .onDelete { idx in
+                        idx.forEach {
+                            NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfaelle[$0].datum)
+                            modelContext.delete(anfaelle[$0])
+                        }
+                    }
                 }
             }
         }

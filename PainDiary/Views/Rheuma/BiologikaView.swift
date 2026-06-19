@@ -107,6 +107,7 @@ struct BiologikaView: View {
                             .onTapGesture { bearbeitet = injektion }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
+                                    NotificationManager.shared.loescheBiologikaErinnerung(injektion: injektion)
                                     modelContext.delete(injektion)
                                 } label: {
                                     Label("Löschen", systemImage: "trash")

@@ -641,3 +641,41 @@ Vor dem Merge eines neuen Moduls prüfen:
 - [ ] ProfilView `moduleSektion`: Toggle-Icon mit Modul-Tint
 - [ ] AnalyseView: `.kiInsicht`-Section + `kiPrompt` + `KIAnalyseKarte` eingebunden
 - [ ] Grep nach alter/falscher Farbe im Modul-Ordner vor Merge (`grep -r "\.wrongColor" Views/MeinModul/`)
+- [ ] Jede Delete-Operation folgt dem Löschen-Standard (siehe unten)
+
+---
+
+## Löschen-Standard (bindend)
+
+> **Vor jedem `modelContext.delete(entry)` müssen alle ausstehenden Benachrichtigungen für diesen Eintrag abgebrochen werden.**
+
+SwiftData's `modelContext.delete()` löscht den Eintrag dauerhaft aus der Datenbank — `@Query` und alle Analysen reflektieren die Löschung sofort. Es darf kein manuelles `.save()` nötig sein (autosave ist aktiv).
+
+### Muster (bindend für alle Delete-Operationen)
+
+```swift
+// FALSCH — Notification bleibt als Geist hängen:
+modelContext.delete(eintrag)
+
+// RICHTIG — immer in dieser Reihenfolge:
+NotificationManager.shared.loescheXxxErinnerungen(fuer: eintrag)
+modelContext.delete(eintrag)
+```
+
+### Bekannte Notification-IDs pro Modell
+
+| Modell | Notification-ID | Cleanup-Funktion |
+|---|---|---|
+| `Dauermedikation` | `"\(med.notifID)-0"` etc. | `loescheErinnerungen(fuer: med)` |
+| `MigraeneEintrag` | `"migraene-wirkung-\(ts)"`, `"migraene-postdrom-\(ts)"` | `loescheMigraeneErinnerungen(fuer: datum)` |
+| `BiologikaInjektion` | `"biologika-\(ts)"` | `loescheBiologikaErinnerung(injektion:)` |
+| `EinnahmeLog` | `"wirkung-\(ts)"` | `loescheWirkungsAbfrage(fuer: log)` |
+| `ZyklusEintrag` | `"zyklus-periode"` etc. | Wird via `onChange` automatisch neu geplant |
+
+### Neues Modell mit Notifications — Checkliste
+
+Wenn ein neues Modell eigene Notifications plant:
+1. Notification-ID als Konstante oder Funktion in `NotificationManager` definieren
+2. `loescheXxx(fuer:)` Funktion in `NotificationManager` anlegen
+3. **Alle** Delete-Stellen des Modells im gesamten Codebase suchen und Cleanup eintragen
+4. Modell und Cleanup-Funktion in die Tabelle oben eintragen
