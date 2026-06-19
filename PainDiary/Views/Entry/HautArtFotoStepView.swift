@@ -16,17 +16,7 @@ struct HautArtFotoStepView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 24) {
-            // Step header
-            VStack(spacing: 6) {
-                Image(systemName: "bandage")
-                    .font(.system(size: 32))
-                    .foregroundStyle(.orange)
-                Text("Was zeigt sich?")
-                    .font(.title2.bold())
-                    .multilineTextAlignment(.center)
-            }
-
+        VStack(spacing: 20) {
             // Card 1: Art der Hautveränderung
             VStack(alignment: .leading, spacing: 12) {
                 Text("Art der Veränderung (mehrere möglich)")

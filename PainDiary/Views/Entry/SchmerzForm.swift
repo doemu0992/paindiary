@@ -82,13 +82,9 @@ struct SchmerzForm: View {
 
                 // Step content with slide animation
                 Group {
-                    if schritt == 0 {
-                        schrittInhalt
-                            .frame(maxHeight: .infinity)
-                    } else {
-                        schrittInhalt
-                    }
+                    schrittInhalt
                 }
+                .frame(maxHeight: .infinity)
                 .id(schritt)
                 .transition(.asymmetric(
                     insertion: .move(edge: vorwaerts ? .trailing : .leading).combined(with: .opacity),
@@ -178,33 +174,15 @@ struct SchmerzForm: View {
     // MARK: - Progress bar
 
     private var progressBar: some View {
-        VStack(spacing: 8) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.2))
-                        .frame(height: 3)
-                    Capsule()
-                        .fill(progressTint)
-                        .frame(
-                            width: geo.size.width * (maxSchritt > 0 ? CGFloat(schritt) / CGFloat(maxSchritt) : 0),
-                            height: 3
-                        )
-                        .animation(.spring(response: 0.4), value: schritt)
-                }
-            }
-            .frame(height: 3)
-
-            HStack {
-                Text("Schritt \(schritt + 1) von \(maxSchritt + 1)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(schritt < schrittNamen.count ? schrittNamen[schritt] : "")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(progressTint.opacity(0.15)).frame(height: 3)
+                Capsule().fill(progressTint)
+                    .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
+                    .animation(.easeInOut(duration: 0.3), value: schritt)
             }
         }
+        .frame(height: 3)
     }
 
     // MARK: - Step content
@@ -214,25 +192,21 @@ struct SchmerzForm: View {
         switch schritt {
         case 0:
             koerperstelleSchritt
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case 1:
             ScrollView {
                 intensitaetSchritt
-                    .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
         case 2:
             ScrollView {
                 wieWarumSchritt
-                    .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
         case 3:
             ScrollView {
                 wasNochSchritt
-                    .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
@@ -336,15 +310,8 @@ struct SchmerzForm: View {
     // MARK: - Schritt 1: Intensität
 
     private var intensitaetSchritt: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 6) {
-                Image(systemName: "waveform.path.ecg")
-                    .font(.largeTitle)
-                    .foregroundStyle(.red)
-                Text("Wie stark?")
-                    .font(.title2.bold())
-            }
-            .padding(.top, 8)
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "waveform.path.ecg", titel: "Wie stark?", untertitel: "Schmerzstärke und Dauer")
 
             karte {
                 VStack(alignment: .leading, spacing: 14) {
@@ -423,22 +390,15 @@ struct SchmerzForm: View {
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 24)
+        .padding(.horizontal)
+        .padding(.vertical, 24)
     }
 
     // MARK: - Schritt 2: Wie & Warum
 
     private var wieWarumSchritt: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 6) {
-                Image(systemName: "waveform.path.ecg")
-                    .font(.largeTitle)
-                    .foregroundStyle(.blue)
-                Text("Wie und warum?")
-                    .font(.title2.bold())
-            }
-            .padding(.top, 8)
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "list.clipboard.fill", titel: "Wie und warum?", untertitel: "Schmerzart und Auslöser")
 
             chipKarte(
                 titel: "Schmerzart (mehrere möglich)",
@@ -458,22 +418,15 @@ struct SchmerzForm: View {
                 platzhalter: "Eigene Auslöser…"
             )
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 24)
+        .padding(.horizontal)
+        .padding(.vertical, 24)
     }
 
     // MARK: - Schritt 3: Was noch?
 
     private var wasNochSchritt: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 6) {
-                Image(systemName: "list.clipboard.fill")
-                    .font(.largeTitle)
-                    .foregroundStyle(.purple)
-                Text("Was noch?")
-                    .font(.title2.bold())
-            }
-            .padding(.top, 8)
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "cross.case.fill", titel: "Was noch?", untertitel: "Begleiterscheinungen und Maßnahmen")
 
             chipKarte(
                 titel: "Begleiterscheinungen (mehrere möglich)",
@@ -493,8 +446,8 @@ struct SchmerzForm: View {
                 platzhalter: "Eigene Massnahmen…"
             )
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 24)
+        .padding(.horizontal)
+        .padding(.vertical, 24)
     }
 
     // MARK: - Navigation bar
@@ -504,63 +457,39 @@ struct SchmerzForm: View {
             if schritt > 0 {
                 Button {
                     vorwaerts = false
-                    withAnimation(.easeInOut(duration: 0.25)) { schritt -= 1 }
+                    withAnimation { schritt -= 1 }
                 } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .background(Color(.secondarySystemBackground), in: Circle())
-                }
-                .buttonStyle(.plain)
-            } else {
-                Spacer().frame(width: 40)
+                    Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
             }
-
-            Spacer()
-
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
                 Button {
                     vorwaerts = true
-                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                    withAnimation { schritt += 1 }
                 } label: {
-                    Text("Überspringen")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    Text("Überspringen").font(.subheadline).foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
             }
-
             if schritt < maxSchritt {
                 Button {
                     vorwaerts = true
-                    withAnimation(.easeInOut(duration: 0.25)) { schritt += 1 }
+                    withAnimation { schritt += 1 }
                 } label: {
-                    Text("Weiter ›")
-                        .font(.subheadline.bold())
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(progressTint, in: Capsule())
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
+                    Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
             } else {
-                Button {
-                    speichern()
-                } label: {
-                    Text("✓ Speichern")
-                        .font(.subheadline.bold())
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(Color.green, in: Capsule())
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
+                Button { speichern() } label: {
+                    Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
-        .background(.bar)
+        .padding()
+        .background(.ultraThinMaterial)
     }
 
     // MARK: - Card helpers
@@ -572,6 +501,15 @@ struct SchmerzForm: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(progressTint)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func chipKarte(
