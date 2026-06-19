@@ -17,6 +17,23 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "31", aenderungen: [
+        WhatsNewAenderung(icon: "drop.fill", farbe: .pink,
+                          titel: "Zyklus als vollständiges Modul",
+                          beschreibung: "Zyklus-Tracking ist jetzt ein eigenständiges Modul: im Profil unter «Erkrankungen» erreichbar, per Toggle aktivierbar und im Dashboard als Kachel hinzufügbar – genau wie Migräne, Rheuma oder Diabetes."),
+        WhatsNewAenderung(icon: "chart.bar.fill", farbe: .pink,
+                          titel: "Zyklus-Kachel mit Farbverlauf",
+                          beschreibung: "Die neue Zyklus-Kachel zeigt 14 Tage (7 Tage zurück bis 6 Tage voraus): Blutungsstärke in Rot-Nuancen (Schmierblutung bis stark), fruchtbare Tage in Türkis, Eisprung in Orange und vorhergesagte Periode als Geist-Balken. Mit Legende und Plus-Button."),
+        WhatsNewAenderung(icon: "slider.horizontal.3", farbe: .pink,
+                          titel: "Zyklus-Analyse: Reihenfolge anpassbar",
+                          beschreibung: "Die Zyklus-Analyse hat jetzt denselben Toolbar-Standard wie alle anderen Module: Reihenfolge-Button links, Fertig rechts. 11 Sektionen (Übersicht, Vorhersage, Verlauf, Zervixschleim, Symptome, Temperatur, Ovulationstests, Schmerz- & Migräne-Korrelation, KI-Einblick) lassen sich frei umsortieren."),
+        WhatsNewAenderung(icon: "arrow.left.arrow.right", farbe: .indigo,
+                          titel: "Analyse-Toolbar vereinheitlicht",
+                          beschreibung: "In allen Analyse-Ansichten (Schmerz, Migräne, Rheuma, Diabetes, Haut, Zyklus) ist die Toolbar-Reihenfolge jetzt einheitlich: Reihenfolge anpassen links, Fertig rechts."),
+        WhatsNewAenderung(icon: "plus.circle.fill", farbe: .red,
+                          titel: "Dashboard-Plus öffnet korrekten Wizard",
+                          beschreibung: "Der Plus-Button auf der Schmerz-Kachel öffnet jetzt den aktuellen Schmerz-Wizard, der Plus-Button auf der Haut-Kachel den Haut-Wizard – nicht mehr den alten kombinierten Eingabe-Screen."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "30", aenderungen: [
         WhatsNewAenderung(icon: "drop.fill", farbe: .pink,
                           titel: "Zyklus-Eintrag als Wizard",
