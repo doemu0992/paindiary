@@ -17,23 +17,11 @@ struct ZyklusView: View {
 
     var body: some View {
         List {
-            Section {
-                statistikKarte
-            }
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            .listRowBackground(Color.clear)
-
-            if !analyse.zyklusStarts.isEmpty {
+            if !eintraege.filter({ $0.istPeriode || $0.typ == "Periode" }).isEmpty {
                 Section {
-                    Button { zeigeAnalyse = true } label: {
-                        Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                            .font(.subheadline.bold()).foregroundStyle(.white)
-                            .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
+                    statistikKopf
                 }
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .listRowBackground(Color.clear)
             }
 
@@ -158,27 +146,42 @@ struct ZyklusView: View {
 
     // MARK: - Stats Header
 
-    private var statistikKarte: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Zyklus-Überblick", systemImage: "drop.fill")
-                .font(.headline).foregroundStyle(.pink)
-            Divider()
-            HStack(spacing: 0) {
-                statPill(zyklusTagText, label: "Zyklustag",
-                         farbe: analyse.aktuellerZyklustag != nil ? .pink : .secondary)
-                Divider().frame(height: 40)
-                statPill(naechstePeriodeBadge, label: "Nächste Periode", farbe: .red)
-                Divider().frame(height: 40)
-                statPill(zyklusLaengeText, label: "Ø Zyklus", farbe: .purple)
-            }
-            if analyse.aktuellerZyklustag != nil {
+    private var statistikKopf: some View {
+        let hatZyklus = analyse.aktuellerZyklustag != nil
+        let fenster = naechstesFruchtbaresF
+
+        return VStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Zyklus-Überblick", systemImage: "drop.fill")
+                    .font(.headline).foregroundStyle(.pink)
                 Divider()
-                fruchtbarkeitReihe(naechstesFruchtbaresF)
+                HStack(spacing: 0) {
+                    statPill(zyklusTagText, label: "Zyklustag",
+                             farbe: hatZyklus ? .pink : .secondary)
+                    Divider().frame(height: 40)
+                    statPill(naechstePeriodeBadge, label: "Nächste Periode", farbe: .red)
+                    Divider().frame(height: 40)
+                    statPill(zyklusLaengeText, label: "Ø Zyklus", farbe: .purple)
+                }
+                if hatZyklus {
+                    Divider()
+                    fruchtbarkeitReihe(fenster)
+                }
             }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+
+            Button { zeigeAnalyse = true } label: {
+                Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
         }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
     private var zyklusTagText: String {
