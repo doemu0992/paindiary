@@ -234,10 +234,9 @@ extension GesamtAnalyseView {
                 let avgSchmerz: Double = alleSchmerzEintraege.isEmpty ? 0 :
                     Double(alleSchmerzEintraege.map { $0.schmerzstaerke }.reduce(0, +)) / Double(alleSchmerzEintraege.count)
                 let migraeneAnzahl = gefilterteMigraene.count
-                let schmerztage = Set(
-                    alleSchmerzEintraege.map { Calendar.current.startOfDay(for: $0.datum) }
-                    .union(gefilterteMigraene.map { Calendar.current.startOfDay(for: $0.datum) })
-                ).count
+                let schmerztage = Set(alleSchmerzEintraege.map { Calendar.current.startOfDay(for: $0.datum) })
+                    .union(Set(gefilterteMigraene.map { Calendar.current.startOfDay(for: $0.datum) }))
+                    .count
 
                 HStack(spacing: 0) {
                     statPill(
@@ -265,16 +264,7 @@ extension GesamtAnalyseView {
 
     @ViewBuilder
     private func schmerzVerlaufChart(alleSchmerzEintraege: [PainEntry]) -> some View {
-        let cal = Calendar.current
-        var tageDaten: [Date: [Int]] = [:]
-        for e in alleSchmerzEintraege {
-            let tag = cal.startOfDay(for: e.datum)
-            tageDaten[tag, default: []].append(e.schmerzstaerke)
-        }
-        let punkte = tageDaten
-            .map { (datum: $0.key, wert: Double($0.value.reduce(0, +)) / Double($0.value.count)) }
-            .sorted { $0.datum < $1.datum }
-
+        let punkte = berechneTagesPunkte(aus: alleSchmerzEintraege)
         let migraeneCopy = gefilterteMigraene
         let zeitraumCopy = zeitraum
 
@@ -483,34 +473,11 @@ extension GesamtAnalyseView {
                     let analyse = ZyklusRechner.analyse(eintraege: zyklusEintraege)
                     let cal = Calendar.current
                     let alleSchmerz = schmerzEintraege + rheumaEintraege
-
+                    let istPeriodeTage = Set(zyklusEintraege.filter { $0.istPeriode }.map { cal.startOfDay(for: $0.datum) })
+                    let phasenDaten = berechnePhasenDaten(alleSchmerz: alleSchmerz, istPeriodeTage: istPeriodeTage, analyse: analyse, cal: cal)
+                    let schmerzProPhase = phasenDaten.schmerzProPhase
+                    let migraeneProPhase = phasenDaten.migraeneProPhase
                     let phasen = ["Menstruation", "Fruchtbar", "Eisprung", "Sonstige"]
-
-                    func phase(fuer datum: Date) -> String {
-                        let tag = cal.startOfDay(for: datum)
-                        if zyklusEintraege.contains(where: {
-                            cal.startOfDay(for: $0.datum) == tag && $0.istPeriode
-                        }) {
-                            return "Menstruation"
-                        } else if analyse.ovulationsTageSet.contains(tag) {
-                            return "Eisprung"
-                        } else if analyse.fruchtbareTageSet.contains(tag) {
-                            return "Fruchtbar"
-                        } else {
-                            return "Sonstige"
-                        }
-                    }
-
-                    var schmerzProPhase: [String: [Int]] = [:]
-                    var migraeneProPhase: [String: Int] = [:]
-                    for e in alleSchmerz {
-                        let p = phase(fuer: e.datum)
-                        schmerzProPhase[p, default: []].append(e.schmerzstaerke)
-                    }
-                    for m in gefilterteMigraene {
-                        let p = phase(fuer: m.datum)
-                        migraeneProPhase[p, default: 0] += 1
-                    }
 
                     let chartDaten = phasen.map { p -> (phase: String, avg: Double, migraene: Int) in
                         let werte = schmerzProPhase[p] ?? []
@@ -633,27 +600,14 @@ extension GesamtAnalyseView {
                 } else {
                     let cal = Calendar.current
                     let alleSchmerz = schmerzEintraege + rheumaEintraege
+                    let bzTage = berechneBZTage(cal: cal)
+                    let hypoTage = bzTage.hypo
+                    let normalTage = bzTage.normal
+                    let erhoehtTage = bzTage.erhoehte
 
-                    var hypoTage = Set<Date>()
-                    var normalTage = Set<Date>()
-                    var erhoehtTage = Set<Date>()
-
-                    for b in gefilterteBlutzucker {
-                        let tag = cal.startOfDay(for: b.datum)
-                        if b.wert < 3.9 { hypoTage.insert(tag) }
-                        else if b.wert <= 7.8 { normalTage.insert(tag) }
-                        else { erhoehtTage.insert(tag) }
-                    }
-
-                    func avgSchmerz(anTagen tage: Set<Date>) -> Double {
-                        let eintr = alleSchmerz.filter { tage.contains(cal.startOfDay(for: $0.datum)) }
-                        guard !eintr.isEmpty else { return 0 }
-                        return Double(eintr.map { $0.schmerzstaerke }.reduce(0, +)) / Double(eintr.count)
-                    }
-
-                    let avgHypo = avgSchmerz(anTagen: hypoTage)
-                    let avgNormal = avgSchmerz(anTagen: normalTage)
-                    let avgErh = avgSchmerz(anTagen: erhoehtTage)
+                    let avgHypo = avgSchmerzAn(tagen: hypoTage, alleSchmerz: alleSchmerz, cal: cal)
+                    let avgNormal = avgSchmerzAn(tagen: normalTage, alleSchmerz: alleSchmerz, cal: cal)
+                    let avgErh = avgSchmerzAn(tagen: erhoehtTage, alleSchmerz: alleSchmerz, cal: cal)
 
                     HStack(spacing: 0) {
                         statPill(
@@ -776,6 +730,68 @@ extension GesamtAnalyseView {
         - Zyklus-Einträge: \(gefilterteZyklus.count)
         Analysiere die Zusammenhänge zwischen den Modulen und gib 3–4 kurze Einblicke auf Deutsch.
         """
+    }
+}
+
+// MARK: - Helpers
+
+extension GesamtAnalyseView {
+    private func berechneTagesPunkte(aus eintraege: [PainEntry]) -> [(datum: Date, wert: Double)] {
+        let cal = Calendar.current
+        var tageDaten: [Date: [Int]] = [:]
+        for e in eintraege {
+            let tag = cal.startOfDay(for: e.datum)
+            tageDaten[tag, default: []].append(e.schmerzstaerke)
+        }
+        return tageDaten
+            .map { (datum: $0.key, wert: Double($0.value.reduce(0, +)) / Double($0.value.count)) }
+            .sorted { $0.datum < $1.datum }
+    }
+
+    private func zyklusPhase(fuer datum: Date, istPeriodeTage: Set<Date>, analyse: ZyklusAnalyse, cal: Calendar) -> String {
+        let tag = cal.startOfDay(for: datum)
+        if istPeriodeTage.contains(tag) { return "Menstruation" }
+        if analyse.ovulationsTageSet.contains(tag) { return "Eisprung" }
+        if analyse.fruchtbareTageSet.contains(tag) { return "Fruchtbar" }
+        return "Sonstige"
+    }
+
+    private func berechnePhasenDaten(
+        alleSchmerz: [PainEntry],
+        istPeriodeTage: Set<Date>,
+        analyse: ZyklusAnalyse,
+        cal: Calendar
+    ) -> (schmerzProPhase: [String: [Int]], migraeneProPhase: [String: Int]) {
+        var schmerzProPhase: [String: [Int]] = [:]
+        var migraeneProPhase: [String: Int] = [:]
+        for e in alleSchmerz {
+            let p = zyklusPhase(fuer: e.datum, istPeriodeTage: istPeriodeTage, analyse: analyse, cal: cal)
+            schmerzProPhase[p, default: []].append(e.schmerzstaerke)
+        }
+        for m in gefilterteMigraene {
+            let p = zyklusPhase(fuer: m.datum, istPeriodeTage: istPeriodeTage, analyse: analyse, cal: cal)
+            migraeneProPhase[p, default: 0] += 1
+        }
+        return (schmerzProPhase, migraeneProPhase)
+    }
+
+    private func berechneBZTage(cal: Calendar) -> (hypo: Set<Date>, normal: Set<Date>, erhoehte: Set<Date>) {
+        var hypo = Set<Date>()
+        var normal = Set<Date>()
+        var erhoehte = Set<Date>()
+        for b in gefilterteBlutzucker {
+            let tag = cal.startOfDay(for: b.datum)
+            if b.wert < 3.9 { hypo.insert(tag) }
+            else if b.wert <= 7.8 { normal.insert(tag) }
+            else { erhoehte.insert(tag) }
+        }
+        return (hypo, normal, erhoehte)
+    }
+
+    private func avgSchmerzAn(tagen: Set<Date>, alleSchmerz: [PainEntry], cal: Calendar) -> Double {
+        let eintr = alleSchmerz.filter { tagen.contains(cal.startOfDay(for: $0.datum)) }
+        guard !eintr.isEmpty else { return 0 }
+        return Double(eintr.map { $0.schmerzstaerke }.reduce(0, +)) / Double(eintr.count)
     }
 }
 
