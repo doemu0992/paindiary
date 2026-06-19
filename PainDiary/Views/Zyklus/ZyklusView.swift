@@ -18,10 +18,24 @@ struct ZyklusView: View {
     var body: some View {
         List {
             Section {
-                statistikKopf
+                statistikKarte
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             .listRowBackground(Color.clear)
+
+            if !analyse.zyklusStarts.isEmpty {
+                Section {
+                    Button { zeigeAnalyse = true } label: {
+                        Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+            }
 
             Section {
                 kalenderMitLegende
@@ -144,40 +158,27 @@ struct ZyklusView: View {
 
     // MARK: - Stats Header
 
-    private var statistikKopf: some View {
-        VStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Zyklus-Überblick", systemImage: "drop.fill")
-                    .font(.headline).foregroundStyle(.pink)
-                Divider()
-                HStack(spacing: 0) {
-                    statPill(zyklusTagText, label: "Zyklustag",
-                             farbe: analyse.aktuellerZyklustag != nil ? .pink : .secondary)
-                    Divider().frame(height: 40)
-                    statPill(naechstePeriodeBadge, label: "Nächste Periode", farbe: .red)
-                    Divider().frame(height: 40)
-                    statPill(zyklusLaengeText, label: "Ø Zyklus", farbe: .purple)
-                }
-                if analyse.aktuellerZyklustag != nil {
-                    Divider()
-                    fruchtbarkeitReihe(naechstesFruchtbaresF)
-                }
+    private var statistikKarte: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Zyklus-Überblick", systemImage: "drop.fill")
+                .font(.headline).foregroundStyle(.pink)
+            Divider()
+            HStack(spacing: 0) {
+                statPill(zyklusTagText, label: "Zyklustag",
+                         farbe: analyse.aktuellerZyklustag != nil ? .pink : .secondary)
+                Divider().frame(height: 40)
+                statPill(naechstePeriodeBadge, label: "Nächste Periode", farbe: .red)
+                Divider().frame(height: 40)
+                statPill(zyklusLaengeText, label: "Ø Zyklus", farbe: .purple)
             }
-            .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
-
-            if !analyse.zyklusStarts.isEmpty {
-                Button { zeigeAnalyse = true } label: {
-                    Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                        .font(.subheadline.bold()).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
+            if analyse.aktuellerZyklustag != nil {
+                Divider()
+                fruchtbarkeitReihe(naechstesFruchtbaresF)
             }
         }
-        .padding(.vertical, 4)
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
     private var zyklusTagText: String {
@@ -500,6 +501,7 @@ private struct ZyklusKalender: View {
                         .font(.system(size: 15, weight: .semibold))
                         .frame(width: 36, height: 36)
                 }
+                .buttonStyle(.plain)
                 Spacer()
                 Text(monatsTitel).font(.title3.bold())
                 Spacer()
@@ -508,6 +510,7 @@ private struct ZyklusKalender: View {
                         .font(.system(size: 15, weight: .semibold))
                         .frame(width: 36, height: 36)
                 }
+                .buttonStyle(.plain)
             }
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
