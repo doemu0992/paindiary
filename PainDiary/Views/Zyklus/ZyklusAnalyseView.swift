@@ -96,16 +96,28 @@ struct ZyklusAnalyseView: View {
 
     private var kiPrompt: String {
         let zyklen = max(analyse.zyklusStarts.count - 1, 0)
-        let schmerzAnPeriodeTagen = painEntries.filter {
-            analyse.periodeTageSet.contains(Calendar.current.startOfDay(for: $0.datum))
-        }.count
+
+        let schmerzPhasen = ZyklusRechner.schmerzJePhase(painEntries: Array(painEntries), analyse: analyse)
+        let schmerzStr = schmerzPhasen.isEmpty
+            ? "keine Daten"
+            : schmerzPhasen.map { "\($0.phase.rawValue): Ø \(String(format: "%.1f", $0.avgSchmerz))/10 (\($0.anzahl) Einträge)" }
+                           .joined(separator: "; ")
+
+        let migraenePhasen = ZyklusRechner.migraeneJePhase(anfaelle: Array(migraeneAnfaelle), analyse: analyse)
+        let migraeneStr = migraenePhasen.filter { $0.anzahl > 0 }.isEmpty
+            ? "keine Daten"
+            : migraenePhasen.filter { $0.anzahl > 0 }
+                            .map { "\($0.phase.rawValue): \($0.anzahl) Anfälle (Ø Stärke \(String(format: "%.1f", $0.avgStaerke)))" }
+                            .joined(separator: "; ")
+
         return """
-        Zyklus-Analyse:
+        Zyklus-Analyse (\(zeitraum.rawValue)):
         - \(zyklen) vollständige Zyklen erfasst
         - Ø Zykluslänge: \(Int(analyse.zykluslaenge.rounded())) Tage, Variation: ±\(String(format: "%.1f", analyse.variation)) Tage
         - Ø Periodendauer: \(Int(analyse.periodendauer.rounded())) Tage
-        - Schmerzeinträge an Periodentagen: \(schmerzAnPeriodeTagen)
-        Gib 2–3 kurze Einblicke zu Mustern und möglichen Zusammenhängen auf Deutsch.
+        - Schmerz je Zyklusphase: \(schmerzStr)
+        - Migräne je Zyklusphase: \(migraeneStr)
+        Identifiziere hormonelle Muster sowie Schmerz- und Migräne-Zusammenhänge mit dem Zyklus. Gib 3–4 kurze, konkrete Einblicke auf Deutsch. Keine Diagnosen.
         """
     }
 

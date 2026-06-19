@@ -27,21 +27,6 @@ struct ZyklusView: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
 
-            Section("Heute erfassen") {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        quickBtn("drop.fill", .red, "Periode") { logHeute(istPeriode: true, fluss: "mittel") }
-                        quickBtn("circle.dotted", .orange, "Eisprung") { logHeute(ovuTest: "positiv") }
-                        quickBtn("thermometer.medium", .blue, "Temperatur") { oeffneHeuteSheet() }
-                        quickBtn("heart.text.square", .purple, "Symptome") { oeffneHeuteSheet() }
-                        quickBtn("drop.halffull", .pink, "Schmierblutung") { logHeute(istPeriode: true, fluss: "schmierblutung") }
-                        quickBtn("pencil", .green, "Notiz") { oeffneHeuteSheet() }
-                    }
-                    .padding(.vertical, 4).padding(.trailing, 8)
-                }
-            }
-            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 0))
-
             zyklusNotifBanner
         }
         .navigationTitle("Zyklus")
@@ -290,35 +275,6 @@ struct ZyklusView: View {
             if let (titel, erklärung) = info {
                 InfoButton(titel: titel, text: erklärung)
             }
-        }
-    }
-
-    // MARK: - Quick Log
-
-    private func quickBtn(_ symbol: String, _ farbe: Color, _ label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                ZStack {
-                    Circle().fill(farbe.opacity(0.15)).frame(width: 52, height: 52)
-                    Image(systemName: symbol).foregroundStyle(farbe).font(.system(size: 20))
-                }
-                Text(label).font(.caption2).foregroundStyle(.secondary)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func logHeute(istPeriode: Bool = false, fluss: String = "", ovuTest: String = "") {
-        let heute = Calendar.current.startOfDay(for: Date())
-        if let alt = eintraege.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: heute) }) {
-            if istPeriode { alt.istPeriode = true; alt.blutungsfluss = fluss }
-            if !ovuTest.isEmpty { alt.ovulationstest = ovuTest }
-        } else {
-            let neu = ZyklusEintrag(datum: heute)
-            neu.istPeriode = istPeriode
-            neu.blutungsfluss = fluss
-            neu.ovulationstest = ovuTest
-            modelContext.insert(neu)
         }
     }
 
