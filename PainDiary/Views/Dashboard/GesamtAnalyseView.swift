@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import SwiftData
 
 // MARK: - Persistence
 
@@ -66,7 +67,7 @@ enum GesamtAnalyseSektion: String, CaseIterable, Codable, Identifiable {
 struct GesamtAnalyseView: View {
     let eintraege: [PainEntry]
     let migraeneAnfaelle: [MigraeneEintrag]
-    let zyklusEintraege: [ZyklusEintrag]
+    @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     let blutzuckerMessungen: [BlutzuckerEintrag]
     let haqEintraege: [HAQEintrag]
 
@@ -471,10 +472,10 @@ extension GesamtAnalyseView {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 12)
                 } else {
-                    let analyse = ZyklusRechner.analyse(eintraege: zyklusEintraege)
+                    let analyse = ZyklusRechner.analyse(eintraege: gefilterteZyklus)
                     let cal = Calendar.current
                     let alleSchmerz = schmerzEintraege + rheumaEintraege
-                    let istPeriodeTage = Set(zyklusEintraege.filter { $0.istPeriode }.map { cal.startOfDay(for: $0.datum) })
+                    let istPeriodeTage = Set(gefilterteZyklus.filter { $0.istPeriode }.map { cal.startOfDay(for: $0.datum) })
                     let phasenDaten = berechnePhasenDaten(alleSchmerz: alleSchmerz, istPeriodeTage: istPeriodeTage, analyse: analyse, cal: cal)
                     let schmerzProPhase = phasenDaten.schmerzProPhase
                     let migraeneProPhase = phasenDaten.migraeneProPhase

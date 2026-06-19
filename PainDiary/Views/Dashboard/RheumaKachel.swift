@@ -29,10 +29,8 @@ struct RheumaKachel: View {
             let tag = cal.date(byAdding: .day, value: -offset, to: Date()) ?? Date()
             let start = cal.startOfDay(for: tag)
             let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
-            let tagesEintraege = rheumaEintraege.filter { $0.datum >= start && $0.datum < end }
-            let avg = tagesEintraege.isEmpty ? 0.0
-                : Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
-            return (datum: start, wert: avg)
+            let hatEintrag = rheumaEintraege.contains { $0.datum >= start && $0.datum < end }
+            return (datum: start, wert: hatEintrag ? 1.0 : 0.0)
         }
     }
 
@@ -85,7 +83,7 @@ struct RheumaKachel: View {
             }
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
-            .chartYScale(domain: 0...10)
+            .chartYScale(domain: 0...1)
             .frame(height: 44)
             .overlay(alignment: .center) {
                 if !hatDaten {

@@ -890,6 +890,7 @@ struct ZyklusEintragSheet: View {
 
     private func speichern() {
         if let alt = bestehend, istLeer {
+            NotificationManager.shared.loescheZyklusErinnerungen()
             modelContext.delete(alt)
             dismiss()
             return
@@ -916,12 +917,18 @@ struct ZyklusEintragSheet: View {
     }
 
     private func abbrechen() {
-        if let alt = bestehend, istLeer { modelContext.delete(alt) }
+        if let alt = bestehend, istLeer {
+            NotificationManager.shared.loescheZyklusErinnerungen()
+            modelContext.delete(alt)
+        }
         dismiss()
     }
 
     private func loeschen() {
-        if let alt = bestehend { modelContext.delete(alt) }
+        if let alt = bestehend {
+            NotificationManager.shared.loescheZyklusErinnerungen()
+            modelContext.delete(alt)
+        }
         dismiss()
     }
 }

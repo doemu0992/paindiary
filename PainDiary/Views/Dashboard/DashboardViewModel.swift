@@ -6,13 +6,14 @@ class DashboardViewModel {
     var eintraege: [PainEntry] = []
 
     var durchschnittsSchmerz: Double {
-        let schmerzEintraege = eintraege.filter { !$0.istHautEintrag }
+        let schmerzEintraege = eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }
         guard !schmerzEintraege.isEmpty else { return 0 }
         return Double(schmerzEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(schmerzEintraege.count)
     }
 
     var haeufigsterAusloeser: String? {
-        let ausloeser = eintraege.map(\.ausloeser).filter { !$0.isEmpty }
+        let ausloeser = eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }
+            .map(\.ausloeser).filter { !$0.isEmpty }
         guard !ausloeser.isEmpty else { return nil }
         var zaehler: [String: Int] = [:]
         for a in ausloeser { zaehler[a, default: 0] += 1 }
@@ -33,7 +34,7 @@ class DashboardViewModel {
         return (0..<7).compactMap { versatz -> (datum: Date, schmerz: Double)? in
             guard let tag = kal.date(byAdding: .day, value: versatz, to: interval.start),
                   kal.startOfDay(for: tag) <= heute else { return nil }
-            let tagesEintraege = eintraege.filter { !$0.istHautEintrag && kal.isDate($0.datum, inSameDayAs: tag) }
+            let tagesEintraege = eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && kal.isDate($0.datum, inSameDayAs: tag) }
             guard !tagesEintraege.isEmpty else { return nil }
             let schnitt = Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
             return (datum: tag, schmerz: schnitt)
@@ -53,7 +54,7 @@ class DashboardViewModel {
         var punkte: [Double] = []
         for versatz in 0..<7 {
             guard let tag = kal.date(byAdding: .day, value: versatz, to: vorwocheStart) else { continue }
-            let tagesEintraege = eintraege.filter { !$0.istHautEintrag && kal.isDate($0.datum, inSameDayAs: tag) }
+            let tagesEintraege = eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && kal.isDate($0.datum, inSameDayAs: tag) }
             guard !tagesEintraege.isEmpty else { continue }
             let schnitt = Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
             punkte.append(schnitt)
