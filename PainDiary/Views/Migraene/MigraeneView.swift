@@ -332,10 +332,14 @@ struct MigraeneAnfallForm: View {
     @State private var wetterTemperatur: Double? = nil
     @State private var wetterCode: Int? = nil
     @State private var wetterWind: Double? = nil
+    @State private var schlafStunden: Double = 7.0
+    @State private var stimmung = 3
+    @State private var stressLevel = 3
+    @State private var fatigue = 0
 
     private let wetter = WetterService.shared
-    private let maxSchritt = 4
-    private let schrittNamen = ["Intensität", "Prodrom", "Charakter", "Symptome & Auslöser", "Abschluss"]
+    private let maxSchritt = 5
+    private let schrittNamen = ["Intensität", "Prodrom", "Charakter", "Symptome & Auslöser", "Abschluss", "Wohlbefinden"]
     private let progressTint: Color = .purple
     private let pflichtSchritte: Set<Int> = [0]
 
@@ -479,9 +483,22 @@ struct MigraeneAnfallForm: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
-        default:
+        case 4:
             ScrollView {
                 medikamentSchritt.padding(.vertical, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
+        default:
+            ScrollView {
+                WohlbefindenStepView(
+                    stimmung: $stimmung,
+                    schlafStunden: $schlafStunden,
+                    stressLevel: $stressLevel,
+                    notizen: $notizen,
+                    fatigue: $fatigue
+                )
+                .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
@@ -858,13 +875,6 @@ struct MigraeneAnfallForm: View {
                 }
             }
 
-            karte {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Notizen").font(.headline)
-                    TextEditor(text: $notizen)
-                        .frame(minHeight: 80)
-                }
-            }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
@@ -1002,6 +1012,10 @@ struct MigraeneAnfallForm: View {
             wetterTemperatur = a.wetterTemperatur
             wetterCode = a.wetterCode
             wetterWind = a.wetterWind
+            schlafStunden = a.schlafStunden
+            stimmung = a.stimmung
+            stressLevel = a.stressLevel
+            fatigue = a.fatigue
             ausgewaehltesMedikament = alleMedikamente.first { med in
                 let vollname = med.dosierung.isEmpty ? med.name : "\(med.name) \(med.dosierung)"
                 return vollname == a.akutmedikament || med.name == a.akutmedikament
@@ -1025,6 +1039,14 @@ struct MigraeneAnfallForm: View {
                 wetterWind = snap.windgeschwindigkeit
             } else {
                 wetter.laden()
+            }
+            let heute = Calendar.current.startOfDay(for: Date())
+            let heuteDesc = FetchDescriptor<MigraeneEintrag>(
+                predicate: #Predicate { $0.datum >= heute },
+                sortBy: [SortDescriptor(\.datum, order: .reverse)]
+            )
+            if let letzterHeute = try? modelContext.fetch(heuteDesc).first {
+                schlafStunden = letzterHeute.schlafStunden
             }
         }
     }
@@ -1057,6 +1079,10 @@ struct MigraeneAnfallForm: View {
             a.postdrom = postdromStr
             a.endZeit = hatEndZeit ? endZeit : nil
             a.zyklusPhase = zyklusPhase
+            a.schlafStunden = schlafStunden
+            a.stimmung = stimmung
+            a.stressLevel = stressLevel
+            a.fatigue = fatigue
         } else {
             let neu = MigraeneEintrag(datum: datum, dauer: dauer, staerke: staerke, seite: seitenStr,
                                       charakter: charStr, begleitsymptome: beglStr, hatAura: hatAura,
@@ -1069,6 +1095,10 @@ struct MigraeneAnfallForm: View {
             neu.postdrom = postdromStr
             neu.endZeit = hatEndZeit ? endZeit : nil
             neu.zyklusPhase = zyklusPhase
+            neu.schlafStunden = schlafStunden
+            neu.stimmung = stimmung
+            neu.stressLevel = stressLevel
+            neu.fatigue = fatigue
             modelContext.insert(neu)
 
             if let med = ausgewaehltesMedikament {
