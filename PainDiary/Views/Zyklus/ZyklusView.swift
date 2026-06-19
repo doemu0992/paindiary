@@ -734,6 +734,7 @@ struct ZyklusEintragSheet: View {
     @AppStorage("zusatzSymptome") private var zusatzSymptomeRaw: String = ""
     @State private var neuesSymptom = ""
 
+    // Data state
     @State private var istPeriode: Bool
     @State private var blutungsfluss: String
     @State private var nurHalberTag: Bool
@@ -743,6 +744,11 @@ struct ZyklusEintragSheet: View {
     @State private var basaltemperatur: String
     @State private var sexuelleAktivitaet: String
     @State private var notizen: String
+
+    // Wizard state
+    @State private var schritt = 0
+    private let maxSchritt = 2
+    private let pflichtSchritte: Set<Int> = [0]
 
     init(datum: Date, bestehend: ZyklusEintrag?) {
         self.datum = datum
@@ -770,14 +776,12 @@ struct ZyklusEintragSheet: View {
         }
     }
 
-    private let flussOptionen = ["schmierblutung", "leicht", "mittel", "stark"]
     private let basisSymptome = [
         "Krämpfe", "Kopfschmerzen", "Rückenschmerzen", "Brustspannen",
         "Völlegefühl", "Blähungen", "Übelkeit", "Müdigkeit",
         "Reizbarkeit", "Stimmungsschwankungen", "Akne", "Schlafprobleme",
         "Hitzewallungen", "Appetitsteigerung"
     ]
-    private let schleimOptionen = ["trocken", "klebrig", "cremig", "wässrig", "Eiweiss"]
 
     private var alleSymptome: [String] {
         let custom = zusatzSymptomeRaw.isEmpty ? [] : zusatzSymptomeRaw.components(separatedBy: "|")
@@ -786,125 +790,284 @@ struct ZyklusEintragSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Text(datum.formatted(.dateTime.day().month(.wide).year()))
-                        .font(.subheadline.bold())
+            VStack(spacing: 0) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.pink.opacity(0.15)).frame(height: 3)
+                        Capsule().fill(Color.pink)
+                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
+                            .animation(.easeInOut(duration: 0.3), value: schritt)
+                    }
                 }
+                .frame(height: 3).padding(.horizontal).padding(.top, 10)
 
-                Section("Periode") {
-                    Toggle("Blutung", isOn: $istPeriode)
-                    if istPeriode {
-                        Picker("Stärke", selection: $blutungsfluss) {
-                            ForEach(flussOptionen, id: \.self) { Text($0.capitalized).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        Toggle("Nur halber Tag", isOn: $nurHalberTag)
+                Group {
+                    switch schritt {
+                    case 0: schritt0
+                    case 1: schritt1
+                    default: schritt2
                     }
                 }
+                .frame(maxHeight: .infinity)
 
-                Section("Symptome") {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                        ForEach(alleSymptome, id: \.self) { s in
-                            Button {
-                                if symptome.contains(s) { symptome.remove(s) } else { symptome.insert(s) }
-                            } label: {
-                                HStack {
-                                    Image(systemName: symptome.contains(s) ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(symptome.contains(s) ? .pink : .secondary)
-                                    Text(s).font(.caption)
-                                    Spacer()
-                                }
-                                .padding(.vertical, 3)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    HStack(spacing: 8) {
-                        TextField("Eigenes Symptom hinzufügen", text: $neuesSymptom)
-                            .font(.caption)
-                            .submitLabel(.done)
-                            .onSubmit { symptomHinzufuegen() }
-                        Button(action: symptomHinzufuegen) {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(.pink)
-                                .font(.title3)
-                        }
-                        .disabled(neuesSymptom.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                    .padding(.top, 4)
-                }
-
-                Section {
-                    Picker("Ovulationstest", selection: $ovulationstest) {
-                        Text("Kein Test").tag("")
-                        Text("Positiv").tag("positiv")
-                        Text("Negativ").tag("negativ")
-                        Text("Unklar").tag("unklar")
-                    }
-                } header: {
-                    HStack(spacing: 4) {
-                        Text("Eisprung")
-                        InfoButton(titel: "Ovulationstest (LH-Test)",
-                                   text: "Ein LH-Test aus der Apotheke zeigt den Anstieg des luteinisierenden Hormons, der 24–36 Stunden vor dem Eisprung auftritt. Positiv = Eisprung steht bevor.")
-                    }
-                }
-
-                Section {
-                    Picker("Art", selection: $zervixschleim) {
-                        Text("Nicht erfasst").tag("")
-                        ForEach(schleimOptionen, id: \.self) { Text($0.capitalized).tag($0) }
-                    }
-                } header: {
-                    HStack(spacing: 4) {
-                        Text("Zervixschleim")
-                        InfoButton(titel: "Zervixschleim-Typen",
-                                   text: "Trocken: kein Schleim, eher unfruchtbar.\nKlebrig: zäh, trüb.\nCremig: weiß, cremig – Übergang.\nWässrig: klar, fließend – fruchtbar.\nEiweiss: dehnbar wie rohes Ei – höchste Fruchtbarkeit, typisch beim Eisprung.")
-                    }
-                }
-
-                Section {
-                    HStack {
-                        TextField("z.B. 36.4", text: $basaltemperatur).keyboardType(.decimalPad)
-                        Text("°C").foregroundStyle(.secondary)
-                    }
-                } header: {
-                    HStack(spacing: 4) {
-                        Text("Basaltemperatur")
-                        InfoButton(titel: "Basaltemperatur",
-                                   text: "Morgentemperatur direkt nach dem Aufwachen, vor jeder Aktivität. Nach dem Eisprung steigt sie um ca. 0,2–0,5 °C an und bleibt bis zur nächsten Periode erhöht.")
-                    }
-                }
-
-                Section("Sexuelle Aktivität") {
-                    Picker("", selection: $sexuelleAktivitaet) {
-                        Text("Keine Angabe").tag("")
-                        Text("Geschützt").tag("geschützt")
-                        Text("Ungeschützt").tag("ungeschützt")
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                Section("Notizen") {
-                    TextEditor(text: $notizen).frame(minHeight: 60)
-                }
+                navigationsLeiste
             }
-            .navigationTitle("Tageseintrag")
+            .navigationTitle(datum.formatted(.dateTime.day().month(.wide).year()))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { abbrechen() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Speichern") { speichern() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { abbrechen() }
+                }
                 if bestehend != nil {
-                    ToolbarItem(placement: .bottomBar) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button(role: .destructive) { loeschen() } label: {
-                            Label("Eintrag löschen", systemImage: "trash")
-                                .font(.caption)
+                            Image(systemName: "trash").foregroundStyle(.red)
                         }
                     }
                 }
             }
         }
     }
+
+    // MARK: - Step 0: Periode
+
+    private var schritt0: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "drop.fill", titel: "Periode", untertitel: "Hast du heute eine Blutung?")
+
+                VStack(spacing: 0) {
+                    Toggle("Blutung", isOn: $istPeriode)
+                        .font(.subheadline).padding(16)
+
+                    if istPeriode {
+                        Divider().padding(.leading, 16)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Stärke").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                                ForEach([("schmierblutung", "Schmierblutung"), ("leicht", "Leicht"),
+                                          ("mittel", "Mittel"), ("stark", "Stark")], id: \.0) { wert, label in
+                                    let sel = blutungsfluss == wert
+                                    Button { blutungsfluss = wert } label: {
+                                        Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                            .background(sel ? Color.red : Color(.tertiarySystemGroupedBackground))
+                                            .foregroundStyle(sel ? .white : .primary)
+                                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                                            .animation(.easeInOut(duration: 0.15), value: sel)
+                                    }.buttonStyle(.plain)
+                                }
+                            }
+                        }.padding(16)
+
+                        Divider().padding(.leading, 16)
+                        Toggle("Nur halber Tag", isOn: $nurHalberTag)
+                            .font(.subheadline).padding(16)
+                    }
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .animation(.easeInOut(duration: 0.2), value: istPeriode)
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: - Step 1: Symptome
+
+    private var schritt1: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "heart.text.square.fill", titel: "Symptome", untertitel: "Wie geht es dir heute?")
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach(alleSymptome, id: \.self) { s in
+                        let sel = symptome.contains(s)
+                        Button {
+                            if sel { symptome.remove(s) } else { symptome.insert(s) }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: sel ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(sel ? .pink : .secondary).font(.caption)
+                                Text(s).font(.caption).lineLimit(1)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 8)
+                            .background(
+                                sel ? Color.pink.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 10)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .animation(.easeInOut(duration: 0.15), value: sel)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    TextField("Eigenes Symptom", text: $neuesSymptom)
+                        .font(.subheadline).padding(14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .submitLabel(.done).onSubmit { symptomHinzufuegen() }
+                    Button(action: symptomHinzufuegen) {
+                        Image(systemName: "plus.circle.fill").foregroundStyle(.pink).font(.title2)
+                    }
+                    .disabled(neuesSymptom.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: - Step 2: Weitere Daten
+
+    private var schritt2: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                schrittHeader(symbol: "waveform.path.ecg", titel: "Weitere Daten", untertitel: "Eisprung, Schleim & Temperatur")
+
+                // Ovulationstest
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 4) {
+                        Text("Ovulationstest (LH-Test)").font(.caption).foregroundStyle(.secondary)
+                        InfoButton(titel: "Ovulationstest (LH-Test)",
+                                   text: "Ein LH-Test aus der Apotheke zeigt den Anstieg des luteinisierenden Hormons, der 24–36 Stunden vor dem Eisprung auftritt. Positiv = Eisprung steht bevor.")
+                    }.padding(.horizontal, 4)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                        ForEach([("", "Kein Test"), ("positiv", "Positiv"),
+                                  ("negativ", "Negativ"), ("unklar", "Unklar")], id: \.0) { wert, label in
+                            let sel = ovulationstest == wert
+                            Button { ovulationstest = wert } label: {
+                                Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(sel ? Color.orange : Color(.secondarySystemGroupedBackground))
+                                    .foregroundStyle(sel ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Zervixschleim
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 4) {
+                        Text("Zervixschleim").font(.caption).foregroundStyle(.secondary)
+                        InfoButton(titel: "Zervixschleim-Typen",
+                                   text: "Trocken: kein Schleim, eher unfruchtbar.\nKlebrig: zäh, trüb.\nCremig: weiß, cremig – Übergang.\nWässrig: klar, fließend – fruchtbar.\nEiweiss: dehnbar wie rohes Ei – höchste Fruchtbarkeit, typisch beim Eisprung.")
+                    }.padding(.horizontal, 4)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                        ForEach([("", "Nicht erfasst"), ("trocken", "Trocken"), ("klebrig", "Klebrig"),
+                                  ("cremig", "Cremig"), ("wässrig", "Wässrig"), ("Eiweiss", "Eiweiss")], id: \.0) { wert, label in
+                            let sel = zervixschleim == wert
+                            Button { zervixschleim = wert } label: {
+                                Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(sel ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                    .foregroundStyle(sel ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Basaltemperatur
+                VStack(spacing: 0) {
+                    HStack {
+                        HStack(spacing: 4) {
+                            Text("Basaltemperatur").font(.subheadline)
+                            InfoButton(titel: "Basaltemperatur",
+                                       text: "Morgentemperatur direkt nach dem Aufwachen, vor jeder Aktivität. Nach dem Eisprung steigt sie um ca. 0,2–0,5 °C an und bleibt bis zur nächsten Periode erhöht.")
+                        }
+                        Spacer()
+                        HStack(spacing: 4) {
+                            TextField("36.4", text: $basaltemperatur)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 60)
+                            Text("°C").foregroundStyle(.secondary)
+                        }
+                    }.padding(16)
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                // Sexuelle Aktivität
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Sexuelle Aktivität").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                        ForEach([("", "Keine Angabe"), ("geschützt", "Geschützt"),
+                                  ("ungeschützt", "Ungeschützt")], id: \.0) { wert, label in
+                            let sel = sexuelleAktivitaet == wert
+                            Button { sexuelleAktivitaet = wert } label: {
+                                Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(sel ? Color.pink : Color(.secondarySystemGroupedBackground))
+                                    .foregroundStyle(sel ? .white : .primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Notizen
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Notizen").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                    TextEditor(text: $notizen)
+                        .font(.subheadline).frame(minHeight: 80)
+                        .padding(12)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+            .padding(.horizontal).padding(.vertical, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    // MARK: - Navigation
+
+    private var navigationsLeiste: some View {
+        HStack(spacing: 12) {
+            if schritt > 0 {
+                Button { withAnimation { schritt -= 1 } } label: {
+                    Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Überspringen").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            if schritt < maxSchritt {
+                Button { withAnimation { schritt += 1 } } label: {
+                    Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            } else {
+                Button { speichern() } label: {
+                    Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.pink)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity).padding(.bottom, 4)
+    }
+
+    // MARK: - Actions
 
     private func symptomHinzufuegen() {
         let s = neuesSymptom.trimmingCharacters(in: .whitespaces)
@@ -927,7 +1090,6 @@ struct ZyklusEintragSheet: View {
     }
 
     private func speichern() {
-        // Bestehenden Eintrag löschen wenn alle Felder geleert wurden
         if let alt = bestehend, istLeer {
             modelContext.delete(alt)
             dismiss()
@@ -955,10 +1117,7 @@ struct ZyklusEintragSheet: View {
     }
 
     private func abbrechen() {
-        // Ghost-Einträge ohne Daten beim Abbrechen bereinigen
-        if let alt = bestehend, istLeer {
-            modelContext.delete(alt)
-        }
+        if let alt = bestehend, istLeer { modelContext.delete(alt) }
         dismiss()
     }
 

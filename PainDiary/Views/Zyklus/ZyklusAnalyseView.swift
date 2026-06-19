@@ -6,8 +6,36 @@ struct ZyklusAnalyseView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .forward) private var eintraege: [ZyklusEintrag]
     @Query(sort: \PainEntry.datum, order: .reverse) private var painEntries: [PainEntry]
 
+    @State private var zeitraum: Zeitraum = .woche
+
     private var analyse: ZyklusAnalyse {
         ZyklusRechner.analyse(eintraege: Array(eintraege))
+    }
+
+    private var gefilterteEintraege: [ZyklusEintrag] {
+        guard let tage = zeitraum.tage else { return Array(eintraege) }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -tage, to: Date()) ?? Date()
+        return eintraege.filter { $0.datum >= cutoff }
+    }
+
+    enum Zeitraum: String, CaseIterable {
+        case woche      = "7 T"
+        case monat      = "30 T"
+        case dreiMonate = "3 M"
+        case sechsMonate = "6 M"
+        case jahr       = "1 J"
+        case alle       = "Alle"
+
+        var tage: Int? {
+            switch self {
+            case .woche:       return 7
+            case .monat:       return 30
+            case .dreiMonate:  return 90
+            case .sechsMonate: return 180
+            case .jahr:        return 365
+            case .alle:        return nil
+            }
+        }
     }
 
     var body: some View {
@@ -21,6 +49,7 @@ struct ZyklusAnalyseView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 20) {
+                        zeitraumPicker
                         statistikKarten
                         genauigkeitsKarte
                         zykluslaengenChart
@@ -30,12 +59,31 @@ struct ZyklusAnalyseView: View {
                         ovulationstestKarte
                         schmerzKorrelation
                         KIAnalyseKarte(prompt: kiPrompt, modulTint: .pink)
+                            .id(zeitraum)
                     }
                     .padding()
                 }
             }
         }
         .navigationTitle("Zyklusanalyse")
+    }
+
+    private var zeitraumPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Zeitraum.allCases, id: \.self) { z in
+                    let sel = zeitraum == z
+                    Button { zeitraum = z } label: {
+                        Text(z.rawValue).font(.caption.bold())
+                            .padding(.horizontal, 14).padding(.vertical, 7)
+                            .background(sel ? Color.pink : Color(.secondarySystemGroupedBackground))
+                            .foregroundStyle(sel ? .white : .primary)
+                            .clipShape(Capsule())
+                            .animation(.easeInOut(duration: 0.15), value: sel)
+                    }.buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     private var kiPrompt: String {
@@ -356,7 +404,7 @@ struct ZyklusAnalyseView: View {
 
     private func schleimVerteilung() -> [SchleimItem] {
         var zähler: [String: Int] = [:]
-        for e in eintraege where !e.zervixschleim.isEmpty {
+        for e in gefilterteEintraege where !e.zervixschleim.isEmpty {
             zähler[e.zervixschleim, default: 0] += 1
         }
         return ["trocken", "klebrig", "cremig", "wässrig", "Eiweiss"].compactMap { typ in
@@ -410,7 +458,7 @@ struct ZyklusAnalyseView: View {
 
     private func topSymptome() -> [SymptomItem] {
         var zähler: [String: Int] = [:]
-        for e in eintraege {
+        for e in gefilterteEintraege {
             for s in e.symptome.components(separatedBy: ", ") where !s.isEmpty {
                 zähler[s, default: 0] += 1
             }
@@ -458,11 +506,9 @@ struct ZyklusAnalyseView: View {
     }
 
     private func basaltemperaturDaten() -> [TempPunkt] {
-        let kal        = Calendar.current
-        let startDatum = analyse.zyklusStarts.last
-        return eintraege
-            .filter { $0.basaltemperatur > 0 &&
-                      (startDatum == nil || kal.startOfDay(for: $0.datum) >= startDatum!) }
+        let kal = Calendar.current
+        return gefilterteEintraege
+            .filter { $0.basaltemperatur > 0 }
             .map { TempPunkt(datum: kal.startOfDay(for: $0.datum), temp: $0.basaltemperatur) }
             .sorted { $0.datum < $1.datum }
     }
@@ -501,9 +547,9 @@ struct ZyklusAnalyseView: View {
     }
 
     private func ovulationstests() -> [OvuTest] {
-        eintraege.filter { !$0.ovulationstest.isEmpty }
-                 .map { OvuTest(datum: $0.datum, ergebnis: $0.ovulationstest) }
-                 .sorted { $0.datum < $1.datum }
+        gefilterteEintraege.filter { !$0.ovulationstest.isEmpty }
+                            .map { OvuTest(datum: $0.datum, ergebnis: $0.ovulationstest) }
+                            .sorted { $0.datum < $1.datum }
     }
 
     private func ovuFarbe(_ ergebnis: String) -> Color {

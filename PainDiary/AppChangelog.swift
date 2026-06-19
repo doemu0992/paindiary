@@ -17,6 +17,14 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "30", aenderungen: [
+        WhatsNewAenderung(icon: "drop.fill", farbe: .pink,
+                          titel: "Zyklus-Eintrag als Wizard",
+                          beschreibung: "Das Tageseintrag-Formular wurde auf 3 Schritte umgestellt: Periode (mit Stärke-Grid), Symptome (auswählbare Chips), und Weitere Daten (Eisprung, Zervixschleim, Basaltemperatur, Sexualität, Notizen)."),
+        WhatsNewAenderung(icon: "chart.bar.xaxis.ascending", farbe: .pink,
+                          titel: "Zeitraumfilter in der Zyklusanalyse",
+                          beschreibung: "Die Zyklusanalyse zeigt jetzt einen Zeitraumfilter (7 T bis Alle). Symptome, Zervixschleim, Basaltemperatur und Ovulationstests werden entsprechend gefiltert – die Zyklus-Statistik nutzt weiterhin alle Daten."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "29", aenderungen: [
         WhatsNewAenderung(icon: "pill.fill", farbe: .blue,
                           titel: "Medikamente komplett überarbeitet",
