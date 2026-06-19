@@ -1,11 +1,8 @@
 import SwiftUI
 import SwiftData
-import Charts
 
 struct ZyklusView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var eintraege: [ZyklusEintrag]
-    @Query(sort: \PainEntry.datum, order: .reverse) private var painEntries: [PainEntry]
-    @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
     @Environment(\.modelContext) private var modelContext
 
     @State private var anzeigeMonat = Date()
@@ -46,24 +43,6 @@ struct ZyklusView: View {
             .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 0))
 
             zyklusNotifBanner
-
-            if !painEntries.isEmpty && !analyse.zyklusStarts.isEmpty {
-                Section {
-                    schmerzKorrelation
-                }
-                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            }
-
-            if !migraeneAnfaelle.isEmpty && !analyse.zyklusStarts.isEmpty {
-                Section {
-                    migraeneKorrelation
-                }
-                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            }
         }
         .navigationTitle("Zyklus")
         .navigationBarTitleDisplayMode(.large)
@@ -345,94 +324,6 @@ struct ZyklusView: View {
 
     private func oeffneHeuteSheet() {
         ausgewaehlterTag = ZyklusTagAuswahl(datum: Calendar.current.startOfDay(for: Date()))
-    }
-
-    // MARK: - Correlations
-
-    private var schmerzKorrelation: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Schmerz & Zyklus").font(.headline)
-                Text("Ø Schmerzstärke je Zyklusphase").font(.caption).foregroundStyle(.secondary)
-            }
-
-            let daten = ZyklusRechner.schmerzJePhase(painEntries: Array(painEntries), analyse: analyse)
-
-            if daten.isEmpty {
-                Text("Noch nicht genug überlappende Daten.").font(.caption).foregroundStyle(.secondary)
-            } else {
-                Chart(daten, id: \.phase.rawValue) { d in
-                    BarMark(x: .value("Phase", d.phase.rawValue), y: .value("Schmerz", d.avgSchmerz))
-                        .foregroundStyle(phaseFarbe(d.phase).gradient).cornerRadius(6)
-                        .annotation(position: .top) {
-                            Text(String(format: "%.1f", d.avgSchmerz)).font(.caption2).foregroundStyle(.secondary)
-                        }
-                }
-                .chartYScale(domain: 0...10).frame(height: 170)
-
-                VStack(spacing: 4) {
-                    ForEach(daten, id: \.phase.rawValue) { d in
-                        HStack {
-                            Circle().fill(phaseFarbe(d.phase)).frame(width: 8, height: 8)
-                            Text(d.phase.rawValue).font(.caption)
-                            Spacer()
-                            Text("\(d.anzahl) Einträge").font(.caption2).foregroundStyle(.secondary)
-                            Text(String(format: "Ø %.1f", d.avgSchmerz)).font(.caption.bold())
-                        }
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private var migraeneKorrelation: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Migräne & Zyklus").font(.headline)
-                Text("Anfälle je Zyklusphase").font(.caption).foregroundStyle(.secondary)
-            }
-
-            let daten = ZyklusRechner.migraeneJePhase(anfaelle: Array(migraeneAnfaelle), analyse: analyse)
-
-            if daten.isEmpty {
-                Text("Noch nicht genug überlappende Daten.").font(.caption).foregroundStyle(.secondary)
-            } else {
-                Chart(daten, id: \.phase.rawValue) { d in
-                    BarMark(x: .value("Phase", d.phase.rawValue), y: .value("Anfälle", d.anzahl))
-                        .foregroundStyle(phaseFarbe(d.phase).gradient).cornerRadius(6)
-                        .annotation(position: .top) {
-                            Text("\(d.anzahl)").font(.caption2).foregroundStyle(.secondary)
-                        }
-                }
-                .chartYScale(domain: 0...(daten.map(\.anzahl).max().map { $0 + 1 } ?? 5))
-                .frame(height: 150)
-
-                VStack(spacing: 4) {
-                    ForEach(daten, id: \.phase.rawValue) { d in
-                        HStack {
-                            Circle().fill(phaseFarbe(d.phase)).frame(width: 8, height: 8)
-                            Text(d.phase.rawValue).font(.caption)
-                            Spacer()
-                            Text("\(d.anzahl) Anfälle").font(.caption2).foregroundStyle(.secondary)
-                            Text(String(format: "Ø %.1f", d.avgStaerke)).font(.caption.bold())
-                        }
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private func phaseFarbe(_ p: ZyklusRechner.Zyklusphase) -> Color {
-        switch p {
-        case .menstruation: return .red
-        case .follikelphase: return .yellow
-        case .ovulation: return .orange
-        case .lutealphase: return .purple
-        }
     }
 
     // MARK: - Helpers
