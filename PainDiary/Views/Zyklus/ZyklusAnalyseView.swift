@@ -84,6 +84,7 @@ struct ZyklusAnalyseView: View {
                             .padding(.bottom, 24)
                         }
                     }
+                    .background(Color(.systemGroupedBackground))
                 }
             }
             .navigationTitle("Zyklus-Analyse")
@@ -246,7 +247,7 @@ struct ZyklusAnalyseView: View {
         let ovDiff       = ovOffset.map { $0 - (avgZyklus - 14) }
         let hatLerndaten = analyse.zyklusStarts.count >= 3
 
-        karte(titel: "Adaptive Vorhersage", symbol: "brain.head.profile", farbe: .teal,
+        karte(titel: "Adaptive Vorhersage", symbol: "brain.head.profile", farbe: .pink,
               info: "Die App gewichtet die letzten 3 Zyklen stärker als ältere (50 % / 30 % / 20 %). So werden aktuelle Veränderungen deines Rhythmus schneller erkannt als bei einem einfachen Durchschnitt.") {
             HStack {
                 if hatLerndaten {
@@ -388,7 +389,7 @@ struct ZyklusAnalyseView: View {
         let hatFruchtbar = verteilung.contains { ["wässrig", "eiweiss"].contains($0.typ.lowercased()) }
 
         if !verteilung.isEmpty {
-            karte(titel: "Zervixschleim", symbol: "drop.halffull", farbe: .blue,
+            karte(titel: "Zervixschleim", symbol: "drop.halffull", farbe: .pink,
                   info: "Wässrig & Eiweiss werden als fruchtbar gewertet (Symptothermalmethode). Beeinflusst die Eisprungvorhersage der App direkt.") {
                 Text("Häufigkeit der erfassten Typen").font(.caption).foregroundStyle(.secondary)
                 VStack(spacing: 8) {
@@ -431,10 +432,10 @@ struct ZyklusAnalyseView: View {
         let chartHoehe = CGFloat(min(symptome.count, 8)) * 30.0 + 20.0
 
         if !symptome.isEmpty {
-            karte(titel: "Häufigste Symptome", symbol: "list.bullet.clipboard.fill", farbe: .purple) {
+            karte(titel: "Häufigste Symptome", symbol: "list.bullet.clipboard.fill", farbe: .pink) {
                 Chart(symptome.prefix(8)) { s in
                     BarMark(x: .value("Anzahl", s.anzahl), y: .value("Symptom", s.name))
-                        .foregroundStyle(Color.purple.gradient)
+                        .foregroundStyle(Color.pink.gradient)
                         .cornerRadius(4)
                         .annotation(position: .trailing) {
                             Text("\(s.anzahl)").font(.caption2).foregroundStyle(.secondary)
