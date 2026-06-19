@@ -5,7 +5,7 @@ struct SchmerzKachel: View {
     let eintraege: [PainEntry]
     @State private var zeigeForm = false
 
-    private var schmerzEintraege: [PainEntry] { eintraege.filter { !$0.istHautEintrag } }
+    private var schmerzEintraege: [PainEntry] { eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" } }
 
     private var avgSchmerz30: String {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()

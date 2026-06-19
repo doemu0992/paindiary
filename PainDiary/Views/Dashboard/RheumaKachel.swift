@@ -6,13 +6,15 @@ struct RheumaKachel: View {
     let haqEintraege: [HAQEintrag]
     @State private var zeigeForm = false
 
+    private var rheumaEintraege: [PainEntry] { eintraege.filter { $0.koerperstelle == "Rheuma" } }
+
     private var schube30: Int {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        return eintraege.filter { $0.istSchub && $0.datum >= cutoff }.count
+        return rheumaEintraege.filter { $0.istSchub && $0.datum >= cutoff }.count
     }
 
     private var letzterSchubText: String {
-        guard let letzter = eintraege.first(where: { $0.istSchub }) else { return "–" }
+        guard let letzter = rheumaEintraege.first(where: { $0.istSchub }) else { return "–" }
         let tage = Calendar.current.dateComponents([.day], from: letzter.datum, to: Date()).day ?? 0
         switch tage {
         case 0:  return "Heute"
@@ -27,14 +29,14 @@ struct RheumaKachel: View {
             let tag = cal.date(byAdding: .day, value: -offset, to: Date()) ?? Date()
             let start = cal.startOfDay(for: tag)
             let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
-            let tagesEintraege = eintraege.filter { $0.datum >= start && $0.datum < end }
+            let tagesEintraege = rheumaEintraege.filter { $0.datum >= start && $0.datum < end }
             let avg = tagesEintraege.isEmpty ? 0.0
                 : Double(tagesEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(tagesEintraege.count)
             return (datum: start, wert: avg)
         }
     }
 
-    private var hatDaten: Bool { eintraege.contains { $0.datum >= Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date() } }
+    private var hatDaten: Bool { rheumaEintraege.contains { $0.datum >= Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date() } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

@@ -11,9 +11,11 @@ struct RheumaView: View {
     @State private var zeigeForm = false
     @State private var zeigeAnalyse = false
 
+    private var rheumaEintraege: [PainEntry] { eintraege.filter { $0.koerperstelle == "Rheuma" } }
+
     var body: some View {
         List {
-            if !eintraege.isEmpty {
+            if !rheumaEintraege.isEmpty {
                 Section {
                     schnellstatistiken
                 }
@@ -99,14 +101,14 @@ struct RheumaView: View {
         }
         .sheet(isPresented: $zeigeForm) { RheumaSchnellForm() }
         .sheet(isPresented: $zeigeAnalyse) {
-            RheumaAnalyseView(eintraege: eintraege, haqEintraege: haqEintraege)
+            RheumaAnalyseView(eintraege: rheumaEintraege, haqEintraege: haqEintraege)
         }
     }
 
     private var schnellstatistiken: some View {
-        let schube = eintraege.filter { $0.istSchub }.count
+        let schube = rheumaEintraege.filter { $0.istSchub }.count
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date())
-        let letzter30 = eintraege.filter { e in
+        let letzter30 = rheumaEintraege.filter { e in
             guard let c = cutoff else { return true }
             return e.datum >= c
         }

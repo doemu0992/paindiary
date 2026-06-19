@@ -106,13 +106,13 @@ struct DashboardView: View {
         case .zyklus:              ZyklusKachel(eintraege: Array(zyklusEintraege))
         case .hautveraenderung:    HautKachel(eintraege: Array(eintraege.filter { $0.istHautEintrag }))
         case .schnellLinks:        schnellLinks
-        case .wetterSchmerz:       WetterSchmerzKachel(eintraege: Array(eintraege))
-        case .stressSchmerz:       StressSchmerzKachel(eintraege: Array(eintraege))
-        case .schlafSchmerz:       SchlafSchmerzKachel(eintraege: Array(eintraege))
+        case .wetterSchmerz:       WetterSchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }))
+        case .stressSchmerz:       StressSchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }))
+        case .schlafSchmerz:       SchlafSchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }))
         case .midasKachel:         MidasKachel(bewertungen: Array(midasBewertungen))
-        case .schmerzKachel:       SchmerzKachel(eintraege: Array(eintraege))
+        case .schmerzKachel:       SchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }))
         case .migraeneKachel:      MigraeneKachel(anfaelle: Array(migraeneAnfaelle))
-        case .rheumaKachel:        RheumaKachel(eintraege: Array(eintraege), haqEintraege: Array(haqEintraege))
+        case .rheumaKachel:        RheumaKachel(eintraege: Array(eintraege.filter { $0.koerperstelle == "Rheuma" }), haqEintraege: Array(haqEintraege))
         case .diabetesKachel:      DiabetesKachel(messungen: Array(blutzuckerMessungen))
         case .konfigKorrelation:
             KonfigKorrelationsKachel(
