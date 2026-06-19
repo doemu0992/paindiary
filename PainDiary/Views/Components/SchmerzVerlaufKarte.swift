@@ -23,6 +23,7 @@ struct SchmerzVerlaufKarte: View {
     @State private var ausgewaehlt: Date? = nil
     @State private var scrollPosition: Date = .now
     @State private var zeigeTagesDetail = false
+    @State private var chartAufgeklappt: Bool = true
 
     private var schmerzEintraege: [PainEntry] {
         eintraege.filter { !$0.istHautEintrag }
@@ -117,14 +118,16 @@ struct SchmerzVerlaufKarte: View {
 
             header(aktivDaten: aktivDaten)
 
-            if aktivDaten.isEmpty {
-                Text("Noch keine Einträge in diesem Zeitraum.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 120)
-            } else {
-                chartView(aktivDaten: aktivDaten)
-                legendeView(aktivDaten: aktivDaten)
+            if !zeigeStats || chartAufgeklappt {
+                if aktivDaten.isEmpty {
+                    Text("Noch keine Einträge in diesem Zeitraum.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                } else {
+                    chartView(aktivDaten: aktivDaten)
+                    legendeView(aktivDaten: aktivDaten)
+                }
             }
         }
         .padding()
@@ -251,11 +254,27 @@ struct SchmerzVerlaufKarte: View {
 
             Spacer()
 
-            Picker("Zeitraum", selection: $zeitBereich) {
-                ForEach(ZeitBereich.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            if !zeigeStats || chartAufgeklappt {
+                Picker("Zeitraum", selection: $zeitBereich) {
+                    ForEach(ZeitBereich.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 160)
             }
-            .pickerStyle(.segmented)
-            .frame(width: 160)
+
+            if zeigeStats {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) { chartAufgeklappt.toggle() }
+                } label: {
+                    Image(systemName: "chevron.up")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(chartAufgeklappt ? 0 : 180))
+                        .animation(.easeInOut(duration: 0.25), value: chartAufgeklappt)
+                        .padding(.leading, 6)
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
