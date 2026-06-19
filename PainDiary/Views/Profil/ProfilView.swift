@@ -39,6 +39,7 @@ private struct ProfilInhaltView: View {
     @AppStorage("rheumaModulAktiv") private var rheumaModulAktiv = false
     @AppStorage("diabetesModulAktiv") private var diabetesModulAktiv = false
     @AppStorage("hautModulAktiv") private var hautAktiv = false
+    @AppStorage("zyklusModulAktiv") private var zyklusModulAktiv = false
     @State private var stammdatenAnzeigen = false
 
     var body: some View {
@@ -307,6 +308,17 @@ private struct ProfilInhaltView: View {
 
     private var moduleSektion: some View {
         Section {
+            Toggle(isOn: $zyklusModulAktiv) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Zyklus")
+                        Text("Zyklustracking & Dashboard-Kachel")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "drop.fill").foregroundStyle(.pink)
+                }
+            }
             Toggle(isOn: $migraeneModulAktiv) {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {

@@ -91,7 +91,6 @@ struct DashboardView: View {
             guard kachel.sichtbar else { return false }
             switch kachel.typ {
             case .medikamente: return !medikamente.filter(\.aktiv).isEmpty
-            case .zyklus:      return profile.first?.zyklusTrackingAktiv == true
             default:           return true
             }
         }
