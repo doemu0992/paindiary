@@ -143,6 +143,7 @@ struct ZyklusKachel: View {
                     legendePunkt(farbe: .red, text: "Periode")
                     legendePunkt(farbe: .orange, text: "Eisprung")
                     legendePunkt(farbe: .teal, text: "Fruchtbar")
+                    legendePunkt(farbe: Color.red.opacity(0.3), text: "Vorhersage")
                     Spacer()
                 }
             }
