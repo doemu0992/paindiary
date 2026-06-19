@@ -5,6 +5,7 @@ struct SchmerzVerlaufKarte: View {
 
     let eintraege: [PainEntry]
     var migraeneAnfaelle: [MigraeneEintrag] = []
+    var zeigeStats: Bool = false
 
     enum ZeitBereich: String, CaseIterable {
         case woche = "W", monat = "M", dreiMonate = "3M", jahr = "J"
@@ -26,6 +27,47 @@ struct SchmerzVerlaufKarte: View {
     private var schmerzEintraege: [PainEntry] {
         eintraege.filter { !$0.istHautEintrag }
     }
+
+    // MARK: - Stats (nur wenn zeigeStats = true)
+
+    private var gesamtAvg: Double {
+        guard !schmerzEintraege.isEmpty else { return 0 }
+        return Double(schmerzEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(schmerzEintraege.count)
+    }
+
+    private var dieseWocheAvg: Double {
+        var kal = Calendar.current; kal.firstWeekday = 2
+        guard let interval = kal.dateInterval(of: .weekOfYear, for: Date()) else { return 0 }
+        let w = schmerzEintraege.filter { $0.datum >= interval.start && $0.datum < interval.end }
+        guard !w.isEmpty else { return 0 }
+        return Double(w.map(\.schmerzstaerke).reduce(0, +)) / Double(w.count)
+    }
+
+    private var trendVorwocheWert: Double? {
+        var kal = Calendar.current; kal.firstWeekday = 2
+        guard let interval = kal.dateInterval(of: .weekOfYear, for: Date()),
+              let vorStart = kal.date(byAdding: .weekOfYear, value: -1, to: interval.start) else { return nil }
+        let diese = schmerzEintraege.filter { $0.datum >= interval.start && $0.datum < interval.end }
+        let vorw  = schmerzEintraege.filter { $0.datum >= vorStart && $0.datum < interval.start }
+        guard !diese.isEmpty && !vorw.isEmpty else { return nil }
+        let a = Double(diese.map(\.schmerzstaerke).reduce(0, +)) / Double(diese.count)
+        let b = Double(vorw.map(\.schmerzstaerke).reduce(0, +)) / Double(vorw.count)
+        return a - b
+    }
+
+    private var gesamtEintraegeAnzahl: Int {
+        schmerzEintraege.count + migraeneAnfaelle.count
+    }
+
+    private var topAusloeser: String? {
+        let alle = schmerzEintraege.map(\.ausloeser).filter { !$0.isEmpty }
+        guard !alle.isEmpty else { return nil }
+        var z: [String: Int] = [:]
+        for a in alle { z[a, default: 0] += 1 }
+        return z.max(by: { $0.value < $1.value })?.key
+    }
+
+    // MARK: - Chart Data
 
     private var migraeneTagesDaten: [(datum: Date, schmerz: Double)] {
         let kal = Calendar.current
@@ -61,11 +103,18 @@ struct SchmerzVerlaufKarte: View {
         return result
     }
 
+    // MARK: - Body
+
     var body: some View {
         let daten = tagesDaten
         let aktivDaten = daten.filter { $0.anzahl > 0 }
 
         VStack(alignment: .leading, spacing: 12) {
+            if zeigeStats {
+                statsHeaderView
+                Divider()
+            }
+
             header(aktivDaten: aktivDaten)
 
             if aktivDaten.isEmpty {
@@ -90,7 +139,73 @@ struct SchmerzVerlaufKarte: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - Stats Header
+
+    @ViewBuilder
+    private var statsHeaderView: some View {
+        let avg = gesamtAvg
+        let farbe = schmerzFarbe(avg)
+        let t = trendVorwocheWert
+        let sym: String = t.map { $0 > 0.05 ? "arrow.up" : $0 < -0.05 ? "arrow.down" : "minus" } ?? "minus"
+        let trendFarbe: Color = t.map { $0 > 0.05 ? Color.red : $0 < -0.05 ? Color.green : Color.secondary } ?? .secondary
+        let trendLabel = t.map { String(format: "%+.1f", $0) } ?? "–"
+
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ø Schmerzstärke · alle Module")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack(alignment: .lastTextBaseline, spacing: 6) {
+                        Text(avg > 0 ? String(format: "%.1f", avg) : "–")
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .foregroundStyle(avg > 0 ? farbe : .secondary)
+                        if avg > 0 {
+                            Text("/ 10").font(.title3).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                Spacer()
+                if avg > 0 {
+                    VStack(alignment: .trailing, spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: sym).font(.caption.bold())
+                            Text(trendLabel).font(.caption.bold())
+                        }
+                        .foregroundStyle(trendFarbe)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(trendFarbe.opacity(0.12), in: Capsule())
+                        Text("vs. Vorwoche").font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            HStack(spacing: 0) {
+                statsMini("Diese Woche", wert: dieseWocheAvg > 0 ? String(format: "%.1f", dieseWocheAvg) : "–", farbe: .blue)
+                Divider().frame(height: 36)
+                statsMini("Einträge", wert: "\(gesamtEintraegeAnzahl)", farbe: .indigo)
+                Divider().frame(height: 36)
+                statsMini("Top Auslöser", wert: topAusloeser ?? "–", farbe: .orange)
+            }
+        }
+    }
+
+    private func statsMini(_ label: String, wert: String, farbe: Color) -> some View {
+        VStack(spacing: 3) {
+            Text(wert)
+                .font(.subheadline.bold())
+                .foregroundStyle(farbe)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - Chart Header
 
     private func header(aktivDaten: [(datum: Date, schmerz: Double, anzahl: Int)]) -> some View {
         HStack(alignment: .top) {
@@ -107,9 +222,7 @@ struct SchmerzVerlaufKarte: View {
                     HStack(spacing: 8) {
                         Text(p.datum.formatted(.dateTime.day().month(.wide)))
                             .font(.caption).foregroundStyle(.secondary)
-                        Button {
-                            zeigeTagesDetail = true
-                        } label: {
+                        Button { zeigeTagesDetail = true } label: {
                             Text("Details")
                                 .font(.caption.bold())
                                 .foregroundStyle(Color.accentColor)
@@ -128,7 +241,7 @@ struct SchmerzVerlaufKarte: View {
                         }
                         InfoButton(
                             titel: "Schmerzverlauf",
-                            text: "Zeigt den Ø Schmerzwert pro Tag. Tage ohne Eintrag werden ausgelassen – die Linie verbindet nur Tage mit tatsächlichen Daten.\n\nBedienung: Tippe oder ziehe über den Chart um einzelne Tage auszuwählen. Wechsle oben rechts zwischen Woche, Monat, 3 Monaten und Jahr.\n\nFarbe der Punkte: grün ≤3, gelb 4–6, orange 7–8, rot ≥9."
+                            text: "Zeigt den Ø Schmerzwert pro Tag aus allen Modulen (Schmerz, Rheuma, Migräne). Tage ohne Eintrag werden ausgelassen – die Linie verbindet nur Tage mit tatsächlichen Daten.\n\nBedienung: Tippe oder ziehe über den Chart um einzelne Tage auszuwählen.\n\nFarbe der Punkte: grün ≤3, gelb 4–6, orange 7–8, rot ≥9."
                         )
                         .padding(.top, 2)
                     }
