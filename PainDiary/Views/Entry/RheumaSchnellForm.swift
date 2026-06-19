@@ -11,6 +11,7 @@ struct RheumaSchnellForm: View {
     @State private var vorwaerts = true
     @State private var datum = Date()
     @State private var istSchub = false
+    @State private var schmerzstaerke = 5
     @State private var gelenkStatus = ""
     @State private var morgensteifigkeit = 0
     @State private var fatigue = 0
@@ -177,6 +178,32 @@ struct RheumaSchnellForm: View {
             }
 
             karte {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        Text("Schmerzstärke").font(.headline)
+                        Spacer()
+                        Text("\(schmerzstaerke)/10")
+                            .font(.title3.bold())
+                            .foregroundStyle(schmerzFarbe)
+                            .animation(.easeInOut(duration: 0.15), value: schmerzstaerke)
+                    }
+                    Slider(
+                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
+                        in: 0...10, step: 1
+                    )
+                    .tint(schmerzFarbe)
+                    HStack {
+                        Text("Kein Schmerz").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text(schmerzLabel).font(.caption.bold()).foregroundStyle(schmerzFarbe)
+                            .animation(.easeInOut(duration: 0.15), value: schmerzLabel)
+                        Spacer()
+                        Text("Extrem").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            karte {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Morgensteifigkeit").font(.headline)
                     HStack(spacing: 8) {
@@ -311,6 +338,20 @@ struct RheumaSchnellForm: View {
 
     // MARK: - Computed helpers
 
+    private var schmerzFarbe: Color {
+        schmerzstaerke <= 3 ? .green : schmerzstaerke <= 6 ? .orange : .red
+    }
+
+    private var schmerzLabel: String {
+        switch schmerzstaerke {
+        case 0:    return "Kein Schmerz"
+        case 1...3: return "Leicht"
+        case 4...6: return "Mittel"
+        case 7...9: return "Stark"
+        default:   return "Unerträglich"
+        }
+    }
+
     private var wetterAnzeige: WetterSnapshot? {
         if let temp = wetterTemperatur, let code = wetterCode {
             return WetterSnapshot(temperatur: temp, code: code, windgeschwindigkeit: wetterWind ?? 0)
@@ -333,7 +374,7 @@ struct RheumaSchnellForm: View {
     private func speichern() {
         let neu = PainEntry(
             datum: datum,
-            schmerzstaerke: 0,
+            schmerzstaerke: schmerzstaerke,
             koerperstelle: "Rheuma",
             notizen: notizen,
             stimmung: stimmung,

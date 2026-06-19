@@ -144,8 +144,8 @@ struct DashboardView: View {
         kal.firstWeekday = 2  // Montag
         guard let interval = kal.dateInterval(of: .weekOfYear, for: Date()),
               let vorwocheStart = kal.date(byAdding: .weekOfYear, value: -1, to: interval.start) else { return nil }
-        let diese = eintraege.filter { $0.datum >= interval.start && $0.datum < interval.end && !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }
-        let vorw  = eintraege.filter { $0.datum >= vorwocheStart && $0.datum < interval.start && !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }
+        let diese = eintraege.filter { $0.datum >= interval.start && $0.datum < interval.end && !$0.istHautEintrag }
+        let vorw  = eintraege.filter { $0.datum >= vorwocheStart && $0.datum < interval.start && !$0.istHautEintrag }
         guard !diese.isEmpty && !vorw.isEmpty else { return nil }
         let a = Double(diese.map(\.schmerzstaerke).reduce(0, +)) / Double(diese.count)
         let b = Double(vorw.map(\.schmerzstaerke).reduce(0, +)) / Double(vorw.count)
@@ -216,7 +216,7 @@ struct DashboardView: View {
             HStack(spacing: 0) {
                 miniStat("Diese Woche", wert: String(format: "%.1f", viewModel.wochenschmerz), farbe: .blue)
                 Divider().frame(height: 36)
-                miniStat("Einträge", wert: "\(eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }.count)", farbe: .indigo)
+                miniStat("Einträge", wert: "\(eintraege.filter { !$0.istHautEintrag }.count)", farbe: .indigo)
                 Divider().frame(height: 36)
                 miniStat("Top Auslöser", wert: viewModel.haeufigsterAusloeser ?? "–", farbe: .orange)
             }
