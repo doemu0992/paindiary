@@ -17,13 +17,11 @@ struct ZyklusView: View {
 
     var body: some View {
         List {
-            if !eintraege.filter({ $0.istPeriode || $0.typ == "Periode" }).isEmpty {
-                Section {
-                    statistikKopf
-                }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
+            Section {
+                statistikKopf
             }
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
 
             Section {
                 kalenderMitLegende
@@ -148,6 +146,7 @@ struct ZyklusView: View {
 
     private var statistikKopf: some View {
         let hatZyklus = analyse.aktuellerZyklustag != nil
+        let hatDaten = !analyse.zyklusStarts.isEmpty
         let fenster = naechstesFruchtbaresF
 
         return VStack(spacing: 12) {
@@ -172,15 +171,17 @@ struct ZyklusView: View {
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
-            Button { zeigeAnalyse = true } label: {
-                Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
+            if hatDaten {
+                Button { zeigeAnalyse = true } label: {
+                    Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
