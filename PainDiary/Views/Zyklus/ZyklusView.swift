@@ -124,7 +124,7 @@ struct ZyklusView: View {
                     Divider().frame(height: 40)
                     statPill(naechstePeriodeBadge, label: "Nächste Periode", farbe: .red)
                     Divider().frame(height: 40)
-                    statPill(zyklusLaengeText, label: "Ø Zyklus", farbe: .purple)
+                    statPill(zyklusLaengeText, label: "Ø Zyklus", farbe: .pink)
                 }
                 if hatZyklus {
                     Divider()
@@ -547,6 +547,8 @@ struct ZyklusEintragSheet: View {
     private let maxSchritt = 2
     private let pflichtSchritte: Set<Int> = [0]
 
+    private var kannWeiter: Bool { true }
+
     init(datum: Date, bestehend: ZyklusEintrag?) {
         self.datum = datum
         self.bestehend = bestehend
@@ -648,7 +650,7 @@ struct ZyklusEintragSheet: View {
                                     Button { blutungsfluss = wert } label: {
                                         Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
                                             .padding(.vertical, 10)
-                                            .background(sel ? Color.red : Color(.tertiarySystemGroupedBackground))
+                                            .background(sel ? Color.red : Color(.secondarySystemGroupedBackground))
                                             .foregroundStyle(sel ? .white : .primary)
                                             .clipShape(RoundedRectangle(cornerRadius: 10))
                                             .animation(.easeInOut(duration: 0.15), value: sel)
@@ -838,11 +840,11 @@ struct ZyklusEintragSheet: View {
                 }
             }
             if schritt < maxSchritt {
-                Button { withAnimation { schritt += 1 } } label: {
+                Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
                     Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
-                }.buttonStyle(.plain)
+                        .background(kannWeiter ? Color.pink : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                }.buttonStyle(.plain).disabled(!kannWeiter)
             } else {
                 Button { speichern() } label: {
                     Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)

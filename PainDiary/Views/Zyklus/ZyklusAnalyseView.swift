@@ -455,7 +455,7 @@ struct ZyklusAnalyseView: View {
         let maxTemp   = (tempDaten.map(\.temp).max() ?? 37.0) + 0.15
 
         if tempDaten.count >= 3 {
-            karte(titel: "Basaltemperatur", symbol: "thermometer.medium", farbe: .orange,
+            karte(titel: "Basaltemperatur", symbol: "thermometer.medium", farbe: .pink,
                   info: "Morgentemperatur direkt nach dem Aufwachen, vor jeder Aktivität. Nach dem Eisprung steigt sie um ca. 0,2–0,5 °C an und bleibt bis zur nächsten Periode erhöht.") {
                 Chart(tempDaten, id: \.datum) { punkt in
                     LineMark(x: .value("Tag", punkt.datum, unit: .day), y: .value("°C", punkt.temp))
@@ -483,7 +483,7 @@ struct ZyklusAnalyseView: View {
         let tests = ovulationstests()
 
         if !tests.isEmpty {
-            karte(titel: "Ovulationstests", symbol: "circle.dotted", farbe: .orange) {
+            karte(titel: "Ovulationstests", symbol: "circle.dotted", farbe: .pink) {
                 VStack(spacing: 8) {
                     ForEach(Array(tests.suffix(10).enumerated()), id: \.offset) { _, test in
                         HStack(spacing: 12) {
