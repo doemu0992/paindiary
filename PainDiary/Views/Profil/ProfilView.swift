@@ -266,9 +266,6 @@ private struct ProfilInhaltView: View {
             NavigationLink(destination: PhysioView()) {
                 Label("Physiotherapie", systemImage: "figure.walk.motion")
             }
-            NavigationLink(destination: ZyklusView()) {
-                Label("Zyklus-Tracking", systemImage: "drop.fill")
-            }
         }
     }
 
@@ -289,6 +286,11 @@ private struct ProfilInhaltView: View {
             NavigationLink(destination: MigraeneView()) {
                 Label { Text("Migräne") } icon: {
                     Image(systemName: "brain.head.profile").foregroundStyle(.purple)
+                }
+            }
+            NavigationLink(destination: ZyklusView()) {
+                Label { Text("Zyklus") } icon: {
+                    Image(systemName: "drop.fill").foregroundStyle(.pink)
                 }
             }
             NavigationLink(destination: HautView()) {
@@ -312,7 +314,7 @@ private struct ProfilInhaltView: View {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Zyklus")
-                        Text("Zyklustracking & Dashboard-Kachel")
+                        Text("Zyklusphase in anderen Modulen anzeigen")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 } icon: {
