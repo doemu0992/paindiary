@@ -466,8 +466,8 @@ extension GesamtAnalyseView {
                     .font(.headline).foregroundStyle(.pink)
                 Divider()
 
-                if gefilterteZyklus.isEmpty {
-                    Text("Keine Zyklus-Daten im Zeitraum")
+                if gefilterteZyklus.filter({ $0.istPeriode }).isEmpty {
+                    Text("Keine Zyklus-Phasen-Daten im Zeitraum")
                         .font(.caption).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 12)
@@ -721,17 +721,21 @@ extension GesamtAnalyseView {
         let alleSchmerz = schmerzEintraege + rheumaEintraege
         let avgSchmerz: Double = alleSchmerz.isEmpty ? 0 :
             Double(alleSchmerz.map { $0.schmerzstaerke }.reduce(0, +)) / Double(alleSchmerz.count)
+        let periodeTage = gefilterteZyklus.filter { $0.istPeriode }.count
 
-        return """
+        var prompt = """
         Gesamtanalyse PainDiary (\(zeitraum.rawValue)):
         - Schmerzeinträge: \(alleSchmerz.count), Ø Stärke: \(String(format: "%.1f", avgSchmerz))/10
         - Rheuma-Schübe: \(rheumaEintraege.filter { $0.istSchub }.count)
         - Migräne-Anfälle: \(gefilterteMigraene.count)
         - Haut-Einträge: \(hautEintraege.count)
         - Blutzucker-Messungen: \(gefilterteBlutzucker.count)
-        - Zyklus-Einträge: \(gefilterteZyklus.count)
-        Analysiere die Zusammenhänge zwischen den Modulen und gib 3–4 kurze Einblicke auf Deutsch.
         """
+        if periodeTage > 0 {
+            prompt += "\n        - Zyklus-Perioden-Tage: \(periodeTage)"
+        }
+        prompt += "\n        Analysiere die Zusammenhänge zwischen den Modulen und gib 3–4 kurze Einblicke auf Deutsch."
+        return prompt
     }
 }
 
