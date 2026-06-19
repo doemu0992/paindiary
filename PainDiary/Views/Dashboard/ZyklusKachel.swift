@@ -5,6 +5,7 @@ import Charts
 struct ZyklusKachel: View {
     let eintraege: [ZyklusEintrag]
     @State private var zeigeForm = false
+    @State private var ausgewaehltDatum: Date? = nil
 
     private var analyse: ZyklusAnalyse {
         ZyklusRechner.analyse(eintraege: eintraege)
@@ -93,6 +94,11 @@ struct ZyklusKachel: View {
 
     private var hatDaten: Bool { !eintraege.isEmpty }
 
+    private var ausgewaehltPunkt: ChartPunkt? {
+        guard let sel = ausgewaehltDatum else { return nil }
+        return chartDaten.min(by: { abs($0.datum.timeIntervalSince(sel)) < abs($1.datum.timeIntervalSince(sel)) })
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -126,6 +132,7 @@ struct ZyklusKachel: View {
                 .foregroundStyle(balkenFarbe(punkt))
                 .cornerRadius(3)
             }
+            .chartXSelection(value: $ausgewaehltDatum)
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
             .frame(height: 44)
@@ -135,6 +142,14 @@ struct ZyklusKachel: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
+            }
+
+            if let punkt = ausgewaehltPunkt {
+                Text(punkt.datum, format: .dateTime.weekday(.abbreviated).day().month())
+                    .font(.caption2.bold())
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .transition(.opacity)
             }
 
             // Legende
@@ -162,6 +177,7 @@ struct ZyklusKachel: View {
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: ausgewaehltDatum)
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
