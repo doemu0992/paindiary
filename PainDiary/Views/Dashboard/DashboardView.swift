@@ -23,6 +23,7 @@ struct DashboardView: View {
     @State private var tagesstart = Calendar.current.startOfDay(for: Date())
     @State private var kachelKonfig: [KachelKonfiguration] = .laden()
     @State private var anpassenAnzeigen = false
+    @State private var zeigeGesamtAnalyse = false
     @Environment(\.scenePhase) private var scenePhase
 
     // MARK: - Body
@@ -82,6 +83,15 @@ struct DashboardView: View {
             if let url = exportURL { PDFPreviewView(url: url) }
         }
 #endif
+        .sheet(isPresented: $zeigeGesamtAnalyse) {
+            GesamtAnalyseView(
+                eintraege: Array(eintraege),
+                migraeneAnfaelle: Array(migraeneAnfaelle),
+                zyklusEintraege: Array(zyklusEintraege),
+                blutzuckerMessungen: Array(blutzuckerMessungen),
+                haqEintraege: Array(haqEintraege)
+            )
+        }
     }
 
     // MARK: - Kachel-System
@@ -356,7 +366,8 @@ struct DashboardView: View {
         SchmerzVerlaufKarte(
             eintraege: Array(eintraege),
             migraeneAnfaelle: Array(migraeneAnfaelle),
-            zeigeStats: true
+            zeigeStats: true,
+            onGesamtAnalyseOeffnen: { zeigeGesamtAnalyse = true }
         )
     }
 

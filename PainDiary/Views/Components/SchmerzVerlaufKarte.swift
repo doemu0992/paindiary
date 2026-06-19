@@ -6,6 +6,7 @@ struct SchmerzVerlaufKarte: View {
     let eintraege: [PainEntry]
     var migraeneAnfaelle: [MigraeneEintrag] = []
     var zeigeStats: Bool = false
+    var onGesamtAnalyseOeffnen: (() -> Void)? = nil
 
     enum ZeitBereich: String, CaseIterable {
         case woche = "W", monat = "M", dreiMonate = "3M", jahr = "J"
@@ -128,6 +129,22 @@ struct SchmerzVerlaufKarte: View {
                     chartView(aktivDaten: aktivDaten)
                     legendeView(aktivDaten: aktivDaten)
                 }
+            }
+
+            if let onAnalyse = onGesamtAnalyseOeffnen {
+                Divider()
+                Button { onAnalyse() } label: {
+                    HStack {
+                        Text("Gesamtanalyse öffnen")
+                            .font(.caption.bold())
+                            .foregroundStyle(.indigo)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.bold())
+                            .foregroundStyle(Color.indigo.opacity(0.6))
+                    }
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding()
