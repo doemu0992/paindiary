@@ -6,6 +6,7 @@ struct ZyklusKachel: View {
     let eintraege: [ZyklusEintrag]
     @State private var zeigeForm = false
     @State private var ausgewaehltDatum: Date? = nil
+    @State private var versteckTask: Task<Void, Never>? = nil
 
     private var analyse: ZyklusAnalyse {
         ZyklusRechner.analyse(eintraege: eintraege)
@@ -96,7 +97,22 @@ struct ZyklusKachel: View {
 
     private var ausgewaehltPunkt: ChartPunkt? {
         guard let sel = ausgewaehltDatum else { return nil }
-        return chartDaten.min(by: { abs($0.datum.timeIntervalSince(sel)) < abs($1.datum.timeIntervalSince(sel)) })
+        return chartDaten.first { $0.datum == sel }
+    }
+
+    private func balkenTippen(proxy: ChartProxy, location: CGPoint) {
+        guard let date: Date = proxy.value(atX: location.x, as: Date.self) else { return }
+        let snapped = chartDaten.min(by: {
+            abs($0.datum.timeIntervalSince(date)) < abs($1.datum.timeIntervalSince(date))
+        })?.datum
+        guard let snapped else { return }
+        withAnimation { ausgewaehltDatum = snapped }
+        versteckTask?.cancel()
+        versteckTask = Task {
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { withAnimation { ausgewaehltDatum = nil } }
+        }
     }
 
     // MARK: - Body
@@ -132,10 +148,15 @@ struct ZyklusKachel: View {
                 .foregroundStyle(balkenFarbe(punkt))
                 .cornerRadius(3)
             }
-            .chartXSelection(value: $ausgewaehltDatum)
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
             .frame(height: 44)
+            .chartOverlay { proxy in
+                GeometryReader { _ in
+                    Rectangle().fill(.clear).contentShape(Rectangle())
+                        .onTapGesture { location in balkenTippen(proxy: proxy, location: location) }
+                }
+            }
             .overlay(alignment: .center) {
                 if !hatDaten {
                     Text("Noch keine Einträge")
