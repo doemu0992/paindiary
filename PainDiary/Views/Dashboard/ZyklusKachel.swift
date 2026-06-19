@@ -26,18 +26,74 @@ struct ZyklusKachel: View {
         return String(format: "%.0f T.", analyse.adaptierteZykluslaenge)
     }
 
-    private var chartDaten: [(datum: Date, istPeriode: Bool, hatEintrag: Bool)] {
+    // MARK: - Chart
+
+    private struct ChartPunkt: Identifiable {
+        let datum: Date
+        let blutungsfluss: String
+        let istPeriode: Bool
+        let istOvulation: Bool
+        let istFruchtbar: Bool
+        let istVorhergesagt: Bool
+        let hatEintrag: Bool
+        var id: Date { datum }
+    }
+
+    private var chartDaten: [ChartPunkt] {
         let cal = Calendar.current
-        return (0..<14).reversed().map { offset in
-            let tag = cal.date(byAdding: .day, value: -offset, to: Date()) ?? Date()
+        let heute = cal.startOfDay(for: Date())
+        let a = analyse
+
+        // Predict future period days from next period start + duration
+        var vorhergesagteTage: Set<Date> = []
+        if let np = a.naechstePeriodeStart {
+            let dauer = max(Int(round(a.adaptiertePeriodendauer)), 1)
+            for i in 0..<dauer {
+                if let t = cal.date(byAdding: .day, value: i, to: np) {
+                    vorhergesagteTage.insert(cal.startOfDay(for: t))
+                }
+            }
+        }
+
+        // -7 to +6 = 14 days (past week + today + next 6 days)
+        return (-7..<7).map { offset in
+            let tag = cal.date(byAdding: .day, value: offset, to: heute) ?? heute
             let start = cal.startOfDay(for: tag)
             let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
             let eintrag = eintraege.first { $0.datum >= start && $0.datum < end }
-            return (datum: start, istPeriode: eintrag?.istPeriode == true, hatEintrag: eintrag != nil)
+
+            return ChartPunkt(
+                datum: start,
+                blutungsfluss: eintrag?.blutungsfluss ?? "",
+                istPeriode: eintrag?.istPeriode == true,
+                istOvulation: a.ovulationsTageSet.contains(start),
+                istFruchtbar: a.fruchtbareTageSet.contains(start),
+                istVorhergesagt: vorhergesagteTage.contains(start) && eintrag?.istPeriode != true,
+                hatEintrag: eintrag != nil
+            )
         }
     }
 
+    private func balkenFarbe(_ p: ChartPunkt) -> Color {
+        guard hatDaten else { return Color.pink.opacity(0.07) }
+        if p.istPeriode {
+            switch p.blutungsfluss {
+            case "schmierblutung": return Color.red.opacity(0.25)
+            case "leicht":         return Color.red.opacity(0.5)
+            case "stark":          return Color.red
+            default:               return Color.red.opacity(0.75) // mittel
+            }
+        }
+        if p.istOvulation  { return Color.orange.opacity(0.85) }
+        if p.istFruchtbar  { return Color.teal.opacity(0.55) }
+        if p.istVorhergesagt { return Color.red.opacity(0.2) }
+        if p.hatEintrag    { return Color.pink.opacity(0.4) }
+        return Color.pink.opacity(0.1)
+    }
+
     private var hatDaten: Bool { !eintraege.isEmpty }
+
+    // MARK: - Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -62,20 +118,12 @@ struct ZyklusKachel: View {
                 statBox(wert: zykluslaengeText, label: "Ø Zyklus", farbe: .secondary)
             }
 
-            Chart(chartDaten, id: \.datum) { punkt in
+            Chart(chartDaten) { punkt in
                 BarMark(
                     x: .value("Tag", punkt.datum, unit: .day),
-                    y: .value("Eintrag", hatDaten ? 1.0 : 1.0)
+                    y: .value("Eintrag", 1.0)
                 )
-                .foregroundStyle(
-                    hatDaten
-                        ? (punkt.istPeriode
-                            ? Color.red.opacity(0.75)
-                            : punkt.hatEintrag
-                                ? Color.pink.opacity(0.4)
-                                : Color.pink.opacity(0.1))
-                        : Color.pink.opacity(0.07)
-                )
+                .foregroundStyle(balkenFarbe(punkt))
                 .cornerRadius(3)
             }
             .chartXAxis(.hidden)
@@ -86,6 +134,16 @@ struct ZyklusKachel: View {
                     Text("Noch keine Einträge")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            // Legende
+            if hatDaten {
+                HStack(spacing: 10) {
+                    legendePunkt(farbe: .red, text: "Periode")
+                    legendePunkt(farbe: .orange, text: "Eisprung")
+                    legendePunkt(farbe: .teal, text: "Fruchtbar")
+                    Spacer()
                 }
             }
 
@@ -111,6 +169,8 @@ struct ZyklusKachel: View {
         }
     }
 
+    // MARK: - Helpers
+
     private func statBox(wert: String, label: String, farbe: Color) -> some View {
         VStack(spacing: 3) {
             Text(wert)
@@ -125,5 +185,12 @@ struct ZyklusKachel: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 4)
+    }
+
+    private func legendePunkt(farbe: Color, text: String) -> some View {
+        HStack(spacing: 3) {
+            Circle().fill(farbe).frame(width: 6, height: 6)
+            Text(text).font(.caption2).foregroundStyle(.secondary)
+        }
     }
 }
