@@ -101,7 +101,7 @@ struct RheumaView: View {
         }
         .sheet(isPresented: $zeigeForm) { RheumaSchnellForm() }
         .sheet(isPresented: $zeigeAnalyse) {
-            RheumaAnalyseView(eintraege: rheumaEintraege, haqEintraege: haqEintraege)
+            RheumaAnalyseView()
         }
     }
 

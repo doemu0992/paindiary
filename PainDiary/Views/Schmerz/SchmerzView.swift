@@ -64,7 +64,7 @@ struct SchmerzView: View {
         }
         .sheet(isPresented: $zeigeForm) { AddEntryView() }
         .sheet(isPresented: $zeigeAnalyse) {
-            SchmerzAnalyseView(eintraege: schmerzEintraege)
+            SchmerzAnalyseView()
         }
     }
 

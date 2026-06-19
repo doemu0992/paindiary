@@ -84,12 +84,7 @@ struct DashboardView: View {
         }
 #endif
         .sheet(isPresented: $zeigeGesamtAnalyse) {
-            GesamtAnalyseView(
-                eintraege: Array(eintraege),
-                migraeneAnfaelle: Array(migraeneAnfaelle),
-                blutzuckerMessungen: Array(blutzuckerMessungen),
-                haqEintraege: Array(haqEintraege)
-            )
+            GesamtAnalyseView()
         }
     }
 

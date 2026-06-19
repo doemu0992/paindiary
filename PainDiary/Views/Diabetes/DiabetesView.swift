@@ -68,7 +68,7 @@ struct DiabetesView: View {
         }
         .sheet(isPresented: $zeigeForm) { BlutzuckerForm() }
         .sheet(item: $bearbeitet) { BlutzuckerForm(messung: $0) }
-        .sheet(isPresented: $zeigeAnalyse) { DiabetesAnalyseView(messungen: messungen) }
+        .sheet(isPresented: $zeigeAnalyse) { DiabetesAnalyseView() }
     }
 
     // MARK: - Stats

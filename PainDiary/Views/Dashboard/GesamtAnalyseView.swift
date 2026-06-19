@@ -65,11 +65,11 @@ enum GesamtAnalyseSektion: String, CaseIterable, Codable, Identifiable {
 // MARK: - Main View
 
 struct GesamtAnalyseView: View {
-    let eintraege: [PainEntry]
-    let migraeneAnfaelle: [MigraeneEintrag]
+    @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
+    @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
-    let blutzuckerMessungen: [BlutzuckerEintrag]
-    let haqEintraege: [HAQEintrag]
+    @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerMessungen: [BlutzuckerEintrag]
+    @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
 
     @Environment(\.dismiss) private var dismiss
     @State private var zeitraum: Zeitraum = .monat

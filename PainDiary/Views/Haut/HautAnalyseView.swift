@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import SwiftData
 
 // MARK: - Section Enum
 
@@ -27,7 +28,8 @@ enum HautAnalyseSektion: String, CaseIterable, Codable, Identifiable {
 // MARK: - Main View
 
 struct HautAnalyseView: View {
-    let eintraege: [PainEntry]
+    @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
+    private var eintraege: [PainEntry] { alleEintraege.filter { $0.istHautEintrag } }
 
     @State private var sektionen: [HautAnalyseSektion] = HautAnalyseView.sektionenLaden()
     @State private var zeitraum: Zeitraum = .woche

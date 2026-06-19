@@ -90,7 +90,7 @@ struct MigraeneView: View {
         .sheet(isPresented: $zeigeForm) { MigraeneAnfallForm() }
         .sheet(item: $bearbeitet) { MigraeneAnfallForm(anfall: $0) }
         .sheet(isPresented: $zeigeAnalyse) {
-            MigraeneAnalyseView(anfaelle: anfaelle, zyklusAnalyse: zyklusAnalyse)
+            MigraeneAnalyseView()
         }
     }
 

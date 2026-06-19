@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import SwiftData
 
 enum AnalyseSektion: String, CaseIterable, Codable, Identifiable {
     case zusammenfassung = "Zusammenfassung"
@@ -46,8 +47,9 @@ private func sektionenSpeichern(_ sektionen: [AnalyseSektion]) {
 }
 
 struct MigraeneAnalyseView: View {
-    let anfaelle: [MigraeneEintrag]
-    let zyklusAnalyse: ZyklusAnalyse
+    @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var anfaelle: [MigraeneEintrag]
+    @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
+    private var zyklusAnalyse: ZyklusAnalyse { ZyklusRechner.analyse(eintraege: Array(zyklusEintraege)) }
 
     @Environment(\.dismiss) private var dismiss
     @State private var sektionen: [AnalyseSektion] = sektionenLaden()

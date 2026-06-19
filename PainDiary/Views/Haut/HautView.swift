@@ -51,7 +51,7 @@ struct HautView: View {
         }
         .sheet(isPresented: $zeigeForm) { HautForm() }
         .sheet(isPresented: $zeigeAnalyse) {
-            HautAnalyseView(eintraege: Array(eintraege))
+            HautAnalyseView()
         }
     }
 

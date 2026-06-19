@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import SwiftData
 
 // MARK: - Section Enum
 
@@ -29,7 +30,7 @@ enum DiabetesAnalyseSektion: String, CaseIterable, Codable, Identifiable {
 // MARK: - Main View
 
 struct DiabetesAnalyseView: View {
-    let messungen: [BlutzuckerEintrag]
+    @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var messungen: [BlutzuckerEintrag]
 
     @State private var sektionen: [DiabetesAnalyseSektion] = DiabetesAnalyseView.sektionenLaden()
     @State private var zeitraum: Zeitraum = .woche
