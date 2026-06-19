@@ -630,7 +630,7 @@ struct MigraeneAnfallForm: View {
                         ChipButton(
                             label: opt,
                             ausgewaehlt: ausgewaehlteProdrom.contains(opt),
-                            farbe: .indigo
+                            farbe: .purple
                         ) {
                             if ausgewaehlteProdrom.contains(opt) { ausgewaehlteProdrom.remove(opt) }
                             else { ausgewaehlteProdrom.insert(opt) }
@@ -730,7 +730,7 @@ struct MigraeneAnfallForm: View {
                         ChipButton(
                             label: opt,
                             ausgewaehlt: ausgewaehlteBegleitsymptome.contains(opt),
-                            farbe: .red
+                            farbe: .purple
                         ) {
                             if ausgewaehlteBegleitsymptome.contains(opt) { ausgewaehlteBegleitsymptome.remove(opt) }
                             else { ausgewaehlteBegleitsymptome.insert(opt) }
@@ -746,7 +746,7 @@ struct MigraeneAnfallForm: View {
                         ChipButton(
                             label: opt,
                             ausgewaehlt: ausgewaehlteAusloeser.contains(opt),
-                            farbe: .orange
+                            farbe: .purple
                         ) {
                             if ausgewaehlteAusloeser.contains(opt) { ausgewaehlteAusloeser.remove(opt) }
                             else { ausgewaehlteAusloeser.insert(opt) }
@@ -838,7 +838,7 @@ struct MigraeneAnfallForm: View {
                         ChipButton(
                             label: opt,
                             ausgewaehlt: ausgewaehltePostdrom.contains(opt),
-                            farbe: .teal
+                            farbe: .purple
                         ) {
                             if ausgewaehltePostdrom.contains(opt) { ausgewaehltePostdrom.remove(opt) }
                             else { ausgewaehltePostdrom.insert(opt) }
