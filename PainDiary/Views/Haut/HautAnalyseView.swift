@@ -171,14 +171,13 @@ struct HautAnalyseView: View {
             .navigationTitle("Haut-Analyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fertig") { dismiss() }
-                }
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button { zeigeAnpassen = true } label: {
-                        Label("Anpassen", systemImage: "slider.horizontal.3")
-                            .foregroundStyle(.orange)
+                        Label("Reihenfolge", systemImage: "slider.horizontal.3")
                     }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fertig") { dismiss() }
                 }
             }
             .sheet(isPresented: $zeigeAnpassen) {

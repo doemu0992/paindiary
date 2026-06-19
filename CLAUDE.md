@@ -458,6 +458,89 @@ private func statPill(_ wert: String, label: String, farbe: Color) -> some View 
 
 ---
 
+## AnalyseView Toolbar-Standard (bindend)
+
+Jede AnalyseView, die als Sheet geöffnet wird, hat **exakt zwei Toolbar-Buttons** in fester Reihenfolge:
+
+```swift
+.toolbar {
+    ToolbarItem(placement: .navigationBarLeading) {   // LINKS: immer Reihenfolge/Anpassen
+        Button { zeigeAnpassen = true } label: {
+            Label("Reihenfolge", systemImage: "slider.horizontal.3")
+        }
+    }
+    ToolbarItem(placement: .confirmationAction) {      // RECHTS: immer Fertig
+        Button("Fertig") { dismiss() }
+    }
+}
+```
+
+**Regel (bindend):**
+- **Links** (`.navigationBarLeading`): Reihenfolge/Anpassen-Button — öffnet die AnpassenView als Sheet
+- **Rechts** (`.confirmationAction`): „Fertig"-Button — dismissed die AnalyseView
+- Niemals `.cancellationAction` für Fertig verwenden (landet links, ist falsch)
+- Niemals `.primaryAction` für Anpassen verwenden (landet rechts, ist falsch)
+
+**Jede AnalyseView benötigt ein Sektionen-System:**
+```swift
+// 1. Enum (global, vor dem View)
+enum MeinAnalyseSektion: String, CaseIterable, Codable, Identifiable { ... }
+
+// 2. Persistenz-Funktionen (global)
+private let kSektionenKey = "meinModulAnalyseSektionen"
+private func sektionenLaden() -> [MeinAnalyseSektion] { ... }
+private func sektionenSpeichern(_ s: [MeinAnalyseSektion]) { ... }
+
+// 3. State im View
+@State private var sektionen: [MeinAnalyseSektion] = sektionenLaden()
+@State private var zeigeAnpassen = false
+
+// 4. ForEach statt fester Karten-Liste
+VStack(spacing: 16) {
+    ForEach(sektionen) { sektion in
+        sektionView(sektion)
+    }
+}
+
+// 5. onChange speichert
+.onChange(of: sektionen) { _, new in sektionenSpeichern(new) }
+```
+
+**AnpassenView-Template** (als `private struct` am Ende jeder AnalyseView-Datei):
+```swift
+private struct MeinAnalyseAnpassenView: View {
+    @Binding var sektionen: [MeinAnalyseSektion]
+    @Environment(\.dismiss) private var dismiss
+    @State private var editMode: EditMode = .active
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(sektionen) { sektion in
+                    HStack(spacing: 12) {
+                        Image(systemName: sektion.symbol).foregroundStyle(.modulTint).frame(width: 24)
+                        Text(sektion.rawValue).font(.subheadline)
+                    }
+                }
+                .onMove { from, to in
+                    sektionen.move(fromOffsets: from, toOffset: to)
+                    sektionenSpeichern(sektionen)
+                }
+            }
+            .environment(\.editMode, $editMode)
+            .navigationTitle("Reihenfolge anpassen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Fertig") { dismiss() } }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}
+```
+
+---
+
 ## Apple Intelligence Integration (Standard)
 
 Jede AnalyseView und ArztbriefView enthält einen **KI-Einblick** via `FoundationModels` (iOS 26+).

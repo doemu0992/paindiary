@@ -2,6 +2,59 @@ import SwiftUI
 import SwiftData
 import Charts
 
+// MARK: - Sektionen
+
+enum ZyklusAnalyseSektion: String, CaseIterable, Codable, Identifiable {
+    case uebersicht          = "Übersicht"
+    case vorhersage          = "Adaptive Vorhersage"
+    case genauigkeit         = "Vorhersagegenauigkeit"
+    case verlauf             = "Zyklusverlauf"
+    case schleim             = "Zervixschleim"
+    case symptome            = "Häufigste Symptome"
+    case temperatur          = "Basaltemperatur"
+    case ovulationstests     = "Ovulationstests"
+    case schmerzKorrelation  = "Schmerz & Zyklus"
+    case migraeneKorrelation = "Migräne & Zyklus"
+    case kiInsicht           = "KI-Einblick"
+
+    var id: String { rawValue }
+
+    var symbol: String {
+        switch self {
+        case .uebersicht:          return "drop.fill"
+        case .vorhersage:          return "brain.head.profile"
+        case .genauigkeit:         return "target"
+        case .verlauf:             return "chart.line.uptrend.xyaxis"
+        case .schleim:             return "drop.halffull"
+        case .symptome:            return "list.bullet.clipboard.fill"
+        case .temperatur:          return "thermometer.medium"
+        case .ovulationstests:     return "circle.dotted"
+        case .schmerzKorrelation:  return "cross.fill"
+        case .migraeneKorrelation: return "brain"
+        case .kiInsicht:           return "sparkles"
+        }
+    }
+}
+
+private let kZyklusSektionenKey = "zyklusAnalyseSektionen"
+
+private func zyklusSektionenLaden() -> [ZyklusAnalyseSektion] {
+    guard let data = UserDefaults.standard.data(forKey: kZyklusSektionenKey),
+          let decoded = try? JSONDecoder().decode([ZyklusAnalyseSektion].self, from: data)
+    else { return ZyklusAnalyseSektion.allCases }
+    let existing = Set(decoded)
+    let missing = ZyklusAnalyseSektion.allCases.filter { !existing.contains($0) }
+    return decoded + missing
+}
+
+private func zyklusSektionenSpeichern(_ sektionen: [ZyklusAnalyseSektion]) {
+    if let data = try? JSONEncoder().encode(sektionen) {
+        UserDefaults.standard.set(data, forKey: kZyklusSektionenKey)
+    }
+}
+
+// MARK: - View
+
 struct ZyklusAnalyseView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .forward) private var eintraege: [ZyklusEintrag]
     @Query(sort: \PainEntry.datum, order: .reverse) private var painEntries: [PainEntry]
@@ -13,6 +66,8 @@ struct ZyklusAnalyseView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var zeitraum: Zeitraum = .woche
+    @State private var sektionen: [ZyklusAnalyseSektion] = zyklusSektionenLaden()
+    @State private var zeigeAnpassen = false
 
     private var analyse: ZyklusAnalyse {
         ZyklusRechner.analyse(eintraege: Array(eintraege))
@@ -67,18 +122,9 @@ struct ZyklusAnalyseView: View {
                             .padding(.bottom, 16)
 
                             VStack(spacing: 16) {
-                                uebersichtKarte
-                                vorhersageKarte
-                                genauigkeitsKarte
-                                zykluslaengenKarte
-                                schleimKarte
-                                symptomKarte
-                                temperaturKarte
-                                ovulationstestKarte
-                                schmerzKorrelationKarte
-                                migraeneKorrelationKarte
-                                KIAnalyseKarte(prompt: kiPrompt, modulTint: .pink)
-                                    .id(zeitraum)
+                                ForEach(sektionen) { sektion in
+                                    sektionView(sektion)
+                                }
                             }
                             .padding(.horizontal)
                             .padding(.bottom, 24)
@@ -90,10 +136,38 @@ struct ZyklusAnalyseView: View {
             .navigationTitle("Zyklus-Analyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { zeigeAnpassen = true } label: {
+                        Label("Reihenfolge", systemImage: "slider.horizontal.3")
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Fertig") { dismiss() }
                 }
             }
+            .sheet(isPresented: $zeigeAnpassen) {
+                ZyklusAnalyseAnpassenView(sektionen: $sektionen)
+            }
+            .onChange(of: sektionen) { _, new in zyklusSektionenSpeichern(new) }
+        }
+    }
+
+    // MARK: - Section Dispatcher
+
+    @ViewBuilder
+    private func sektionView(_ sektion: ZyklusAnalyseSektion) -> some View {
+        switch sektion {
+        case .uebersicht:          uebersichtKarte
+        case .vorhersage:          vorhersageKarte
+        case .genauigkeit:         genauigkeitsKarte
+        case .verlauf:             zykluslaengenKarte
+        case .schleim:             schleimKarte
+        case .symptome:            symptomKarte
+        case .temperatur:          temperaturKarte
+        case .ovulationstests:     ovulationstestKarte
+        case .schmerzKorrelation:  schmerzKorrelationKarte
+        case .migraeneKorrelation: migraeneKorrelationKarte
+        case .kiInsicht:           KIAnalyseKarte(prompt: kiPrompt, modulTint: .pink).id(zeitraum)
         }
     }
 
@@ -754,5 +828,42 @@ struct ZyklusAnalyseView: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Reihenfolge anpassen
+
+private struct ZyklusAnalyseAnpassenView: View {
+    @Binding var sektionen: [ZyklusAnalyseSektion]
+    @Environment(\.dismiss) private var dismiss
+    @State private var editMode: EditMode = .active
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(sektionen) { sektion in
+                    HStack(spacing: 12) {
+                        Image(systemName: sektion.symbol)
+                            .foregroundStyle(.pink)
+                            .frame(width: 24)
+                        Text(sektion.rawValue)
+                            .font(.subheadline)
+                    }
+                }
+                .onMove { from, to in
+                    sektionen.move(fromOffsets: from, toOffset: to)
+                    zyklusSektionenSpeichern(sektionen)
+                }
+            }
+            .environment(\.editMode, $editMode)
+            .navigationTitle("Reihenfolge anpassen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fertig") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
