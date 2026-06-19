@@ -117,7 +117,7 @@ struct SchmerzKachel: View {
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .sheet(isPresented: $zeigeForm) { AddEntryView() }
+        .sheet(isPresented: $zeigeForm) { SchmerzForm() }
     }
 
     private func statBox(wert: String, label: String, farbe: Color) -> some View {

@@ -93,7 +93,7 @@ struct HautKachel: View {
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .sheet(isPresented: $zeigeForm) { AddEntryView() }
+        .sheet(isPresented: $zeigeForm) { HautForm() }
     }
 
     private func statBox(wert: String, label: String, farbe: Color) -> some View {
