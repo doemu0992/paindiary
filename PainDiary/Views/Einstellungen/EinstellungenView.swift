@@ -154,10 +154,24 @@ struct EinstellungenView: View {
     }
 
     private func alleDatenLoeschen() {
+        NotificationManager.shared.loescheAlleGesundheitsDatenErinnerungen()
         do {
             try modelContext.delete(model: PainEntry.self)
+            try modelContext.delete(model: MigraeneEintrag.self)
             try modelContext.delete(model: Dauermedikation.self)
             try modelContext.delete(model: EinnahmeLog.self)
+            try modelContext.delete(model: BiologikaInjektion.self)
+            try modelContext.delete(model: ZyklusEintrag.self)
+            try modelContext.delete(model: Laborwert.self)
+            try modelContext.delete(model: HAQEintrag.self)
+            try modelContext.delete(model: Arztbesuch.self)
+            try modelContext.delete(model: PhysioSession.self)
+            try modelContext.delete(model: KortisonEintrag.self)
+            try modelContext.delete(model: BlutzuckerEintrag.self)
+            try modelContext.delete(model: MIDASBewertung.self)
+            try modelContext.delete(model: Remissionsphase.self)
+            try modelContext.delete(model: Impftermin.self)
+            try modelContext.delete(model: FACITEintrag.self)
         } catch {
             exportFehler = error.localizedDescription
             zeigeExportFehler = true

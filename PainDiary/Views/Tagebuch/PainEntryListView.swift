@@ -108,7 +108,10 @@ struct PainEntryListView: View {
                             MigraeneTagesbuchZeile(anfall: anfall)
                         }
                         .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { modelContext.delete(anfall) } label: {
+                            Button(role: .destructive) {
+                                NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfall.datum)
+                                modelContext.delete(anfall)
+                            } label: {
                                 Label("Löschen", systemImage: "trash")
                             }
                         }

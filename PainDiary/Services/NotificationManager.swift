@@ -443,6 +443,16 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             .removePendingNotificationRequests(withIdentifiers: ["zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung"])
     }
 
+    func loescheAlleGesundheitsDatenErinnerungen() {
+        let behalten: Set<String> = ["tages-erinnerung", "wasser-erinnerung"]
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            let zuLoeschen = requests
+                .map { $0.identifier }
+                .filter { !behalten.contains($0) }
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: zuLoeschen)
+        }
+    }
+
     private func scheduleEinmalig(id: String, titel: String, body: String, components: DateComponents) {
         let content = UNMutableNotificationContent()
         content.title = titel
