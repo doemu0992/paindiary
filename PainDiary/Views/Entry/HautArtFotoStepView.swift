@@ -31,11 +31,28 @@ struct HautArtFotoStepView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Art der Veränderung (mehrere möglich)")
                     .font(.headline)
-                FlowLayout(artVorschlaege) { art in
-                    ChipButton(label: art, ausgewaehlt: ausgewaehlt.contains(art)) {
-                        if ausgewaehlt.contains(art) { ausgewaehlt.remove(art) }
-                        else { ausgewaehlt.insert(art) }
-                        aktualisiereBinding()
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach(artVorschlaege, id: \.self) { art in
+                        let sel = ausgewaehlt.contains(art)
+                        Button {
+                            if sel { ausgewaehlt.remove(art) } else { ausgewaehlt.insert(art) }
+                            aktualisiereBinding()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: sel ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(sel ? Color.orange : .secondary)
+                                    .font(.caption)
+                                Text(art).font(.caption).lineLimit(1)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 8)
+                            .background(
+                                sel ? Color.orange.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 10)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .animation(.easeInOut(duration: 0.15), value: sel)
                     }
                 }
                 HStack(spacing: 8) {
@@ -48,7 +65,7 @@ struct HautArtFotoStepView: View {
                             aktualisiereBinding()
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(Color.accentColor)
+                                .foregroundStyle(Color.orange)
                                 .font(.title2)
                         }
                     }
