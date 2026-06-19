@@ -51,7 +51,7 @@ enum KachelTyp: String, Codable, CaseIterable {
         case .schmerzverlauf:      return "chart.line.uptrend.xyaxis"
         case .stimmungStress:      return "heart.text.square.fill"
         case .medikamente:         return "pill.fill"
-        case .zyklus:              return "drop.circle.fill"
+        case .zyklus:              return "drop.fill"
         case .hautveraenderung:    return "allergens"
         case .schnellLinks:        return "link"
         case .wetterSchmerz:       return "cloud.sun.fill"
@@ -68,13 +68,13 @@ enum KachelTyp: String, Codable, CaseIterable {
 
     var abschnitt: String {
         switch self {
-        case .schmerzUebersicht, .medikamente, .zyklus:
+        case .schmerzUebersicht, .medikamente:
             return "Heute"
         case .schmerzverlauf:
             return "Verlauf"
         case .stimmungStress, .schnellLinks:
             return "Zuletzt"
-        case .hautveraenderung, .schmerzKachel, .migraeneKachel, .rheumaKachel, .diabetesKachel:
+        case .hautveraenderung, .zyklus, .schmerzKachel, .migraeneKachel, .rheumaKachel, .diabetesKachel:
             return "Module"
         case .wetterSchmerz, .stressSchmerz, .schlafSchmerz,
              .midasKachel, .konfigKorrelation:
@@ -85,7 +85,7 @@ enum KachelTyp: String, Codable, CaseIterable {
     // Basiskacheln können nur ausgeblendet, nicht gelöscht werden
     static let basisKacheln: Set<KachelTyp> = [
         .schmerzUebersicht, .schmerzverlauf, .stimmungStress,
-        .medikamente, .zyklus, .schnellLinks
+        .medikamente, .schnellLinks
     ]
 }
 
@@ -113,7 +113,6 @@ struct KachelKonfiguration: Codable, Identifiable, Hashable, Equatable {
     static let standard: [KachelKonfiguration] = [
         KachelKonfiguration(id: KachelTyp.schmerzUebersicht.rawValue,  typ: .schmerzUebersicht),
         KachelKonfiguration(id: KachelTyp.medikamente.rawValue,        typ: .medikamente),
-        KachelKonfiguration(id: KachelTyp.zyklus.rawValue,             typ: .zyklus),
         KachelKonfiguration(id: KachelTyp.schmerzverlauf.rawValue,     typ: .schmerzverlauf),
         KachelKonfiguration(id: KachelTyp.stimmungStress.rawValue,     typ: .stimmungStress),
         KachelKonfiguration(id: KachelTyp.schnellLinks.rawValue,       typ: .schnellLinks),

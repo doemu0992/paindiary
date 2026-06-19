@@ -103,7 +103,7 @@ struct DashboardView: View {
         case .schmerzverlauf:      schmerzVerlaufChart
         case .stimmungStress:      stimmungStressKarte
         case .medikamente:         medikamentenKarte
-        case .zyklus:              zyklusKarte
+        case .zyklus:              ZyklusKachel(eintraege: Array(zyklusEintraege))
         case .hautveraenderung:    HautKachel(eintraege: Array(eintraege.filter { $0.istHautEintrag }))
         case .schnellLinks:        schnellLinks
         case .wetterSchmerz:       WetterSchmerzKachel(eintraege: Array(eintraege))
@@ -350,55 +350,6 @@ struct DashboardView: View {
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
-    // MARK: - Zyklus
-
-    private var zyklusKarte: some View {
-        let analyse = ZyklusRechner.analyse(eintraege: Array(zyklusEintraege))
-        let kal = Calendar.current; let heute = kal.startOfDay(for: Date())
-        let tageZylus: String = { if let t = analyse.aktuellerZyklustag { return "Tag \(t)" }; return "–" }()
-        let tageZuPeriode: String = {
-            guard let np = analyse.naechstePeriodeStart else { return "–" }
-            let diff = kal.dateComponents([.day], from: heute, to: np).day ?? 0
-            return diff <= 0 ? "Heute" : "in \(diff) Tagen"
-        }()
-        let fruchtbarFenster: String = {
-            let sorted = analyse.fruchtbareTageSet.filter { $0 >= heute }.sorted()
-            guard let first = sorted.first else { return "–" }
-            var last = first
-            for tag in sorted.dropFirst() {
-                if (kal.dateComponents([.day], from: last, to: tag).day ?? 99) <= 1 { last = tag } else { break }
-            }
-            let fmt = DateFormatter(); fmt.dateFormat = "d. MMM"
-            return kal.isDate(first, inSameDayAs: last) ? fmt.string(from: first) : "\(fmt.string(from: first)) – \(fmt.string(from: last))"
-        }()
-
-        return NavigationLink(destination: ZyklusView()) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("Zyklus-Tracker", systemImage: "drop.circle.fill")
-                        .font(.headline).foregroundStyle(.pink)
-                    InfoButton(
-                        titel: "Zyklus-Tracker",
-                        text: "Aktueller Zyklustag, voraussichtliche nächste Periode und fruchtbares Fenster basierend auf deinen Einträgen."
-                    )
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                }
-                HStack(spacing: 0) {
-                    ZyklusStatSpalte(titel: "Zyklustag",           wert: tageZylus,       farbe: .pink)
-                    Divider().frame(height: 36)
-                    ZyklusStatSpalte(titel: "Nächste Periode",     wert: tageZuPeriode,   farbe: .red)
-                    Divider().frame(height: 36)
-                    ZyklusStatSpalte(titel: "Fruchtbares Fenster", wert: fruchtbarFenster, farbe: .teal)
-                }
-            }
-            .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
-        }
-        .buttonStyle(.plain)
-    }
-
     // MARK: - Schmerzverlauf
 
     private var schmerzVerlaufChart: some View {
@@ -591,13 +542,3 @@ private struct ExportOptionsSheet: View {
 
 // MARK: - Supporting Views
 
-private struct ZyklusStatSpalte: View {
-    let titel: String; let wert: String; let farbe: Color
-    var body: some View {
-        VStack(spacing: 4) {
-            Text(wert).font(.subheadline.bold()).foregroundStyle(farbe).lineLimit(1).minimumScaleFactor(0.7)
-            Text(titel).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
