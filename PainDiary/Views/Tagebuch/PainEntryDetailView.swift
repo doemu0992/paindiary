@@ -2,9 +2,9 @@ import SwiftUI
 
 struct PainEntryDetailView: View {
     let eintrag: PainEntry
-    @State private var bearbeiten = false
-    @State private var zeigeRheumaBearbeiten = false
     @State private var zeigeSchmerzBearbeiten = false
+    @State private var zeigeRheumaBearbeiten = false
+    @State private var zeigeHautBearbeiten = false
 
     private var displayLocation: String {
         if !eintrag.koerperstelle.isEmpty { return eintrag.koerperstelle }
@@ -44,7 +44,7 @@ struct PainEntryDetailView: View {
                     if eintrag.koerperstelle == "Rheuma" {
                         zeigeRheumaBearbeiten = true
                     } else if eintrag.istHautEintrag {
-                        bearbeiten = true
+                        zeigeHautBearbeiten = true
                     } else {
                         zeigeSchmerzBearbeiten = true
                     }
@@ -57,8 +57,8 @@ struct PainEntryDetailView: View {
         .sheet(isPresented: $zeigeRheumaBearbeiten) {
             RheumaSchnellForm(eintrag: eintrag)
         }
-        .sheet(isPresented: $bearbeiten) {
-            AddEntryView(eintrag: eintrag)
+        .sheet(isPresented: $zeigeHautBearbeiten) {
+            HautForm(eintrag: eintrag)
         }
     }
 

@@ -5,6 +5,7 @@ struct HautForm: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    var eintrag: PainEntry? = nil
     var onGespeichert: (() -> Void)? = nil
 
     @StateObject private var scanService = BodyScanService.shared
@@ -50,7 +51,7 @@ struct HautForm: View {
 
                 navigationsLeiste
             }
-            .navigationTitle("Hautveränderung")
+            .navigationTitle(eintrag == nil ? "Hautveränderung" : "Eintrag bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -295,6 +296,22 @@ struct HautForm: View {
     // MARK: - Load / Save
 
     private func laden() {
+        if let e = eintrag {
+            datum = e.datum
+            hautStellen = e.hautStellen
+            hautArt = e.hautArt
+            fotoDateiname = e.fotoDateiname
+            verlauf = e.verlauf
+            stimmung = e.stimmung
+            schlafStunden = e.schlafStunden
+            stressLevel = e.stressLevel
+            notizen = e.notizen
+            wetterTemperatur = e.wetterTemperatur
+            wetterCode = e.wetterCode
+            wetterWind = e.wetterWind
+            return
+        }
+
         if let snap = wetter.aktuell {
             wetterTemperatur = snap.temperatur
             wetterCode = snap.code
@@ -314,29 +331,42 @@ struct HautForm: View {
     }
 
     private func speichern() {
-        let snap = wetter.aktuell
-        let finalTemp = wetterTemperatur ?? snap?.temperatur
-        let finalCode = wetterCode ?? snap?.code
-        let finalWind = wetterWind ?? snap?.windgeschwindigkeit
+        if let e = eintrag {
+            e.datum = datum
+            e.hautStellen = hautStellen
+            e.koerperstelle = hautStellen
+            e.hautArt = hautArt
+            e.fotoDateiname = fotoDateiname
+            e.verlauf = verlauf
+            e.stimmung = stimmung
+            e.schlafStunden = schlafStunden
+            e.stressLevel = stressLevel
+            e.notizen = notizen
+        } else {
+            let snap = wetter.aktuell
+            let finalTemp = wetterTemperatur ?? snap?.temperatur
+            let finalCode = wetterCode ?? snap?.code
+            let finalWind = wetterWind ?? snap?.windgeschwindigkeit
 
-        let neu = PainEntry(
-            datum: datum,
-            schmerzstaerke: 0,
-            koerperstelle: hautStellen,
-            notizen: notizen,
-            stimmung: stimmung,
-            schlafStunden: schlafStunden,
-            stressLevel: stressLevel,
-            wetterTemperatur: finalTemp,
-            wetterCode: finalCode,
-            wetterWind: finalWind,
-            hautStellen: hautStellen,
-            hautArt: hautArt,
-            fotoDateiname: fotoDateiname,
-            verlauf: verlauf
-        )
-        neu.istHautEintrag = true
-        modelContext.insert(neu)
+            let neu = PainEntry(
+                datum: datum,
+                schmerzstaerke: 0,
+                koerperstelle: hautStellen,
+                notizen: notizen,
+                stimmung: stimmung,
+                schlafStunden: schlafStunden,
+                stressLevel: stressLevel,
+                wetterTemperatur: finalTemp,
+                wetterCode: finalCode,
+                wetterWind: finalWind,
+                hautStellen: hautStellen,
+                hautArt: hautArt,
+                fotoDateiname: fotoDateiname,
+                verlauf: verlauf
+            )
+            neu.istHautEintrag = true
+            modelContext.insert(neu)
+        }
 
 #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
