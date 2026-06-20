@@ -85,7 +85,7 @@ struct SchmerzKachel: View {
                     x: .value("Tag", punkt.datum, unit: .day),
                     y: .value("Schmerz", hatDaten ? punkt.wert : 1.0)
                 )
-                .foregroundStyle(hatDaten ? staerkeFarbe(punkt.wert) : Color.red.opacity(0.07))
+                .foregroundStyle(hatDaten ? (punkt.wert > 0 ? Color.red.opacity(0.75) : Color.red.opacity(0.12)) : Color.red.opacity(0.07))
                 .cornerRadius(3)
             }
             .chartXAxis(.hidden)
