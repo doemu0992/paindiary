@@ -282,28 +282,27 @@ struct PainEntryDetailView: View {
 
     @ViewBuilder
     private func betroffeneGelenkeGrid(gelenke: [String: GelenkZustand]) -> some View {
-        let sortierte = gelenke.sorted { lhs, rhs in
-            let lName = alleGelenke.first(where: { $0.id == lhs.key })?.langname ?? lhs.key
-            let rName = alleGelenke.first(where: { $0.id == rhs.key })?.langname ?? rhs.key
+        let gelenkIDs = gelenke.keys.sorted { lhs, rhs in
+            let lName = alleGelenke.first(where: { $0.id == lhs })?.langname ?? lhs
+            let rName = alleGelenke.first(where: { $0.id == rhs })?.langname ?? rhs
             return lName < rName
         }
-        FlowLayout(spacing: 6) {
-            ForEach(sortierte, id: \.key) { item in
-                let name = alleGelenke.first(where: { $0.id == item.key })?.kurzname ?? item.key
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(item.value.farbe)
-                        .frame(width: 8, height: 8)
-                    Text(name)
-                        .font(.caption)
-                    Text(item.value.kuerzel)
-                        .font(.caption2.bold())
-                        .foregroundStyle(item.value.farbe)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(item.value.farbe.opacity(0.1), in: Capsule())
+        FlowLayout(gelenkIDs) { id in
+            let zustand = gelenke[id] ?? .keiner
+            let name = alleGelenke.first(where: { $0.id == id })?.kurzname ?? id
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(zustand.farbe)
+                    .frame(width: 8, height: 8)
+                Text(name)
+                    .font(.caption)
+                Text(zustand.kuerzel)
+                    .font(.caption2.bold())
+                    .foregroundStyle(zustand.farbe)
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(zustand.farbe.opacity(0.1), in: Capsule())
         }
 
         HStack(spacing: 16) {
@@ -337,15 +336,13 @@ struct PainEntryDetailView: View {
             if !stellen.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Betroffene Stellen").font(.caption).foregroundStyle(.secondary)
-                    FlowLayout(spacing: 6) {
-                        ForEach(stellen, id: \.self) { stelle in
-                            Text(stelle)
-                                .font(.caption.bold())
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(tint.opacity(0.12), in: Capsule())
-                                .foregroundStyle(tint)
-                        }
+                    FlowLayout(stellen) { stelle in
+                        Text(stelle)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(tint.opacity(0.12), in: Capsule())
+                            .foregroundStyle(tint)
                     }
                 }
             }
@@ -354,15 +351,13 @@ struct PainEntryDetailView: View {
                 Divider()
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Art der Veränderung").font(.caption).foregroundStyle(.secondary)
-                    FlowLayout(spacing: 6) {
-                        ForEach(arten, id: \.self) { art in
-                            Text(art)
-                                .font(.caption.bold())
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
-                                .foregroundStyle(.primary)
-                        }
+                    FlowLayout(arten) { art in
+                        Text(art)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
+                            .foregroundStyle(.primary)
                     }
                 }
             }
@@ -622,44 +617,3 @@ private extension View {
     }
 }
 
-// MARK: - FlowLayout
-
-private struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? 0
-        var height: CGFloat = 0
-        var rowWidth: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        for view in subviews {
-            let size = view.sizeThatFits(.unspecified)
-            if rowWidth + size.width > width && rowWidth > 0 {
-                height += rowHeight + spacing
-                rowWidth = 0
-                rowHeight = 0
-            }
-            rowWidth += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-        height += rowHeight
-        return CGSize(width: width, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var rowHeight: CGFloat = 0
-        for view in subviews {
-            let size = view.sizeThatFits(.unspecified)
-            if x + size.width > bounds.maxX && x > bounds.minX {
-                y += rowHeight + spacing
-                x = bounds.minX
-                rowHeight = 0
-            }
-            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-    }
-}
