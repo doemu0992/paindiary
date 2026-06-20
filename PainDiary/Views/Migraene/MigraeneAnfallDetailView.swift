@@ -39,6 +39,8 @@ struct MigraeneAnfallDetailView: View {
 
                 postdromKarte
 
+                wohlbefindenKarte
+
                 wetterKarte
 
                 if !anfall.zyklusPhase.isEmpty {
@@ -273,6 +275,82 @@ struct MigraeneAnfallDetailView: View {
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
+    // MARK: - Wohlbefinden
+
+    @ViewBuilder
+    private var wohlbefindenKarte: some View {
+        let hatDaten = anfall.stimmung > 0 || anfall.stressLevel > 0 || anfall.schlafStunden > 0 || anfall.fatigue > 0
+        if hatDaten {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Wohlbefinden", systemImage: "heart.text.square.fill")
+                    .font(.headline).foregroundStyle(.pink)
+                Divider()
+
+                if anfall.stimmung > 0 {
+                    HStack {
+                        Text("Stimmung").font(.subheadline).foregroundStyle(.secondary)
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Text(stimmungLabel(anfall.stimmung))
+                                .font(.subheadline.bold())
+                                .foregroundStyle(stimmungFarbe(anfall.stimmung))
+                            Image(systemName: "heart.fill")
+                                .font(.caption)
+                                .foregroundStyle(stimmungFarbe(anfall.stimmung))
+                        }
+                    }
+                }
+
+                if anfall.stressLevel > 0 {
+                    HStack {
+                        Text("Stresslevel").font(.subheadline).foregroundStyle(.secondary)
+                        Spacer()
+                        HStack(spacing: 6) {
+                            Text(stressLabel(anfall.stressLevel))
+                                .font(.subheadline.bold())
+                                .foregroundStyle(stressFarbe(anfall.stressLevel))
+                            HStack(spacing: 3) {
+                                ForEach(1...5, id: \.self) { i in
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(i <= anfall.stressLevel
+                                              ? stressFarbe(anfall.stressLevel)
+                                              : Color.secondary.opacity(0.2))
+                                        .frame(width: 8, height: 12)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if anfall.schlafStunden > 0 {
+                    HStack {
+                        Text("Schlaf").font(.subheadline).foregroundStyle(.secondary)
+                        Spacer()
+                        Text(String(format: "%.1f Stunden", anfall.schlafStunden))
+                            .font(.subheadline.bold())
+                    }
+                }
+
+                if anfall.fatigue > 0 {
+                    HStack {
+                        Text("Erschöpfung (Fatigue)").font(.subheadline).foregroundStyle(.secondary)
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Image(systemName: "battery.25").font(.caption)
+                                .foregroundStyle(fatigueFarbe(anfall.fatigue))
+                            Text("\(anfall.fatigue)/10")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(fatigueFarbe(anfall.fatigue))
+                        }
+                    }
+                }
+            }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        }
+    }
+
     // MARK: - Helpers
 
     @ViewBuilder
@@ -322,6 +400,58 @@ struct MigraeneAnfallDetailView: View {
 
     private var staerkeFarbe: Color {
         switch anfall.staerke {
+        case 1...3: return .green
+        case 4...6: return .orange
+        default:    return .red
+        }
+    }
+
+    private func stimmungLabel(_ s: Int) -> String {
+        switch s {
+        case 1: return "Schlecht"
+        case 2: return "Mässig"
+        case 3: return "Okay"
+        case 4: return "Gut"
+        case 5: return "Super"
+        default: return ""
+        }
+    }
+
+    private func stimmungFarbe(_ s: Int) -> Color {
+        switch s {
+        case 1: return .red
+        case 2: return .orange
+        case 3: return .yellow
+        case 4: return .mint
+        case 5: return .green
+        default: return .secondary
+        }
+    }
+
+    private func stressLabel(_ s: Int) -> String {
+        switch s {
+        case 1: return "Entspannt"
+        case 2: return "Leicht"
+        case 3: return "Mässig"
+        case 4: return "Hoch"
+        case 5: return "Extrem"
+        default: return ""
+        }
+    }
+
+    private func stressFarbe(_ s: Int) -> Color {
+        switch s {
+        case 1: return .green
+        case 2: return .mint
+        case 3: return .yellow
+        case 4: return .orange
+        case 5: return .red
+        default: return .secondary
+        }
+    }
+
+    private func fatigueFarbe(_ f: Int) -> Color {
+        switch f {
         case 1...3: return .green
         case 4...6: return .orange
         default:    return .red
