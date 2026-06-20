@@ -651,6 +651,94 @@ enum Zeitraum: String, CaseIterable {
 
 ---
 
+## Körperheatmap in AnalyseViews (bindend)
+
+In allen AnalyseViews, die **Körperlokalisation oder Gelenkdaten** erfassen, wird `KoerperHeatmapView` als primäre Visualisierung verwendet — ergänzt durch ein Top-5-Balken-Chart darunter.
+
+### Gilt für
+
+| Modul | AnalyseView | Datenfeld | IntensitätenProperty | UIColor |
+|---|---|---|---|---|
+| Schmerz | SchmerzAnalyseView | `koerperstelle` | `koerperstellenIntensitaeten` | `.systemRed` |
+| Rheuma | RheumaAnalyseView | `gelenkStatus` (via GelenkStatusCoder → `gelenkZuNodeName`) | `gelenkIntensitaeten` | `.systemTeal` |
+| Haut | HautAnalyseView | `hautStellen` | `hautstellenIntensitaeten` | `.systemOrange` |
+
+**Gilt nicht für:** MigraeneAnalyseView, DiabetesAnalyseView, ZyklusAnalyseView, WohlbefindenAnalyseView (keine Körperlokalisation).
+
+### Implementierungsmuster (bindend für neue Module mit Körperdaten)
+
+```swift
+import SceneKit
+
+struct MeinModulAnalyseView: View {
+    @StateObject private var scanService = BodyScanService.shared
+
+    // Intensitäten normalisiert 0.0–1.0
+    private var meinIntensitaeten: [String: Double] {
+        var counts: [String: Int] = [:]
+        for e in gefiltert where !e.koerperstelle.isEmpty {
+            for ort in e.koerperstelle.components(separatedBy: ", ").filter({ !$0.isEmpty }) {
+                counts[ort, default: 0] += 1
+            }
+        }
+        let maxCount = counts.values.max() ?? 1
+        return counts.mapValues { Double($0) / Double(maxCount) }
+    }
+
+    // In der Körperstellen-Karte:
+    private var koerperstellenKarte: some View {
+        karte(titel: "Körperstellen", symbol: "figure.stand", farbe: .modulTint) {
+            VStack(spacing: 12) {
+                KoerperHeatmapView(
+                    intensitaeten: meinIntensitaeten,
+                    tintColor: .systemXxx,           // UIColor der Modulfarbe
+                    proportionen: scanService.proportionen
+                )
+                .frame(height: 260)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                // Gradient-Legende
+                HStack(spacing: 0) {
+                    Spacer()
+                    Text("Selten").font(.caption2).foregroundStyle(.secondary)
+                    LinearGradient(
+                        colors: [Color.modulTint.opacity(0.18), Color.modulTint.opacity(0.50), Color.modulTint.opacity(0.80)],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: 80, height: 8).clipShape(Capsule()).padding(.horizontal, 6)
+                    Text("Häufig").font(.caption2).foregroundStyle(.secondary)
+                    Spacer()
+                }
+
+                Divider()
+
+                // Top-5 Balken-Chart
+                VStack(spacing: 8) {
+                    ForEach(topOrte.prefix(5)) { ort in ... }
+                }
+
+                Text("Tippe auf Körperregion — wische zum Drehen")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+    }
+}
+```
+
+### Rheuma-spezifisch: Gelenk-ID → Node-Name Mapping
+
+```swift
+// gelenkZuNodeName: maps GelenkStatusCoder IDs → BodySceneBuilder node names
+// Finger/Hand: R_MCP1-5, R_PIP1-5, R_HG → "Hand rechts" (analog links)
+// Arm: R_E → "Ellbogen rechts", R_S → "Schulter rechts"
+// Wirbelsäule: HWS → "Hals", BWS → "Brust", LWS → "Bauch"
+// Beine: R_HUE, L_HUE → "Hüfte", R_K → "Knie rechts", R_OSG → "Knöchel rechts"
+// Kiefer: R_KFG, L_KFG → "Kopf"
+```
+
+---
+
 ## Neue Features / Module – Checkliste
 
 Vor dem Merge eines neuen Moduls prüfen:
@@ -665,6 +753,7 @@ Vor dem Merge eines neuen Moduls prüfen:
 - [ ] ProfilView `erkrankungenSektion`: NavigationLink-Icon mit Modul-Tint
 - [ ] ProfilView `moduleSektion`: Toggle-Icon mit Modul-Tint
 - [ ] AnalyseView: `.kiInsicht`-Section + `kiPrompt` + `KIAnalyseKarte` eingebunden
+- [ ] AnalyseView: Falls Körperlokalisationsdaten → `KoerperHeatmapView` eingebunden (siehe Körperheatmap-Standard)
 - [ ] Grep nach alter/falscher Farbe im Modul-Ordner vor Merge (`grep -r "\.wrongColor" Views/MeinModul/`)
 - [ ] Jede Delete-Operation folgt dem Löschen-Standard (siehe unten)
 
