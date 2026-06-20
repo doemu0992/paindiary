@@ -4,6 +4,7 @@ struct PainEntryDetailView: View {
     let eintrag: PainEntry
     @State private var bearbeiten = false
     @State private var zeigeRheumaBearbeiten = false
+    @State private var zeigeSchmerzBearbeiten = false
 
     private var displayLocation: String {
         if !eintrag.koerperstelle.isEmpty { return eintrag.koerperstelle }
@@ -42,17 +43,22 @@ struct PainEntryDetailView: View {
                 Button("Bearbeiten") {
                     if eintrag.koerperstelle == "Rheuma" {
                         zeigeRheumaBearbeiten = true
-                    } else {
+                    } else if eintrag.istHautEintrag {
                         bearbeiten = true
+                    } else {
+                        zeigeSchmerzBearbeiten = true
                     }
                 }
             }
         }
-        .sheet(isPresented: $bearbeiten) {
-            AddEntryView(eintrag: eintrag)
+        .sheet(isPresented: $zeigeSchmerzBearbeiten) {
+            SchmerzForm(eintrag: eintrag)
         }
         .sheet(isPresented: $zeigeRheumaBearbeiten) {
             RheumaSchnellForm(eintrag: eintrag)
+        }
+        .sheet(isPresented: $bearbeiten) {
+            AddEntryView(eintrag: eintrag)
         }
     }
 
