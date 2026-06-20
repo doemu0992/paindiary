@@ -416,6 +416,11 @@ struct RheumaSchnellForm: View {
     }
 
     private func speichern() {
+        let snap = wetter.aktuell
+        let finalTemp = wetterTemperatur ?? snap?.temperatur
+        let finalCode = wetterCode ?? snap?.code
+        let finalWind = wetterWind ?? snap?.windgeschwindigkeit
+
         if let e = eintrag {
             e.datum = datum
             e.schmerzstaerke = schmerzstaerke
@@ -427,6 +432,9 @@ struct RheumaSchnellForm: View {
             e.schlafStunden = schlafStunden
             e.stressLevel = stressLevel
             e.notizen = notizen
+            e.wetterTemperatur = e.wetterTemperatur ?? finalTemp
+            e.wetterCode = e.wetterCode ?? finalCode
+            e.wetterWind = e.wetterWind ?? finalWind
         } else {
             let neu = PainEntry(
                 datum: datum,
@@ -439,7 +447,10 @@ struct RheumaSchnellForm: View {
                 morgensteifigkeit: morgensteifigkeit,
                 istSchub: istSchub,
                 fatigue: fatigue,
-                gelenkStatus: gelenkStatus
+                gelenkStatus: gelenkStatus,
+                wetterTemperatur: finalTemp,
+                wetterCode: finalCode,
+                wetterWind: finalWind
             )
             modelContext.insert(neu)
         }
