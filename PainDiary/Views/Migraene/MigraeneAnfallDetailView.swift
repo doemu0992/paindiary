@@ -175,11 +175,28 @@ struct MigraeneAnfallDetailView: View {
     // MARK: - Medikament
 
     private var medikamentKarte: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Akutmedikament", systemImage: "pill.fill")
-                .font(.headline).foregroundStyle(.blue)
+        let medListe = anfall.akutmedikament
+            .components(separatedBy: ", ")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        return VStack(alignment: .leading, spacing: 12) {
+            Label("Akutmedikamente", systemImage: "pill.fill")
+                .font(.headline).foregroundStyle(.purple)
             Divider()
-            zeile("Medikament", wert: anfall.akutmedikament)
+            if medListe.count == 1 {
+                zeile("Medikament", wert: medListe[0])
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Medikamente").font(.caption).foregroundStyle(.secondary)
+                    FlowLayout(medListe) { med in
+                        Text(med)
+                            .font(.caption)
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(Color.purple.opacity(0.12), in: Capsule())
+                            .foregroundStyle(.purple)
+                    }
+                }
+            }
             if !anfall.medikamentWirksam.isEmpty {
                 zeile("Wirksamkeit", wert: anfall.medikamentWirksam)
             }

@@ -1,6 +1,7 @@
 import SwiftUI
 import Charts
 import SwiftData
+import SceneKit
 
 // MARK: - Section Enum
 
@@ -33,6 +34,7 @@ struct SchmerzAnalyseView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
     private var eintraege: [PainEntry] { alleEintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" } }
 
+    @StateObject private var scanService = BodyScanService.shared
     @State private var sektionen: [SchmerzAnalyseSektion] = SchmerzAnalyseView.sektionenLaden()
     @State private var zeitraum: Zeitraum = .woche
     @State private var zeigeAnpassen = false
@@ -127,6 +129,17 @@ struct SchmerzAnalyseView: View {
         }
         return counts.map { OrtHaeufigkeit(id: $0.key, anzahl: $0.value) }
             .sorted { $0.anzahl > $1.anzahl }.prefix(8).map { $0 }
+    }
+
+    private var koerperstellenIntensitaeten: [String: Double] {
+        var counts: [String: Int] = [:]
+        for e in gefiltert where !e.koerperstelle.isEmpty {
+            for ort in e.koerperstelle.components(separatedBy: ",").map({ $0.trimmingCharacters(in: .whitespaces) }) where !ort.isEmpty {
+                counts[ort, default: 0] += 1
+            }
+        }
+        let maxCount = counts.values.max() ?? 1
+        return counts.mapValues { Double($0) / Double(maxCount) }
     }
 
     // MARK: - Auslöser
@@ -418,26 +431,65 @@ struct SchmerzAnalyseView: View {
                 leerKarte(.koerperstellen)
             } else {
                 karte(titel: "Körperstellen", symbol: "figure.stand", farbe: .red) {
-                    let maxAnzahl = topOrte.first?.anzahl ?? 1
-                    VStack(spacing: 8) {
-                        ForEach(topOrte) { ort in
-                            HStack(spacing: 8) {
-                                Text(ort.id)
-                                    .font(.subheadline)
-                                    .frame(width: 120, alignment: .leading)
-                                    .lineLimit(1)
-                                GeometryReader { geo in
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(Color.red.opacity(0.7))
-                                        .frame(width: geo.size.width * CGFloat(ort.anzahl) / CGFloat(maxAnzahl))
+                    VStack(spacing: 12) {
+                        // Heatmap body
+                        KoerperHeatmapView(
+                            intensitaeten: koerperstellenIntensitaeten,
+                            tintColor: .systemRed,
+                            proportionen: scanService.proportionen
+                        )
+                        .frame(height: 260)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                        // Color legend
+                        HStack(spacing: 0) {
+                            Spacer()
+                            Text("Selten")
+                                .font(.caption2).foregroundStyle(.secondary)
+                            LinearGradient(
+                                colors: [
+                                    Color.red.opacity(0.18),
+                                    Color.red.opacity(0.50),
+                                    Color.red.opacity(0.80)
+                                ],
+                                startPoint: .leading, endPoint: .trailing
+                            )
+                            .frame(width: 80, height: 8)
+                            .clipShape(Capsule())
+                            .padding(.horizontal, 6)
+                            Text("Häufig")
+                                .font(.caption2).foregroundStyle(.secondary)
+                            Spacer()
+                        }
+
+                        Divider()
+
+                        // Top locations bar chart
+                        let maxAnzahl = topOrte.first?.anzahl ?? 1
+                        VStack(spacing: 8) {
+                            ForEach(topOrte.prefix(5)) { ort in
+                                HStack(spacing: 8) {
+                                    Text(ort.id)
+                                        .font(.subheadline)
+                                        .frame(width: 120, alignment: .leading)
+                                        .lineLimit(1)
+                                    GeometryReader { geo in
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(Color.red.opacity(0.7))
+                                            .frame(width: geo.size.width * CGFloat(ort.anzahl) / CGFloat(maxAnzahl))
+                                    }
+                                    .frame(height: 18)
+                                    Text("\(ort.anzahl)×")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.red)
+                                        .frame(width: 32, alignment: .trailing)
                                 }
-                                .frame(height: 18)
-                                Text("\(ort.anzahl)×")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(.red)
-                                    .frame(width: 32, alignment: .trailing)
                             }
                         }
+
+                        Text("Tippe auf Körperregion — wische zum Drehen")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
             }

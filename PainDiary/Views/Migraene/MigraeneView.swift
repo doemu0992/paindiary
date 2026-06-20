@@ -325,8 +325,8 @@ struct MigraeneAnfallForm: View {
     @State private var ausgewaehlteBegleitsymptome: Set<String> = []
     @State private var ausgewaehlteAusloeser: Set<String> = []
     @State private var ausgewaehltePostdrom: Set<String> = []
-    @State private var akutmedikament = ""
-    @State private var ausgewaehltesMedikament: Dauermedikation? = nil
+    @State private var ausgewaehltesMedikamenteNamen: Set<String> = []
+    @State private var freiTextMedikament = ""
     @State private var medikamentWirksam = ""
     @State private var notizen = ""
     @State private var wetterTemperatur: Double? = nil
@@ -720,28 +720,29 @@ struct MigraeneAnfallForm: View {
 
     private var medikamentSchritt: some View {
         VStack(spacing: 20) {
-            schrittHeader(symbol: "checkmark.seal.fill", titel: "Abschluss", untertitel: "Medikament und Postdrom")
+            schrittHeader(symbol: "checkmark.seal.fill", titel: "Abschluss", untertitel: "Medikamente und Postdrom")
 
             let aktiveMeds = alleMedikamente.filter(\.aktiv)
             karte {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Akutmedikament").font(.headline)
+                    Text("Akutmedikamente (mehrere möglich)").font(.headline)
+
+                    // Known medications list — multi-select
                     if !aktiveMeds.isEmpty {
                         VStack(spacing: 2) {
                             ForEach(aktiveMeds) { med in
+                                let vollname = med.dosierung.isEmpty ? med.name : "\(med.name) \(med.dosierung)"
+                                let sel = ausgewaehltesMedikamenteNamen.contains(vollname)
                                 Button {
-                                    if ausgewaehltesMedikament?.id == med.id {
-                                        ausgewaehltesMedikament = nil
-                                        akutmedikament = ""
+                                    if sel {
+                                        ausgewaehltesMedikamenteNamen.remove(vollname)
                                     } else {
-                                        ausgewaehltesMedikament = med
-                                        akutmedikament = med.dosierung.isEmpty
-                                            ? med.name : "\(med.name) \(med.dosierung)"
+                                        ausgewaehltesMedikamenteNamen.insert(vollname)
                                     }
                                 } label: {
                                     HStack {
                                         Image(systemName: med.typSymbol)
-                                            .foregroundStyle(.blue)
+                                            .foregroundStyle(.purple)
                                             .frame(width: 24)
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(med.name).foregroundStyle(.primary)
@@ -751,25 +752,65 @@ struct MigraeneAnfallForm: View {
                                             }
                                         }
                                         Spacer()
-                                        if ausgewaehltesMedikament?.id == med.id {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundStyle(.blue)
-                                        }
+                                        Image(systemName: sel ? "checkmark.circle.fill" : "circle")
+                                            .foregroundStyle(sel ? Color.purple : Color.secondary)
                                     }
                                     .padding(.vertical, 4)
                                 }
                                 .buttonStyle(.plain)
+                                .animation(.easeInOut(duration: 0.15), value: sel)
                                 if med.id != aktiveMeds.last?.id { Divider() }
                             }
                         }
                         Divider()
-                        TextField("Anderes Medikament", text: $akutmedikament)
-                            .disabled(ausgewaehltesMedikament != nil)
-                            .foregroundStyle(ausgewaehltesMedikament != nil ? .secondary : .primary)
-                    } else {
-                        TextField("z.B. Sumatriptan 50 mg", text: $akutmedikament)
                     }
-                    if !akutmedikament.isEmpty || ausgewaehltesMedikament != nil {
+
+                    // Free-text entry
+                    HStack(spacing: 8) {
+                        TextField(aktiveMeds.isEmpty ? "z.B. Sumatriptan 50 mg" : "Anderes Medikament…", text: $freiTextMedikament)
+                            .font(.subheadline)
+                            .padding(14)
+                            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                            .submitLabel(.done)
+                        if !freiTextMedikament.isEmpty {
+                            Button {
+                                let term = freiTextMedikament.trimmingCharacters(in: .whitespaces)
+                                guard !term.isEmpty else { return }
+                                ausgewaehltesMedikamenteNamen.insert(term)
+                                freiTextMedikament = ""
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundStyle(.purple)
+                                    .font(.title2)
+                            }
+                        }
+                    }
+
+                    // Chips for free-text medications not in the known-meds list
+                    let customChips = ausgewaehltesMedikamenteNamen.filter { name in
+                        !aktiveMeds.contains(where: { med in
+                            let vn = med.dosierung.isEmpty ? med.name : "\(med.name) \(med.dosierung)"
+                            return vn == name
+                        })
+                    }.sorted()
+                    if !customChips.isEmpty {
+                        FlowLayout(customChips) { chip in
+                            HStack(spacing: 4) {
+                                Text(chip).font(.caption)
+                                Button {
+                                    ausgewaehltesMedikamenteNamen.remove(chip)
+                                } label: {
+                                    Image(systemName: "xmark").font(.caption2.bold())
+                                }
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(Color.purple.opacity(0.12), in: Capsule())
+                            .foregroundStyle(.purple)
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    if !ausgewaehltesMedikamenteNamen.isEmpty {
                         Divider()
                         Picker("Wirksam?", selection: $medikamentWirksam) {
                             Text("Nicht angegeben").tag("")
@@ -1005,8 +1046,8 @@ struct MigraeneAnfallForm: View {
             ausgewaehltePostdrom = Set(a.postdromListe)
             hatEndZeit = a.endZeit != nil
             endZeit = a.endZeit ?? Date()
-            akutmedikament = a.akutmedikament
             medikamentWirksam = a.medikamentWirksam
+            ausgewaehltesMedikamenteNamen = Set(a.akutmedikament.components(separatedBy: ", ").filter { !$0.isEmpty })
             notizen = a.notizen
             wetterTemperatur = a.wetterTemperatur
             wetterCode = a.wetterCode
@@ -1015,10 +1056,6 @@ struct MigraeneAnfallForm: View {
             stimmung = a.stimmung
             stressLevel = a.stressLevel
             fatigue = a.fatigue
-            ausgewaehltesMedikament = alleMedikamente.first { med in
-                let vollname = med.dosierung.isEmpty ? med.name : "\(med.name) \(med.dosierung)"
-                return vollname == a.akutmedikament || med.name == a.akutmedikament
-            }
         } else {
             if !vorBegleit.isEmpty || vorStaerke != 6 {
                 datum = vorDatum
@@ -1065,10 +1102,12 @@ struct MigraeneAnfallForm: View {
         let finalCode = wetterCode ?? wetterSnap?.code
         let finalWind = wetterWind ?? wetterSnap?.windgeschwindigkeit
 
+        let akutmedikamentStr = ausgewaehltesMedikamenteNamen.sorted().joined(separator: ", ")
+
         if let a = anfall {
             a.datum = datum; a.dauer = dauer; a.staerke = staerke; a.seite = seitenStr
             a.hatAura = hatAura; a.charakter = charStr; a.begleitsymptome = beglStr
-            a.ausloeser = auslStr; a.akutmedikament = akutmedikament
+            a.ausloeser = auslStr; a.akutmedikament = akutmedikamentStr
             a.medikamentWirksam = medikamentWirksam; a.notizen = notizen
             a.wetterTemperatur = finalTemp
             a.wetterCode = finalCode
@@ -1085,7 +1124,7 @@ struct MigraeneAnfallForm: View {
         } else {
             let neu = MigraeneEintrag(datum: datum, dauer: dauer, staerke: staerke, seite: seitenStr,
                                       charakter: charStr, begleitsymptome: beglStr, hatAura: hatAura,
-                                      ausloeser: auslStr, akutmedikament: akutmedikament,
+                                      ausloeser: auslStr, akutmedikament: akutmedikamentStr,
                                       medikamentWirksam: medikamentWirksam, notizen: notizen,
                                       wetterTemperatur: finalTemp, wetterCode: finalCode,
                                       wetterWind: finalWind)
@@ -1100,8 +1139,11 @@ struct MigraeneAnfallForm: View {
             neu.fatigue = fatigue
             modelContext.insert(neu)
 
-            if let med = ausgewaehltesMedikament {
-                let wirkungMap = ["Ja": "gut", "Teilweise": "teilweise", "Nein": "nicht"]
+            let wirkungMap = ["Ja": "gut", "Teilweise": "teilweise", "Nein": "nicht"]
+            var ersterMedName: String? = nil
+            for med in alleMedikamente.filter(\.aktiv) {
+                let vollname = med.dosierung.isEmpty ? med.name : "\(med.name) \(med.dosierung)"
+                guard ausgewaehltesMedikamenteNamen.contains(vollname) else { continue }
                 let log = EinnahmeLog(
                     datum: datum,
                     medikamentName: med.name,
@@ -1111,9 +1153,12 @@ struct MigraeneAnfallForm: View {
                 )
                 log.wirkung = wirkungMap[medikamentWirksam] ?? ""
                 modelContext.insert(log)
-                NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: med.name)
-            } else if !akutmedikament.isEmpty {
-                NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: akutmedikament)
+                if ersterMedName == nil { ersterMedName = med.name }
+            }
+            if let name = ersterMedName {
+                NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: name)
+            } else if let name = ausgewaehltesMedikamenteNamen.sorted().first {
+                NotificationManager.shared.planeMigraeneWirkungsAbfrage(nach: datum, medikamentName: name)
             }
             if ausgewaehltePostdrom.isEmpty && !hatEndZeit {
                 NotificationManager.shared.planeMigraenePostdromErinnerung(nach: datum)
