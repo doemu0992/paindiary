@@ -28,6 +28,7 @@ struct SchmerzForm: View {
     @State private var massnahmenFreitext = ""
     @State private var stimmung = 3
     @State private var stressLevel = 3
+    @State private var energielevel = 0
     @State private var schlafStunden = 7.0
     @State private var fatigue = 0
     @State private var notizen = ""
@@ -217,7 +218,8 @@ struct SchmerzForm: View {
                     schlafStunden: $schlafStunden,
                     stressLevel: $stressLevel,
                     notizen: $notizen,
-                    fatigue: $fatigue
+                    fatigue: $fatigue,
+                    energielevel: $energielevel
                 )
                 .padding(.vertical, 24)
             }
@@ -639,6 +641,7 @@ struct SchmerzForm: View {
 
             stimmung = e.stimmung
             stressLevel = e.stressLevel
+            energielevel = e.energielevel
             schlafStunden = e.schlafStunden
             fatigue = e.fatigue
             notizen = e.notizen
@@ -695,6 +698,7 @@ struct SchmerzForm: View {
             e.schmerzart = charStr; e.ausloeser = auslStr
             e.begleiterscheinungen = beglStr; e.massnahmen = massStr
             e.stimmung = stimmung; e.stressLevel = stressLevel
+            e.energielevel = energielevel
             e.schlafStunden = schlafStunden; e.fatigue = fatigue
             e.notizen = notizen
         } else {
@@ -706,6 +710,7 @@ struct SchmerzForm: View {
                 notizen: notizen, stimmung: stimmung,
                 schlafStunden: schlafStunden, stressLevel: stressLevel,
                 fatigue: fatigue,
+                energielevel: energielevel,
                 wetterTemperatur: finalTemp, wetterCode: finalCode,
                 wetterWind: finalWind
             )

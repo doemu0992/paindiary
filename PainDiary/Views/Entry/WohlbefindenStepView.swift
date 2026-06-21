@@ -7,11 +7,11 @@ struct WohlbefindenStepView: View {
     @Binding var notizen: String
     var morgensteifigkeit: Binding<Int>? = nil
     var fatigue: Binding<Int>? = nil
+    var energielevel: Binding<Int>? = nil
     var healthSchlafVorschlag: Double? = nil
 
     var body: some View {
         VStack(spacing: 20) {
-            // Header — matches schrittHeader style
             VStack(spacing: 8) {
                 Image(systemName: "heart.fill")
                     .font(.system(size: 32))
@@ -31,23 +31,40 @@ struct WohlbefindenStepView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Stimmung")
                         .font(.headline)
-                    HStack(spacing: 12) {
-                        ForEach(1...5, id: \.self) { i in
-                            VStack(spacing: 4) {
-                                Image(systemName: i <= stimmung ? "heart.fill" : "heart")
-                                    .font(.title)
-                                    .foregroundStyle(i <= stimmung ? stimmungFarbe(i) : .secondary.opacity(0.3))
-                                    .scaleEffect(i == stimmung ? 1.2 : 1.0)
-                                    .animation(.spring(response: 0.2), value: stimmung)
-                                Text(stimmungLabel(i))
-                                    .font(.system(size: 8))
-                                    .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        ForEach(1...5, id: \.self) { stufe in
+                            let aktiv = stimmung == stufe
+                            let farbe = stimmungFarbe(stufe)
+                            Button { stimmung = stufe } label: {
+                                VStack(spacing: 5) {
+                                    Image(systemName: "heart.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(aktiv ? farbe : .secondary.opacity(0.3))
+                                    Text(stimmungLabel(stufe))
+                                        .font(.caption2)
+                                        .foregroundStyle(aktiv ? .primary : .secondary)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(
+                                    aktiv ? farbe.opacity(0.12) : Color.secondary.opacity(0.06),
+                                    in: RoundedRectangle(cornerRadius: 10)
+                                )
+                                .animation(.easeInOut(duration: 0.15), value: aktiv)
                             }
-                            .frame(maxWidth: .infinity)
-                            .onTapGesture { stimmung = i }
+                            .buttonStyle(.plain)
                         }
                     }
+                    if stimmung > 0 {
+                        Text(stimmungLabel(stimmung))
+                            .font(.caption).foregroundStyle(stimmungFarbe(stimmung))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .transition(.opacity)
+                    }
                 }
+                .animation(.easeInOut(duration: 0.15), value: stimmung)
                 .padding()
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
@@ -55,30 +72,40 @@ struct WohlbefindenStepView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Stresslevel")
                         .font(.headline)
-                    HStack(spacing: 6) {
-                        ForEach(1...5, id: \.self) { i in
-                            let farbe = stressFarbe(i)
-                            let aktiv = stressLevel == i
-                            let balkenHoehe: CGFloat = [28, 36, 44, 52, 60][i - 1]
-                            VStack(spacing: 4) {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(aktiv ? farbe : Color.secondary.opacity(0.15))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: balkenHoehe)
-                                    .animation(.easeInOut(duration: 0.15), value: stressLevel)
-                                Text(stressBezeichnung(i))
-                                    .font(.system(size: 8))
-                                    .foregroundStyle(aktiv ? farbe : .secondary)
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(2)
-                                    .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        ForEach(1...5, id: \.self) { stufe in
+                            let aktiv = stressLevel == stufe
+                            let farbe = stressFarbe(stufe)
+                            Button { stressLevel = stufe } label: {
+                                VStack(spacing: 6) {
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(aktiv ? farbe : farbe.opacity(0.2))
+                                        .frame(width: 6, height: CGFloat(stufe) * 5 + 8)
+                                    Text(stressBezeichnung(stufe))
+                                        .font(.caption2)
+                                        .foregroundStyle(aktiv ? .primary : .secondary)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(
+                                    aktiv ? farbe.opacity(0.12) : Color.secondary.opacity(0.06),
+                                    in: RoundedRectangle(cornerRadius: 10)
+                                )
+                                .animation(.easeInOut(duration: 0.15), value: aktiv)
                             }
-                            .frame(maxWidth: .infinity)
-                            .onTapGesture { stressLevel = i }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .frame(height: 84)
+                    if stressLevel > 0 {
+                        Text(stressBezeichnung(stressLevel))
+                            .font(.caption).foregroundStyle(stressFarbe(stressLevel))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .transition(.opacity)
+                    }
                 }
+                .animation(.easeInOut(duration: 0.15), value: stressLevel)
                 .padding()
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
 
@@ -115,6 +142,47 @@ struct WohlbefindenStepView: View {
                         Text("12 Std.").font(.caption2).foregroundStyle(.secondary)
                     }
                 }
+                .padding()
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            }
+
+            if let eBinding = energielevel {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Energie & Vitalität")
+                        .font(.headline)
+                    HStack(spacing: 8) {
+                        ForEach(1...5, id: \.self) { stufe in
+                            let aktiv = eBinding.wrappedValue == stufe
+                            Button { eBinding.wrappedValue = stufe } label: {
+                                VStack(spacing: 5) {
+                                    Image(systemName: energieSymbol(stufe))
+                                        .font(.title2)
+                                        .foregroundStyle(aktiv ? energieFarbe(stufe) : .secondary.opacity(0.35))
+                                    Text(energieLabel(stufe))
+                                        .font(.caption2)
+                                        .foregroundStyle(aktiv ? .primary : .secondary)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(
+                                    aktiv ? energieFarbe(stufe).opacity(0.12) : Color.secondary.opacity(0.06),
+                                    in: RoundedRectangle(cornerRadius: 10)
+                                )
+                                .animation(.easeInOut(duration: 0.15), value: aktiv)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    if eBinding.wrappedValue > 0 {
+                        Text(energieLabel(eBinding.wrappedValue))
+                            .font(.caption).foregroundStyle(energieFarbe(eBinding.wrappedValue))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .transition(.opacity)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.15), value: eBinding.wrappedValue)
                 .padding()
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             }
@@ -230,14 +298,7 @@ struct WohlbefindenStepView: View {
     }
 
     private func stimmungFarbe(_ i: Int) -> Color {
-        switch i {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        case 5: return .teal
-        default: return .secondary
-        }
+        [.red, .orange, .yellow, .green, .teal][max(0, min(i - 1, 4))]
     }
 
     private func stressBezeichnung(_ level: Int) -> String {
@@ -252,13 +313,36 @@ struct WohlbefindenStepView: View {
     }
 
     private func stressFarbe(_ level: Int) -> Color {
-        switch level {
-        case 1: return .green
-        case 2: return .mint
+        [.green, .mint, .yellow, .orange, .red][max(0, min(level - 1, 4))]
+    }
+
+    private func energieSymbol(_ stufe: Int) -> String {
+        switch stufe {
+        case 1: return "battery.0"
+        case 2: return "battery.25"
+        case 3: return "battery.50"
+        case 4: return "battery.75"
+        default: return "battery.100"
+        }
+    }
+
+    private func energieLabel(_ stufe: Int) -> String {
+        switch stufe {
+        case 1: return "Erschöpft"
+        case 2: return "Müde"
+        case 3: return "Okay"
+        case 4: return "Gut"
+        default: return "Top"
+        }
+    }
+
+    private func energieFarbe(_ stufe: Int) -> Color {
+        switch stufe {
+        case 1: return .red
+        case 2: return .orange
         case 3: return .yellow
-        case 4: return .orange
-        case 5: return .red
-        default: return .yellow
+        case 4: return .mint
+        default: return .green
         }
     }
 }

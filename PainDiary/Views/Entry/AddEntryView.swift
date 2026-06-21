@@ -42,6 +42,7 @@ struct AddEntryView: View {
     // Wohlbefinden (shared)
     @State private var stimmung = 3
     @State private var stressLevel = 3
+    @State private var energielevel = 0
     @State private var schlafStunden = 7.0
     @State private var morgensteifigkeit = 0
     @State private var fatigue = 0
@@ -338,6 +339,7 @@ struct AddEntryView: View {
                     schlafStunden: $schlafStunden,
                     stressLevel: $stressLevel,
                     notizen: $notizen,
+                    energielevel: $energielevel,
                     healthSchlafVorschlag: healthSchlaf
                 )
             default:
@@ -372,6 +374,7 @@ struct AddEntryView: View {
                 notizen: $notizen,
                 morgensteifigkeit: $morgensteifigkeit,
                 fatigue: $fatigue,
+                energielevel: $energielevel,
                 healthSchlafVorschlag: healthSchlaf
             )
         default:
@@ -491,6 +494,7 @@ struct AddEntryView: View {
         massnahmen = e.massnahmen
         stimmung = e.stimmung
         stressLevel = e.stressLevel
+        energielevel = e.energielevel
         schlafStunden = e.schlafStunden
         morgensteifigkeit = e.morgensteifigkeit
         istSchub = e.istSchub
@@ -540,8 +544,9 @@ struct AddEntryView: View {
             e.begleiterscheinungen = begleiterscheinungen
             e.massnahmen = massnahmen
             e.stimmung = stimmung
-            e.schlafStunden = schlafStunden
             e.stressLevel = stressLevel
+            e.energielevel = energielevel
+            e.schlafStunden = schlafStunden
             e.morgensteifigkeit = morgensteifigkeit
             e.istSchub = istSchub
             e.fatigue = fatigue
@@ -580,6 +585,7 @@ struct AddEntryView: View {
                 morgensteifigkeit: morgensteifigkeit,
                 istSchub: istSchub,
                 fatigue: fatigue,
+                energielevel: energielevel,
                 gelenkStatus: gelenkStatus,
                 wetterTemperatur: wetterSnap?.temperatur,
                 wetterCode: wetterSnap?.code,

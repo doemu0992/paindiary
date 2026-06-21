@@ -18,6 +18,7 @@ import SwiftData
     var morgensteifigkeit: Int = 0    // Minuten, 0 = nicht erfasst
     var istSchub: Bool = false        // Rheuma-Schub / Flare
     var fatigue: Int = 0              // Erschöpfung 0–10, 0 = nicht erfasst
+    var energielevel: Int = 0        // 1–5, 0 = nicht erfasst
     var gelenkStatus: String = ""     // "R_K:1,L_K:2,…" — GelenkStatusCoder
 
     // Wetter zum Zeitpunkt der Erfassung
@@ -48,6 +49,7 @@ import SwiftData
         morgensteifigkeit: Int = 0,
         istSchub: Bool = false,
         fatigue: Int = 0,
+        energielevel: Int = 0,
         gelenkStatus: String = "",
         wetterTemperatur: Double? = nil,
         wetterCode: Int? = nil,
@@ -72,6 +74,7 @@ import SwiftData
         self.morgensteifigkeit = morgensteifigkeit
         self.istSchub = istSchub
         self.fatigue = fatigue
+        self.energielevel = energielevel
         self.gelenkStatus = gelenkStatus
         self.wetterTemperatur = wetterTemperatur
         self.wetterCode = wetterCode

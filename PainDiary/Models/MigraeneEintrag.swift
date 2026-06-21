@@ -27,6 +27,7 @@ import SwiftData
     var stimmung: Int = 3
     var stressLevel: Int = 3
     var fatigue: Int = 0
+    var energielevel: Int = 0
 
     init(datum: Date = Date(), dauer: Int = 0, staerke: Int = 6,
          seite: String = "Einseitig links", charakter: String = "",

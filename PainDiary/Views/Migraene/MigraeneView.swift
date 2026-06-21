@@ -336,6 +336,7 @@ struct MigraeneAnfallForm: View {
     @State private var stimmung = 3
     @State private var stressLevel = 3
     @State private var fatigue = 0
+    @State private var energielevel = 0
     @State private var ausloeserFreitext = ""
     @State private var begleitFreitext = ""
     @State private var prodromFreitext = ""
@@ -498,7 +499,8 @@ struct MigraeneAnfallForm: View {
                     schlafStunden: $schlafStunden,
                     stressLevel: $stressLevel,
                     notizen: $notizen,
-                    fatigue: $fatigue
+                    fatigue: $fatigue,
+                    energielevel: $energielevel
                 )
                 .padding(.vertical, 24)
             }
@@ -1056,6 +1058,7 @@ struct MigraeneAnfallForm: View {
             stimmung = a.stimmung
             stressLevel = a.stressLevel
             fatigue = a.fatigue
+            energielevel = a.energielevel
         } else {
             if !vorBegleit.isEmpty || vorStaerke != 6 {
                 datum = vorDatum
@@ -1121,6 +1124,7 @@ struct MigraeneAnfallForm: View {
             a.stimmung = stimmung
             a.stressLevel = stressLevel
             a.fatigue = fatigue
+            a.energielevel = energielevel
         } else {
             let neu = MigraeneEintrag(datum: datum, dauer: dauer, staerke: staerke, seite: seitenStr,
                                       charakter: charStr, begleitsymptome: beglStr, hatAura: hatAura,
@@ -1137,6 +1141,7 @@ struct MigraeneAnfallForm: View {
             neu.stimmung = stimmung
             neu.stressLevel = stressLevel
             neu.fatigue = fatigue
+            neu.energielevel = energielevel
             modelContext.insert(neu)
 
             let wirkungMap = ["Ja": "gut", "Teilweise": "teilweise", "Nein": "nicht"]
