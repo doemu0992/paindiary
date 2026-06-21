@@ -24,6 +24,8 @@ struct DashboardView: View {
     @State private var kachelKonfig: [KachelKonfiguration] = .laden()
     @State private var anpassenAnzeigen = false
     @State private var zeigeGesamtAnalyse = false
+    @State private var medAusgewaehltTag: Date? = nil
+    @State private var medVersteckTask: Task<Void, Never>? = nil
     @Environment(\.scenePhase) private var scenePhase
 
     // MARK: - Body
@@ -332,10 +334,31 @@ struct DashboardView: View {
             }
             .chartXAxis(.hidden).chartYAxis(.hidden)
             .frame(height: 44)
+            .chartOverlay { proxy in
+                GeometryReader { _ in
+                    Rectangle().fill(.clear).contentShape(Rectangle())
+                        .onTapGesture { location in medBalkenTippen(proxy: proxy, location: location) }
+                }
+            }
             .overlay(alignment: .center) {
                 if !hatDaten {
                     Text("Noch keine Einträge").font(.caption2).foregroundStyle(.secondary)
                 }
+            }
+            .animation(.easeInOut(duration: 0.2), value: medAusgewaehltTag)
+
+            if let tag = medAusgewaehltTag, let punkt = medChartDaten.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: tag) }) {
+                HStack(spacing: 6) {
+                    Text(tag, format: .dateTime.weekday(.abbreviated).day().month())
+                        .font(.caption2.bold()).foregroundStyle(.secondary)
+                    if punkt.hatDaten {
+                        Text(String(format: "%.0f%%", punkt.prozent))
+                            .font(.caption2)
+                            .foregroundStyle(punkt.prozent >= 80 ? .green : punkt.prozent >= 50 ? .orange : .red)
+                    }
+                    Spacer()
+                }
+                .transition(.opacity)
             }
 
             Divider()
@@ -480,6 +503,21 @@ struct DashboardView: View {
     }
     private func stressFarbe(_ s: Int) -> Color {
         switch s { case 1: .green; case 2: .mint; case 3: .yellow; case 4: .orange; default: .red }
+    }
+
+    private func medBalkenTippen(proxy: ChartProxy, location: CGPoint) {
+        guard let date: Date = proxy.value(atX: location.x, as: Date.self) else { return }
+        let snapped = medChartDaten.min(by: {
+            abs($0.datum.timeIntervalSince(date)) < abs($1.datum.timeIntervalSince(date))
+        })?.datum
+        guard let snapped else { return }
+        withAnimation { medAusgewaehltTag = snapped }
+        medVersteckTask?.cancel()
+        medVersteckTask = Task {
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { withAnimation { medAusgewaehltTag = nil } }
+        }
     }
 
     // MARK: - PDF

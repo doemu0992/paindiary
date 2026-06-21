@@ -228,6 +228,9 @@ struct PainEntryListView: View {
                                 }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
+                                        if eintrag.istHautEintrag {
+                                            FotoManager.loeschen(dateiname: eintrag.fotoDateiname)
+                                        }
                                         modelContext.delete(eintrag)
                                     } label: {
                                         Label("Löschen", systemImage: "trash")

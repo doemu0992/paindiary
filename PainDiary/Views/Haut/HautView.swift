@@ -35,6 +35,7 @@ struct HautView: View {
                         HautEintragZeile(eintrag: eintrag)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
+                                    FotoManager.loeschen(dateiname: eintrag.fotoDateiname)
                                     modelContext.delete(eintrag)
                                 } label: { Label("Löschen", systemImage: "trash") }
                             }
