@@ -38,24 +38,6 @@ struct RheumaView: View {
                 .listRowBackground(Color.clear)
             }
 
-            ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
-                Section {
-                    ForEach(gruppe.items) { eintrag in
-                        NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
-                            SchmerzZeile(eintrag: eintrag)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                modelContext.delete(eintrag)
-                            } label: { Label("Löschen", systemImage: "trash") }
-                        }
-                    }
-                } header: {
-                    Text(tagLabel(gruppe.tag))
-                        .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
-                }
-            }
-
             Section("Scores & Verlauf") {
                 NavigationLink(destination: HAQView()) {
                     Label {
@@ -122,6 +104,24 @@ struct RheumaView: View {
                 NavigationLink(destination: ArztbriefView()) {
                     Label("Arztbrief erstellen", systemImage: "doc.text.fill")
                         .foregroundStyle(.primary)
+                }
+            }
+
+            ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
+                Section {
+                    ForEach(gruppe.items) { eintrag in
+                        NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
+                            SchmerzZeile(eintrag: eintrag)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                modelContext.delete(eintrag)
+                            } label: { Label("Löschen", systemImage: "trash") }
+                        }
+                    }
+                } header: {
+                    Text(tagLabel(gruppe.tag))
+                        .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                 }
             }
         }
