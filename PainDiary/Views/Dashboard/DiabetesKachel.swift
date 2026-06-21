@@ -4,6 +4,8 @@ import Charts
 struct DiabetesKachel: View {
     let messungen: [BlutzuckerEintrag]
     @State private var zeigeForm = false
+    @State private var ausgewaehltTag: Date? = nil
+    @State private var versteckTask: Task<Void, Never>? = nil
 
     private var messungen30: [BlutzuckerEintrag] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
@@ -81,10 +83,33 @@ struct DiabetesKachel: View {
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
             .frame(height: 44)
+            .chartOverlay { proxy in
+                GeometryReader { _ in
+                    Rectangle().fill(.clear).contentShape(Rectangle())
+                        .onTapGesture { location in balkenTippen(proxy: proxy, location: location) }
+                }
+            }
             .overlay(alignment: .center) {
                 if !hatDaten {
                     Text("Noch keine Einträge").font(.caption2).foregroundStyle(.secondary)
                 }
+            }
+
+            if let tag = ausgewaehltTag,
+               let punkt = chartDaten.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: tag) }) {
+                HStack(spacing: 6) {
+                    Text(tag, format: .dateTime.weekday(.abbreviated).day().month())
+                        .font(.caption2.bold()).foregroundStyle(.secondary)
+                    if punkt.wert > 0 {
+                        Text(String(format: "Ø %.1f mmol/L", punkt.wert))
+                            .font(.caption2)
+                            .foregroundStyle(wertFarbe(punkt.wert))
+                    } else {
+                        Text("Keine Messung").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .transition(.opacity)
             }
 
             Divider()
@@ -101,6 +126,7 @@ struct DiabetesKachel: View {
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: ausgewaehltTag)
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -130,5 +156,20 @@ struct DiabetesKachel: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 4)
+    }
+
+    private func balkenTippen(proxy: ChartProxy, location: CGPoint) {
+        guard let date: Date = proxy.value(atX: location.x, as: Date.self) else { return }
+        let snapped = chartDaten.min(by: {
+            abs($0.datum.timeIntervalSince(date)) < abs($1.datum.timeIntervalSince(date))
+        })?.datum
+        guard let snapped else { return }
+        withAnimation { ausgewaehltTag = snapped }
+        versteckTask?.cancel()
+        versteckTask = Task {
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { withAnimation { ausgewaehltTag = nil } }
+        }
     }
 }

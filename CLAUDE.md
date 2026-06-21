@@ -135,6 +135,59 @@ struct MeinModulKachel: View {
 - Mini-Chart **immer sichtbar** (nie in `if`-Block verstecken) — Platzhalt-Balken wenn keine Daten
 - Kachelfarbe = Modul-Tint aus der Farbtabelle oben — gilt für Icon, Text, Chart, Plus-Button
 - `statBox`-Helper ist **lokal** in jeder Kachel (kein globales Component nötig)
+- **Mini-Chart ist immer tappbar** (siehe unten)
+
+### Klickbare Mini-Chart-Balken (bindend für alle Kacheln)
+
+> **Jeder Mini-Chart in einer Dashboard-Kachel muss tappbar sein und beim Antippen den Tageswert als Tooltip-Zeile einblenden.**
+
+```swift
+// 1. State in der Kachel
+@State private var ausgewaehltTag: Date? = nil
+@State private var versteckTask: Task<Void, Never>? = nil
+
+// 2. chartOverlay auf dem Chart
+.chartOverlay { proxy in
+    GeometryReader { _ in
+        Rectangle().fill(.clear).contentShape(Rectangle())
+            .onTapGesture { location in balkenTippen(proxy: proxy, location: location) }
+    }
+}
+
+// 3. Tooltip-Zeile direkt unter dem Chart (mit .animation)
+if let tag = ausgewaehltTag,
+   let punkt = chartDaten.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: tag) }) {
+    HStack(spacing: 6) {
+        Text(tag, format: .dateTime.weekday(.abbreviated).day().month())
+            .font(.caption2.bold()).foregroundStyle(.secondary)
+        Text("Ø \(String(format: "%.1f", punkt.wert))")
+            .font(.caption2).foregroundStyle(wertFarbe(punkt.wert))
+        Spacer()
+    }
+    .transition(.opacity)
+}
+
+// 4. VStack-Modifier (animiert die Tooltip ein/aus)
+.animation(.easeInOut(duration: 0.2), value: ausgewaehltTag)
+
+// 5. balkenTippen()-Helper (lokal in jeder Kachel)
+private func balkenTippen(proxy: ChartProxy, location: CGPoint) {
+    guard let date: Date = proxy.value(atX: location.x, as: Date.self) else { return }
+    let snapped = chartDaten.min(by: {
+        abs($0.datum.timeIntervalSince(date)) < abs($1.datum.timeIntervalSince(date))
+    })?.datum
+    guard let snapped else { return }
+    withAnimation { ausgewaehltTag = snapped }
+    versteckTask?.cancel()
+    versteckTask = Task {
+        try? await Task.sleep(for: .seconds(5))
+        guard !Task.isCancelled else { return }
+        await MainActor.run { withAnimation { ausgewaehltTag = nil } }
+    }
+}
+```
+
+**Tooltip-Inhalt:** Datum (Wochentag + Tag + Monat) + Wert mit Einheit. Wenn kein Eintrag: "Kein Eintrag". Auto-Hide nach 5 Sekunden. Beides muss mit `.transition(.opacity)` animiert sein.
 
 ---
 
@@ -480,6 +533,32 @@ private func statPill(_ wert: String, label: String, farbe: Color) -> some View 
 // Schlaf
 .indigo
 ```
+
+---
+
+## InfoButton-Standard (bindend für alle AnalyseViews)
+
+> **Jede Chart-Karte in einer AnalyseView hat einen `InfoButton` rechts im Karten-Header.**
+
+```swift
+// Karten-Header mit InfoButton (immer diese Struktur):
+HStack {
+    Label("Kartenname", systemImage: "symbol")
+        .font(.headline).foregroundStyle(.modulTint)
+    Spacer()
+    InfoButton(
+        titel: "Kartenname",
+        text: "Was zeigt dieser Chart. Wie Werte interpretieren. Relevante Grenzwerte/Normbereiche."
+    )
+}
+```
+
+**Shared Component:** `Views/Components/InfoButton.swift` — nie duplizieren, nie inline reimplementieren.
+- Icon: `info.circle`, Farbe: `.teal.opacity(0.8)` (neutral, modulunabhängig)
+- Öffnet als Sheet (`.medium` Detent) mit Titel + erklärendem Text
+- **Text-Pflicht:** Was der Chart misst, wie man ihn liest, relevante medizinische Grenzwerte/Empfehlungen
+
+**Gilt für alle Sektionen in:** SchmerzAnalyseView, RheumaAnalyseView, MigraeneAnalyseView, HautAnalyseView, DiabetesAnalyseView, WohlbefindenAnalyseView, ZyklusAnalyseView, KorrelationsView
 
 ---
 
