@@ -71,6 +71,12 @@ struct GesamtAnalyseView: View {
     @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerMessungen: [BlutzuckerEintrag]
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
 
+    @AppStorage("migraeneModulAktiv") private var migraeneModulAktiv = false
+    @AppStorage("rheumaModulAktiv")   private var rheumaModulAktiv   = false
+    @AppStorage("diabetesModulAktiv") private var diabetesModulAktiv = false
+    @AppStorage("hautModulAktiv")     private var hautModulAktiv     = false
+    @AppStorage("zyklusModulAktiv")   private var zyklusModulAktiv   = false
+
     @Environment(\.dismiss) private var dismiss
     @State private var zeitraum: Zeitraum = .monat
     @State private var sektionen: [GesamtAnalyseSektion] = sektionenLaden()
@@ -189,11 +195,11 @@ extension GesamtAnalyseView {
         switch sektion {
         case .schmerzUebersicht: schmerzUebersichtKarte
         case .modulTimeline:     modulTimelineKarte
-        case .migraeneSchmerz:   migraeneSchmerzKarte
-        case .zyklusSchmerz:     zyklusSchmerzKarte
-        case .rheumaSchmerz:     rheumaSchmerzKarte
-        case .diabetesSchmerz:   diabetesSchmerzKarte
-        case .hautWohlbefinden:  hautWohlbefindenKarte
+        case .migraeneSchmerz:   if migraeneModulAktiv { migraeneSchmerzKarte }
+        case .zyklusSchmerz:     if zyklusModulAktiv   { zyklusSchmerzKarte }
+        case .rheumaSchmerz:     if rheumaModulAktiv   { rheumaSchmerzKarte }
+        case .diabetesSchmerz:   if diabetesModulAktiv { diabetesSchmerzKarte }
+        case .hautWohlbefinden:  if hautModulAktiv     { hautWohlbefindenKarte }
         case .kiInsicht:
             karte {
                 KIAnalyseKarte(prompt: kiPrompt, modulTint: .indigo)
@@ -355,26 +361,36 @@ extension GesamtAnalyseView {
                 let bwRef = blutzuckerMessungen
                 let zyklusRef = zyklusEintraege
 
-                let module: [(name: String, farbe: Color, hatDaten: (Date) -> Bool)] = [
+                var module: [(name: String, farbe: Color, hatDaten: (Date) -> Bool)] = [
                     ("Schmerz", .red, { tag in
                         eintraegeRef.contains { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && cal.startOfDay(for: $0.datum) == tag }
                     }),
-                    ("Rheuma", .teal, { tag in
-                        eintraegeRef.contains { $0.koerperstelle == "Rheuma" && cal.startOfDay(for: $0.datum) == tag }
-                    }),
-                    ("Migräne", .purple, { tag in
-                        migraeneRef.contains { cal.startOfDay(for: $0.datum) == tag }
-                    }),
-                    ("Haut", .orange, { tag in
-                        eintraegeRef.contains { $0.istHautEintrag && cal.startOfDay(for: $0.datum) == tag }
-                    }),
-                    ("Diabetes", .blue, { tag in
-                        bwRef.contains { cal.startOfDay(for: $0.datum) == tag }
-                    }),
-                    ("Zyklus", .pink, { tag in
-                        zyklusRef.contains { cal.startOfDay(for: $0.datum) == tag }
-                    }),
                 ]
+                if rheumaModulAktiv {
+                    module.append(("Rheuma", .teal, { tag in
+                        eintraegeRef.contains { $0.koerperstelle == "Rheuma" && cal.startOfDay(for: $0.datum) == tag }
+                    }))
+                }
+                if migraeneModulAktiv {
+                    module.append(("Migräne", .purple, { tag in
+                        migraeneRef.contains { cal.startOfDay(for: $0.datum) == tag }
+                    }))
+                }
+                if hautModulAktiv {
+                    module.append(("Haut", .orange, { tag in
+                        eintraegeRef.contains { $0.istHautEintrag && cal.startOfDay(for: $0.datum) == tag }
+                    }))
+                }
+                if diabetesModulAktiv {
+                    module.append(("Diabetes", .blue, { tag in
+                        bwRef.contains { cal.startOfDay(for: $0.datum) == tag }
+                    }))
+                }
+                if zyklusModulAktiv {
+                    module.append(("Zyklus", .pink, { tag in
+                        zyklusRef.contains { cal.startOfDay(for: $0.datum) == tag }
+                    }))
+                }
 
                 ForEach(module, id: \.name) { modul in
                     HStack(spacing: 0) {
@@ -773,6 +789,17 @@ extension GesamtAnalyseView {
 
     private var kiPrompt: String {
         var zeilen: [String] = ["Gesamtanalyse PainDiary (\(zeitraum.rawValue)):"]
+
+        // Aktive Diagnosen/Module
+        var diagnoseListe: [String] = []
+        if rheumaModulAktiv   { diagnoseListe.append("Rheuma/Autoimmunerkrankung") }
+        if migraeneModulAktiv { diagnoseListe.append("Migräne") }
+        if diabetesModulAktiv { diagnoseListe.append("Diabetes") }
+        if hautModulAktiv     { diagnoseListe.append("Hauterkrankung") }
+        if zyklusModulAktiv   { diagnoseListe.append("Zyklus-Tracking") }
+        if !diagnoseListe.isEmpty {
+            zeilen.append("AKTIVE DIAGNOSEN/MODULE: \(diagnoseListe.joined(separator: ", "))")
+        }
 
         // Schmerz
         if !schmerzEintraege.isEmpty {
