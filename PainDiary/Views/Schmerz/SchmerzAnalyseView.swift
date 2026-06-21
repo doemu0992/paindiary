@@ -376,7 +376,8 @@ struct SchmerzAnalyseView: View {
             if verlaufDaten.isEmpty {
                 leerKarte(.verlauf)
             } else {
-                karte(titel: "Schmerzverlauf", symbol: "chart.line.uptrend.xyaxis", farbe: .red) {
+                karte(titel: "Schmerzverlauf", symbol: "chart.line.uptrend.xyaxis", farbe: .red,
+      info: "Durchschnittliche Schmerzstärke pro Tag/Woche im gewählten Zeitraum. Punkte = Ø Schmerzstärke, Kreisgrösse = Anzahl Schübe. Ein persistenter Aufwärtstrend sollte mit dem Arzt besprochen werden.") {
                     let komp = chartKomponente
                     let xFormat: Date.FormatStyle = komp == .day
                         ? .dateTime.day().month(.abbreviated)
@@ -430,7 +431,8 @@ struct SchmerzAnalyseView: View {
             if topOrte.isEmpty {
                 leerKarte(.koerperstellen)
             } else {
-                karte(titel: "Körperstellen", symbol: "figure.stand", farbe: .red) {
+                karte(titel: "Körperstellen", symbol: "figure.stand", farbe: .red,
+      info: "Häufigkeit betroffener Körperstellen im gewählten Zeitraum — intensivere Farbe = häufiger betroffen. Persistenter Schmerz an einer einzelnen Stelle kann auf ein lokales Problem hinweisen. Wische das 3D-Modell um es zu drehen.") {
                     VStack(spacing: 12) {
                         // Heatmap body
                         KoerperHeatmapView(
@@ -503,7 +505,8 @@ struct SchmerzAnalyseView: View {
             if topAusloeser.isEmpty {
                 leerKarte(.ausloeser)
             } else {
-                karte(titel: "Auslöser", symbol: "exclamationmark.triangle.fill", farbe: .red) {
+                karte(titel: "Auslöser", symbol: "exclamationmark.triangle.fill", farbe: .red,
+                      info: "Deine häufigsten Schmerzauslöser im gewählten Zeitraum. Auslöser die du beeinflussen kannst (Stress, Schlaf, Ernährung, Bewegung) sind die wichtigsten Ansatzpunkte zur Schmerzreduktion. Besprich persistente Auslöser mit deinem Arzt.") {
                     let maxAnzahl = topAusloeser.first?.anzahl ?? 1
                     VStack(spacing: 8) {
                         ForEach(topAusloeser) { a in
@@ -537,7 +540,8 @@ struct SchmerzAnalyseView: View {
             if gefiltert.isEmpty {
                 leerKarte(.tageszeit)
             } else {
-                karte(titel: "Tageszeit-Muster", symbol: "clock.fill", farbe: .red) {
+                karte(titel: "Tageszeit-Muster", symbol: "clock.fill", farbe: .red,
+                      info: "Zu welcher Tageszeit tritt dein Schmerz am häufigsten auf? Morgendlicher Schmerz kann auf Schlafprobleme oder Morgensteifigkeit hinweisen. Abendlicher Schmerz kann durch Überlastung oder Stress entstehen.") {
                     Chart(tageszeit, id: \.label) { item in
                         BarMark(
                             x: .value("Tageszeit", item.label),
@@ -565,7 +569,8 @@ struct SchmerzAnalyseView: View {
     // MARK: - Wohlbefinden
 
     private var wohlbefindenKarte: some View {
-        karte(titel: "Wohlbefinden", symbol: "heart.fill", farbe: .red) {
+        karte(titel: "Wohlbefinden", symbol: "heart.fill", farbe: .red,
+              info: "Durchschnittliche Wohlbefindenswerte (Stimmung, Stress, Schlaf, Fatigue) im gewählten Zeitraum. Diese Faktoren beeinflussen die Schmerzwahrnehmung stark — chronisch schlechter Schlaf oder hoher Stress können Schmerz verstärken.") {
             HStack(spacing: 0) {
                 statZelle(
                     avgStress > 0 ? String(format: "%.1f", avgStress) : "–",
