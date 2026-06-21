@@ -35,9 +35,9 @@ struct SchmerzView: View {
 
             if !schmerzEintraege.isEmpty {
                 Section("Einträge") {
-                    ForEach(schmerzEintraege.prefix(30)) { eintrag in
+                    ForEach(schmerzEintraege.prefix(50)) { eintrag in
                         NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
-                            SchmerzEintragZeile(eintrag: eintrag)
+                            SchmerzZeile(eintrag: eintrag)
                         }
                     }
                     .onDelete(perform: loeschen)
@@ -123,46 +123,3 @@ struct SchmerzView: View {
     }
 }
 
-// MARK: - Zeile
-
-private struct SchmerzEintragZeile: View {
-    let eintrag: PainEntry
-
-    private var df: DateFormatter {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "de_CH")
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(SchmerzBadge.farbe(fuer: eintrag.schmerzstaerke).opacity(0.15))
-                    .frame(width: 40, height: 40)
-                Text("\(eintrag.schmerzstaerke)")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(SchmerzBadge.farbe(fuer: eintrag.schmerzstaerke))
-            }
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(df.string(from: eintrag.datum)).font(.subheadline)
-                    if eintrag.istSchub {
-                        Text("Schub").font(.caption2.bold())
-                            .foregroundStyle(.red)
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(Color.red.opacity(0.12), in: Capsule())
-                    }
-                }
-                if !eintrag.koerperstelle.isEmpty {
-                    Text(eintrag.koerperstelle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                } else if !eintrag.ausloeser.isEmpty {
-                    Text(eintrag.ausloeser).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                }
-            }
-        }
-        .padding(.vertical, 2)
-    }
-}
