@@ -13,6 +13,7 @@ struct DashboardView: View {
     @Query(sort: \Laborwert.datum, order: .reverse) private var laborwerte: [Laborwert]
     @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
     @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerMessungen: [BlutzuckerEintrag]
+    @Query(sort: \WellnessEintrag.datum, order: .reverse) private var wellnessEintraege: [WellnessEintrag]
     @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
     @State private var viewModel = DashboardViewModel()
     @State private var exportURL: URL? = nil
@@ -120,6 +121,7 @@ struct DashboardView: View {
         case .migraeneKachel:      MigraeneKachel(anfaelle: Array(migraeneAnfaelle))
         case .rheumaKachel:        RheumaKachel(eintraege: Array(eintraege.filter { $0.koerperstelle == "Rheuma" }), haqEintraege: Array(haqEintraege))
         case .diabetesKachel:      DiabetesKachel(messungen: Array(blutzuckerMessungen))
+        case .wellnessKachel:      WellnessKachel(eintraege: Array(eintraege), wellnessEintraege: Array(wellnessEintraege))
         case .konfigKorrelation:
             KonfigKorrelationsKachel(
                 kachel: kachel,

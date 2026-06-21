@@ -4,6 +4,9 @@ import Charts
 
 struct WellnessView: View {
 
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \WellnessEintrag.datum, order: .reverse) private var wellnessEintraege: [WellnessEintrag]
+
     // MARK: - Wasser
     @State private var wasserMl: Int = 0
     @State private var wasserZielMl: Int = 2000
@@ -16,6 +19,9 @@ struct WellnessView: View {
     @State private var fruehstueck: Bool = false
     @State private var mittag: Bool = false
     @State private var abend: Bool = false
+
+    // MARK: - Energie
+    @State private var energielevel: Int = 0
 
     // MARK: - Pain entries für Stimmung/Stress/Schlaf-Analyse
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
@@ -67,10 +73,34 @@ struct WellnessView: View {
         return (0..<trendTage).reversed().compactMap { offset -> TagesWerte? in
             guard let tag = kal.date(byAdding: .day, value: -offset, to: heute) else { return nil }
             let tage = eintraege.filter { kal.isDate($0.datum, inSameDayAs: tag) }
-            guard !tage.isEmpty else { return nil }
-            let avgS   = Double(tage.map(\.stimmung).reduce(0,+)) / Double(tage.count)
-            let avgSt  = Double(tage.map(\.stressLevel).reduce(0,+)) / Double(tage.count)
-            let avgSch = tage.map(\.schlafStunden).reduce(0,+) / Double(tage.count)
+            let wellnessTag = wellnessEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: tag) })
+
+            // stimmung: prefer PainEntry avg, fallback to WellnessEintrag
+            let avgS: Double
+            if !tage.isEmpty {
+                avgS = Double(tage.map(\.stimmung).reduce(0, +)) / Double(tage.count)
+            } else if let w = wellnessTag, w.stimmung > 0 {
+                avgS = Double(w.stimmung)
+            } else { return nil }
+
+            let avgSt: Double
+            if !tage.isEmpty {
+                avgSt = Double(tage.map(\.stressLevel).reduce(0, +)) / Double(tage.count)
+            } else if let w = wellnessTag, w.stressLevel > 0 {
+                avgSt = Double(w.stressLevel)
+            } else {
+                avgSt = 0
+            }
+
+            let avgSch: Double
+            if !tage.isEmpty {
+                avgSch = tage.map(\.schlafStunden).reduce(0, +) / Double(tage.count)
+            } else if let w = wellnessTag, w.schlafStunden > 0 {
+                avgSch = w.schlafStunden
+            } else {
+                avgSch = 0
+            }
+
             return TagesWerte(datum: tag, stimmung: avgS, stress: avgSt, schlaf: avgSch)
         }
     }
@@ -100,6 +130,7 @@ struct WellnessView: View {
                 wochenZusammenfassung
                 if HealthKitManager.shared.istVerfuegbar { healthKitKarte }
                 wasserTrackerKarte
+                energieKarte
                 ernaehrungKarte
                 if !trendDaten.isEmpty {
                     stimmungStressKarte
@@ -286,6 +317,7 @@ struct WellnessView: View {
                 Button {
                     wasserMl = max(0, wasserMl - 150)
                     UserDefaults.standard.set(wasserMl, forKey: wasserKey())
+                    speichernInEintrag()
                 } label: {
                     Label("Rückgängig", systemImage: "arrow.uturn.backward")
                         .font(.caption).foregroundStyle(.secondary)
@@ -302,6 +334,7 @@ struct WellnessView: View {
                     .fixedSize()
                     .onChange(of: wasserZielMl) { _, neu in
                         UserDefaults.standard.set(neu, forKey: Self.wasserZielKey)
+                        speichernInEintrag()
                     }
             }
 
@@ -351,11 +384,11 @@ struct WellnessView: View {
 
             zaehlerZeile(symbol: "cup.and.saucer.fill", farbe: braun,
                          label: "Koffein", einheit: "Tassen", wert: $koffeinTassen,
-                         speichern: { UserDefaults.standard.set($0, forKey: koffeinKey) })
+                         speichern: { UserDefaults.standard.set($0, forKey: koffeinKey); speichernInEintrag() })
             Divider()
             zaehlerZeile(symbol: "wineglass.fill", farbe: .purple,
                          label: "Alkohol", einheit: "Gläser", wert: $alkoholGlaeser,
-                         speichern: { UserDefaults.standard.set($0, forKey: alkoholKey) })
+                         speichern: { UserDefaults.standard.set($0, forKey: alkoholKey); speichernInEintrag() })
             Divider()
 
             VStack(alignment: .leading, spacing: 10) {
@@ -405,6 +438,7 @@ struct WellnessView: View {
         Button {
             aktiv.wrappedValue.toggle()
             UserDefaults.standard.set(aktiv.wrappedValue, forKey: key)
+            speichernInEintrag()
         } label: {
             VStack(spacing: 5) {
                 Image(systemName: icon).font(.title3)
@@ -584,30 +618,163 @@ struct WellnessView: View {
 
     // MARK: - Helpers
 
-    private func ladeDaten() {
-        wasserMl = UserDefaults.standard.integer(forKey: wasserKey())
+    @discardableResult
+    private func heutesEintragHolen() -> WellnessEintrag {
+        let heute = Calendar.current.startOfDay(for: Date())
+        if let existing = wellnessEintraege.first(where: {
+            Calendar.current.isDate($0.datum, inSameDayAs: heute)
+        }) {
+            return existing
+        }
+        let neu = WellnessEintrag(datum: heute)
+        // Pre-populate from UserDefaults on first creation (migration)
+        let ml = UserDefaults.standard.integer(forKey: wasserKey())
+        if ml > 0 { neu.wasserMl = ml }
         let ziel = UserDefaults.standard.integer(forKey: Self.wasserZielKey)
-        wasserZielMl = ziel > 0 ? ziel : 2000
-        koffeinTassen  = UserDefaults.standard.integer(forKey: koffeinKey)
-        alkoholGlaeser = UserDefaults.standard.integer(forKey: alkoholKey)
-        fruehstueck = UserDefaults.standard.bool(forKey: fruehstueckKey)
-        mittag      = UserDefaults.standard.bool(forKey: mittagKey)
-        abend       = UserDefaults.standard.bool(forKey: abendKey)
+        if ziel > 0 { neu.wasserZielMl = ziel }
+        neu.koffeinTassen  = UserDefaults.standard.integer(forKey: koffeinKey)
+        neu.alkoholGlaeser = UserDefaults.standard.integer(forKey: alkoholKey)
+        neu.fruehstueck    = UserDefaults.standard.bool(forKey: fruehstueckKey)
+        neu.mittag         = UserDefaults.standard.bool(forKey: mittagKey)
+        neu.abend          = UserDefaults.standard.bool(forKey: abendKey)
+        modelContext.insert(neu)
+        return neu
+    }
+
+    private func speichernInEintrag() {
+        let entry = heutesEintragHolen()
+        entry.wasserMl       = wasserMl
+        entry.wasserZielMl   = wasserZielMl
+        entry.koffeinTassen  = koffeinTassen
+        entry.alkoholGlaeser = alkoholGlaeser
+        entry.fruehstueck    = fruehstueck
+        entry.mittag         = mittag
+        entry.abend          = abend
+        entry.energielevel   = energielevel
+    }
+
+    private func ladeDaten() {
+        let heute = Calendar.current.startOfDay(for: Date())
+        if let entry = wellnessEintraege.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: heute) }) {
+            wasserMl       = entry.wasserMl
+            wasserZielMl   = entry.wasserZielMl > 0 ? entry.wasserZielMl : 2000
+            koffeinTassen  = entry.koffeinTassen
+            alkoholGlaeser = entry.alkoholGlaeser
+            fruehstueck    = entry.fruehstueck
+            mittag         = entry.mittag
+            abend          = entry.abend
+            energielevel   = entry.energielevel
+        } else {
+            // Fallback: load from UserDefaults (backward compat for existing users)
+            wasserMl       = UserDefaults.standard.integer(forKey: wasserKey())
+            let ziel       = UserDefaults.standard.integer(forKey: Self.wasserZielKey)
+            wasserZielMl   = ziel > 0 ? ziel : 2000
+            koffeinTassen  = UserDefaults.standard.integer(forKey: koffeinKey)
+            alkoholGlaeser = UserDefaults.standard.integer(forKey: alkoholKey)
+            fruehstueck    = UserDefaults.standard.bool(forKey: fruehstueckKey)
+            mittag         = UserDefaults.standard.bool(forKey: mittagKey)
+            abend          = UserDefaults.standard.bool(forKey: abendKey)
+        }
     }
 
     private func trinken(ml: Int) {
         wasserMl += ml
         UserDefaults.standard.set(wasserMl, forKey: wasserKey())
+        speichernInEintrag()
     }
 
     private func berechneStreak() -> Int {
-        let ziel = UserDefaults.standard.integer(forKey: Self.wasserZielKey)
-        let zielMl = ziel > 0 ? ziel : 2000
+        let zielMl = wasserZielMl > 0 ? wasserZielMl : 2000
         var streak = 0
         for offset in 0...29 {
-            let ml = UserDefaults.standard.integer(forKey: wasserKey(-offset))
-            if ml >= zielMl { streak += 1 } else if offset > 0 { break }
+            guard let tag = Calendar.current.date(byAdding: .day, value: -offset,
+                                                  to: Calendar.current.startOfDay(for: Date())) else { break }
+            if let entry = wellnessEintraege.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: tag) }) {
+                if entry.wasserMl >= zielMl { streak += 1 } else if offset > 0 { break }
+            } else {
+                let ml = UserDefaults.standard.integer(forKey: wasserKey(-offset))
+                if ml >= zielMl { streak += 1 } else if offset > 0 { break }
+            }
         }
         return streak
+    }
+
+    // MARK: - Energie
+
+    private var energieKarte: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Label("Energie & Vitalität", systemImage: "bolt.heart.fill")
+                    .font(.headline).foregroundStyle(.mint)
+                Spacer()
+            }
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { stufe in
+                    let aktiv = energielevel == stufe
+                    Button {
+                        energielevel = stufe
+                        speichernInEintrag()
+                    } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: energieSymbol(stufe))
+                                .font(.title2)
+                                .foregroundStyle(aktiv ? energieFarbe(stufe) : .secondary.opacity(0.35))
+                            Text(energieLabel(stufe))
+                                .font(.caption2)
+                                .foregroundStyle(aktiv ? .primary : .secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            aktiv ? energieFarbe(stufe).opacity(0.12) : Color.secondary.opacity(0.06),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
+                        .animation(.easeInOut(duration: 0.15), value: aktiv)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if energielevel > 0 {
+                Text(energieLabel(energielevel))
+                    .font(.caption).foregroundStyle(energieFarbe(energielevel))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: energielevel)
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func energieSymbol(_ stufe: Int) -> String {
+        switch stufe {
+        case 1: return "battery.0"
+        case 2: return "battery.25"
+        case 3: return "battery.50"
+        case 4: return "battery.75"
+        default: return "battery.100"
+        }
+    }
+
+    private func energieLabel(_ stufe: Int) -> String {
+        switch stufe {
+        case 1: return "Erschöpft"
+        case 2: return "Müde"
+        case 3: return "Okay"
+        case 4: return "Gut"
+        default: return "Top"
+        }
+    }
+
+    private func energieFarbe(_ stufe: Int) -> Color {
+        switch stufe {
+        case 1: return .red
+        case 2: return .orange
+        case 3: return .yellow
+        case 4: return .mint
+        default: return .green
+        }
     }
 }

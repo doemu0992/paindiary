@@ -40,6 +40,7 @@ private struct ProfilInhaltView: View {
     @AppStorage("diabetesModulAktiv") private var diabetesModulAktiv = false
     @AppStorage("hautModulAktiv") private var hautAktiv = false
     @AppStorage("zyklusModulAktiv") private var zyklusModulAktiv = false
+    @AppStorage("wellnessModulAktiv") private var wellnessModulAktiv = false
     @State private var stammdatenAnzeigen = false
 
     var body: some View {
@@ -362,6 +363,17 @@ private struct ProfilInhaltView: View {
                     }
                 } icon: {
                     Image(systemName: "drop.fill").foregroundStyle(.blue)
+                }
+            }
+            Toggle(isOn: $wellnessModulAktiv) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Wohlbefinden")
+                        Text("Wasser, Energie, Ernährung & Stimmungs-Trends")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "heart.text.square.fill").foregroundStyle(.mint)
                 }
             }
         } header: {

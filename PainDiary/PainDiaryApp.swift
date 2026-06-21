@@ -89,6 +89,7 @@ private func makeContainer() -> ModelContainer {
         Remissionsphase.self,
         MigraeneEintrag.self,
         BlutzuckerEintrag.self,
+        WellnessEintrag.self,
     ]
     let schema = Schema(alleTypen)
 
