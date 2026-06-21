@@ -227,8 +227,12 @@ extension GesamtAnalyseView {
     private var schmerzUebersichtKarte: some View {
         karte {
             VStack(alignment: .leading, spacing: 12) {
-                Label("Schmerzüberblick", systemImage: "waveform.path.ecg")
-                    .font(.headline).foregroundStyle(.red)
+                HStack(spacing: 6) {
+                    Label("Schmerzüberblick", systemImage: "waveform.path.ecg")
+                        .font(.headline).foregroundStyle(.red)
+                    Spacer()
+                    InfoButton(titel: "Schmerzüberblick", text: "Überblick über alle Schmerz- und Migräne-Einträge im Zeitraum. Ø Schmerz auf einer Skala von 1–10. Schmerztage = Tage mit mindestens einem Schmerz- oder Migräneeintrag. Lila Punkte im Chart = Migräne-Anfälle.")
+                }
                 Divider()
 
                 let alleSchmerzEintraege = schmerzEintraege + rheumaEintraege
@@ -319,8 +323,12 @@ extension GesamtAnalyseView {
     private var modulTimelineKarte: some View {
         karte {
             VStack(alignment: .leading, spacing: 12) {
-                Label("Modul-Aktivität", systemImage: "calendar.badge.clock")
-                    .font(.headline).foregroundStyle(.indigo)
+                HStack(spacing: 6) {
+                    Label("Modul-Aktivität", systemImage: "calendar.badge.clock")
+                        .font(.headline).foregroundStyle(.indigo)
+                    Spacer()
+                    InfoButton(titel: "Modul-Aktivität", text: "Zeigt an welchen Tagen du in den letzten 14 Tagen in jedem Modul Einträge gemacht hast. Hilft Erfassungs-Lücken zu erkennen — regelmäßige Dokumentation verbessert die Auswertungsqualität erheblich.")
+                }
                 Divider()
                 Text("Aktive Module in den letzten 14 Tagen")
                     .font(.caption).foregroundStyle(.secondary)
@@ -391,8 +399,12 @@ extension GesamtAnalyseView {
     private var migraeneSchmerzKarte: some View {
         karte {
             VStack(alignment: .leading, spacing: 12) {
-                Label("Migräne & Schmerz", systemImage: "brain.head.profile")
-                    .font(.headline).foregroundStyle(.purple)
+                HStack(spacing: 6) {
+                    Label("Migräne & Schmerz", systemImage: "brain.head.profile")
+                        .font(.headline).foregroundStyle(.purple)
+                    Spacer()
+                    InfoButton(titel: "Migräne & Schmerz", text: "Vergleicht die Schmerzstärke an Migräne-Tagen vs. migränefreien Tagen. Ist der Schmerz an Migräne-Tagen deutlich höher, besteht möglicherweise ein Zusammenhang. Migräne-Stärke auf einer Skala von 1–10.")
+                }
                 Divider()
 
                 if gefilterteMigraene.isEmpty {
@@ -462,8 +474,12 @@ extension GesamtAnalyseView {
     private var zyklusSchmerzKarte: some View {
         karte {
             VStack(alignment: .leading, spacing: 12) {
-                Label("Zyklus & Schmerz", systemImage: "drop.fill")
-                    .font(.headline).foregroundStyle(.pink)
+                HStack(spacing: 6) {
+                    Label("Zyklus & Schmerz", systemImage: "drop.fill")
+                        .font(.headline).foregroundStyle(.pink)
+                    Spacer()
+                    InfoButton(titel: "Zyklus & Schmerz", text: "Durchschnittliche Schmerzstärke je Zyklusphase. Schmerzmuster über den Zyklus können auf hormonabhängige Erkrankungen hinweisen (z.B. Endometriose, menstruelle Migräne). Zeigt nur Daten wenn sowohl Schmerz- als auch Zyklus-Einträge vorhanden.")
+                }
                 Divider()
 
                 if gefilterteZyklus.filter({ $0.istPeriode }).isEmpty {
@@ -527,8 +543,12 @@ extension GesamtAnalyseView {
     private var rheumaSchmerzKarte: some View {
         karte {
             VStack(alignment: .leading, spacing: 12) {
-                Label("Rheuma & Schmerz", systemImage: "figure.arms.open")
-                    .font(.headline).foregroundStyle(.teal)
+                HStack(spacing: 6) {
+                    Label("Rheuma & Schmerz", systemImage: "figure.arms.open")
+                        .font(.headline).foregroundStyle(.teal)
+                    Spacer()
+                    InfoButton(titel: "Rheuma & Schmerz", text: "Vergleicht Rheuma-Schmerzstärke und allgemeinen Schmerz im Zeitraum. Zeigt Schübe und deren Häufung. Ein anhaltend hoher Schmerz oder zunehmende Schubfrequenz sollte zeitnah mit dem Rheumatologen besprochen werden.")
+                }
                 Divider()
 
                 if rheumaEintraege.isEmpty {
@@ -616,8 +636,12 @@ extension GesamtAnalyseView {
     private var diabetesSchmerzKarte: some View {
         karte {
             VStack(alignment: .leading, spacing: 12) {
-                Label("Diabetes & Schmerz", systemImage: "drop.triangle.fill")
-                    .font(.headline).foregroundStyle(.blue)
+                HStack(spacing: 6) {
+                    Label("Diabetes & Schmerz", systemImage: "drop.triangle.fill")
+                        .font(.headline).foregroundStyle(.blue)
+                    Spacer()
+                    InfoButton(titel: "Diabetes & Schmerz", text: "Korrelation zwischen Blutzuckerverlauf und Schmerzeinträgen. Sowohl Hypo- (< 3,9 mmol/L) als auch Hyperglykämie (> 7,8 mmol/L) können Schmerzen und Wohlbefinden beeinflussen. Zeigt nur Daten wenn beide Modelle Einträge haben.")
+                }
                 Divider()
 
                 if gefilterteBlutzucker.isEmpty {
@@ -685,8 +709,12 @@ extension GesamtAnalyseView {
     private var hautWohlbefindenKarte: some View {
         karte {
             VStack(alignment: .leading, spacing: 12) {
-                Label("Haut & Wohlbefinden", systemImage: "bandage.fill")
-                    .font(.headline).foregroundStyle(.orange)
+                HStack(spacing: 6) {
+                    Label("Haut & Wohlbefinden", systemImage: "bandage.fill")
+                        .font(.headline).foregroundStyle(.orange)
+                    Spacer()
+                    InfoButton(titel: "Haut & Wohlbefinden", text: "Vergleicht Hautveränderungen mit Wohlbefindenswerten (Stress, Schlaf, Stimmung). Stress und Schlafmangel können Hautveränderungen triggern oder verstärken. Zeigt nur Daten wenn beide Modelle Einträge haben.")
+                }
                 Divider()
 
                 if hautEintraege.isEmpty {

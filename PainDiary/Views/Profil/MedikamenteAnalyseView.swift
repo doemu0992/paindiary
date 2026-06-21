@@ -259,11 +259,17 @@ struct MedikamenteAnalyseView: View {
         titel: String,
         symbol: String,
         farbe: Color = .blue,
+        info: String = "",
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(titel, systemImage: symbol)
-                .font(.headline).foregroundStyle(farbe)
+            HStack(spacing: 6) {
+                Label(titel, systemImage: symbol)
+                    .font(.headline).foregroundStyle(farbe)
+                if !info.isEmpty {
+                    InfoButton(titel: titel, text: info)
+                }
+            }
             Divider()
             content()
         }
@@ -299,7 +305,8 @@ struct MedikamenteAnalyseView: View {
     // MARK: - Zusammenfassung
 
     private var zusammenfassungKarte: some View {
-        karte(titel: "Zusammenfassung", symbol: "chart.bar.fill") {
+        karte(titel: "Zusammenfassung", symbol: "chart.bar.fill",
+              info: "Adherenz = Anteil der tatsächlich eingenommenen Dosen im Verhältnis zu den geplanten. Eine Adherenz über 80% gilt als gut. Unter 50% besteht Risiko für Therapieversagen. Einnahme-Logs werden pro Medikament und Dosierung gezählt.") {
             if logs.isEmpty {
                 Text("Noch keine Einnahme-Logs vorhanden")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -346,7 +353,8 @@ struct MedikamenteAnalyseView: View {
     private var verlaufKarte: some View {
         let daten = verlaufAggregiert.filter { $0.prozent >= 0 }
         if daten.isEmpty {
-            karte(titel: "Adherenz-Verlauf", symbol: "waveform.path.ecg") {
+            karte(titel: "Adherenz-Verlauf", symbol: "waveform.path.ecg",
+                  info: "Tägliche Einnahmetreue im Verlauf. Grün = Dosis eingenommen, Lücken = vergessene Einnahmen. Regelmäßige Lücken an denselben Wochentagen können auf Routine-Probleme hinweisen — versuche eine tägliche Erinnerungszeit zu setzen.") {
                 Text(aktivePlanMeds.isEmpty
                      ? "Keine geplanten Medikamente eingetragen"
                      : "Keine Einnahme-Logs in diesem Zeitraum")
@@ -355,7 +363,8 @@ struct MedikamenteAnalyseView: View {
                     .padding(.vertical, 8)
             }
         } else {
-            karte(titel: "Adherenz-Verlauf", symbol: "waveform.path.ecg") {
+            karte(titel: "Adherenz-Verlauf", symbol: "waveform.path.ecg",
+                  info: "Tägliche Einnahmetreue im Verlauf. Grün = Dosis eingenommen, Lücken = vergessene Einnahmen. Regelmäßige Lücken an denselben Wochentagen können auf Routine-Probleme hinweisen — versuche eine tägliche Erinnerungszeit zu setzen.") {
                 let komp = verlaufGranularitaet
                 Chart(daten) { punkt in
                     BarMark(
@@ -403,7 +412,8 @@ struct MedikamenteAnalyseView: View {
             if bewerteteLogs.isEmpty {
                 leerKarte(.wirksamkeit)
             } else {
-                karte(titel: "Wirksamkeit", symbol: "star.fill") {
+                karte(titel: "Wirksamkeit", symbol: "star.fill",
+                      info: "Eigenbewertung der Medikamentenwirkung beim Einnahme-Log. 'Gut' = deutliche Wirkung. 'Teilweise' = leichte Wirkung. 'Nicht' = keine wahrnehmbare Wirkung. Häufige 'Nicht'-Bewertungen sollten im nächsten Arztgespräch besprochen werden.") {
                     let total = bewerteteLogs.count
                     VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 6) {
@@ -484,7 +494,8 @@ struct MedikamenteAnalyseView: View {
             if beiBedArfLogs.isEmpty {
                 leerKarte(.beiBedarf)
             } else {
-                karte(titel: "Bei Bedarf", symbol: "pills.fill") {
+                karte(titel: "Bei Bedarf", symbol: "pills.fill",
+                      info: "Einnahmen von Bedarfsmedikamenten (z.B. Schmerzmittel). Mehr als 10–15 Einnahmen pro Monat können zu einem Medikamenten-Übergebrauchskopfschmerz führen. Spreche mit deinem Arzt, wenn du Bedarfsmedikamente häufig benötigst.") {
                     let avgProTag = Double(beiBedArfLogs.count) / Double(zeitraum.tage)
                     let tageCount = Set(beiBedArfLogs.map { kal.startOfDay(for: $0.datum) }).count
 

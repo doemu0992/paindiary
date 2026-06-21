@@ -303,16 +303,16 @@ struct MigraeneAnalyseView: View {
         let avg = gefiltert.isEmpty ? 0.0
             : Double(gefiltert.map(\.staerke).reduce(0, +)) / Double(gefiltert.count)
         let mitAura = gefiltert.filter(\.hatAura).count
-        return HStack(spacing: 0) {
-            statZelle("\(count)", label: "Anfälle", farbe: .purple)
-            Divider().frame(height: 44)
-            statZelle(gefiltert.isEmpty ? "–" : String(format: "%.1f", avg), label: "Ø Stärke", farbe: .red)
-            Divider().frame(height: 44)
-            statZelle("\(mitAura)", label: "Mit Aura", farbe: .indigo)
+        return karte(titel: "Zusammenfassung", symbol: "brain.head.profile", farbe: .purple,
+                     info: "Überblick über deine Migräne-Anfälle im gewählten Zeitraum. Stärke auf einer Skala von 1 (leicht) bis 10 (sehr stark). Aura sind vorübergehende neurologische Symptome (Lichtblitze, Sehausfälle, Kribbeln) die 20–60 Minuten vor dem Kopfschmerz auftreten können.") {
+            HStack(spacing: 0) {
+                statZelle("\(count)", label: "Anfälle", farbe: .purple)
+                Divider().frame(height: 44)
+                statZelle(gefiltert.isEmpty ? "–" : String(format: "%.1f", avg), label: "Ø Stärke", farbe: .red)
+                Divider().frame(height: 44)
+                statZelle("\(mitAura)", label: "Mit Aura", farbe: .indigo)
+            }
         }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
     private func statZelle(_ wert: String, label: String, farbe: Color) -> some View {
@@ -412,6 +412,13 @@ struct MigraeneAnalyseView: View {
         .padding()
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .overlay(alignment: .topTrailing) {
+            InfoButton(
+                titel: "Aura",
+                text: "Aura sind vorübergehende neurologische Symptome vor dem Kopfschmerz: häufig visuelle Phänomene wie Lichtblitze, Zickzack-Linien oder Sehausfälle, seltener Kribbeln oder Sprachprobleme. Dauer: 20–60 Minuten. Ca. 25–30% der Migränikenden erleben Aura."
+            )
+            .padding(10)
+        }
     }
 
     private var dauerKarte: some View {
@@ -432,6 +439,13 @@ struct MigraeneAnalyseView: View {
         .padding()
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .overlay(alignment: .topTrailing) {
+            InfoButton(
+                titel: "Anfallsdauer",
+                text: "Durchschnittliche Dauer eines Migräneanfalls (von Beginn des Kopfschmerzes bis zum Ende). Unbehandelte Migräne dauert typischerweise 4–72 Stunden. Sehr lange Anfälle (> 72 Stunden, 'Status migraenosus') sollten ärztlich abgeklärt werden."
+            )
+            .padding(10)
+        }
     }
 
     // MARK: - Medikament
