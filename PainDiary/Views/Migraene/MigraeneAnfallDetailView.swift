@@ -296,7 +296,7 @@ struct MigraeneAnfallDetailView: View {
 
     @ViewBuilder
     private var wohlbefindenKarte: some View {
-        let hatDaten = anfall.stimmung > 0 || anfall.stressLevel > 0 || anfall.schlafStunden > 0 || anfall.fatigue > 0
+        let hatDaten = anfall.stimmung > 0 || anfall.stressLevel > 0 || anfall.schlafStunden > 0
         if hatDaten {
             VStack(alignment: .leading, spacing: 12) {
                 Label("Wohlbefinden", systemImage: "heart.text.square.fill")
@@ -345,20 +345,6 @@ struct MigraeneAnfallDetailView: View {
                         Spacer()
                         Text(String(format: "%.1f Stunden", anfall.schlafStunden))
                             .font(.subheadline.bold())
-                    }
-                }
-
-                if anfall.fatigue > 0 {
-                    HStack {
-                        Text("Erschöpfung (Fatigue)").font(.subheadline).foregroundStyle(.secondary)
-                        Spacer()
-                        HStack(spacing: 4) {
-                            Image(systemName: "battery.25").font(.caption)
-                                .foregroundStyle(fatigueFarbe(anfall.fatigue))
-                            Text("\(anfall.fatigue)/10")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(fatigueFarbe(anfall.fatigue))
-                        }
                     }
                 }
             }

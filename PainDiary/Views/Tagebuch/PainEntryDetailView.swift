@@ -469,19 +469,6 @@ struct PainEntryDetailView: View {
                 }
             }
 
-            if modulTyp == .schmerz && eintrag.fatigue > 0 {
-                HStack {
-                    Text("Erschöpfung (Fatigue)").font(.subheadline).foregroundStyle(.secondary)
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Image(systemName: "battery.25").font(.caption)
-                            .foregroundStyle(fatigueFarbe(eintrag.fatigue))
-                        Text("\(eintrag.fatigue)/10")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(fatigueFarbe(eintrag.fatigue))
-                    }
-                }
-            }
 
             if modulTyp == .schmerz && eintrag.morgensteifigkeit > 0 {
                 HStack {

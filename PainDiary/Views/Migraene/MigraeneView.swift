@@ -499,7 +499,6 @@ struct MigraeneAnfallForm: View {
                     schlafStunden: $schlafStunden,
                     stressLevel: $stressLevel,
                     notizen: $notizen,
-                    fatigue: $fatigue,
                     energielevel: $energielevel
                 )
                 .padding(.vertical, 24)
