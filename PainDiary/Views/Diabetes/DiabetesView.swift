@@ -400,7 +400,7 @@ struct BlutzuckerForm: View {
                                 .font(.subheadline)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(messZeitpunkt == zp ? Color.blue : Color(.tertiarySystemBackground))
+                                .background(messZeitpunkt == zp ? Color.blue : Color(.secondarySystemGroupedBackground))
                                 .foregroundStyle(messZeitpunkt == zp ? .white : .primary)
                                 .clipShape(Capsule())
                         }
@@ -457,7 +457,7 @@ struct BlutzuckerForm: View {
                                         .font(.subheadline)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 8)
-                                        .background(insulinTyp == typ ? Color.blue : Color(.tertiarySystemBackground))
+                                        .background(insulinTyp == typ ? Color.blue : Color(.secondarySystemGroupedBackground))
                                         .foregroundStyle(insulinTyp == typ ? .white : .primary)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                 }
@@ -513,7 +513,7 @@ struct BlutzuckerForm: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .semibold))
                         .frame(width: 40, height: 40)
-                        .background(Color(.secondarySystemBackground), in: Circle())
+                        .background(Color(.secondarySystemGroupedBackground), in: Circle())
                 }
                 .buttonStyle(.plain)
             } else {

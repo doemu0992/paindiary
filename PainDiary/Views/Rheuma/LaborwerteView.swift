@@ -42,7 +42,7 @@ struct LaborwerteView: View {
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 6)
                                             .background(
-                                                ausgewaehlterTyp == typ ? Color.accentColor : Color(.secondarySystemBackground),
+                                                ausgewaehlterTyp == typ ? Color.accentColor : Color(.secondarySystemGroupedBackground),
                                                 in: Capsule()
                                             )
                                             .foregroundStyle(ausgewaehlterTyp == typ ? .white : .primary)

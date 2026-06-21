@@ -217,42 +217,98 @@ struct FACITFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Datum") {
-                    DatePicker("Datum", selection: $datum, displayedComponents: [.date])
-                }
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        schrittHeader(
+                            symbol: "chart.bar.fill",
+                            titel: "FACIT-Fragebogen",
+                            untertitel: "Fatigue-Score – Letzte 7 Tage"
+                        )
 
-                Section {
-                    ForEach(0..<13, id: \.self) { i in
-                        fragenZeile(index: i, binding: itemBinding(i))
+                        // Datum
+                        VStack(spacing: 0) {
+                            DatePicker("Datum", selection: $datum, displayedComponents: [.date])
+                                .font(.subheadline).padding(16)
+                        }
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                        // Live Score Card
+                        HStack {
+                            Label("Aktueller FACIT-Score", systemImage: "bolt.heart.fill")
+                                .font(.caption).foregroundStyle(.teal)
+                            Spacer()
+                            Text("\(liveScore) / 52")
+                                .font(.title2.bold())
+                                .foregroundStyle(scoreFarbe(liveScore))
+                                .animation(.easeInOut, value: liveScore)
+                        }
+                        .padding(16)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                        // Questions
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Wie oft traf dies in den letzten 7 Tagen zu?")
+                                .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+
+                            VStack(spacing: 12) {
+                                ForEach(0..<13, id: \.self) { i in
+                                    fragenZeile(index: i, binding: itemBinding(i))
+                                }
+                            }
+                        }
+
+                        // Notes
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Notizen").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                            VStack(spacing: 0) {
+                                TextField("Optionale Notizen", text: $notizen, axis: .vertical)
+                                    .font(.subheadline).padding(16)
+                                    .lineLimit(3...6)
+                            }
+                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        }
                     }
-                } header: {
-                    Text("Wie oft traf dies in den letzten 7 Tagen zu?")
-                } footer: {
-                    Text("Aktueller FACIT-Score: \(liveScore) / 52")
-                        .font(.footnote.bold())
-                        .foregroundStyle(scoreFarbe(liveScore))
+                    .padding(.horizontal).padding(.vertical, 24)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .background(Color(.systemGroupedBackground))
 
-                Section("Notizen") {
-                    TextField("Optionale Notizen", text: $notizen, axis: .vertical)
-                        .lineLimit(3...6)
+                // Save button
+                HStack {
+                    Button { speichern() } label: {
+                        Label("Speichern", systemImage: "checkmark")
+                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 14)
+                            .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
                 }
+                .padding()
+                .background(.ultraThinMaterial)
             }
             .navigationTitle("FACIT-Fragebogen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Speichern") { speichern() } }
             }
         }
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(Color.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func fragenZeile(index: Int, binding: Binding<Int>) -> some View {
         let frage    = FACITEintrag.fragen[index]
         let reversed = frage.reversed
 
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 10) {
             Text(frage.text).font(.subheadline.bold())
             HStack(spacing: 4) {
                 ForEach(0..<5, id: \.self) { stufe in
@@ -276,7 +332,7 @@ struct FACITFormView: View {
                         .background(
                             binding.wrappedValue == stufe
                                 ? farbe.opacity(0.18)
-                                : Color(.tertiarySystemBackground),
+                                : Color(.secondarySystemGroupedBackground),
                             in: RoundedRectangle(cornerRadius: 8)
                         )
                         .overlay(
@@ -290,7 +346,8 @@ struct FACITFormView: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private func stufenFarbe(_ i: Int) -> Color {

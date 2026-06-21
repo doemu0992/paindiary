@@ -231,76 +231,132 @@ struct MIDASFragebogenView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Zeitraum: letzte 3 Monate")
-                                .font(.subheadline.bold())
-                            Text("Zähle Tage mit Migräne oder starken Kopfschmerzen.")
-                                .font(.caption).foregroundStyle(.secondary)
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        schrittHeader(
+                            symbol: "brain.head.profile",
+                            titel: "MIDAS-Fragebogen",
+                            untertitel: "Migräne-Disability Assessment – Letzte 3 Monate"
+                        )
+
+                        // Live Score Card
+                        HStack(spacing: 16) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(gradText)
+                                    .font(.headline)
+                                    .foregroundStyle(gradFarbe)
+                                    .animation(.easeInOut, value: score)
+                                Text("Zeitraum: letzte 3 Monate")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                Text("Zähle Tage mit Migräne oder starken Kopfschmerzen.")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            ZStack {
+                                Circle().fill(gradFarbe.opacity(0.15)).frame(width: 56, height: 56)
+                                VStack(spacing: 1) {
+                                    Text("\(score)")
+                                        .font(.title2.bold())
+                                        .foregroundStyle(gradFarbe)
+                                        .animation(.easeInOut, value: score)
+                                    Text("Pkt.")
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
                         }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(score)")
-                                .font(.title2.bold())
-                                .foregroundStyle(gradFarbe)
-                                .animation(.easeInOut, value: score)
-                            Text("Punkte").font(.caption2).foregroundStyle(.secondary)
+                        .padding(16)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                        // Questions
+                        ForEach(fragen.indices, id: \.self) { i in
+                            let frage = fragen[i]
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Frage \(i + 1): \(frage.titel)")
+                                    .font(.caption.bold()).foregroundStyle(.purple)
+                                Text(frage.frage)
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+
+                                HStack(spacing: 0) {
+                                    Button(action: { if wert(i) > 0 { setWert(i, wert(i) - 1) } }) {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.title)
+                                            .foregroundStyle(wert(i) > 0 ? Color.purple : Color.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Spacer()
+
+                                    VStack(spacing: 2) {
+                                        Text("\(wert(i))")
+                                            .font(.system(size: 42, weight: .bold, design: .rounded))
+                                            .foregroundStyle(wert(i) == 0 ? Color.secondary : Color.purple)
+                                            .animation(.spring(response: 0.2), value: wert(i))
+                                        Text("Tage")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    .frame(minWidth: 80)
+
+                                    Spacer()
+
+                                    Button(action: { if wert(i) < 90 { setWert(i, wert(i) + 1) } }) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.title)
+                                            .foregroundStyle(Color.purple)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .padding(16)
+                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        }
+
+                        // Notes
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Notizen").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                            VStack(spacing: 0) {
+                                TextField("Optionale Notizen", text: $notizen, axis: .vertical)
+                                    .font(.subheadline).padding(16)
+                                    .lineLimit(3...6)
+                            }
+                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                         }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.horizontal).padding(.vertical, 24)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .background(Color(.systemGroupedBackground))
 
-                ForEach(fragen.indices, id: \.self) { i in
-                    let frage = fragen[i]
-                    MIDASFrageSektion(
-                        index: i,
-                        titel: frage.titel,
-                        frageText: frage.frage,
-                        tage: wert(i),
-                        onMinus: { if wert(i) > 0 { setWert(i, wert(i) - 1) } },
-                        onPlus:  { if wert(i) < 90 { setWert(i, wert(i) + 1) } }
-                    )
-                }
-
-                Section {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(gradText)
-                                .font(.headline)
-                                .foregroundStyle(gradFarbe)
-                            Text("MIDAS-Score: \(score) Punkte")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        ZStack {
-                            Circle().fill(gradFarbe.opacity(0.15)).frame(width: 52, height: 52)
-                            Text("\(score)")
-                                .font(.title2.bold())
-                                .foregroundStyle(gradFarbe)
-                        }
-                        .animation(.easeInOut, value: score)
+                // Save button
+                HStack {
+                    Button { speichern() } label: {
+                        Label("Speichern", systemImage: "checkmark")
+                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 14)
+                            .background(Color.purple, in: RoundedRectangle(cornerRadius: 12))
                     }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text("Ergebnis")
+                    .buttonStyle(.plain)
                 }
-
-                Section("Notizen") {
-                    TextField("Optionale Notizen", text: $notizen, axis: .vertical)
-                        .lineLimit(3...6)
-                }
+                .padding()
+                .background(.ultraThinMaterial)
             }
             .navigationTitle("MIDAS-Fragebogen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") { speichern() }
-                }
             }
         }
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(Color.purple)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private func wert(_ i: Int) -> Int {

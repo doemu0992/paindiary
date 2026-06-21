@@ -294,7 +294,7 @@ struct AddEntryView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Color(.secondarySystemBackground), in: Capsule())
+            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
         }
     }
 
@@ -392,7 +392,7 @@ struct AddEntryView: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .semibold))
                         .frame(width: 46, height: 46)
-                        .background(Color(.secondarySystemBackground), in: Circle())
+                        .background(Color(.secondarySystemGroupedBackground), in: Circle())
                 }
                 .buttonStyle(.plain)
             } else {

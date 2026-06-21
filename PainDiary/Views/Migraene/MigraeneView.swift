@@ -523,7 +523,7 @@ struct MigraeneAnfallForm: View {
                                     .font(.subheadline)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 8)
-                                    .background(kopfschmerzTyp == typ ? Color.purple : Color(.tertiarySystemBackground))
+                                    .background(kopfschmerzTyp == typ ? Color.purple : Color(.secondarySystemGroupedBackground))
                                     .foregroundStyle(kopfschmerzTyp == typ ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
