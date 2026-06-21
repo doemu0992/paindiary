@@ -21,7 +21,7 @@ struct PostdromErfassungView: View {
                     VStack(spacing: 6) {
                         Image(systemName: "arrow.clockwise.circle.fill")
                             .font(.system(size: 48))
-                            .foregroundStyle(.teal)
+                            .foregroundStyle(.purple)
                         Text("Postdromsymptome")
                             .font(.title2.bold())
                         Text("Wie geht es dir nach dem Migräne-Anfall?")
@@ -35,29 +35,39 @@ struct PostdromErfassungView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "checkmark.seal.fill")
                                 .font(.system(size: 52))
-                                .foregroundStyle(.teal)
+                                .foregroundStyle(.purple)
                             Text("Gespeichert!")
                                 .font(.headline)
                         }
                         .padding(.vertical, 20)
                         .transition(.scale.combined(with: .opacity))
                     } else {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 10) {
                             Text("Symptome wählen")
-                                .font(.caption.bold())
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .textCase(.uppercase)
-                            FlowLayout(optionen) { opt in
-                                ChipButton(
-                                    label: opt,
-                                    ausgewaehlt: ausgewaehlte.contains(opt),
-                                    farbe: .teal
-                                ) {
-                                    if ausgewaehlte.contains(opt) {
-                                        ausgewaehlte.remove(opt)
-                                    } else {
-                                        ausgewaehlte.insert(opt)
+                                .padding(.horizontal, 4)
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                ForEach(optionen, id: \.self) { opt in
+                                    let sel = ausgewaehlte.contains(opt)
+                                    Button {
+                                        if sel { ausgewaehlte.remove(opt) } else { ausgewaehlte.insert(opt) }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: sel ? "checkmark.circle.fill" : "circle")
+                                                .foregroundStyle(sel ? .purple : .secondary)
+                                                .font(.caption)
+                                            Text(opt).font(.caption).lineLimit(2)
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 10).padding(.vertical, 8)
+                                        .background(
+                                            sel ? Color.purple.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                                            in: RoundedRectangle(cornerRadius: 10)
+                                        )
                                     }
+                                    .buttonStyle(.plain)
+                                    .animation(.easeInOut(duration: 0.15), value: sel)
                                 }
                             }
                         }
@@ -69,6 +79,7 @@ struct PostdromErfassungView: View {
                 }
                 .padding()
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Nachklang erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
