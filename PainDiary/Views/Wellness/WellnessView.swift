@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import Charts
 
 struct WellnessView: View {
 
@@ -20,23 +19,19 @@ struct WellnessView: View {
     @State private var mittag: Bool = false
     @State private var abend: Bool = false
 
-    // MARK: - Energie
+    // MARK: - Wohlbefinden (heute)
+    @State private var stimmung: Int = 0
+    @State private var stressLevel: Int = 0
     @State private var energielevel: Int = 0
 
-    // MARK: - Pain entries für Stimmung/Stress/Schlaf-Analyse
-    @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
-
-    @State private var trendTage: Int = 7
-
     private let notif = NotificationManager.shared
-
     @State private var zeigeAnalyse = false
 
     // MARK: - HealthKit
     @State private var hkSchlaf: Double? = nil
     @State private var hkSchritte: Int? = nil
 
-    // MARK: - Bindings & Keys
+    // MARK: - Keys
 
     private var wasserErinnerungZeit: Binding<Date> {
         Binding(
@@ -57,90 +52,24 @@ struct WellnessView: View {
     private var mittagKey: String { "mahlzeitMittag_\(Self.datumString())" }
     private var abendKey: String { "mahlzeitAbend_\(Self.datumString())" }
 
-    // MARK: - Analytics
-
-    private struct TagesWerte: Identifiable {
-        let id = UUID()
-        let datum: Date
-        let stimmung: Double
-        let stress: Double
-        let schlaf: Double
-    }
-
-    private var trendDaten: [TagesWerte] {
-        let kal = Calendar.current
-        let heute = kal.startOfDay(for: Date())
-        return (0..<trendTage).reversed().compactMap { offset -> TagesWerte? in
-            guard let tag = kal.date(byAdding: .day, value: -offset, to: heute) else { return nil }
-            let tage = eintraege.filter { kal.isDate($0.datum, inSameDayAs: tag) }
-            let wellnessTag = wellnessEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: tag) })
-
-            // stimmung: prefer PainEntry avg, fallback to WellnessEintrag
-            let avgS: Double
-            if !tage.isEmpty {
-                avgS = Double(tage.map(\.stimmung).reduce(0, +)) / Double(tage.count)
-            } else if let w = wellnessTag, w.stimmung > 0 {
-                avgS = Double(w.stimmung)
-            } else { return nil }
-
-            let avgSt: Double
-            if !tage.isEmpty {
-                avgSt = Double(tage.map(\.stressLevel).reduce(0, +)) / Double(tage.count)
-            } else if let w = wellnessTag, w.stressLevel > 0 {
-                avgSt = Double(w.stressLevel)
-            } else {
-                avgSt = 0
-            }
-
-            let avgSch: Double
-            if !tage.isEmpty {
-                avgSch = tage.map(\.schlafStunden).reduce(0, +) / Double(tage.count)
-            } else if let w = wellnessTag, w.schlafStunden > 0 {
-                avgSch = w.schlafStunden
-            } else {
-                avgSch = 0
-            }
-
-            return TagesWerte(datum: tag, stimmung: avgS, stress: avgSt, schlaf: avgSch)
-        }
-    }
-
-    private var wochenAvg: (stimmung: Double, stress: Double, schlaf: Double) {
-        let tage = trendDaten
-        guard !tage.isEmpty else { return (0, 0, 0) }
-        let s   = tage.map(\.stimmung).reduce(0,+) / Double(tage.count)
-        let st  = tage.map(\.stress).reduce(0,+) / Double(tage.count)
-        let sch = tage.filter { $0.schlaf > 0 }.map(\.schlaf)
-        return (s, st, sch.isEmpty ? 0 : sch.reduce(0,+) / Double(sch.count))
-    }
-
-    private var trendLabel: String {
-        switch trendTage {
-        case 30: return "30 Tage"
-        case 90: return "90 Tage"
-        default: return "7 Tage"
-        }
-    }
-
     // MARK: - Body
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                wochenZusammenfassung
+                tagesHeaderKarte
+                stimmungKarte
+                stressKarte
+                energieKarte
                 if HealthKitManager.shared.istVerfuegbar { healthKitKarte }
                 wasserTrackerKarte
-                energieKarte
                 ernaehrungKarte
-                if !trendDaten.isEmpty {
-                    stimmungStressKarte
-                    schlafKarte
-                }
                 streakKarte
             }
             .padding()
             .padding(.bottom, 30)
         }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("Wohlbefinden")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
@@ -154,6 +83,185 @@ struct WellnessView: View {
         .sheet(isPresented: $zeigeAnalyse) {
             WohlbefindenAnalyseView()
         }
+    }
+
+    // MARK: - Tages-Header
+
+    private var tagesHeaderKarte: some View {
+        VStack(spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(Date(), style: .date)
+                        .font(.headline)
+                    Text("Erfasse dein tägliches Wohlbefinden")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "heart.text.square.fill")
+                    .font(.title2).foregroundStyle(.mint)
+            }
+
+            Divider()
+
+            Button { zeigeAnalyse = true } label: {
+                Label("Wohlbefinden-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                    .font(.subheadline.bold()).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(Color.mint, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Stimmung
+
+    private var stimmungKarte: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Label("Stimmung heute", systemImage: "heart.fill")
+                    .font(.headline).foregroundStyle(.red)
+                Spacer()
+            }
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { stufe in
+                    let aktiv = stimmung == stufe
+                    let farbe = stimmungFarbe(stufe)
+                    Button {
+                        stimmung = stufe
+                        speichernInEintrag()
+                    } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: "heart.fill")
+                                .font(.title2)
+                                .foregroundStyle(aktiv ? farbe : .secondary.opacity(0.3))
+                            Text(stimmungLabel(stufe))
+                                .font(.caption2)
+                                .foregroundStyle(aktiv ? .primary : .secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            aktiv ? farbe.opacity(0.12) : Color.secondary.opacity(0.06),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
+                        .animation(.easeInOut(duration: 0.15), value: aktiv)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if stimmung > 0 {
+                Text(stimmungLabel(stimmung))
+                    .font(.caption).foregroundStyle(stimmungFarbe(stimmung))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: stimmung)
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Stress
+
+    private var stressKarte: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Label("Stress heute", systemImage: "brain.head.profile")
+                    .font(.headline).foregroundStyle(.orange)
+                Spacer()
+            }
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { stufe in
+                    let aktiv = stressLevel == stufe
+                    let farbe = stressFarbe(stufe)
+                    Button {
+                        stressLevel = stufe
+                        speichernInEintrag()
+                    } label: {
+                        VStack(spacing: 6) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(aktiv ? farbe : farbe.opacity(0.2))
+                                .frame(width: 6, height: CGFloat(stufe) * 5 + 8)
+                            Text(stressLabel(stufe))
+                                .font(.caption2)
+                                .foregroundStyle(aktiv ? .primary : .secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            aktiv ? farbe.opacity(0.12) : Color.secondary.opacity(0.06),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
+                        .animation(.easeInOut(duration: 0.15), value: aktiv)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if stressLevel > 0 {
+                Text(stressLabel(stressLevel))
+                    .font(.caption).foregroundStyle(stressFarbe(stressLevel))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: stressLevel)
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Energie
+
+    private var energieKarte: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Label("Energie & Vitalität", systemImage: "bolt.heart.fill")
+                    .font(.headline).foregroundStyle(.mint)
+                Spacer()
+            }
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { stufe in
+                    let aktiv = energielevel == stufe
+                    Button {
+                        energielevel = stufe
+                        speichernInEintrag()
+                    } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: energieSymbol(stufe))
+                                .font(.title2)
+                                .foregroundStyle(aktiv ? energieFarbe(stufe) : .secondary.opacity(0.35))
+                            Text(energieLabel(stufe))
+                                .font(.caption2)
+                                .foregroundStyle(aktiv ? .primary : .secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            aktiv ? energieFarbe(stufe).opacity(0.12) : Color.secondary.opacity(0.06),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
+                        .animation(.easeInOut(duration: 0.15), value: aktiv)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if energielevel > 0 {
+                Text(energieLabel(energielevel))
+                    .font(.caption).foregroundStyle(energieFarbe(energielevel))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: energielevel)
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - HealthKit Karte
@@ -213,58 +321,6 @@ struct WellnessView: View {
         }
         .padding()
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    // MARK: - Wochen-Zusammenfassung
-
-    private var wochenZusammenfassung: some View {
-        let avg = wochenAvg
-        let wasserFort = min(Double(wasserMl) / Double(wasserZielMl), 1.0)
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Diese Woche", systemImage: "calendar.badge.checkmark")
-                    .font(.headline)
-                Spacer()
-            }
-            HStack(spacing: 0) {
-                wochenSpalte(symbol: "drop.fill", farbe: .teal,
-                             wert: String(format: "%.0f%%", wasserFort * 100), label: "Wasser")
-                Divider().frame(height: 44)
-                wochenSpalte(symbol: "heart.fill", farbe: .red,
-                             wert: avg.stimmung > 0 ? String(format: "%.1f/5", avg.stimmung) : "–",
-                             label: "Stimmung")
-                Divider().frame(height: 44)
-                wochenSpalte(symbol: "bolt.fill", farbe: .orange,
-                             wert: avg.stress > 0 ? String(format: "%.1f/5", avg.stress) : "–",
-                             label: "Stress")
-                Divider().frame(height: 44)
-                wochenSpalte(symbol: "moon.fill", farbe: .indigo,
-                             wert: avg.schlaf > 0 ? String(format: "%.1fh", avg.schlaf) : "–",
-                             label: "Schlaf")
-            }
-
-            if !trendDaten.isEmpty {
-                Divider()
-                Button { zeigeAnalyse = true } label: {
-                    Label("Wohlbefinden-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                        .font(.subheadline.bold()).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private func wochenSpalte(symbol: String, farbe: Color, wert: String, label: String) -> some View {
-        VStack(spacing: 5) {
-            Image(systemName: symbol).foregroundStyle(farbe).font(.title3)
-            Text(wert).font(.caption.bold())
-            Text(label).font(.caption2).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Wasser-Tracker
@@ -397,9 +453,9 @@ struct WellnessView: View {
                     Text("Mahlzeiten").font(.subheadline)
                 }
                 HStack(spacing: 10) {
-                    mahlzeitChip("Frühstück",   icon: "sunrise.fill",    aktiv: $fruehstueck, key: fruehstueckKey)
-                    mahlzeitChip("Mittag",      icon: "sun.max.fill",    aktiv: $mittag,      key: mittagKey)
-                    mahlzeitChip("Abendessen",  icon: "moon.stars.fill", aktiv: $abend,       key: abendKey)
+                    mahlzeitChip("Frühstück",  icon: "sunrise.fill",    aktiv: $fruehstueck, key: fruehstueckKey)
+                    mahlzeitChip("Mittag",     icon: "sun.max.fill",    aktiv: $mittag,      key: mittagKey)
+                    mahlzeitChip("Abendessen", icon: "moon.stars.fill", aktiv: $abend,       key: abendKey)
                 }
             }
         }
@@ -458,119 +514,6 @@ struct WellnessView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Trend-Picker
-
-    private var trendPicker: some View {
-        Picker("Zeitraum", selection: $trendTage) {
-            Text("7T").tag(7)
-            Text("30T").tag(30)
-            Text("90T").tag(90)
-        }
-        .pickerStyle(.segmented)
-        .fixedSize()
-    }
-
-    // MARK: - Stimmung & Stress
-
-    private var stimmungStressKarte: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Label("Stimmung & Stress", systemImage: "waveform.path.ecg.rectangle")
-                    .font(.headline).foregroundStyle(.pink)
-                Spacer()
-                trendPicker
-            }
-
-            Chart {
-                ForEach(trendDaten) { tag in
-                    LineMark(
-                        x: .value("Tag", tag.datum, unit: .day),
-                        y: .value("Wert", tag.stimmung)
-                    )
-                    .foregroundStyle(by: .value("Typ", "Stimmung"))
-                    .interpolationMethod(.catmullRom)
-                    .symbol(.circle)
-
-                    LineMark(
-                        x: .value("Tag", tag.datum, unit: .day),
-                        y: .value("Wert", tag.stress)
-                    )
-                    .foregroundStyle(by: .value("Typ", "Stress"))
-                    .interpolationMethod(.catmullRom)
-                    .symbol(.square)
-                }
-            }
-            .chartForegroundStyleScale(["Stimmung": Color.red, "Stress": Color.orange])
-            .chartYScale(domain: 1...5)
-            .chartXAxis {
-                AxisMarks(values: .stride(by: trendTage <= 7 ? .day : .weekOfYear)) {
-                    AxisValueLabel(format: trendTage <= 7 ? .dateTime.weekday(.narrow) : .dateTime.day().month(.abbreviated))
-                }
-            }
-            .chartLegend(position: .bottom, alignment: .leading)
-            .frame(height: 130)
-
-            if trendDaten.count < 3 {
-                Text("Mehr Schmerzeinträge erfassen für aussagekräftige Trends")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    // MARK: - Schlaf
-
-    private var schlafKarte: some View {
-        let tagenMitSchlaf = trendDaten.filter { $0.schlaf > 0 }
-        let avg = tagenMitSchlaf.isEmpty ? 0.0
-            : tagenMitSchlaf.map(\.schlaf).reduce(0,+) / Double(tagenMitSchlaf.count)
-
-        return VStack(spacing: 12) {
-            HStack {
-                Label("Schlaf", systemImage: "moon.zzz.fill")
-                    .font(.headline).foregroundStyle(.indigo)
-                Spacer()
-                Text(trendLabel).font(.caption).foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 20) {
-                VStack(spacing: 4) {
-                    Text(avg > 0 ? String(format: "%.1f", avg) : "–")
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                        .foregroundStyle(.indigo)
-                    Text("Ø Stunden").font(.caption).foregroundStyle(.secondary)
-                    if avg > 0 {
-                        Text(avg >= 7 ? "Gut" : avg >= 6 ? "Okay" : "Zu wenig")
-                            .font(.caption2.bold())
-                            .foregroundStyle(avg >= 7 ? .green : avg >= 6 ? .orange : .red)
-                    }
-                }
-                .frame(width: 85)
-
-                if !tagenMitSchlaf.isEmpty {
-                    Chart(tagenMitSchlaf) { tag in
-                        BarMark(
-                            x: .value("Tag", tag.datum, unit: .day),
-                            y: .value("Schlaf", tag.schlaf)
-                        )
-                        .foregroundStyle(tag.schlaf >= 7 ? Color.indigo : Color.indigo.opacity(0.4))
-                        .cornerRadius(4)
-                    }
-                    .chartYScale(domain: 0...10)
-                    .chartXAxis {
-                        AxisMarks(values: .stride(by: trendTage <= 7 ? .day : .weekOfYear)) {
-                            AxisValueLabel(format: trendTage <= 7 ? .dateTime.weekday(.narrow) : .dateTime.day().month(.abbreviated))
-                        }
-                    }
-                    .frame(height: 80)
-                }
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-    }
-
     // MARK: - Streak
 
     private var streakKarte: some View {
@@ -592,8 +535,8 @@ struct WellnessView: View {
                 .frame(maxWidth: .infinity)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    streakInfo(symbol: "drop.fill",            farbe: .teal,   text: "Getrunken: \(wasserMl) ml")
-                    streakInfo(symbol: "checkmark.circle.fill", farbe: .green, text: "Ziel: \(wasserZielMl) ml")
+                    streakInfo(symbol: "drop.fill",             farbe: .teal,   text: "Getrunken: \(wasserMl) ml")
+                    streakInfo(symbol: "checkmark.circle.fill", farbe: .green,  text: "Ziel: \(wasserZielMl) ml")
                     if streak >= 7 {
                         streakInfo(symbol: "star.fill",  farbe: .yellow, text: "Wochenziel erreicht!")
                     } else if streak >= 3 {
@@ -627,7 +570,6 @@ struct WellnessView: View {
             return existing
         }
         let neu = WellnessEintrag(datum: heute)
-        // Pre-populate from UserDefaults on first creation (migration)
         let ml = UserDefaults.standard.integer(forKey: wasserKey())
         if ml > 0 { neu.wasserMl = ml }
         let ziel = UserDefaults.standard.integer(forKey: Self.wasserZielKey)
@@ -650,6 +592,8 @@ struct WellnessView: View {
         entry.fruehstueck    = fruehstueck
         entry.mittag         = mittag
         entry.abend          = abend
+        entry.stimmung       = stimmung
+        entry.stressLevel    = stressLevel
         entry.energielevel   = energielevel
     }
 
@@ -663,9 +607,10 @@ struct WellnessView: View {
             fruehstueck    = entry.fruehstueck
             mittag         = entry.mittag
             abend          = entry.abend
+            stimmung       = entry.stimmung
+            stressLevel    = entry.stressLevel
             energielevel   = entry.energielevel
         } else {
-            // Fallback: load from UserDefaults (backward compat for existing users)
             wasserMl       = UserDefaults.standard.integer(forKey: wasserKey())
             let ziel       = UserDefaults.standard.integer(forKey: Self.wasserZielKey)
             wasserZielMl   = ziel > 0 ? ziel : 2000
@@ -699,54 +644,39 @@ struct WellnessView: View {
         return streak
     }
 
-    // MARK: - Energie
+    // MARK: - Stimmung Helpers (CLAUDE.md: [.red, .orange, .yellow, .green, .teal])
 
-    private var energieKarte: some View {
-        VStack(spacing: 14) {
-            HStack {
-                Label("Energie & Vitalität", systemImage: "bolt.heart.fill")
-                    .font(.headline).foregroundStyle(.mint)
-                Spacer()
-            }
-            HStack(spacing: 8) {
-                ForEach(1...5, id: \.self) { stufe in
-                    let aktiv = energielevel == stufe
-                    Button {
-                        energielevel = stufe
-                        speichernInEintrag()
-                    } label: {
-                        VStack(spacing: 5) {
-                            Image(systemName: energieSymbol(stufe))
-                                .font(.title2)
-                                .foregroundStyle(aktiv ? energieFarbe(stufe) : .secondary.opacity(0.35))
-                            Text(energieLabel(stufe))
-                                .font(.caption2)
-                                .foregroundStyle(aktiv ? .primary : .secondary)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            aktiv ? energieFarbe(stufe).opacity(0.12) : Color.secondary.opacity(0.06),
-                            in: RoundedRectangle(cornerRadius: 10)
-                        )
-                        .animation(.easeInOut(duration: 0.15), value: aktiv)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            if energielevel > 0 {
-                Text(energieLabel(energielevel))
-                    .font(.caption).foregroundStyle(energieFarbe(energielevel))
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .transition(.opacity)
-            }
-        }
-        .animation(.easeInOut(duration: 0.15), value: energielevel)
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    private func stimmungFarbe(_ stufe: Int) -> Color {
+        [.red, .orange, .yellow, .green, .teal][max(0, min(stufe - 1, 4))]
     }
+
+    private func stimmungLabel(_ stufe: Int) -> String {
+        switch stufe {
+        case 1: return "Schlecht"
+        case 2: return "Mäßig"
+        case 3: return "Okay"
+        case 4: return "Gut"
+        default: return "Sehr gut"
+        }
+    }
+
+    // MARK: - Stress Helpers (CLAUDE.md: [.green, .mint, .yellow, .orange, .red])
+
+    private func stressFarbe(_ stufe: Int) -> Color {
+        [.green, .mint, .yellow, .orange, .red][max(0, min(stufe - 1, 4))]
+    }
+
+    private func stressLabel(_ stufe: Int) -> String {
+        switch stufe {
+        case 1: return "Entspannt"
+        case 2: return "Ruhig"
+        case 3: return "Mittel"
+        case 4: return "Gestresst"
+        default: return "Sehr hoch"
+        }
+    }
+
+    // MARK: - Energie Helpers
 
     private func energieSymbol(_ stufe: Int) -> String {
         switch stufe {
