@@ -71,6 +71,10 @@ struct GesamtAnalyseView: View {
     @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerMessungen: [BlutzuckerEintrag]
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
     @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
+    @Query(sort: \Dauermedikation.name) private var alleMedikamente: [Dauermedikation]
+    @Query(sort: \BiologikaInjektion.datum, order: .reverse) private var alleBiologika: [BiologikaInjektion]
+    @Query(sort: \KortisonEintrag.datum, order: .reverse) private var alleKortison: [KortisonEintrag]
+    @Query(sort: \Laborwert.datum, order: .reverse) private var alleLaborwerte: [Laborwert]
 
     @AppStorage("migraeneModulAktiv") private var migraeneModulAktiv = false
     @AppStorage("rheumaModulAktiv")   private var rheumaModulAktiv   = false
@@ -777,6 +781,51 @@ extension GesamtAnalyseView {
             zeilen.append("AKTIVE TRACKING-MODULE: \(modulListe.joined(separator: ", "))")
         }
 
+        // Dauermedikamente
+        let aktiveMeds = alleMedikamente.filter { $0.aktiv }
+        if !aktiveMeds.isEmpty {
+            let medTexte = aktiveMeds.map { m -> String in
+                var t = m.name
+                if !m.dosierung.isEmpty { t += " \(m.dosierung)" }
+                if !m.frequenz.isEmpty  { t += " (\(m.frequenz))" }
+                return t
+            }
+            zeilen.append("DAUERMEDIKAMENTE: \(medTexte.joined(separator: "; "))")
+        }
+
+        // Biologika (letzte 90 Tage)
+        let grenze90 = Calendar.current.date(byAdding: .day, value: -90, to: Date()) ?? Date()
+        let recenteBiologika = alleBiologika.filter { $0.datum >= grenze90 }
+        if let letzte = recenteBiologika.first {
+            var bz = "BIOLOGIKA: \(letzte.praeparat)"
+            if letzte.dosierungMg > 0 { bz += " \(Int(letzte.dosierungMg)) mg" }
+            bz += " (\(recenteBiologika.count)× in 90 Tagen)"
+            zeilen.append(bz)
+        }
+
+        // Kortison (letzte 90 Tage)
+        let recenteKortison = alleKortison.filter { $0.datum >= grenze90 }
+        if !recenteKortison.isEmpty {
+            let avgDosis = recenteKortison.map { $0.dosierungMg }.reduce(0, +) / Double(recenteKortison.count)
+            let schubTherapien = recenteKortison.filter { $0.istSchubTherapie }.count
+            var kz = "KORTISON: \(recenteKortison.count)× in 90 Tagen, Ø \(String(format: "%.0f", avgDosis)) mg"
+            if schubTherapien > 0 { kz += ", davon \(schubTherapien)× Schubtherapie" }
+            zeilen.append(kz)
+        }
+
+        // Laborwerte (letzte 90 Tage, neuester Wert pro Typ)
+        let recenteLab = alleLaborwerte.filter { $0.datum >= grenze90 }
+        if !recenteLab.isEmpty {
+            var byType: [String: Laborwert] = [:]
+            for l in recenteLab { if byType[l.typ] == nil { byType[l.typ] = l } }
+            let labTexte = byType.values.sorted { $0.typ < $1.typ }.map { l -> String in
+                var t = "\(l.typ): \(String(format: "%.1f", l.wert)) \(l.einheit)"
+                if l.istErhoeht == true { t += "↑" } else if l.istErniedrigt == true { t += "↓" }
+                return t
+            }
+            zeilen.append("LABORWERTE: \(labTexte.joined(separator: ", "))")
+        }
+
         // Schmerz
         if !schmerzEintraege.isEmpty {
             let avg = Double(schmerzEintraege.map { $0.schmerzstaerke }.reduce(0, +)) / Double(schmerzEintraege.count)
@@ -881,10 +930,14 @@ extension GesamtAnalyseView {
             zeilen.append("WOHLBEFINDEN (alle PainEntry-Module): Ø Schlaf \(String(format: "%.1f", avgSchlaf)) Std., Ø Stimmung \(String(format: "%.1f", avgStimmung))/5, Ø Stress \(String(format: "%.1f", avgStress))/5")
         }
 
-        let diagnoseKontext = aktiveDiagnosen.isEmpty
-            ? ""
-            : " Beziehe dabei die Diagnosen (\(aktiveDiagnosen.map(\.bezeichnung).joined(separator: ", "))) explizit ein und erkläre Muster im Kontext dieser Erkrankungen."
-        zeilen.append("Analysiere Zusammenhänge zwischen den Modulen und gib 3–4 konkrete, patientenbezogene Einblicke auf Deutsch.\(diagnoseKontext) Keine eigenen Diagnosen stellen.")
+        var anweisungKontext = ""
+        if !aktiveDiagnosen.isEmpty {
+            anweisungKontext += " Beziehe die Diagnosen (\(aktiveDiagnosen.map(\.bezeichnung).joined(separator: ", "))) explizit ein."
+        }
+        if !aktiveMeds.isEmpty {
+            anweisungKontext += " Berücksichtige die Medikamente und erkläre mögliche Zusammenhänge mit dem Schmerzgeschehen."
+        }
+        zeilen.append("Analysiere Zusammenhänge zwischen allen Modulen und gib 3–4 konkrete, patientenbezogene Einblicke auf Deutsch.\(anweisungKontext) Keine eigenen Diagnosen stellen.")
         return zeilen.joined(separator: "\n")
     }
 }
