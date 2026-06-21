@@ -70,6 +70,7 @@ struct GesamtAnalyseView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerMessungen: [BlutzuckerEintrag]
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
+    @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
 
     @AppStorage("migraeneModulAktiv") private var migraeneModulAktiv = false
     @AppStorage("rheumaModulAktiv")   private var rheumaModulAktiv   = false
@@ -756,15 +757,24 @@ extension GesamtAnalyseView {
     private var kiPrompt: String {
         var zeilen: [String] = ["Gesamtanalyse PainDiary (\(zeitraum.rawValue)):"]
 
-        // Aktive Diagnosen/Module
-        var diagnoseListe: [String] = []
-        if rheumaModulAktiv   { diagnoseListe.append("Rheuma/Autoimmunerkrankung") }
-        if migraeneModulAktiv { diagnoseListe.append("Migräne") }
-        if diabetesModulAktiv { diagnoseListe.append("Diabetes") }
-        if hautModulAktiv     { diagnoseListe.append("Hauterkrankung") }
-        if zyklusModulAktiv   { diagnoseListe.append("Zyklus-Tracking") }
-        if !diagnoseListe.isEmpty {
-            zeilen.append("AKTIVE DIAGNOSEN/MODULE: \(diagnoseListe.joined(separator: ", "))")
+        // Medizinische Diagnosen aus Profil (Gesundheit → Diagnosen)
+        let aktiveDiagnosen = alleDiagnosen.filter { $0.aktiv }
+        if !aktiveDiagnosen.isEmpty {
+            let diagnoseTexte = aktiveDiagnosen.map { d -> String in
+                d.icdCode.isEmpty ? d.bezeichnung : "\(d.bezeichnung) (\(d.icdCode))"
+            }
+            zeilen.append("MEDIZINISCHE DIAGNOSEN: \(diagnoseTexte.joined(separator: ", "))")
+        }
+
+        // Aktive Tracking-Module
+        var modulListe: [String] = []
+        if rheumaModulAktiv   { modulListe.append("Rheuma") }
+        if migraeneModulAktiv { modulListe.append("Migräne") }
+        if diabetesModulAktiv { modulListe.append("Diabetes") }
+        if hautModulAktiv     { modulListe.append("Haut") }
+        if zyklusModulAktiv   { modulListe.append("Zyklus") }
+        if !modulListe.isEmpty {
+            zeilen.append("AKTIVE TRACKING-MODULE: \(modulListe.joined(separator: ", "))")
         }
 
         // Schmerz
