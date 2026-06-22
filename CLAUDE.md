@@ -14,9 +14,9 @@ Every new screen, module, and edit must follow these rules.
 | Migräne | `.purple` | `.purple` |
 | Haut | `.orange` | `.orange` |
 | Diabetes | `.blue` | `.blue` |
-| Wellness | Multi-Color (kein einzelner Tint) | — |
+| Wellness | `.mint` (Charts/Daten: Multi-Color) | `.mint` |
 
-**Neues Modul:** einfach nächste freie Farbe aus SwiftUI-Palette wählen (z.B. `.indigo`, `.mint`, `.cyan`, `.pink`). Farbe in diese Tabelle eintragen. Niemals eine bereits vergebene Farbe wiederverwenden.
+**Neues Modul:** einfach nächste freie Farbe aus SwiftUI-Palette wählen (z.B. `.indigo`, `.cyan`, `.pink`). Farbe in diese Tabelle eintragen. Niemals eine bereits vergebene Farbe wiederverwenden.
 
 ### Farbkonsistenz-Regel (bindend)
 
@@ -648,6 +648,19 @@ enum Zeitraum: String, CaseIterable {
 - 7 T → täglich (`chartKomponente = .day`)
 - 30 T → wöchentlich (`chartKomponente = .weekOfYear`)
 - 3 M+ → monatlich (`chartKomponente = .month`)
+
+---
+
+## Wellness/Wohlbefinden-Modul
+
+**Tint:** `.mint` — gilt für Kachel-Icon, Plus-Button, Energielevel-Karte, Analyse-Button, ProfilView-Toggle-Icon.
+**Ausnahmen (semantisch):** Wasser-Tracker bleibt `.teal`, Stimmungs-Chart multi-color (rot/orange/gelb/mint/grün), Schlaf `.indigo`, Streak `.orange`.
+
+**SwiftData-Modell:** `WellnessEintrag` — speichert Tages-Daten (wasserMl, koffeinTassen, alkoholGlaeser, mahlzeiten, stimmung, stress, energielevel, schlafStunden, notizen). Datum = `startOfDay`.
+
+**Kachel:** `WellnessKachel` in `Views/Dashboard/WellnessKachel.swift` — optional, nicht in `basisKacheln`.
+**ProfilView:** Toggle unter "Meine Module" (NICHT unter Erkrankungen).
+**AnalyseView:** `WohlbefindenAnalyseView` in `Views/Wellness/`.
 
 ---
 
