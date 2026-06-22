@@ -5,6 +5,7 @@ struct RheumaSchnellForm: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    var eintrag: PainEntry? = nil
     var onGespeichert: (() -> Void)? = nil
 
     @State private var schritt = 0
@@ -45,7 +46,7 @@ struct RheumaSchnellForm: View {
 
                 navigationsLeiste
             }
-            .navigationTitle("Rheuma & Gelenke")
+            .navigationTitle(eintrag == nil ? "Rheuma & Gelenke" : "Eintrag bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -385,6 +386,18 @@ struct RheumaSchnellForm: View {
     // MARK: - Load / Save
 
     private func laden() {
+        if let e = eintrag {
+            datum = e.datum
+            schmerzstaerke = e.schmerzstaerke
+            istSchub = e.istSchub
+            morgensteifigkeit = e.morgensteifigkeit
+            fatigue = e.fatigue
+            gelenkStatus = e.gelenkStatus
+            stimmung = e.stimmung
+            schlafStunden = e.schlafStunden
+            stressLevel = e.stressLevel
+            notizen = e.notizen
+        }
         if let snap = wetter.aktuell {
             wetterTemperatur = snap.temperatur
             wetterCode = snap.code
@@ -403,20 +416,33 @@ struct RheumaSchnellForm: View {
     }
 
     private func speichern() {
-        let neu = PainEntry(
-            datum: datum,
-            schmerzstaerke: schmerzstaerke,
-            koerperstelle: "Rheuma",
-            notizen: notizen,
-            stimmung: stimmung,
-            schlafStunden: schlafStunden,
-            stressLevel: stressLevel,
-            morgensteifigkeit: morgensteifigkeit,
-            istSchub: istSchub,
-            fatigue: fatigue,
-            gelenkStatus: gelenkStatus
-        )
-        modelContext.insert(neu)
+        if let e = eintrag {
+            e.datum = datum
+            e.schmerzstaerke = schmerzstaerke
+            e.istSchub = istSchub
+            e.morgensteifigkeit = morgensteifigkeit
+            e.fatigue = fatigue
+            e.gelenkStatus = gelenkStatus
+            e.stimmung = stimmung
+            e.schlafStunden = schlafStunden
+            e.stressLevel = stressLevel
+            e.notizen = notizen
+        } else {
+            let neu = PainEntry(
+                datum: datum,
+                schmerzstaerke: schmerzstaerke,
+                koerperstelle: "Rheuma",
+                notizen: notizen,
+                stimmung: stimmung,
+                schlafStunden: schlafStunden,
+                stressLevel: stressLevel,
+                morgensteifigkeit: morgensteifigkeit,
+                istSchub: istSchub,
+                fatigue: fatigue,
+                gelenkStatus: gelenkStatus
+            )
+            modelContext.insert(neu)
+        }
 #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 #endif

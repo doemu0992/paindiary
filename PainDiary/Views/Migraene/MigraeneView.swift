@@ -338,8 +338,14 @@ struct MigraeneAnfallForm: View {
     @State private var fatigue = 0
     @State private var ausloeserFreitext = ""
     @State private var begleitFreitext = ""
+    @State private var prodromFreitext = ""
+    @State private var charakterFreitext = ""
+    @State private var postdromFreitext = ""
     @State private var customAusloeser: [String] = []
     @State private var customBegleit: [String] = []
+    @State private var customProdrom: [String] = []
+    @State private var customCharakter: [String] = []
+    @State private var customPostdrom: [String] = []
 
     private let wetter = WetterService.shared
     private let maxSchritt = 5
@@ -347,22 +353,25 @@ struct MigraeneAnfallForm: View {
     private let pflichtSchritte: Set<Int> = [0]
 
     private let kopfschmerzTypen = ["Migräne", "Spannungskopfschmerz", "Cluster"]
-    private let prodromOptionen = [
+    private let prodromBasis = [
         "Müdigkeit", "Nackensteife", "Stimmungsschwankungen", "Heisshunger",
         "Lichtempfindlichkeit", "Konzentrationsprobleme", "Gähnen",
         "Wassereinlagerungen", "Reizbarkeit"
     ]
-    private let postdromOptionen = [
+    private let postdromBasis = [
         "Erschöpfung", "Konzentrationsprobleme", "Stimmungstief",
         "Kopfhaut empfindlich", "Schwindel", "Helligkeitsempfindlichkeit", "Hunger"
     ]
+    private var prodromOptionen: [String] { prodromBasis + customProdrom.filter { !prodromBasis.contains($0) } }
+    private var postdromOptionen: [String] { postdromBasis + customPostdrom.filter { !postdromBasis.contains($0) } }
 
     private let lokalisationen = [
         "Einseitig links", "Einseitig rechts", "Beidseitig",
         "Stirn / Vorne", "Schläfe links", "Schläfe rechts",
         "Hinterkopf", "Scheitel", "Nacken"
     ]
-    private let charakterOptionen = ["Pulsierend", "Hämmernd", "Drückend", "Stechend", "Brennend"]
+    private let charakterBasis = ["Pulsierend", "Hämmernd", "Drückend", "Stechend", "Brennend"]
+    private var charakterOptionen: [String] { charakterBasis + customCharakter.filter { !charakterBasis.contains($0) } }
     private let begleitBasis = [
         "Übelkeit", "Erbrechen", "Lichtempfindlichkeit", "Lärmempfindlichkeit",
         "Geruchsempfindlichkeit", "Sehstörungen / Flimmern", "Kribbeln / Taubheit"
@@ -615,7 +624,13 @@ struct MigraeneAnfallForm: View {
             chipKarte(
                 titel: "Prodromsymptome (mehrere möglich)",
                 optionen: prodromOptionen,
-                ausgewaehlt: $ausgewaehlteProdrom
+                ausgewaehlt: $ausgewaehlteProdrom,
+                freitext: $prodromFreitext,
+                platzhalter: "Eigenes Prodromsymptom…",
+                beiCustomEintrag: { term in
+                    ChipSpeicher.hinzufuegen(term, schluessel: "migraeneCustomProdrom")
+                    customProdrom = ChipSpeicher.laden(schluessel: "migraeneCustomProdrom")
+                }
             )
         }
         .padding(.horizontal, 16)
@@ -654,7 +669,13 @@ struct MigraeneAnfallForm: View {
             chipKarte(
                 titel: "Schmerzcharakter (mehrere möglich)",
                 optionen: charakterOptionen,
-                ausgewaehlt: $ausgewaehlterCharakter
+                ausgewaehlt: $ausgewaehlterCharakter,
+                freitext: $charakterFreitext,
+                platzhalter: "Eigener Charakter…",
+                beiCustomEintrag: { term in
+                    ChipSpeicher.hinzufuegen(term, schluessel: "migraeneCustomCharakter")
+                    customCharakter = ChipSpeicher.laden(schluessel: "migraeneCustomCharakter")
+                }
             )
         }
         .padding(.horizontal, 16)
@@ -761,7 +782,13 @@ struct MigraeneAnfallForm: View {
             chipKarte(
                 titel: "Postdromsymptome (mehrere möglich)",
                 optionen: postdromOptionen,
-                ausgewaehlt: $ausgewaehltePostdrom
+                ausgewaehlt: $ausgewaehltePostdrom,
+                freitext: $postdromFreitext,
+                platzhalter: "Eigenes Postdromsymptom…",
+                beiCustomEintrag: { term in
+                    ChipSpeicher.hinzufuegen(term, schluessel: "migraeneCustomPostdrom")
+                    customPostdrom = ChipSpeicher.laden(schluessel: "migraeneCustomPostdrom")
+                }
             )
 
             if zyklusModulAktiv && !autoZyklusPhase.isEmpty {
@@ -960,6 +987,9 @@ struct MigraeneAnfallForm: View {
     private func laden() {
         customAusloeser = ChipSpeicher.laden(schluessel: "migraeneCustomAusloeser")
         customBegleit = ChipSpeicher.laden(schluessel: "migraeneCustomBegleit")
+        customProdrom = ChipSpeicher.laden(schluessel: "migraeneCustomProdrom")
+        customCharakter = ChipSpeicher.laden(schluessel: "migraeneCustomCharakter")
+        customPostdrom = ChipSpeicher.laden(schluessel: "migraeneCustomPostdrom")
         if let a = anfall {
             datum = a.datum
             dauerStunden = a.dauer / 60
