@@ -60,7 +60,7 @@ struct MigraeneView: View {
                 Section("Anfälle") {
                     ForEach(anfaelle) { anfall in
                         NavigationLink(destination: MigraeneAnfallDetailView(anfall: anfall)) {
-                            MigraeneAnfallZeile(anfall: anfall)
+                            MigraeneZeile(anfall: anfall)
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
@@ -237,60 +237,6 @@ struct MigraeneView: View {
 }
 
 // MARK: - Zeile
-
-private struct MigraeneAnfallZeile: View {
-    let anfall: MigraeneEintrag
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(staerkeFarbe.opacity(0.18)).frame(width: 46, height: 46)
-                VStack(spacing: 0) {
-                    Text("\(anfall.staerke)")
-                        .font(.title3.bold())
-                        .foregroundStyle(staerkeFarbe)
-                    Text("/10")
-                        .font(.system(size: 7))
-                        .foregroundStyle(staerkeFarbe.opacity(0.65))
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(anfall.datum, style: .date).font(.subheadline.bold())
-                    if anfall.hatAura {
-                        Text("Aura")
-                            .font(.caption2.bold())
-                            .foregroundStyle(.purple)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.purple.opacity(0.15)).clipShape(Capsule())
-                    }
-                }
-                HStack(spacing: 8) {
-                    if !anfall.seite.isEmpty {
-                        Text(anfall.seite).font(.caption).foregroundStyle(.secondary)
-                    }
-                    if anfall.dauer > 0 {
-                        Text(anfall.dauerText).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                if !anfall.ausloeser.isEmpty {
-                    Text(anfall.ausloeser).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                }
-            }
-            Spacer()
-        }
-        .padding(.vertical, 2)
-    }
-
-    private var staerkeFarbe: Color {
-        switch anfall.staerke {
-        case 1...3: return .green
-        case 4...6: return .orange
-        default:    return .red
-        }
-    }
-}
 
 // MARK: - Form
 

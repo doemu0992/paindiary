@@ -1069,18 +1069,23 @@ List
     └── NavigationLink / Button pro Eintrag → Zeilen-View
 ```
 
-**Sparkline-Header (7 Tage):**
+**Sparkline-Header (7 Tage) — tappbar (bindend):**
 - 7 Spalten, je: Wochentag-Kürzel (narrow) + farbige Dots pro Modul + Tageszahl
-- Heute: leichter `Color.secondary.opacity(0.08)` Hintergrund, fetter Font
-- Dots: je 1 pro Modultyp (dedupliziert), max. 3 anzeigen, Modul-Tintfarbe
-- Implementiert in `uniqueModulFarben(aus:)` — nie duplizieren
+- Heute: `Color.secondary.opacity(0.08)` Hintergrund, fetter Font
+- Ausgewählt: `Color.accentColor.opacity(0.18)` Hintergrund — filtert Liste auf diesen Tag
+- Nochmal tippen → hebt Filter auf
+- Dots: je 1 pro Modultyp (dedupliziert), max. 3, Modul-Tintfarbe — `uniqueModulFarben(aus:)` nie duplizieren
+- Aktiver Tag-Filter erscheint als `× [Datum]`-Chip in den Filter-Chips (links, `.accentColor`)
 
 **Filter-Chips:**
 - Alle `ModulFilter`-Cases als Capsule-Chips horizontal scrollbar
 - Aktiv: `filter.farbe` Hintergrund, weißer Text
 - Inaktiv: `Color.secondary.opacity(0.12)`, primärer Text
+- Tag-Filter-Chip (wenn Tag ausgewählt): ganz links, `.accentColor`, `× Datum`
 
-**Zeilen-Views pro Typ:**
+**Zeilen-Views pro Typ (alle in `PainEntryListView.swift`, nicht `private`):**
+
+> **`SchmerzZeile`, `MigraeneZeile`, `ModulKreis` sind `internal` (kein `private`) und werden von allen Modul-Hauptseiten genutzt. Niemals modul-eigene Zeilen-Structs mit gleicher Funktionalität erstellen.**
 
 | Typ | View | Linkes Icon | Titel | Untertitel | Rechts |
 |---|---|---|---|---|---|
@@ -1091,13 +1096,18 @@ List
 | Zyklus | `ZyklusTagesbuchZeile` | `ModulKreis(farbe: .pink, symbol: ...)` | "Periode" / "Zyklus-Eintrag" | Uhrzeit · Blutungsfluss | — |
 | Diabetes | `DiabetesTagesbuchZeile` | `ModulKreis(farbe: wertFarbe, symbol: ...)` | Blutzucker-Wert | Uhrzeit · Messzeitpunkt | Insulin |
 
-**`ModulKreis`-Komponente** (privat in PainEntryListView):
+**`ModulKreis`-Komponente** (`struct`, nicht `private`, in PainEntryListView):
 ```swift
 ZStack {
     Circle().fill(farbe.opacity(0.18)).frame(width: 40, height: 40)
     // entweder Zahl (schmerzstaerke) oder SF Symbol
 }
 ```
+
+**Modul-Hauptseiten-Standard (bindend):**
+- `SchmerzView`, `HautView` → `SchmerzZeile(eintrag:)` in `NavigationLink → PainEntryDetailView`
+- `MigraeneView` → `MigraeneZeile(anfall:)` in `NavigationLink → MigraeneAnfallDetailView`
+- Eigene Zeilen-Structs pro Modul sind **verboten** wenn `SchmerzZeile`/`MigraeneZeile` passen
 
 **Routing beim Tippen:**
 - Schmerz/Rheuma/Haut → `NavigationLink → PainEntryDetailView(eintrag:)`

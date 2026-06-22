@@ -32,13 +32,15 @@ struct HautView: View {
             } else {
                 Section("Einträge") {
                     ForEach(eintraege) { eintrag in
-                        HautEintragZeile(eintrag: eintrag)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    FotoManager.loeschen(dateiname: eintrag.fotoDateiname)
-                                    modelContext.delete(eintrag)
-                                } label: { Label("Löschen", systemImage: "trash") }
-                            }
+                        NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
+                            SchmerzZeile(eintrag: eintrag)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                FotoManager.loeschen(dateiname: eintrag.fotoDateiname)
+                                modelContext.delete(eintrag)
+                            } label: { Label("Löschen", systemImage: "trash") }
+                        }
                     }
                 }
             }
@@ -126,48 +128,3 @@ struct HautView: View {
 
 // MARK: - Zeile
 
-private struct HautEintragZeile: View {
-    let eintrag: PainEntry
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.orange.opacity(0.15))
-                    .frame(width: 44, height: 44)
-                Image(systemName: "bandage.fill")
-                    .font(.title3)
-                    .foregroundStyle(.orange)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(eintrag.datum, style: .date).font(.subheadline.bold())
-
-                let arten = eintrag.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty }
-                if !arten.isEmpty {
-                    Text(arten.joined(separator: " · "))
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                        .lineLimit(1)
-                }
-
-                let stellen = eintrag.hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty }
-                if !stellen.isEmpty {
-                    Text(stellen.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-
-            Spacer()
-
-            if !eintrag.notizen.isEmpty {
-                Image(systemName: "note.text")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.vertical, 2)
-    }
-}

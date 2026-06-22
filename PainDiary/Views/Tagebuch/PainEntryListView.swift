@@ -43,6 +43,7 @@ struct PainEntryListView: View {
     @State private var filterStaerkeMax = 10
     @State private var filterZeitraum = Zeitraum.alle
     @State private var modulFilter: ModulFilter = .alle
+    @State private var ausgewaehlterTag: Date? = nil
 
     enum Zeitraum: String, CaseIterable {
         case alle = "Alle"
@@ -90,6 +91,8 @@ struct PainEntryListView: View {
         let grenze: Date? = filterZeitraum.tage.map {
             Calendar.current.date(byAdding: .day, value: -$0, to: Date()) ?? Date()
         }
+        let cal = Calendar.current
+        let tagFilter = ausgewaehlterTag
         let schmerzItems: [TagesbuchItem] = eintraege.compactMap { e in
             let suchMatch = suchtext.isEmpty ||
                 e.koerperstelle.localizedCaseInsensitiveContains(suchtext) ||
@@ -98,7 +101,8 @@ struct PainEntryListView: View {
                 e.notizen.localizedCaseInsensitiveContains(suchtext)
             let staerkeMatch = e.schmerzstaerke >= filterStaerkeMin && e.schmerzstaerke <= filterStaerkeMax
             let datumMatch = grenze == nil || e.datum >= grenze!
-            return (suchMatch && staerkeMatch && datumMatch) ? .schmerz(e) : nil
+            let tagMatch = tagFilter == nil || cal.isDate(e.datum, inSameDayAs: tagFilter!)
+            return (suchMatch && staerkeMatch && datumMatch && tagMatch) ? .schmerz(e) : nil
         }
         let migraeneItems: [TagesbuchItem] = migraeneAnfaelle.compactMap { a in
             let suchMatch = suchtext.isEmpty ||
@@ -107,19 +111,22 @@ struct PainEntryListView: View {
                 a.ausloeser.localizedCaseInsensitiveContains(suchtext) ||
                 a.notizen.localizedCaseInsensitiveContains(suchtext)
             let datumMatch = grenze == nil || a.datum >= grenze!
-            return (suchMatch && datumMatch) ? .migraene(a) : nil
+            let tagMatch = tagFilter == nil || cal.isDate(a.datum, inSameDayAs: tagFilter!)
+            return (suchMatch && datumMatch && tagMatch) ? .migraene(a) : nil
         }
         let zyklusItems: [TagesbuchItem] = zyklusModulAktiv ? zyklusEintraege.compactMap { e in
             let datumMatch = grenze == nil || e.datum >= grenze!
             let suchMatch = suchtext.isEmpty || e.notizen.localizedCaseInsensitiveContains(suchtext)
-            return (suchMatch && datumMatch) ? .zyklus(e) : nil
+            let tagMatch = tagFilter == nil || cal.isDate(e.datum, inSameDayAs: tagFilter!)
+            return (suchMatch && datumMatch && tagMatch) ? .zyklus(e) : nil
         } : []
         let diabetesItems: [TagesbuchItem] = diabetesModulAktiv ? blutzuckerMessungen.compactMap { e in
             let datumMatch = grenze == nil || e.datum >= grenze!
             let suchMatch = suchtext.isEmpty ||
                 e.messZeitpunkt.localizedCaseInsensitiveContains(suchtext) ||
                 e.notizen.localizedCaseInsensitiveContains(suchtext)
-            return (suchMatch && datumMatch) ? .diabetes(e) : nil
+            let tagMatch = tagFilter == nil || cal.isDate(e.datum, inSameDayAs: tagFilter!)
+            return (suchMatch && datumMatch && tagMatch) ? .diabetes(e) : nil
         } : []
 
         let alle = (schmerzItems + migraeneItems + zyklusItems + diabetesItems)
@@ -316,35 +323,49 @@ struct PainEntryListView: View {
             ForEach(tage, id: \.self) { tag in
                 let tagItems = alleItems.filter { cal.isDate($0.datum, inSameDayAs: tag) }
                 let isHeute = cal.isDateInToday(tag)
+                let isAusgewaehlt = ausgewaehlterTag.map { cal.isDate($0, inSameDayAs: tag) } ?? false
 
-                VStack(spacing: 4) {
-                    Text(tag.formatted(.dateTime.weekday(.narrow)))
-                        .font(.system(size: 10))
-                        .foregroundStyle(isHeute ? .primary : .secondary)
-
-                    if tagItems.isEmpty {
-                        Circle()
-                            .fill(Color.secondary.opacity(0.15))
-                            .frame(width: 8, height: 8)
-                    } else {
-                        let modulFarben = uniqueModulFarben(aus: tagItems)
-                        VStack(spacing: 2) {
-                            ForEach(Array(modulFarben.prefix(3).enumerated()), id: \.offset) { _, farbe in
-                                Circle().fill(farbe).frame(width: 6, height: 6)
-                            }
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if isAusgewaehlt {
+                            ausgewaehlterTag = nil
+                        } else {
+                            ausgewaehlterTag = tag
                         }
                     }
+                } label: {
+                    VStack(spacing: 4) {
+                        Text(tag.formatted(.dateTime.weekday(.narrow)))
+                            .font(.system(size: 10))
+                            .foregroundStyle(isAusgewaehlt ? .primary : isHeute ? .primary : .secondary)
 
-                    Text(tag.formatted(.dateTime.day()))
-                        .font(.system(size: 10, weight: isHeute ? .bold : .regular))
-                        .foregroundStyle(isHeute ? .primary : .secondary)
+                        if tagItems.isEmpty {
+                            Circle()
+                                .fill(Color.secondary.opacity(0.15))
+                                .frame(width: 8, height: 8)
+                        } else {
+                            let modulFarben = uniqueModulFarben(aus: tagItems)
+                            VStack(spacing: 2) {
+                                ForEach(Array(modulFarben.prefix(3).enumerated()), id: \.offset) { _, farbe in
+                                    Circle().fill(farbe).frame(width: 6, height: 6)
+                                }
+                            }
+                        }
+
+                        Text(tag.formatted(.dateTime.day()))
+                            .font(.system(size: 10, weight: isAusgewaehlt || isHeute ? .bold : .regular))
+                            .foregroundStyle(isAusgewaehlt ? .primary : isHeute ? .primary : .secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(
+                        isAusgewaehlt
+                            ? Color.accentColor.opacity(0.18)
+                            : isHeute ? Color.secondary.opacity(0.08) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 8)
+                    )
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(
-                    isHeute ? Color.secondary.opacity(0.08) : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 8)
-                )
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)
@@ -380,6 +401,24 @@ struct PainEntryListView: View {
     private var filterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
+                if let tag = ausgewaehlterTag {
+                    Button {
+                        withAnimation { ausgewaehlterTag = nil }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark").font(.caption2.bold())
+                            Text(tag.formatted(.dateTime.weekday(.abbreviated).day().month()))
+                                .font(.caption.bold())
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
+                }
                 ForEach(ModulFilter.allCases, id: \.self) { filter in
                     let aktiv = modulFilter == filter
                     Button {
@@ -467,7 +506,7 @@ struct PainEntryListView: View {
 
 // MARK: - Modul-Kreis
 
-private struct ModulKreis: View {
+struct ModulKreis: View {
     let farbe: Color
     let symbol: String
     let zahl: Int?
@@ -492,7 +531,7 @@ private struct ModulKreis: View {
 
 // MARK: - Schmerz-Zeile
 
-private struct SchmerzZeile: View {
+struct SchmerzZeile: View {
     let eintrag: PainEntry
 
     private var isRheuma: Bool { eintrag.koerperstelle == "Rheuma" }
@@ -573,7 +612,7 @@ private struct SchmerzZeile: View {
 
 // MARK: - Migräne-Zeile
 
-private struct MigraeneZeile: View {
+struct MigraeneZeile: View {
     let anfall: MigraeneEintrag
 
     var body: some View {
