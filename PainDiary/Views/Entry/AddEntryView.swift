@@ -373,7 +373,6 @@ struct AddEntryView: View {
                 stressLevel: $stressLevel,
                 notizen: $notizen,
                 morgensteifigkeit: $morgensteifigkeit,
-                fatigue: $fatigue,
                 energielevel: $energielevel,
                 healthSchlafVorschlag: healthSchlaf
             )

@@ -235,7 +235,7 @@ ScrollView {
 | Stress | 5 dünne vertikale Balken (`width: 6`, Höhe = `stufe * 5 + 8`) in Hintergrundkarte, Farben: green/mint/yellow/orange/red, Labels: Entspannt/Ruhig/Mittel/Gestresst/Sehr hoch |
 | Energie | Optional (`energielevel: Binding<Int>? = nil`), 5 Batterie-Icons (`battery.0/25/50/75/100`) in Hintergrundkarte, Labels: Erschöpft/Müde/Okay/Gut/Top, Farben: red/orange/yellow/mint/green |
 | Schlaf | Slider 0–12 h, Schritt 0.5, Tint `.indigo` |
-| Fatigue | Optional (`fatigue: Binding<Int>? = nil`), Slider 0–10, Schritt 1, dynamischer Tint (green/orange/red) |
+| Fatigue | **Nur Rheuma** (`fatigue: Binding<Int>? = nil`), Slider 0–10, Schritt 1, dynamischer Tint (green/orange/red) |
 | Morgensteifigkeit | Optional (`morgensteifigkeit: Binding<Int>? = nil`), Button-Grid –/15'/30'/60'/90'+, Tint `.orange` |
 
 **Button-Karte-Muster (bindend für Stimmung, Stress, Energie):**
@@ -287,6 +287,20 @@ struct WohlbefindenStepView: View {
 ```
 
 **Neues Modul mit Wohlbefinden-Schritt:** `energielevel` immer übergeben. Dafür muss das SwiftData-Modell `var energielevel: Int = 0` als Feld haben (lightweight migration, Default 0).
+
+### Fatigue vs. Energie — Unterschied und Verwendung (bindend)
+
+> **`fatigue` (Erschöpfung, 0–10) wird ausschliesslich im Rheuma-Wizard übergeben.**
+
+| | Fatigue | Energie & Vitalität |
+|---|---|---|
+| Skala | 0–10 (medizinisch, höher = schlechter) | 1–5 (allgemein, höher = besser) |
+| Bedeutung | Krankheitsbedingtes Erschöpfungsgefühl (Symptom) | Allgemeines Energiegefühl (Wohlbefinden) |
+| Klinische Basis | FACIT-Fatigue Score, Rheuma/Autoimmun | Allgemeiner Wellness-Indikator |
+| Wizard-Binding | **Nur `RheumaSchnellForm`** | Alle Module |
+| Detail-View | Nur Rheuma-Einträge (Symptome-Karte) | Alle Einträge (Wohlbefinden-Karte) |
+
+**Regel:** Schmerz, Migräne, Haut — kein `fatigue: $fatigue` übergeben. Rheuma — `fatigue: $fatigue` übergeben.
 
 ### Schlafstunden-Vorbelegung (bindend)
 
