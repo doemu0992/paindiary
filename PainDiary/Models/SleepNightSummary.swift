@@ -8,10 +8,16 @@ struct SleepNightSummary: Codable, Identifiable {
     var remPct: Double
     var leichtPct: Double
     var wachPct: Double
+    var schnarchenAnzahl: Int
+    var sprechenAnzahl: Int
+    var geraeuschAnzahl: Int
 
     var id: TimeInterval { datum }
     var date: Date { Date(timeIntervalSince1970: datum) }
     var dauerStunden: Double { dauerSek / 3600 }
+
+    var geraeuschGesamtAnzahl: Int { schnarchenAnzahl + sprechenAnzahl + geraeuschAnzahl }
+    var hatGeraeusche: Bool { geraeuschGesamtAnzahl > 0 }
 }
 
 extension SleepNightSummary {

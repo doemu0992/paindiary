@@ -162,6 +162,19 @@ struct SchlafNachtZeile: View {
                     phaseBadge("Tief \(Int(nacht.tiefPct * 100))%", farbe: .indigo)
                     phaseBadge("REM \(Int(nacht.remPct * 100))%", farbe: .purple)
                 }
+                if nacht.hatGeraeusche {
+                    HStack(spacing: 6) {
+                        if nacht.schnarchenAnzahl > 0 {
+                            geraeuschBadge("\(nacht.schnarchenAnzahl)× Schnarchen", icon: "waveform", farbe: .orange)
+                        }
+                        if nacht.sprechenAnzahl > 0 {
+                            geraeuschBadge("\(nacht.sprechenAnzahl)× Sprechen", icon: "bubble.left.fill", farbe: .blue)
+                        }
+                        if nacht.geraeuschAnzahl > 0 {
+                            geraeuschBadge("\(nacht.geraeuschAnzahl)× Geräusch", icon: "speaker.wave.2.fill", farbe: .secondary)
+                        }
+                    }
+                }
             }
 
             Spacer()
@@ -175,5 +188,12 @@ struct SchlafNachtZeile: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(farbe.opacity(0.12), in: Capsule())
+    }
+
+    private func geraeuschBadge(_ text: String, icon: String, farbe: Color) -> some View {
+        Label(text, systemImage: icon)
+            .font(.caption2)
+            .foregroundStyle(farbe)
+            .labelStyle(.titleAndIcon)
     }
 }
