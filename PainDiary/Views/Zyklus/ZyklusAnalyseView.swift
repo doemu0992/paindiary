@@ -297,7 +297,8 @@ struct ZyklusAnalyseView: View {
     // MARK: - Übersicht
 
     private var uebersichtKarte: some View {
-        karte(titel: "Übersicht", symbol: "drop.fill", farbe: .pink) {
+        karte(titel: "Übersicht", symbol: "drop.fill", farbe: .pink,
+      info: "Überblick über deine Zyklusdaten im gewählten Zeitraum. Zeigt durchschnittliche Zykluslänge, Periodendauer und Periodenfluss. Ein normaler Zyklus dauert 21–35 Tage, eine Periode 3–7 Tage.") {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                 statCell("Ø Zykluslänge", String(format: "%.0f Tage", analyse.zykluslaenge), .pink)
                 statCell("Ø Periode", String(format: "%.0f Tage", analyse.periodendauer), .red)
@@ -425,7 +426,8 @@ struct ZyklusAnalyseView: View {
         let maxDom  = (laengen.max() ?? 35) + 3
 
         if laengen.count >= 2 {
-            karte(titel: "Zyklusverlauf", symbol: "chart.line.uptrend.xyaxis", farbe: .pink) {
+            karte(titel: "Zyklusverlauf", symbol: "chart.line.uptrend.xyaxis", farbe: .pink,
+      info: "Zykluslänge im zeitlichen Verlauf. Schwankungen von ±3 Tagen sind normal. Regelmäßige starke Schwankungen (> 7 Tage) oder sehr kurze (< 21 Tage) bzw. lange (> 35 Tage) Zyklen können auf hormonelle Ungleichgewichte hinweisen.") {
                 Text("Verlauf der letzten Zyklen").font(.caption).foregroundStyle(.secondary)
                 Chart {
                     ForEach(Array(laengen.enumerated()), id: \.offset) { i, laenge in
@@ -506,7 +508,8 @@ struct ZyklusAnalyseView: View {
         let chartHoehe = CGFloat(min(symptome.count, 8)) * 30.0 + 20.0
 
         if !symptome.isEmpty {
-            karte(titel: "Häufigste Symptome", symbol: "list.bullet.clipboard.fill", farbe: .pink) {
+            karte(titel: "Häufigste Symptome", symbol: "list.bullet.clipboard.fill", farbe: .pink,
+                  info: "Deine am häufigsten erfassten zyklusbezogenen Symptome. Viele Symptome sind phasenabhängig — besonders in der Lutealphase (2. Zyklushälfte) häufig. Stark belastende Symptome solltest du mit deiner Ärztin besprechen (mögliche Diagnosen: PMS, PMDS, Endometriose).") {
                 Chart(symptome.prefix(8)) { s in
                     BarMark(x: .value("Anzahl", s.anzahl), y: .value("Symptom", s.name))
                         .foregroundStyle(Color.pink.gradient)
@@ -557,7 +560,8 @@ struct ZyklusAnalyseView: View {
         let tests = ovulationstests()
 
         if !tests.isEmpty {
-            karte(titel: "Ovulationstests", symbol: "circle.dotted", farbe: .pink) {
+            karte(titel: "Ovulationstests", symbol: "circle.dotted", farbe: .pink,
+                  info: "Übersicht deiner Ovulationstests. Ein positiver Test (Testlinie so stark oder stärker als Kontrolllinie) deutet auf den LH-Anstieg hin. Der Eisprung tritt meist 12–36 Stunden nach dem LH-Peak auf — die fruchtbarsten Tage sind der Tag des LH-Peaks und der Folgetag.") {
                 VStack(spacing: 8) {
                     ForEach(Array(tests.suffix(10).enumerated()), id: \.offset) { _, test in
                         HStack(spacing: 12) {
@@ -585,7 +589,8 @@ struct ZyklusAnalyseView: View {
         let gesamt = daten.map(\.anzahl).reduce(0, +)
 
         if !painEntries.isEmpty && !analyse.zyklusStarts.isEmpty && !daten.isEmpty {
-            karte(titel: "Schmerz & Zyklus", symbol: "cross.fill", farbe: .red) {
+            karte(titel: "Schmerz & Zyklus", symbol: "cross.fill", farbe: .red,
+                  info: "Durchschnittliche Schmerzstärke je Zyklusphase. Häufig tritt mehr Schmerz in der Menstruationsphase (Dysmenorrhoe) und Lutealphase auf. Ein klares Muster kann helfen, Schmerzspitzen vorauszuplanen und gezielt zu behandeln.") {
                 Text("Ø Schmerzstärke je Zyklusphase").font(.caption).foregroundStyle(.secondary)
                 Chart(daten, id: \.phase.rawValue) { d in
                     BarMark(x: .value("Phase", d.phase.rawValue), y: .value("Schmerz", d.avgSchmerz))
@@ -633,7 +638,8 @@ struct ZyklusAnalyseView: View {
         let maxAnzahl = (daten.map(\.anzahl).max() ?? 4) + 1
 
         if !migraeneAnfaelle.isEmpty && !analyse.zyklusStarts.isEmpty && !daten.isEmpty {
-            karte(titel: "Migräne & Zyklus", symbol: "brain", farbe: .purple) {
+            karte(titel: "Migräne & Zyklus", symbol: "brain", farbe: .purple,
+                  info: "Anzahl der Migräne-Anfälle je Zyklusphase. Hormonelle Schwankungen — besonders der Östrogenabfall kurz vor der Periode — sind ein häufiger Migräne-Auslöser. Menstruelle Migräne spricht oft gut auf spezifische hormonelle oder triptan-basierte Prophylaxe an.") {
                 Text("Anfälle je Zyklusphase").font(.caption).foregroundStyle(.secondary)
                 Chart(daten, id: \.phase.rawValue) { d in
                     BarMark(x: .value("Phase", d.phase.rawValue), y: .value("Anfälle", d.anzahl))
