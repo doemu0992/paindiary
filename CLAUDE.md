@@ -670,6 +670,72 @@ Vor dem Merge eines neuen Moduls prüfen:
 
 ---
 
+## Custom-Chip-Persistenz (bindend)
+
+> **Jedes Freitext-Eingabefeld neben einem Chip-Grid muss den eingegebenen Wert beim Bestätigen ("+"-Button) persistent speichern, sodass er beim nächsten Öffnen als auswählbarer Chip erscheint.**
+
+### Implementierungsmuster
+
+```swift
+// 1. Custom-Einträge laden (onAppear oder in laden())
+@State private var customAusloeser: [String] = []
+// in onAppear / laden():
+customAusloeser = ChipSpeicher.laden(schluessel: "modulCustomAusloeser")
+
+// 2. Basis-Optionen + Custom-Einträge zusammenführen
+private let ausloeserBasis = ["Stress", "Schlafmangel", ...]
+private var ausloeserOptionen: [String] {
+    ausloeserBasis + customAusloeser.filter { !ausloeserBasis.contains($0) }
+}
+
+// 3. Beim "+" speichern
+ChipSpeicher.hinzufuegen(term, schluessel: "modulCustomAusloeser")
+customAusloeser = ChipSpeicher.laden(schluessel: "modulCustomAusloeser")
+```
+
+### chipKarte-Helper (Standard für neue Formulare)
+
+```swift
+chipKarte(
+    titel: "Auslöser (mehrere möglich)",
+    optionen: ausloeserOptionen,
+    ausgewaehlt: $ausgewaehlteAusloeser,
+    freitext: $ausloeserFreitext,
+    platzhalter: "Eigener Auslöser…",
+    beiCustomEintrag: { term in
+        ChipSpeicher.hinzufuegen(term, schluessel: "modulCustomAusloeser")
+        customAusloeser = ChipSpeicher.laden(schluessel: "modulCustomAusloeser")
+    }
+)
+```
+
+### Schlüssel-Konvention
+
+`"<modul>Custom<Kategorie>"` — z.B. `"migraeneCustomAusloeser"`, `"hautCustomArt"`, `"migraeneCustomBegleit"`
+
+Für Schmerz-übergreifende Felder (Schmerzart, Auslöser) die bestehenden `@AppStorage`-Keys verwenden:
+`"customCharakter"`, `"customAusloeser"`, `"customBegleit"`, `"customMassnahmen"`
+
+### ChipSpeicher (bestehend, nie duplizieren)
+
+`Models/ChipSpeicher.swift` — max. 15 Einträge, Duplikate werden ignoriert, neueste oben.
+
+### Abdeckung
+
+| View | Freitext-Feld | Schlüssel | Status |
+|---|---|---|---|
+| CharakterStepView | Eigene Beschreibung | `customCharakter` (`@AppStorage`) | ✅ |
+| CharakterAusloeserStepView | Eigene Beschreibung / Auslöser | `customCharakter` / `customAusloeser` | ✅ |
+| BegleitMassnahmenStepView | Eigene Angaben / Massnahme | `customBegleit` / `customMassnahmen` | ✅ |
+| AusloeserStepView | Eigener Auslöser | `chipEigeneAusloeser` | ✅ |
+| BegleitschmerzStepView | Eigene Angaben | `chipEigeneBegleiterscheinungen` | ✅ |
+| MassnahmenStepView | Weitere Massnahme | `chipEigeneMassnahmen` | ✅ |
+| HautStepView | Weitere Art | `hautCustomArt` | ✅ |
+| HautArtFotoStepView | Eigene Beschreibung | `hautCustomArt` | ✅ |
+| MigraeneAnfallForm | Eigenes Symptom / Auslöser | `migraeneCustomBegleit` / `migraeneCustomAusloeser` | ✅ |
+
+---
+
 ## Löschen-Standard (bindend)
 
 > **Vor jedem `modelContext.delete(entry)` müssen alle ausstehenden Benachrichtigungen für diesen Eintrag abgebrochen werden.**

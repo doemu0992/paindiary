@@ -8,10 +8,19 @@ struct CharakterStepView: View {
     @State private var ausgewaehlt: Set<String> = []
     @State private var eigenerText = ""
 
+    @AppStorage("customCharakter") private var customCharakterRaw = ""
+
+    private var customCharakter: [String] {
+        customCharakterRaw.split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
     private var vorschlaege: [String] {
-        SchmerzLexikon.db[koerperstelle]?.charakter ?? [
+        let basis = SchmerzLexikon.db[koerperstelle]?.charakter ?? [
             "Stechend", "Ziehend", "Dumpf", "Brennend", "Krampfartig", "Pulsierend", "Drückend"
         ]
+        return basis + customCharakter.filter { !basis.contains($0) }
     }
 
     var body: some View {
@@ -35,9 +44,14 @@ struct CharakterStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !eigenerText.isEmpty {
                         Button {
-                            ausgewaehlt.insert(eigenerText)
+                            let term = eigenerText.trimmingCharacters(in: .whitespaces)
+                            guard !term.isEmpty else { return }
+                            ausgewaehlt.insert(term)
                             eigenerText = ""
                             aktualisiereBinding()
+                            if !vorschlaege.contains(term) {
+                                customCharakterRaw = (customCharakter + [term]).joined(separator: ",")
+                            }
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(Color.accentColor)

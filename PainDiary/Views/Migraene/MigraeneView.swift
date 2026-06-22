@@ -336,6 +336,10 @@ struct MigraeneAnfallForm: View {
     @State private var stimmung = 3
     @State private var stressLevel = 3
     @State private var fatigue = 0
+    @State private var ausloeserFreitext = ""
+    @State private var begleitFreitext = ""
+    @State private var customAusloeser: [String] = []
+    @State private var customBegleit: [String] = []
 
     private let wetter = WetterService.shared
     private let maxSchritt = 5
@@ -359,15 +363,17 @@ struct MigraeneAnfallForm: View {
         "Hinterkopf", "Scheitel", "Nacken"
     ]
     private let charakterOptionen = ["Pulsierend", "Hämmernd", "Drückend", "Stechend", "Brennend"]
-    private let begleitOptionen = [
+    private let begleitBasis = [
         "Übelkeit", "Erbrechen", "Lichtempfindlichkeit", "Lärmempfindlichkeit",
         "Geruchsempfindlichkeit", "Sehstörungen / Flimmern", "Kribbeln / Taubheit"
     ]
-    private let ausloeserOptionen = [
+    private let ausloeserBasis = [
         "Stress", "Schlafmangel", "Zu viel Schlaf", "Hormonschwankungen",
         "Wetter / Luftdruck", "Alkohol", "Bestimmte Lebensmittel", "Koffeinentzug",
         "Körperliche Anstrengung", "Bildschirm / Licht", "Lärm", "Ausgelassene Mahlzeit"
     ]
+    private var begleitOptionen: [String] { begleitBasis + customBegleit.filter { !begleitBasis.contains($0) } }
+    private var ausloeserOptionen: [String] { ausloeserBasis + customAusloeser.filter { !ausloeserBasis.contains($0) } }
 
     var body: some View {
         NavigationStack {
@@ -664,13 +670,25 @@ struct MigraeneAnfallForm: View {
             chipKarte(
                 titel: "Begleitsymptome (mehrere möglich)",
                 optionen: begleitOptionen,
-                ausgewaehlt: $ausgewaehlteBegleitsymptome
+                ausgewaehlt: $ausgewaehlteBegleitsymptome,
+                freitext: $begleitFreitext,
+                platzhalter: "Eigenes Symptom…",
+                beiCustomEintrag: { term in
+                    ChipSpeicher.hinzufuegen(term, schluessel: "migraeneCustomBegleit")
+                    customBegleit = ChipSpeicher.laden(schluessel: "migraeneCustomBegleit")
+                }
             )
 
             chipKarte(
                 titel: "Mögliche Auslöser (mehrere möglich)",
                 optionen: ausloeserOptionen,
-                ausgewaehlt: $ausgewaehlteAusloeser
+                ausgewaehlt: $ausgewaehlteAusloeser,
+                freitext: $ausloeserFreitext,
+                platzhalter: "Eigener Auslöser…",
+                beiCustomEintrag: { term in
+                    ChipSpeicher.hinzufuegen(term, schluessel: "migraeneCustomAusloeser")
+                    customAusloeser = ChipSpeicher.laden(schluessel: "migraeneCustomAusloeser")
+                }
             )
         }
         .padding(.horizontal, 16)
@@ -837,7 +855,10 @@ struct MigraeneAnfallForm: View {
         titel: String,
         optionen: [String],
         ausgewaehlt: Binding<Set<String>>,
-        farbe: Color = .purple
+        farbe: Color = .purple,
+        freitext: Binding<String>? = nil,
+        platzhalter: String? = nil,
+        beiCustomEintrag: ((String) -> Void)? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(titel).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
@@ -864,6 +885,29 @@ struct MigraeneAnfallForm: View {
                     }
                     .buttonStyle(.plain)
                     .animation(.easeInOut(duration: 0.15), value: sel)
+                }
+            }
+            if let ft = freitext, let ph = platzhalter {
+                HStack(spacing: 8) {
+                    TextField(ph, text: ft)
+                        .font(.subheadline)
+                        .padding(14)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    if !ft.wrappedValue.isEmpty {
+                        Button {
+                            let term = ft.wrappedValue.trimmingCharacters(in: .whitespaces)
+                            guard !term.isEmpty else { return }
+                            var s = ausgewaehlt.wrappedValue
+                            s.insert(term)
+                            ausgewaehlt.wrappedValue = s
+                            ft.wrappedValue = ""
+                            beiCustomEintrag?(term)
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(farbe)
+                                .font(.title2)
+                        }
+                    }
                 }
             }
         }
@@ -914,6 +958,8 @@ struct MigraeneAnfallForm: View {
     }
 
     private func laden() {
+        customAusloeser = ChipSpeicher.laden(schluessel: "migraeneCustomAusloeser")
+        customBegleit = ChipSpeicher.laden(schluessel: "migraeneCustomBegleit")
         if let a = anfall {
             datum = a.datum
             dauerStunden = a.dauer / 60
