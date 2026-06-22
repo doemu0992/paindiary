@@ -64,7 +64,7 @@ struct HautKachel: View {
                     x: .value("Tag", punkt.datum, unit: .day),
                     y: .value("Stärke", hatDaten ? punkt.wert : 1.0)
                 )
-                .foregroundStyle(hatDaten ? staerkeFarbe(punkt.wert) : Color.orange.opacity(0.07))
+                .foregroundStyle(hatDaten ? (punkt.wert > 0 ? Color.orange.opacity(0.75) : Color.orange.opacity(0.12)) : Color.orange.opacity(0.07))
                 .cornerRadius(3)
             }
             .chartXAxis(.hidden)
