@@ -1,0 +1,39 @@
+import Foundation
+import SwiftData
+
+@Model final class BlutzuckerEintrag {
+    var datum: Date
+    var wert: Double         // in mmol/L
+    var messZeitpunkt: String
+    var insulinEinheiten: Double
+    var insulinTyp: String   // "Kurzzeit", "Langzeit", "Mischung"
+    var kohlenhydrate: Int   // in Gramm, 0 = nicht erfasst
+    var notizen: String
+
+    init(datum: Date = Date(), wert: Double = 5.5,
+         messZeitpunkt: String = "Nüchtern",
+         insulinEinheiten: Double = 0, insulinTyp: String = "",
+         kohlenhydrate: Int = 0, notizen: String = "") {
+        self.datum = datum
+        self.wert = wert
+        self.messZeitpunkt = messZeitpunkt
+        self.insulinEinheiten = insulinEinheiten
+        self.insulinTyp = insulinTyp
+        self.kohlenhydrate = kohlenhydrate
+        self.notizen = notizen
+    }
+
+    var wertText: String { String(format: "%.1f mmol/L", wert) }
+
+    var zielbereich: Bool { wert >= 3.9 && wert <= 7.8 }
+
+    var bewertung: String {
+        switch wert {
+        case ..<3.9:    return "Hypo"
+        case 3.9..<6.0: return "Normal"
+        case 6.0..<7.8: return "Erhöht"
+        case 7.8..<10:  return "Zu hoch"
+        default:        return "Sehr hoch"
+        }
+    }
+}

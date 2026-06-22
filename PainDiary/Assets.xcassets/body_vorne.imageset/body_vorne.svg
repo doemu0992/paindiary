@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 520" fill="none">
+
+  <!-- Body fill (single silhouette) -->
+
+  <!-- Head -->
+  <ellipse cx="100" cy="32" rx="26" ry="30" fill="#E8E0D8" stroke="#A89880" stroke-width="1.5"/>
+
+  <!-- Ear left -->
+  <ellipse cx="74" cy="33" rx="4" ry="6" fill="#E0D5CC" stroke="#A89880" stroke-width="1"/>
+  <!-- Ear right -->
+  <ellipse cx="126" cy="33" rx="4" ry="6" fill="#E0D5CC" stroke="#A89880" stroke-width="1"/>
+
+  <!-- Neck -->
+  <path d="M88 60 Q88 72 90 76 L110 76 Q112 72 112 60 Z" fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Left shoulder -->
+  <path d="M90 76 Q80 76 68 82 Q58 88 52 100 Q48 110 50 118 Q60 112 68 108 Q78 102 88 98 L90 76 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Right shoulder -->
+  <path d="M110 76 Q120 76 132 82 Q142 88 148 100 Q152 110 150 118 Q140 112 132 108 Q122 102 112 98 L110 76 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Torso main -->
+  <path d="M68 108 Q60 112 56 118 L56 128 Q58 144 62 158 Q66 170 70 178 Q74 186 76 194
+           Q78 206 78 220 L122 220 Q122 206 124 194 Q126 186 130 178 Q134 170 138 158
+           Q142 144 144 128 L144 118 Q140 112 132 108
+           Q122 102 112 98 L90 98 Q80 102 68 108 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Hips -->
+  <path d="M78 220 Q72 228 68 240 Q66 252 68 262 Q76 260 84 258 Q92 256 100 256
+           Q108 256 116 258 Q124 260 132 262 Q134 252 132 240 Q128 228 122 220 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Left thigh -->
+  <path d="M68 262 Q60 266 58 278 Q56 294 56 310 Q56 326 58 338 Q62 350 66 358
+           Q72 356 78 354 Q84 352 88 350 Q90 336 90 320 Q90 304 88 288 Q86 272 84 262
+           Q76 260 68 262 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Right thigh -->
+  <path d="M132 262 Q140 266 142 278 Q144 294 144 310 Q144 326 142 338 Q138 350 134 358
+           Q128 356 122 354 Q116 352 112 350 Q110 336 110 320 Q110 304 112 288 Q114 272 116 262
+           Q124 260 132 262 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Left calf -->
+  <path d="M66 358 Q62 366 60 378 Q58 392 60 406 Q62 418 64 428 Q68 440 72 448
+           Q78 446 82 444 Q86 442 88 440 Q88 426 88 412 Q88 396 88 382 Q88 368 88 358
+           Q84 352 78 354 Q72 356 66 358 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Right calf -->
+  <path d="M134 358 Q138 366 140 378 Q142 392 140 406 Q138 418 136 428 Q132 440 128 448
+           Q122 446 118 444 Q114 442 112 440 Q112 426 112 412 Q112 396 112 382 Q112 368 112 358
+           Q116 352 122 354 Q128 356 134 358 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Left foot -->
+  <path d="M64 448 Q60 452 58 460 Q58 466 62 470 Q68 474 78 474 Q88 474 92 470 Q94 466 92 460
+           Q90 454 88 450 L88 448 Q82 446 78 446 Q72 446 64 448 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Right foot -->
+  <path d="M136 448 Q140 452 142 460 Q142 466 138 470 Q132 474 122 474 Q112 474 108 470
+           Q106 466 108 460 Q110 454 112 450 L112 448 Q118 446 122 446 Q128 446 136 448 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Left upper arm -->
+  <path d="M50 118 Q40 124 36 138 Q32 152 34 168 Q36 182 40 194 Q44 204 50 210
+           Q56 208 60 204 Q64 200 66 194 Q62 180 60 166 Q58 150 58 136 Q58 126 56 118
+           L50 118 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Right upper arm -->
+  <path d="M150 118 Q160 124 164 138 Q168 152 166 168 Q164 182 160 194 Q156 204 150 210
+           Q144 208 140 204 Q136 200 134 194 Q138 180 140 166 Q142 150 142 136 Q142 126 144 118
+           L150 118 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Left forearm -->
+  <path d="M50 210 Q44 216 40 228 Q36 242 36 256 Q36 268 38 278 Q42 288 46 294
+           Q52 292 56 288 Q60 284 62 278 Q60 266 60 252 Q60 238 62 224 Q64 216 66 208
+           Q60 208 56 208 Q52 208 50 210 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Right forearm -->
+  <path d="M150 210 Q156 216 160 228 Q164 242 164 256 Q164 268 162 278 Q158 288 154 294
+           Q148 292 144 288 Q140 284 138 278 Q140 266 140 252 Q140 238 138 224 Q136 216 134 208
+           Q140 208 144 208 Q148 208 150 210 Z"
+        fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+
+  <!-- Left hand -->
+  <ellipse cx="46" cy="308" rx="12" ry="18" fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+  <!-- Left fingers suggestion -->
+  <line x1="38" y1="318" x2="36" y2="326" stroke="#A89880" stroke-width="0.8"/>
+  <line x1="44" y1="324" x2="43" y2="332" stroke="#A89880" stroke-width="0.8"/>
+  <line x1="50" y1="325" x2="50" y2="333" stroke="#A89880" stroke-width="0.8"/>
+  <line x1="56" y1="322" x2="57" y2="330" stroke="#A89880" stroke-width="0.8"/>
+
+  <!-- Right hand -->
+  <ellipse cx="154" cy="308" rx="12" ry="18" fill="#E0D5CC" stroke="#A89880" stroke-width="1.2"/>
+  <line x1="162" y1="318" x2="164" y2="326" stroke="#A89880" stroke-width="0.8"/>
+  <line x1="156" y1="324" x2="157" y2="332" stroke="#A89880" stroke-width="0.8"/>
+  <line x1="150" y1="325" x2="150" y2="333" stroke="#A89880" stroke-width="0.8"/>
+  <line x1="144" y1="322" x2="143" y2="330" stroke="#A89880" stroke-width="0.8"/>
+
+  <!-- Internal region dividers (subtle) -->
+  <!-- Chest / Abdomen split -->
+  <path d="M70 178 Q100 182 130 178" stroke="#A89880" stroke-width="0.8" stroke-dasharray="3,3" fill="none"/>
+  <!-- Torso / Hip split -->
+  <path d="M78 220 Q100 222 122 220" stroke="#A89880" stroke-width="0.8" stroke-dasharray="3,3" fill="none"/>
+  <!-- Thigh / Calf split -->
+  <path d="M66 358 Q77 355 88 358" stroke="#A89880" stroke-width="0.8" stroke-dasharray="3,3" fill="none"/>
+  <path d="M134 358 Q123 355 112 358" stroke="#A89880" stroke-width="0.8" stroke-dasharray="3,3" fill="none"/>
+  <!-- Shoulder / Upper arm split -->
+  <path d="M50 118 Q53 112 56 118" stroke="#A89880" stroke-width="0.8" stroke-dasharray="3,3" fill="none"/>
+  <path d="M150 118 Q147 112 144 118" stroke="#A89880" stroke-width="0.8" stroke-dasharray="3,3" fill="none"/>
+  <!-- Upper / Forearm split -->
+  <path d="M50 210 Q58 207 66 210" stroke="#A89880" stroke-width="0.8" stroke-dasharray="3,3" fill="none"/>
+  <path d="M150 210 Q142 207 134 210" stroke="#A89880" stroke-width="0.8" stroke-dasharray="3,3" fill="none"/>
+
+  <!-- Facial features -->
+  <ellipse cx="93" cy="28" rx="3" ry="3.5" fill="#9B8878" opacity="0.5"/>
+  <ellipse cx="107" cy="28" rx="3" ry="3.5" fill="#9B8878" opacity="0.5"/>
+  <path d="M94 42 Q100 47 106 42" stroke="#9B8878" stroke-width="1" fill="none" opacity="0.5"/>
+  <!-- Nose -->
+  <path d="M99 32 Q98 38 100 40 Q102 38 101 32" stroke="#9B8878" stroke-width="0.8" fill="none" opacity="0.4"/>
+
+  <!-- Belly button -->
+  <circle cx="100" cy="198" r="2" fill="none" stroke="#A89880" stroke-width="1" opacity="0.5"/>
+
+  <!-- Collarbone lines -->
+  <path d="M90 82 Q80 84 68 90" stroke="#A89880" stroke-width="0.8" fill="none" opacity="0.6"/>
+  <path d="M110 82 Q120 84 132 90" stroke="#A89880" stroke-width="0.8" fill="none" opacity="0.6"/>
+
+  <!-- Knee caps -->
+  <ellipse cx="77" cy="362" rx="8" ry="6" fill="none" stroke="#A89880" stroke-width="0.8" opacity="0.5"/>
+  <ellipse cx="123" cy="362" rx="8" ry="6" fill="none" stroke="#A89880" stroke-width="0.8" opacity="0.5"/>
+
+</svg>
