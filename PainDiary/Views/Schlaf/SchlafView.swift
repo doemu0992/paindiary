@@ -2,8 +2,12 @@ import SwiftUI
 import SwiftData
 
 struct SchlafView: View {
-    let nächte: [SleepNightSummary]
+    @State private var nächte: [SleepNightSummary]
     @State private var zeigeAnalyse = false
+
+    init(nächte: [SleepNightSummary] = SleepNightSummary.laden()) {
+        _nächte = State(initialValue: nächte)
+    }
 
     private var avg30Qualitaet: String {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
@@ -51,6 +55,14 @@ struct SchlafView: View {
                 Section("Schlafnächte") {
                     ForEach(nächte) { nacht in
                         SchlafNachtZeile(nacht: nacht)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    SleepNightSummary.loeschen(nacht)
+                                    nächte = SleepNightSummary.laden()
+                                } label: {
+                                    Label("Löschen", systemImage: "trash")
+                                }
+                            }
                     }
                 }
             }
