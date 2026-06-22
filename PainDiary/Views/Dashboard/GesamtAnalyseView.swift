@@ -881,7 +881,10 @@ extension GesamtAnalyseView {
             zeilen.append("WOHLBEFINDEN (alle PainEntry-Module): Ø Schlaf \(String(format: "%.1f", avgSchlaf)) Std., Ø Stimmung \(String(format: "%.1f", avgStimmung))/5, Ø Stress \(String(format: "%.1f", avgStress))/5")
         }
 
-        zeilen.append("Analysiere Zusammenhänge zwischen den Modulen und gib 3–4 konkrete, klinisch relevante Einblicke auf Deutsch. Keine Diagnosen stellen.")
+        let diagnoseKontext = aktiveDiagnosen.isEmpty
+            ? ""
+            : " Beziehe dabei die Diagnosen (\(aktiveDiagnosen.map(\.bezeichnung).joined(separator: ", "))) explizit ein und erkläre Muster im Kontext dieser Erkrankungen."
+        zeilen.append("Analysiere Zusammenhänge zwischen den Modulen und gib 3–4 konkrete, patientenbezogene Einblicke auf Deutsch.\(diagnoseKontext) Keine eigenen Diagnosen stellen.")
         return zeilen.joined(separator: "\n")
     }
 }
