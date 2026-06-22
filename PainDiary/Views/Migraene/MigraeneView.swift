@@ -22,6 +22,20 @@ struct MigraeneView: View {
         return anfaelle.filter { $0.datum >= cutoff }
     }
 
+    private var gruppiertNachDatum: [(tag: Date, items: [MigraeneEintrag])] {
+        let cal = Calendar.current
+        let grouped = Dictionary(grouping: anfaelle) { cal.startOfDay(for: $0.datum) }
+        return grouped.sorted { $0.key > $1.key }
+            .map { (tag: $0.key, items: $0.value.sorted { $0.datum > $1.datum }) }
+    }
+
+    private func tagLabel(_ datum: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(datum)     { return "Heute" }
+        if cal.isDateInYesterday(datum) { return "Gestern" }
+        return datum.formatted(.dateTime.weekday(.abbreviated).day().month())
+    }
+
     var body: some View {
         List {
             statistikSektion
@@ -57,25 +71,24 @@ struct MigraeneView: View {
             } else {
                 zyklusKorrelationSektion
 
-                Section("Anfälle") {
-                    ForEach(anfaelle) { anfall in
-                        NavigationLink(destination: MigraeneAnfallDetailView(anfall: anfall)) {
-                            MigraeneZeile(anfall: anfall)
+                ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
+                    Section {
+                        ForEach(gruppe.items) { anfall in
+                            NavigationLink(destination: MigraeneAnfallDetailView(anfall: anfall)) {
+                                MigraeneZeile(anfall: anfall)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfall.datum)
+                                    modelContext.delete(anfall)
+                                } label: { Label("Löschen", systemImage: "trash") }
+                                Button { bearbeitet = anfall } label: { Label("Bearbeiten", systemImage: "pencil") }
+                                    .tint(.blue)
+                            }
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfall.datum)
-                                modelContext.delete(anfall)
-                            } label: { Label("Löschen", systemImage: "trash") }
-                            Button { bearbeitet = anfall } label: { Label("Bearbeiten", systemImage: "pencil") }
-                                .tint(.blue)
-                        }
-                    }
-                    .onDelete { idx in
-                        idx.forEach {
-                            NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfaelle[$0].datum)
-                            modelContext.delete(anfaelle[$0])
-                        }
+                    } header: {
+                        Text(tagLabel(gruppe.tag))
+                            .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                     }
                 }
             }

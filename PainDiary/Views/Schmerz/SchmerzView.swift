@@ -29,20 +29,25 @@ struct SchmerzView: View {
 
     private var schube30: Int { eintraege30.filter(\.istSchub).count }
 
+    private var gruppiertNachDatum: [(tag: Date, items: [PainEntry])] {
+        let cal = Calendar.current
+        let grouped = Dictionary(grouping: schmerzEintraege) { cal.startOfDay(for: $0.datum) }
+        return grouped.sorted { $0.key > $1.key }
+            .map { (tag: $0.key, items: $0.value.sorted { $0.datum > $1.datum }) }
+    }
+
+    private func tagLabel(_ datum: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(datum)     { return "Heute" }
+        if cal.isDateInYesterday(datum) { return "Gestern" }
+        return datum.formatted(.dateTime.weekday(.abbreviated).day().month())
+    }
+
     var body: some View {
         List {
             statistikSektion
 
-            if !schmerzEintraege.isEmpty {
-                Section("Einträge") {
-                    ForEach(schmerzEintraege.prefix(50)) { eintrag in
-                        NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
-                            SchmerzZeile(eintrag: eintrag)
-                        }
-                    }
-                    .onDelete(perform: loeschen)
-                }
-            } else {
+            if schmerzEintraege.isEmpty {
                 Section {
                     ContentUnavailableView(
                         "Noch keine Einträge",
@@ -50,6 +55,24 @@ struct SchmerzView: View {
                         description: Text("Tippe auf + um deinen ersten Schmerz-Eintrag zu erfassen.")
                     )
                     .listRowBackground(Color.clear)
+                }
+            } else {
+                ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
+                    Section {
+                        ForEach(gruppe.items) { eintrag in
+                            NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
+                                SchmerzZeile(eintrag: eintrag)
+                            }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    modelContext.delete(eintrag)
+                                } label: { Label("Löschen", systemImage: "trash") }
+                            }
+                        }
+                    } header: {
+                        Text(tagLabel(gruppe.tag))
+                            .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
+                    }
                 }
             }
         }
@@ -115,11 +138,5 @@ struct SchmerzView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func loeschen(at offsets: IndexSet) {
-        let sichtbar = Array(schmerzEintraege.prefix(30))
-        for index in offsets {
-            modelContext.delete(sichtbar[index])
-        }
-    }
 }
 
