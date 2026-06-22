@@ -5,6 +5,7 @@ struct SchmerzKachel: View {
     let eintraege: [PainEntry]
     @State private var zeigeForm = false
     @State private var ausgewaehltTag: Date? = nil
+    @State private var versteckTask: Task<Void, Never>? = nil
 
     private var schmerzEintraege: [PainEntry] { eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" } }
 
@@ -92,14 +93,9 @@ struct SchmerzKachel: View {
             .chartYScale(domain: 0...10)
             .frame(height: 44)
             .chartOverlay { proxy in
-                GeometryReader { geo in
+                GeometryReader { _ in
                     Rectangle().fill(.clear).contentShape(Rectangle())
-                        .gesture(DragGesture(minimumDistance: 0).onChanged { value in
-                            guard let frame = proxy.plotFrame else { return }
-                            let x = value.location.x - geo[frame].origin.x
-                            guard x >= 0, let date: Date = proxy.value(atX: x) else { return }
-                            ausgewaehltTag = Calendar.current.startOfDay(for: date)
-                        })
+                        .onTapGesture { location in balkenTippen(proxy: proxy, location: location) }
                 }
             }
             .overlay(alignment: .center) {
@@ -112,7 +108,7 @@ struct SchmerzKachel: View {
 
             if let tag = ausgewaehltTag, let punkt = chartDaten.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: tag) }) {
                 HStack(spacing: 6) {
-                    Text(tag, format: .dateTime.day().month(.abbreviated))
+                    Text(tag, format: .dateTime.weekday(.abbreviated).day().month())
                         .font(.caption2.bold())
                         .foregroundStyle(.secondary)
                     if punkt.wert > 0 {
@@ -122,6 +118,7 @@ struct SchmerzKachel: View {
                     }
                     Spacer()
                 }
+                .transition(.opacity)
             }
 
             Divider()
@@ -138,6 +135,7 @@ struct SchmerzKachel: View {
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: ausgewaehltTag)
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -165,5 +163,20 @@ struct SchmerzKachel: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 4)
+    }
+
+    private func balkenTippen(proxy: ChartProxy, location: CGPoint) {
+        guard let date: Date = proxy.value(atX: location.x, as: Date.self) else { return }
+        let snapped = chartDaten.min(by: {
+            abs($0.datum.timeIntervalSince(date)) < abs($1.datum.timeIntervalSince(date))
+        })?.datum
+        guard let snapped else { return }
+        withAnimation { ausgewaehltTag = snapped }
+        versteckTask?.cancel()
+        versteckTask = Task {
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { withAnimation { ausgewaehltTag = nil } }
+        }
     }
 }
