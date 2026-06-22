@@ -47,6 +47,7 @@ private func wohlbefindenSektionenSpeichern(_ s: [WohlbefindenAnalyseSektion]) {
 
 struct WohlbefindenAnalyseView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
+    @Query(sort: \WellnessEintrag.datum, order: .reverse) private var alleWellnessEintraege: [WellnessEintrag]
     @State private var sektionen: [WohlbefindenAnalyseSektion] = wohlbefindenSektionenLaden()
     @State private var zeitraum: WohlbefindenZeitraum = .woche
     @State private var zeigeAnpassen = false
@@ -78,6 +79,12 @@ struct WohlbefindenAnalyseView: View {
         return alleEintraege.filter { $0.datum >= grenze }
     }
 
+    private var gefilterteWellnessEintraege: [WellnessEintrag] {
+        guard let tage = zeitraum.tage else { return alleWellnessEintraege }
+        let grenze = Calendar.current.date(byAdding: .day, value: -tage, to: Date()) ?? Date()
+        return alleWellnessEintraege.filter { $0.datum >= grenze }
+    }
+
     // MARK: - Stimmung & Stress
 
     private struct StimmungsPunkt: Identifiable {
@@ -93,22 +100,39 @@ struct WohlbefindenAnalyseView: View {
         let heute = kal.startOfDay(for: Date())
         return (0..<tage).reversed().compactMap { offset -> StimmungsPunkt? in
             guard let tag = kal.date(byAdding: .day, value: -offset, to: heute) else { return nil }
-            let entries = gefiltert.filter { kal.isDate($0.datum, inSameDayAs: tag) }
-            guard !entries.isEmpty else { return nil }
-            let avgS  = Double(entries.map(\.stimmung).reduce(0, +)) / Double(entries.count)
-            let avgSt = Double(entries.map(\.stressLevel).reduce(0, +)) / Double(entries.count)
+            let painEntries = gefiltert.filter { kal.isDate($0.datum, inSameDayAs: tag) }
+            let wellnessTag = gefilterteWellnessEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: tag) })
+
+            let stimmungPain = painEntries.filter { $0.stimmung > 0 }
+            let avgS: Double
+            if !stimmungPain.isEmpty {
+                avgS = Double(stimmungPain.map(\.stimmung).reduce(0, +)) / Double(stimmungPain.count)
+            } else if let w = wellnessTag, w.stimmung > 0 {
+                avgS = Double(w.stimmung)
+            } else { return nil }
+
+            let stressPain = painEntries.filter { $0.stressLevel > 0 }
+            let avgSt: Double
+            if !stressPain.isEmpty {
+                avgSt = Double(stressPain.map(\.stressLevel).reduce(0, +)) / Double(stressPain.count)
+            } else if let w = wellnessTag, w.stressLevel > 0 {
+                avgSt = Double(w.stressLevel)
+            } else {
+                avgSt = 0
+            }
+
             return StimmungsPunkt(datum: tag, stimmung: avgS, stress: avgSt)
         }
     }
 
     private var avgStimmung: Double {
-        let m = gefiltert.filter { $0.stimmung > 0 }
-        return m.isEmpty ? 0 : Double(m.map(\.stimmung).reduce(0, +)) / Double(m.count)
+        let items = stimmungsDaten.filter { $0.stimmung > 0 }
+        return items.isEmpty ? 0 : items.map(\.stimmung).reduce(0, +) / Double(items.count)
     }
 
     private var avgStress: Double {
-        let m = gefiltert.filter { $0.stressLevel > 0 }
-        return m.isEmpty ? 0 : Double(m.map(\.stressLevel).reduce(0, +)) / Double(m.count)
+        let items = stimmungsDaten.filter { $0.stress > 0 }
+        return items.isEmpty ? 0 : items.map(\.stress).reduce(0, +) / Double(items.count)
     }
 
     // MARK: - Schlaf
@@ -125,16 +149,21 @@ struct WohlbefindenAnalyseView: View {
         let heute = kal.startOfDay(for: Date())
         return (0..<tage).reversed().compactMap { offset -> SchlafPunkt? in
             guard let tag = kal.date(byAdding: .day, value: -offset, to: heute) else { return nil }
-            let entries = gefiltert.filter { kal.isDate($0.datum, inSameDayAs: tag) && $0.schlafStunden > 0 }
-            guard !entries.isEmpty else { return nil }
-            let avg = entries.map(\.schlafStunden).reduce(0, +) / Double(entries.count)
-            return SchlafPunkt(datum: tag, stunden: avg)
+            let painEntries = gefiltert.filter { kal.isDate($0.datum, inSameDayAs: tag) && $0.schlafStunden > 0 }
+            if !painEntries.isEmpty {
+                let avg = painEntries.map(\.schlafStunden).reduce(0, +) / Double(painEntries.count)
+                return SchlafPunkt(datum: tag, stunden: avg)
+            }
+            if let w = gefilterteWellnessEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: tag) }),
+               w.schlafStunden > 0 {
+                return SchlafPunkt(datum: tag, stunden: w.schlafStunden)
+            }
+            return nil
         }
     }
 
     private var avgSchlaf: Double {
-        let m = gefiltert.filter { $0.schlafStunden > 0 }
-        return m.isEmpty ? 0 : m.map(\.schlafStunden).reduce(0, +) / Double(m.count)
+        return schlafDaten.isEmpty ? 0 : schlafDaten.map(\.stunden).reduce(0, +) / Double(schlafDaten.count)
     }
 
     // MARK: - Wasser (UserDefaults)
@@ -159,10 +188,14 @@ struct WohlbefindenAnalyseView: View {
         let kal = Calendar.current
         let tage = min(zeitraum.tage ?? 90, 90)
         return (0..<tage).reversed().compactMap { offset -> WasserPunkt? in
+            guard let datum = kal.date(byAdding: .day, value: -offset, to: kal.startOfDay(for: Date())) else { return nil }
+            if let w = gefilterteWellnessEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: datum) }),
+               w.wasserMl > 0 {
+                return WasserPunkt(datum: datum, ml: w.wasserMl)
+            }
             let key = "wasserMl_\(Self.datumString(offset: -offset))"
             let ml = UserDefaults.standard.integer(forKey: key)
             guard ml > 0 else { return nil }
-            guard let datum = kal.date(byAdding: .day, value: -offset, to: kal.startOfDay(for: Date())) else { return nil }
             return WasserPunkt(datum: datum, ml: ml)
         }
     }
@@ -191,11 +224,15 @@ struct WohlbefindenAnalyseView: View {
         let kal = Calendar.current
         let tage = min(zeitraum.tage ?? 90, 90)
         return (0..<tage).reversed().compactMap { offset -> ErnaehrungsPunkt? in
+            guard let datum = kal.date(byAdding: .day, value: -offset, to: kal.startOfDay(for: Date())) else { return nil }
+            if let w = gefilterteWellnessEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: datum) }),
+               w.koffeinTassen > 0 || w.alkoholGlaeser > 0 {
+                return ErnaehrungsPunkt(datum: datum, koffein: w.koffeinTassen, alkohol: w.alkoholGlaeser)
+            }
             let ds = Self.datumString(offset: -offset)
             let koffein = UserDefaults.standard.integer(forKey: "koffeinTassen_\(ds)")
             let alkohol = UserDefaults.standard.integer(forKey: "alkoholGlaeser_\(ds)")
             guard koffein > 0 || alkohol > 0 else { return nil }
-            guard let datum = kal.date(byAdding: .day, value: -offset, to: kal.startOfDay(for: Date())) else { return nil }
             return ErnaehrungsPunkt(datum: datum, koffein: koffein, alkohol: alkohol)
         }
     }
