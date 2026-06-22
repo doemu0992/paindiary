@@ -19,6 +19,7 @@ struct HautForm: View {
     @State private var verlauf = ""
     @State private var stimmung = 3
     @State private var stressLevel = 3
+    @State private var energielevel = 0
     @State private var schlafStunden = 7.0
     @State private var notizen = ""
     @State private var zeigeErfolg = false
@@ -149,7 +150,8 @@ struct HautForm: View {
                     stimmung: $stimmung,
                     schlafStunden: $schlafStunden,
                     stressLevel: $stressLevel,
-                    notizen: $notizen
+                    notizen: $notizen,
+                    energielevel: $energielevel
                 )
                 .padding(.vertical, 24)
             }
@@ -303,8 +305,9 @@ struct HautForm: View {
             fotoDateiname = e.fotoDateiname
             verlauf = e.verlauf
             stimmung = e.stimmung
-            schlafStunden = e.schlafStunden
             stressLevel = e.stressLevel
+            energielevel = e.energielevel
+            schlafStunden = e.schlafStunden
             notizen = e.notizen
             wetterTemperatur = e.wetterTemperatur
             wetterCode = e.wetterCode
@@ -339,8 +342,9 @@ struct HautForm: View {
             e.fotoDateiname = fotoDateiname
             e.verlauf = verlauf
             e.stimmung = stimmung
-            e.schlafStunden = schlafStunden
             e.stressLevel = stressLevel
+            e.energielevel = energielevel
+            e.schlafStunden = schlafStunden
             e.notizen = notizen
         } else {
             let snap = wetter.aktuell
@@ -354,8 +358,9 @@ struct HautForm: View {
                 koerperstelle: hautStellen,
                 notizen: notizen,
                 stimmung: stimmung,
-                schlafStunden: schlafStunden,
                 stressLevel: stressLevel,
+                energielevel: energielevel,
+                schlafStunden: schlafStunden,
                 wetterTemperatur: finalTemp,
                 wetterCode: finalCode,
                 wetterWind: finalWind,

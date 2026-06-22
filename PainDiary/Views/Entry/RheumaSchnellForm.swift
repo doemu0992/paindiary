@@ -16,6 +16,7 @@ struct RheumaSchnellForm: View {
     @State private var gelenkStatus = ""
     @State private var morgensteifigkeit = 0
     @State private var fatigue = 0
+    @State private var energielevel = 0
     @State private var schlafStunden: Double = 0
     @State private var stimmung = 3
     @State private var stressLevel = 3
@@ -132,7 +133,8 @@ struct RheumaSchnellForm: View {
                     schlafStunden: $schlafStunden,
                     stressLevel: $stressLevel,
                     notizen: $notizen,
-                    fatigue: $fatigue
+                    fatigue: $fatigue,
+                    energielevel: $energielevel
                 )
                 .padding(.vertical, 24)
             }
@@ -392,6 +394,7 @@ struct RheumaSchnellForm: View {
             istSchub = e.istSchub
             morgensteifigkeit = e.morgensteifigkeit
             fatigue = e.fatigue
+            energielevel = e.energielevel
             gelenkStatus = e.gelenkStatus
             stimmung = e.stimmung
             schlafStunden = e.schlafStunden
@@ -427,6 +430,7 @@ struct RheumaSchnellForm: View {
             e.istSchub = istSchub
             e.morgensteifigkeit = morgensteifigkeit
             e.fatigue = fatigue
+            e.energielevel = energielevel
             e.gelenkStatus = gelenkStatus
             e.stimmung = stimmung
             e.schlafStunden = schlafStunden
@@ -447,6 +451,7 @@ struct RheumaSchnellForm: View {
                 morgensteifigkeit: morgensteifigkeit,
                 istSchub: istSchub,
                 fatigue: fatigue,
+                energielevel: energielevel,
                 gelenkStatus: gelenkStatus,
                 wetterTemperatur: finalTemp,
                 wetterCode: finalCode,

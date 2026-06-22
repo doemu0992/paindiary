@@ -455,6 +455,20 @@ struct PainEntryDetailView: View {
                 zeile("Schlaf", wert: String(format: "%.1f Stunden", eintrag.schlafStunden))
             }
 
+            if eintrag.energielevel > 0 {
+                HStack {
+                    Text("Energie & Vitalität").font(.subheadline).foregroundStyle(.secondary)
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Image(systemName: energieSymbol(eintrag.energielevel)).font(.caption)
+                            .foregroundStyle(energieFarbe(eintrag.energielevel))
+                        Text(energieLabel(eintrag.energielevel))
+                            .font(.subheadline.bold())
+                            .foregroundStyle(energieFarbe(eintrag.energielevel))
+                    }
+                }
+            }
+
             if modulTyp == .schmerz && eintrag.fatigue > 0 {
                 HStack {
                     Text("Erschöpfung (Fatigue)").font(.subheadline).foregroundStyle(.secondary)
@@ -608,6 +622,36 @@ struct PainEntryDetailView: View {
         case 1...3: return .green
         case 4...6: return .orange
         default:    return .red
+        }
+    }
+
+    private func energieSymbol(_ stufe: Int) -> String {
+        switch stufe {
+        case 1: return "battery.0"
+        case 2: return "battery.25"
+        case 3: return "battery.50"
+        case 4: return "battery.75"
+        default: return "battery.100"
+        }
+    }
+
+    private func energieLabel(_ stufe: Int) -> String {
+        switch stufe {
+        case 1: return "Erschöpft"
+        case 2: return "Müde"
+        case 3: return "Okay"
+        case 4: return "Gut"
+        default: return "Top"
+        }
+    }
+
+    private func energieFarbe(_ stufe: Int) -> Color {
+        switch stufe {
+        case 1: return .red
+        case 2: return .orange
+        case 3: return .yellow
+        case 4: return .mint
+        default: return .green
         }
     }
 }
