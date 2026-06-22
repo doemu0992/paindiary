@@ -95,7 +95,8 @@ struct SchmerzKachel: View {
                 GeometryReader { geo in
                     Rectangle().fill(.clear).contentShape(Rectangle())
                         .gesture(DragGesture(minimumDistance: 0).onChanged { value in
-                            let x = value.location.x - geo[proxy.plotFrame].origin.x
+                            guard let frame = proxy.plotFrame else { return }
+                            let x = value.location.x - geo[frame].origin.x
                             guard x >= 0, let date: Date = proxy.value(atX: x) else { return }
                             ausgewaehltTag = Calendar.current.startOfDay(for: date)
                         })
