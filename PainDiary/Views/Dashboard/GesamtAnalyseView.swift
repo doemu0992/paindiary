@@ -70,6 +70,7 @@ struct GesamtAnalyseView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerMessungen: [BlutzuckerEintrag]
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
+    @Query private var profile: [Benutzerprofil]
     @Query(sort: \Diagnose.bezeichnung) private var alleDiagnosen: [Diagnose]
     @Query(sort: \Dauermedikation.name) private var alleMedikamente: [Dauermedikation]
     @Query(sort: \BiologikaInjektion.datum, order: .reverse) private var alleBiologika: [BiologikaInjektion]
@@ -81,6 +82,8 @@ struct GesamtAnalyseView: View {
     @AppStorage("diabetesModulAktiv") private var diabetesModulAktiv = false
     @AppStorage("hautModulAktiv")     private var hautModulAktiv     = false
     @AppStorage("zyklusModulAktiv")   private var zyklusModulAktiv   = false
+
+    private var istMaennlich: Bool { profile.first?.geschlecht == "Männlich" }
 
     @Environment(\.dismiss) private var dismiss
     @State private var zeitraum: Zeitraum = .monat
@@ -201,7 +204,7 @@ extension GesamtAnalyseView {
         case .schmerzUebersicht: schmerzUebersichtKarte
         case .modulTimeline:     modulTimelineKarte
         case .migraeneSchmerz:   if migraeneModulAktiv { migraeneSchmerzKarte }
-        case .zyklusSchmerz:     if zyklusModulAktiv   { zyklusSchmerzKarte }
+        case .zyklusSchmerz:     if zyklusModulAktiv && !istMaennlich { zyklusSchmerzKarte }
         case .rheumaSchmerz:     if rheumaModulAktiv   { rheumaSchmerzKarte }
         case .diabetesSchmerz:   if diabetesModulAktiv { diabetesSchmerzKarte }
         case .hautWohlbefinden:  if hautModulAktiv     { hautWohlbefindenKarte }
@@ -761,6 +764,11 @@ extension GesamtAnalyseView {
     private var kiPrompt: String {
         var zeilen: [String] = ["Gesamtanalyse PainDiary (\(zeitraum.rawValue)):"]
 
+        // Patientenkontext
+        if let geschlecht = profile.first?.geschlecht, !geschlecht.isEmpty, geschlecht != "Nicht angegeben" {
+            zeilen.append("PATIENT: \(geschlecht)")
+        }
+
         // Medizinische Diagnosen aus Profil (Gesundheit → Diagnosen)
         let aktiveDiagnosen = alleDiagnosen.filter { $0.aktiv }
         if !aktiveDiagnosen.isEmpty {
@@ -907,8 +915,8 @@ extension GesamtAnalyseView {
             zeilen.append("DIABETES: \(gefilterteBlutzucker.count) Messungen, Ø BZ \(String(format: "%.1f", avgBZ)) mmol/L (\(hypo) Hypos, \(normal) normal, \(hyper) erhöht)\(mitInsulin > 0 ? ", \(mitInsulin)× Insulin dokumentiert" : "")")
         }
 
-        // Zyklus
-        if !gefilterteZyklus.isEmpty {
+        // Zyklus (nur wenn nicht männlich)
+        if !istMaennlich && !gefilterteZyklus.isEmpty {
             let periodeTage = gefilterteZyklus.filter { $0.istPeriode }.count
             let mitSymptome = gefilterteZyklus.filter { !$0.symptome.isEmpty }.count
             let topSympt = Array(
@@ -977,7 +985,7 @@ extension GesamtAnalyseView {
                 bw.contains { cal.startOfDay(for: $0.datum) == tag }
             }))
         }
-        if zyklusModulAktiv {
+        if zyklusModulAktiv && !istMaennlich {
             result.append(("Zyklus", .pink, { tag in
                 zy.contains { cal.startOfDay(for: $0.datum) == tag }
             }))
