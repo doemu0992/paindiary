@@ -537,35 +537,58 @@ extension GesamtAnalyseView {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 12)
                 } else {
-                    let cal = Calendar.current
-                    let schubTage = Set(rheumaEintraege.filter { $0.istSchub }.map { cal.startOfDay(for: $0.datum) })
-                    let alleSchmerz = schmerzEintraege + rheumaEintraege
-
-                    let anSchubTagen = alleSchmerz.filter { schubTage.contains(cal.startOfDay(for: $0.datum)) }
-                    let ohneSchub = alleSchmerz.filter { !schubTage.contains(cal.startOfDay(for: $0.datum)) }
-
-                    let avgSchub: Double = anSchubTagen.isEmpty ? 0 :
-                        Double(anSchubTagen.map { $0.schmerzstaerke }.reduce(0, +)) / Double(anSchubTagen.count)
-                    let avgNormal: Double = ohneSchub.isEmpty ? 0 :
-                        Double(ohneSchub.map { $0.schmerzstaerke }.reduce(0, +)) / Double(ohneSchub.count)
+                    let avgSchmerz: Double = Double(rheumaEintraege.map { $0.schmerzstaerke }.reduce(0, +)) / Double(rheumaEintraege.count)
+                    let mitMorgen = rheumaEintraege.filter { $0.morgensteifigkeit > 0 }
+                    let avgMorgen: Double = mitMorgen.isEmpty ? 0 :
+                        Double(mitMorgen.map { $0.morgensteifigkeit }.reduce(0, +)) / Double(mitMorgen.count)
+                    let schubAnzahl = rheumaEintraege.filter { $0.istSchub }.count
+                    let mitFatigue = rheumaEintraege.filter { $0.fatigue > 0 }
+                    let avgFatigue: Double = mitFatigue.isEmpty ? 0 :
+                        Double(mitFatigue.map { $0.fatigue }.reduce(0, +)) / Double(mitFatigue.count)
 
                     HStack(spacing: 0) {
                         statPill(
-                            anSchubTagen.isEmpty ? "–" : String(format: "%.1f", avgSchub),
-                            label: "Schmerz\nan Schub-Tagen",
-                            farbe: .red
+                            String(format: "%.1f", avgSchmerz),
+                            label: "Ø Schmerz",
+                            farbe: avgSchmerz > 6 ? .red : avgSchmerz > 3 ? .orange : .green
                         )
                         Divider().frame(height: 40)
                         statPill(
-                            ohneSchub.isEmpty ? "–" : String(format: "%.1f", avgNormal),
-                            label: "Schmerz\nnormale Tage",
-                            farbe: .secondary
+                            mitMorgen.isEmpty ? "–" : String(format: "%.0f'", avgMorgen),
+                            label: "Ø Morgen-\nsteifigkeit",
+                            farbe: avgMorgen > 30 ? .orange : .teal
                         )
                         Divider().frame(height: 40)
-                        statPill("\(schubTage.count)", label: "Schübe\nim Zeitraum", farbe: .teal)
+                        statPill(
+                            "\(schubAnzahl)",
+                            label: "Schübe",
+                            farbe: schubAnzahl > 0 ? .red : .secondary
+                        )
                     }
 
-                    if !anSchubTagen.isEmpty || !ohneSchub.isEmpty {
+                    if avgFatigue > 0 {
+                        HStack {
+                            Label("Ø Fatigue", systemImage: "zzz")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Text(String(format: "%.1f / 10", avgFatigue))
+                                .font(.caption.bold())
+                                .foregroundStyle(avgFatigue >= 7 ? .red : avgFatigue >= 4 ? .orange : .green)
+                        }
+                        .padding(.top, 2)
+                    }
+
+                    if schubAnzahl > 0 {
+                        let cal = Calendar.current
+                        let schubTage = Set(rheumaEintraege.filter { $0.istSchub }.map { cal.startOfDay(for: $0.datum) })
+                        let alleSchmerz = schmerzEintraege + rheumaEintraege
+                        let anSchubTagen = alleSchmerz.filter { schubTage.contains(cal.startOfDay(for: $0.datum)) }
+                        let ohneSchub = alleSchmerz.filter { !schubTage.contains(cal.startOfDay(for: $0.datum)) }
+                        let avgSchub: Double = anSchubTagen.isEmpty ? 0 :
+                            Double(anSchubTagen.map { $0.schmerzstaerke }.reduce(0, +)) / Double(anSchubTagen.count)
+                        let avgNormal: Double = ohneSchub.isEmpty ? 0 :
+                            Double(ohneSchub.map { $0.schmerzstaerke }.reduce(0, +)) / Double(ohneSchub.count)
+
                         let vergleich: [(label: String, wert: Double, farbe: Color)] = [
                             ("Schub", avgSchub, .red),
                             ("Kein Schub", avgNormal, Color.teal.opacity(0.6)),
@@ -580,6 +603,9 @@ extension GesamtAnalyseView {
                         .frame(height: 100)
                         .padding(.top, 8)
                     }
+
+                    Text("\(rheumaEintraege.count) Einträge · \(mitMorgen.count) mit Morgensteifigkeit")
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }
@@ -722,11 +748,15 @@ extension GesamtAnalyseView {
         let avgSchmerz: Double = alleSchmerz.isEmpty ? 0 :
             Double(alleSchmerz.map { $0.schmerzstaerke }.reduce(0, +)) / Double(alleSchmerz.count)
         let periodeTage = gefilterteZyklus.filter { $0.istPeriode }.count
+        let mitMorgen = rheumaEintraege.filter { $0.morgensteifigkeit > 0 }
+        let avgMorgen: Double = mitMorgen.isEmpty ? 0 :
+            Double(mitMorgen.map { $0.morgensteifigkeit }.reduce(0, +)) / Double(mitMorgen.count)
 
         var prompt = """
         Gesamtanalyse PainDiary (\(zeitraum.rawValue)):
         - Schmerzeinträge: \(alleSchmerz.count), Ø Stärke: \(String(format: "%.1f", avgSchmerz))/10
-        - Rheuma-Schübe: \(rheumaEintraege.filter { $0.istSchub }.count)
+        - Rheuma-Einträge: \(rheumaEintraege.count), Schübe: \(rheumaEintraege.filter { $0.istSchub }.count)
+        - Morgensteifigkeit: Ø \(mitMorgen.isEmpty ? "–" : String(format: "%.0f", avgMorgen)) Min. (\(mitMorgen.count) Einträge)
         - Migräne-Anfälle: \(gefilterteMigraene.count)
         - Haut-Einträge: \(hautEintraege.count)
         - Blutzucker-Messungen: \(gefilterteBlutzucker.count)
