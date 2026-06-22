@@ -24,6 +24,8 @@ struct WellnessView: View {
 
     private let notif = NotificationManager.shared
 
+    @State private var zeigeAnalyse = false
+
     // MARK: - HealthKit
     @State private var hkSchlaf: Double? = nil
     @State private var hkSchritte: Int? = nil
@@ -118,6 +120,9 @@ struct WellnessView: View {
                 hkSchritte = await HealthKitManager.shared.schritteDiesemTag()
             }
         }
+        .sheet(isPresented: $zeigeAnalyse) {
+            WohlbefindenAnalyseView()
+        }
     }
 
     // MARK: - HealthKit Karte
@@ -205,6 +210,17 @@ struct WellnessView: View {
                 wochenSpalte(symbol: "moon.fill", farbe: .indigo,
                              wert: avg.schlaf > 0 ? String(format: "%.1fh", avg.schlaf) : "–",
                              label: "Schlaf")
+            }
+
+            if !trendDaten.isEmpty {
+                Divider()
+                Button { zeigeAnalyse = true } label: {
+                    Label("Wohlbefinden-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                        .font(.subheadline.bold()).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding()

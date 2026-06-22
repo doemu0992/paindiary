@@ -8,6 +8,7 @@ struct KorrelationsView: View {
     @Query(sort: \EinnahmeLog.datum, order: .reverse) private var einnahmeLogs: [EinnahmeLog]
     @Query(filter: #Predicate<Dauermedikation> { $0.aktiv }) private var dauermedikationen: [Dauermedikation]
     @Query(sort: \Dauermedikation.name) private var alleDauermedikationen: [Dauermedikation]
+    @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneEintraege: [MigraeneEintrag]
 
     @State private var zeitfilter: Zeitfilter = .woche
     @State private var aktiverTab: Int = 0
@@ -82,6 +83,9 @@ struct KorrelationsView: View {
         SchmerzHeatmapKachel(eintraege: Array(alleEintraege))
         abschnittTitel("Schmerzverlauf")
         SchmerzVerlaufKarte(eintraege: Array(alleEintraege))
+        abschnittTitel("KI-Gesamtanalyse")
+        KIAnalyseKarte(prompt: kiGesamtPrompt, modulTint: .indigo)
+            .id(kiGesamtPrompt)
     }
 
     // MARK: - Tab: Muster
@@ -153,6 +157,49 @@ struct KorrelationsView: View {
                 dauermedikamentKarte(analyse)
             }
         }
+    }
+
+    // MARK: - KI Gesamtanalyse Prompt
+
+    private var kiGesamtPrompt: String {
+        let kal = Calendar.current
+        let grenze30 = kal.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+
+        let schmerzEintraege = alleEintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && $0.datum >= grenze30 }
+        let rheumaEintraege  = alleEintraege.filter { $0.koerperstelle == "Rheuma" && $0.datum >= grenze30 }
+        let alleLetzte30     = alleEintraege.filter { $0.datum >= grenze30 }
+        let migraeneLetzte30 = migraeneEintraege.filter { $0.datum >= grenze30 }
+
+        let avgSchmerz = schmerzEintraege.isEmpty ? 0.0 : Double(schmerzEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(schmerzEintraege.count)
+        let schube = alleLetzte30.filter(\.istSchub).count
+
+        let stimmungM = alleLetzte30.filter { $0.stimmung > 0 }
+        let avgStimmung = stimmungM.isEmpty ? 0.0 : Double(stimmungM.map(\.stimmung).reduce(0, +)) / Double(stimmungM.count)
+        let stressM = alleLetzte30.filter { $0.stressLevel > 0 }
+        let avgStress = stressM.isEmpty ? 0.0 : Double(stressM.map(\.stressLevel).reduce(0, +)) / Double(stressM.count)
+        let schlafM = alleLetzte30.filter { $0.schlafStunden > 0 }
+        let avgSchlaf = schlafM.isEmpty ? 0.0 : schlafM.map(\.schlafStunden).reduce(0, +) / Double(schlafM.count)
+
+        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+        let heuteStr = df.string(from: Date())
+        let wasserHeute = UserDefaults.standard.integer(forKey: "wasserMl_\(heuteStr)")
+        let wasserZiel  = max(UserDefaults.standard.integer(forKey: "wasserZielMl"), 2000)
+        let koffeinHeute = UserDefaults.standard.integer(forKey: "koffeinTassen_\(heuteStr)")
+        let alkoholHeute = UserDefaults.standard.integer(forKey: "alkoholGlaeser_\(heuteStr)")
+
+        var parts = ["Modulübergreifende Gesamtanalyse (letzte 30 Tage):"]
+        if !schmerzEintraege.isEmpty { parts.append(String(format: "Schmerzeinträge: %d, Ø Stärke: %.1f/10", schmerzEintraege.count, avgSchmerz)) }
+        if !rheumaEintraege.isEmpty  { parts.append("Rheuma-Einträge: \(rheumaEintraege.count)\(schube > 0 ? ", Schübe: \(schube)" : "")") }
+        if !migraeneLetzte30.isEmpty { parts.append("Migräne-Anfälle: \(migraeneLetzte30.count)") }
+        if avgStimmung > 0 { parts.append(String(format: "Ø Stimmung: %.1f/5", avgStimmung)) }
+        if avgStress > 0   { parts.append(String(format: "Ø Stress: %.1f/5", avgStress)) }
+        if avgSchlaf > 0   { parts.append(String(format: "Ø Schlaf: %.1fh/Nacht", avgSchlaf)) }
+        if wasserHeute > 0 { parts.append(String(format: "Wasser heute: %d/%d ml", wasserHeute, wasserZiel)) }
+        if koffeinHeute > 0 { parts.append("Koffein heute: \(koffeinHeute) Tassen") }
+        if alkoholHeute > 0 { parts.append("Alkohol heute: \(alkoholHeute) Gläser") }
+        parts.append("Aktive Medikamente: \(dauermedikationen.count)")
+        parts.append("Analysiere modulübergreifende Zusammenhänge (z.B. schlechter Schlaf → mehr Schmerzen, Stress → Schübe, wenig Wasser → Kopfschmerzen, Koffein-Entzug → Migräne). Gib 3–4 kurze, medizinisch fundierte Hinweise auf Deutsch.")
+        return parts.joined(separator: "\n")
     }
 
     // MARK: - Zusammenfassung
