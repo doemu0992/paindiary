@@ -5,6 +5,7 @@ struct PainEntryDetailView: View {
     @State private var zeigeSchmerzBearbeiten = false
     @State private var zeigeRheumaBearbeiten = false
     @State private var zeigeHautBearbeiten = false
+    // Haut uses AddEntryView (same wizard as the + button, loads eintragTyp = .haut automatically)
 
     private var displayLocation: String {
         if !eintrag.koerperstelle.isEmpty { return eintrag.koerperstelle }
@@ -58,7 +59,7 @@ struct PainEntryDetailView: View {
             RheumaSchnellForm(eintrag: eintrag)
         }
         .sheet(isPresented: $zeigeHautBearbeiten) {
-            HautForm(eintrag: eintrag)
+            AddEntryView(eintrag: eintrag)
         }
     }
 
