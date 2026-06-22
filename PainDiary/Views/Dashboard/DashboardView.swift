@@ -28,6 +28,7 @@ struct DashboardView: View {
     @State private var medAusgewaehltTag: Date? = nil
     @State private var medVersteckTask: Task<Void, Never>? = nil
     @Environment(\.scenePhase) private var scenePhase
+    @State private var schlafNächte: [SleepNightSummary] = SleepNightSummary.laden()
 
     // MARK: - Body
 
@@ -45,7 +46,7 @@ struct DashboardView: View {
         .navigationTitle("Übersicht")
         .navigationBarTitleDisplayMode(.large)
         .onChange(of: eintraege)    { _, neu in viewModel.eintraege = neu }
-        .onChange(of: scenePhase)   { _, phase in if phase == .active { tagesstart = Calendar.current.startOfDay(for: Date()) } }
+        .onChange(of: scenePhase)   { _, phase in if phase == .active { tagesstart = Calendar.current.startOfDay(for: Date()); schlafNächte = SleepNightSummary.laden() } }
         .onChange(of: kachelKonfig) { _, neu in neu.speichern() }
         .onAppear { viewModel.eintraege = eintraege }
         .toolbar {
@@ -122,6 +123,7 @@ struct DashboardView: View {
         case .rheumaKachel:        RheumaKachel(eintraege: Array(eintraege.filter { $0.koerperstelle == "Rheuma" }), haqEintraege: Array(haqEintraege))
         case .diabetesKachel:      DiabetesKachel(messungen: Array(blutzuckerMessungen))
         case .wellnessKachel:      WellnessKachel(eintraege: Array(eintraege), wellnessEintraege: Array(wellnessEintraege))
+        case .schlafKachel:        SchlafKachel(nächte: schlafNächte)
         case .konfigKorrelation:
             KonfigKorrelationsKachel(
                 kachel: kachel,

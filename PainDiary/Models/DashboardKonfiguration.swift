@@ -25,6 +25,8 @@ enum KachelTyp: String, Codable, CaseIterable {
     case konfigKorrelation
     // Wellness
     case wellnessKachel
+    // Schlaf (SleepBuddy)
+    case schlafKachel
 
     var titel: String {
         switch self {
@@ -45,6 +47,7 @@ enum KachelTyp: String, Codable, CaseIterable {
         case .diabetesKachel:      return "Diabetes-Verlauf"
         case .konfigKorrelation:   return "Eigene Korrelation"
         case .wellnessKachel:      return "Wohlbefinden"
+        case .schlafKachel:        return "Schlaf"
         }
     }
 
@@ -67,6 +70,7 @@ enum KachelTyp: String, Codable, CaseIterable {
         case .diabetesKachel:      return "drop.fill"
         case .konfigKorrelation:   return "slider.horizontal.3"
         case .wellnessKachel:      return "heart.text.square.fill"
+        case .schlafKachel:        return "moon.stars.fill"
         }
     }
 
@@ -78,7 +82,7 @@ enum KachelTyp: String, Codable, CaseIterable {
             return "Verlauf"
         case .stimmungStress, .schnellLinks:
             return "Zuletzt"
-        case .hautveraenderung, .zyklus, .schmerzKachel, .migraeneKachel, .rheumaKachel, .diabetesKachel, .wellnessKachel:
+        case .hautveraenderung, .zyklus, .schmerzKachel, .migraeneKachel, .rheumaKachel, .diabetesKachel, .wellnessKachel, .schlafKachel:
             return "Module"
         case .wetterSchmerz, .stressSchmerz, .schlafSchmerz,
              .midasKachel, .konfigKorrelation:
