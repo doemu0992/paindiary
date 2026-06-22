@@ -53,33 +53,31 @@ struct WohlbefindenStepView: View {
 
                 // Stresslevel
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Stresslevel")
-                            .font(.headline)
-                        Spacer()
-                        Text(stressBezeichnung(stressLevel))
-                            .font(.subheadline.bold())
-                            .foregroundStyle(stressFarbe(stressLevel))
-                    }
+                    Text("Stresslevel")
+                        .font(.headline)
                     HStack(spacing: 6) {
                         ForEach(1...5, id: \.self) { i in
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(i <= stressLevel ? stressFarbe(stressLevel) : Color.secondary.opacity(0.2))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 36)
-                                .overlay(
-                                    Text("\(i)").font(.caption.bold())
-                                        .foregroundStyle(i <= stressLevel ? .white : .secondary)
-                                )
-                                .onTapGesture { stressLevel = i }
-                                .animation(.easeInOut(duration: 0.15), value: stressLevel)
+                            let farbe = stressFarbe(i)
+                            let aktiv = stressLevel == i
+                            let balkenHoehe: CGFloat = [28, 36, 44, 52, 60][i - 1]
+                            VStack(spacing: 4) {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(aktiv ? farbe : Color.secondary.opacity(0.15))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: balkenHoehe)
+                                    .animation(.easeInOut(duration: 0.15), value: stressLevel)
+                                Text(stressBezeichnung(i))
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(aktiv ? farbe : .secondary)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .onTapGesture { stressLevel = i }
                         }
                     }
-                    HStack {
-                        Text("Entspannt").font(.caption2).foregroundStyle(.secondary)
-                        Spacer()
-                        Text("Extrem").font(.caption2).foregroundStyle(.secondary)
-                    }
+                    .frame(height: 84)
                 }
                 .padding()
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
@@ -226,7 +224,7 @@ struct WohlbefindenStepView: View {
         case 2: return "Mässig"
         case 3: return "Okay"
         case 4: return "Gut"
-        case 5: return "Super"
+        case 5: return "Sehr gut"
         default: return ""
         }
     }
@@ -245,11 +243,11 @@ struct WohlbefindenStepView: View {
     private func stressBezeichnung(_ level: Int) -> String {
         switch level {
         case 1: return "Entspannt"
-        case 2: return "Leicht"
-        case 3: return "Mässig"
-        case 4: return "Hoch"
-        case 5: return "Extrem"
-        default: return "Mässig"
+        case 2: return "Ruhig"
+        case 3: return "Mittel"
+        case 4: return "Gestresst"
+        case 5: return "Sehr hoch"
+        default: return "Mittel"
         }
     }
 

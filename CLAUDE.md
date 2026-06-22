@@ -233,7 +233,7 @@ ScrollView {
 |---|---|
 | Schlaf | Slider 0–12 h, Schritt 0.5, Tint `.indigo` |
 | Stimmung | 5 Herz-Buttons, Farben: red/orange/yellow/green/teal |
-| Stress | 5 farbige Balken-Buttons, Farben: green/mint/yellow/orange/red |
+| Stress | 5 variable-hohe Balken-Buttons, Farben: green/mint/yellow/orange/red, Labels: Entspannt/Ruhig/Mittel/Gestresst/Sehr hoch |
 | Fatigue | Slider 0–10, Schritt 1, dynamischer Tint |
 
 ### Schlafstunden-Vorbelegung (bindend)
