@@ -1,6 +1,7 @@
 import SwiftUI
 import Charts
 import SwiftData
+import SceneKit
 
 // MARK: - Section Enum
 
@@ -31,6 +32,7 @@ struct HautAnalyseView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
     private var eintraege: [PainEntry] { alleEintraege.filter { $0.istHautEintrag } }
 
+    @StateObject private var scanService = BodyScanService.shared
     @State private var sektionen: [HautAnalyseSektion] = HautAnalyseView.sektionenLaden()
     @State private var zeitraum: Zeitraum = .woche
     @State private var zeigeAnpassen = false
@@ -109,6 +111,17 @@ struct HautAnalyseView: View {
             .sorted { $0.anzahl > $1.anzahl }
             .prefix(8)
             .map { $0 }
+    }
+
+    private var hautstellenIntensitaeten: [String: Double] {
+        var counts: [String: Int] = [:]
+        for e in gefiltert where !e.hautStellen.isEmpty {
+            for stelle in e.hautStellen.components(separatedBy: ", ") where !stelle.isEmpty {
+                counts[stelle, default: 0] += 1
+            }
+        }
+        let maxCount = counts.values.max() ?? 1
+        return counts.mapValues { Double($0) / Double(maxCount) }
     }
 
     // MARK: Wohlbefinden
@@ -354,25 +367,53 @@ struct HautAnalyseView: View {
             info: "Am häufigsten betroffene Körperstellen im gewählten Zeitraum."
         ) {
             let maxAnzahl = liste.first?.anzahl ?? 1
-            VStack(spacing: 8) {
-                ForEach(liste) { eintrag in
-                    HStack(spacing: 10) {
-                        Text(eintrag.name)
-                            .font(.subheadline)
-                            .frame(width: 120, alignment: .leading)
-                            .lineLimit(1)
-                        GeometryReader { geo in
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.orange.opacity(0.7))
-                                .frame(width: geo.size.width * CGFloat(eintrag.anzahl) / CGFloat(maxAnzahl))
+            VStack(spacing: 12) {
+                KoerperHeatmapView(
+                    intensitaeten: hautstellenIntensitaeten,
+                    tintColor: .systemOrange,
+                    proportionen: scanService.proportionen
+                )
+                .frame(height: 260)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                HStack(spacing: 0) {
+                    Spacer()
+                    Text("Selten").font(.caption2).foregroundStyle(.secondary)
+                    LinearGradient(
+                        colors: [Color.orange.opacity(0.18), Color.orange.opacity(0.50), Color.orange.opacity(0.80)],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: 80, height: 8).clipShape(Capsule()).padding(.horizontal, 6)
+                    Text("Häufig").font(.caption2).foregroundStyle(.secondary)
+                    Spacer()
+                }
+
+                Divider()
+
+                VStack(spacing: 8) {
+                    ForEach(liste.prefix(5)) { eintrag in
+                        HStack(spacing: 10) {
+                            Text(eintrag.name)
+                                .font(.subheadline)
+                                .frame(width: 120, alignment: .leading)
+                                .lineLimit(1)
+                            GeometryReader { geo in
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.orange.opacity(0.7))
+                                    .frame(width: geo.size.width * CGFloat(eintrag.anzahl) / CGFloat(maxAnzahl))
+                            }
+                            .frame(height: 18)
+                            Text("\(eintrag.anzahl)×")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 28, alignment: .trailing)
                         }
-                        .frame(height: 18)
-                        Text("\(eintrag.anzahl)×")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
-                            .frame(width: 28, alignment: .trailing)
                     }
                 }
+
+                Text("Tippe auf Körperregion — wische zum Drehen")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         }
     }

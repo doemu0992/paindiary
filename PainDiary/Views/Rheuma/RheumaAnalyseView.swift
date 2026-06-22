@@ -1,6 +1,7 @@
 import SwiftUI
 import Charts
 import SwiftData
+import SceneKit
 
 // MARK: - Section Enum
 
@@ -34,6 +35,7 @@ struct RheumaAnalyseView: View {
     private var eintraege: [PainEntry] { alleEintraege.filter { $0.koerperstelle == "Rheuma" } }
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
 
+    @StateObject private var scanService = BodyScanService.shared
     @State private var sektionen: [RheumaAnalyseSektion] = RheumaAnalyseView.sektionenLaden()
     @State private var zeitraum: Zeitraum = .woche
     @State private var zeigeAnpassen = false
@@ -171,6 +173,37 @@ struct RheumaAnalyseView: View {
             .map { GelenkHaeufigkeit(id: $0.key, name: namenMap[$0.key] ?? $0.key, anzahl: $0.value) }
             .sorted { $0.anzahl > $1.anzahl }
             .prefix(8).map { $0 }
+    }
+
+    // Mapping Gelenk-IDs → 3D-Körpermodell-Knotennamen
+    private static let gelenkZuNodeName: [String: String] = {
+        var m: [String: String] = [:]
+        for i in 1...5 {
+            m["R_MCP\(i)"] = "Hand rechts"; m["R_PIP\(i)"] = "Hand rechts"
+            m["L_MCP\(i)"] = "Hand links";  m["L_PIP\(i)"] = "Hand links"
+        }
+        m["R_HG"] = "Hand rechts";    m["L_HG"] = "Hand links"
+        m["R_E"]  = "Ellbogen rechts"; m["L_E"]  = "Ellbogen links"
+        m["R_S"]  = "Schulter rechts"; m["L_S"]  = "Schulter links"
+        m["HWS"]  = "Hals";  m["BWS"] = "Brust"; m["LWS"] = "Bauch"
+        m["R_HUE"] = "Hüfte"; m["L_HUE"] = "Hüfte"
+        m["R_K"]   = "Knie rechts";    m["L_K"]   = "Knie links"
+        m["R_OSG"] = "Knöchel rechts"; m["L_OSG"] = "Knöchel links"
+        m["R_KFG"] = "Kopf";           m["L_KFG"] = "Kopf"
+        return m
+    }()
+
+    private var gelenkIntensitaeten: [String: Double] {
+        var counts: [String: Int] = [:]
+        for e in mitGelenk {
+            var nodesThisEntry = Set<String>()
+            for (id, _) in GelenkStatusCoder.decode(e.gelenkStatus) {
+                if let node = Self.gelenkZuNodeName[id] { nodesThisEntry.insert(node) }
+            }
+            for node in nodesThisEntry { counts[node, default: 0] += 1 }
+        }
+        let maxCount = counts.values.max() ?? 1
+        return counts.mapValues { Double($0) / Double(maxCount) }
     }
 
     // MARK: Persistence
@@ -484,34 +517,62 @@ struct RheumaAnalyseView: View {
         } else {
             karte(titel: "Betroffene Gelenke", symbol: "figure.arms.open", farbe: .teal,
                   info: "Die häufigsten betroffenen Gelenke aus allen Einträgen mit Gelenkstatus – sowohl schmerzhafte als auch geschwollene Gelenke werden gezählt. Hilft dir und deinem Arzt, Muster in der Gelenkbeteiligung zu erkennen.") {
-                VStack(spacing: 8) {
-                    ForEach(topGelenke) { g in
-                        HStack(spacing: 8) {
-                            Text(g.name)
-                                .font(.caption)
-                                .frame(width: 130, alignment: .leading)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(Color.secondary.opacity(0.12))
-                                        .frame(height: 18)
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(Color.teal.opacity(0.7))
-                                        .frame(
-                                            width: geo.size.width * CGFloat(g.anzahl) / CGFloat(topGelenke.first?.anzahl ?? 1),
-                                            height: 18
-                                        )
+                VStack(spacing: 12) {
+                    KoerperHeatmapView(
+                        intensitaeten: gelenkIntensitaeten,
+                        tintColor: .systemTeal,
+                        proportionen: scanService.proportionen
+                    )
+                    .frame(height: 260)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    HStack(spacing: 0) {
+                        Spacer()
+                        Text("Selten").font(.caption2).foregroundStyle(.secondary)
+                        LinearGradient(
+                            colors: [Color.teal.opacity(0.18), Color.teal.opacity(0.50), Color.teal.opacity(0.80)],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                        .frame(width: 80, height: 8).clipShape(Capsule()).padding(.horizontal, 6)
+                        Text("Häufig").font(.caption2).foregroundStyle(.secondary)
+                        Spacer()
+                    }
+
+                    Divider()
+
+                    VStack(spacing: 8) {
+                        ForEach(topGelenke.prefix(5)) { g in
+                            HStack(spacing: 8) {
+                                Text(g.name)
+                                    .font(.caption)
+                                    .frame(width: 130, alignment: .leading)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(Color.secondary.opacity(0.12))
+                                            .frame(height: 18)
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(Color.teal.opacity(0.7))
+                                            .frame(
+                                                width: geo.size.width * CGFloat(g.anzahl) / CGFloat(topGelenke.first?.anzahl ?? 1),
+                                                height: 18
+                                            )
+                                    }
                                 }
+                                .frame(height: 18)
+                                Text("\(g.anzahl)×")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 30, alignment: .trailing)
                             }
-                            .frame(height: 18)
-                            Text("\(g.anzahl)×")
-                                .font(.caption.bold())
-                                .foregroundStyle(.secondary)
-                                .frame(width: 30, alignment: .trailing)
                         }
                     }
+
+                    Text("Tippe auf Körperregion — wische zum Drehen")
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
         }
