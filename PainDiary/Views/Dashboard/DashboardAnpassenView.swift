@@ -15,7 +15,7 @@ struct DashboardAnpassenView: View {
 
     private var moduleHinzufuegbar: [KachelTyp] {
         let bereitsIds = Set(kacheln.map(\.id))
-        return [.zyklus, .schmerzKachel, .hautveraenderung, .migraeneKachel, .rheumaKachel, .diabetesKachel, .wellnessKachel]
+        return [.zyklus, .schmerzKachel, .hautveraenderung, .migraeneKachel, .rheumaKachel, .diabetesKachel, .wellnessKachel, .schlafKachel]
             .filter { !bereitsIds.contains($0.rawValue) }
     }
 
@@ -181,6 +181,7 @@ struct DashboardAnpassenView: View {
         case .rheumaKachel: return .teal
         case .diabetesKachel: return .blue
         case .wellnessKachel: return .mint
+        case .schlafKachel: return .indigo
         }
     }
 }

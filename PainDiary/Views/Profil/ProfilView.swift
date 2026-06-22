@@ -41,6 +41,7 @@ private struct ProfilInhaltView: View {
     @AppStorage("hautModulAktiv") private var hautAktiv = false
     @AppStorage("zyklusModulAktiv") private var zyklusModulAktiv = false
     @AppStorage("wellnessModulAktiv") private var wellnessModulAktiv = false
+    @AppStorage("schlafModulAktiv") private var schlafModulAktiv = false
     @State private var stammdatenAnzeigen = false
 
     var body: some View {
@@ -387,6 +388,21 @@ private struct ProfilInhaltView: View {
                     Image(systemName: "heart.text.square.fill").foregroundStyle(.mint)
                 }
             }
+            let schlafVerfuegbar = SleepNightSummary.istVerfuegbar
+            Toggle(isOn: $schlafModulAktiv) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Schlaf (SleepBuddy)")
+                        Text(schlafVerfuegbar
+                             ? "Schlafqualität & Schmerz-Korrelation"
+                             : "Erfordert SleepBuddy auf diesem Gerät")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "moon.stars.fill").foregroundStyle(.indigo)
+                }
+            }
+            .disabled(!schlafVerfuegbar)
         } header: {
             Text("Meine Module")
         } footer: {
