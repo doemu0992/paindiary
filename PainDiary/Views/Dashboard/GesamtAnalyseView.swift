@@ -744,28 +744,114 @@ extension GesamtAnalyseView {
     // MARK: KI Prompt
 
     private var kiPrompt: String {
-        let alleSchmerz = schmerzEintraege + rheumaEintraege
-        let avgSchmerz: Double = alleSchmerz.isEmpty ? 0 :
-            Double(alleSchmerz.map { $0.schmerzstaerke }.reduce(0, +)) / Double(alleSchmerz.count)
-        let periodeTage = gefilterteZyklus.filter { $0.istPeriode }.count
-        let mitMorgen = rheumaEintraege.filter { $0.morgensteifigkeit > 0 }
-        let avgMorgen: Double = mitMorgen.isEmpty ? 0 :
-            Double(mitMorgen.map { $0.morgensteifigkeit }.reduce(0, +)) / Double(mitMorgen.count)
+        var zeilen: [String] = ["Gesamtanalyse PainDiary (\(zeitraum.rawValue)):"]
 
-        var prompt = """
-        Gesamtanalyse PainDiary (\(zeitraum.rawValue)):
-        - Schmerzeinträge: \(alleSchmerz.count), Ø Stärke: \(String(format: "%.1f", avgSchmerz))/10
-        - Rheuma-Einträge: \(rheumaEintraege.count), Schübe: \(rheumaEintraege.filter { $0.istSchub }.count)
-        - Morgensteifigkeit: Ø \(mitMorgen.isEmpty ? "–" : String(format: "%.0f", avgMorgen)) Min. (\(mitMorgen.count) Einträge)
-        - Migräne-Anfälle: \(gefilterteMigraene.count)
-        - Haut-Einträge: \(hautEintraege.count)
-        - Blutzucker-Messungen: \(gefilterteBlutzucker.count)
-        """
-        if periodeTage > 0 {
-            prompt += "\n        - Zyklus-Perioden-Tage: \(periodeTage)"
+        // Schmerz
+        if !schmerzEintraege.isEmpty {
+            let avg = Double(schmerzEintraege.map { $0.schmerzstaerke }.reduce(0, +)) / Double(schmerzEintraege.count)
+            let schlimm = schmerzEintraege.filter { $0.schmerzstaerke >= 7 }.count
+            let topOrte = Array(
+                Dictionary(grouping: schmerzEintraege, by: { $0.koerperstelle })
+                    .sorted { $0.value.count > $1.value.count }
+                    .prefix(3).map { $0.key }
+            )
+            zeilen.append("SCHMERZ: \(schmerzEintraege.count) Einträge, Ø \(String(format: "%.1f", avg))/10, davon \(schlimm)× ≥7 (stark); Top-Lokalisationen: \(topOrte.joined(separator: ", "))")
         }
-        prompt += "\n        Analysiere die Zusammenhänge zwischen den Modulen und gib 3–4 kurze Einblicke auf Deutsch."
-        return prompt
+
+        // Rheuma
+        if !rheumaEintraege.isEmpty {
+            let avgSchmerz = Double(rheumaEintraege.map { $0.schmerzstaerke }.reduce(0, +)) / Double(rheumaEintraege.count)
+            let schube = rheumaEintraege.filter { $0.istSchub }.count
+            let mitMorgen = rheumaEintraege.filter { $0.morgensteifigkeit > 0 }
+            let avgMorgen = mitMorgen.isEmpty ? 0.0 : Double(mitMorgen.map { $0.morgensteifigkeit }.reduce(0, +)) / Double(mitMorgen.count)
+            let morgenLang = mitMorgen.filter { $0.morgensteifigkeit > 30 }.count
+            let mitFat = rheumaEintraege.filter { $0.fatigue > 0 }
+            let avgFat = mitFat.isEmpty ? 0.0 : Double(mitFat.map { $0.fatigue }.reduce(0, +)) / Double(mitFat.count)
+            let avgSchlaf = { () -> Double in
+                let e = rheumaEintraege.filter { $0.schlafStunden > 0 }
+                return e.isEmpty ? 0 : e.map { $0.schlafStunden }.reduce(0, +) / Double(e.count)
+            }()
+            var rz = "RHEUMA: \(rheumaEintraege.count) Einträge, Ø Schmerz \(String(format: "%.1f", avgSchmerz))/10, \(schube) Schübe"
+            if !mitMorgen.isEmpty {
+                rz += ", Morgensteifigkeit Ø \(String(format: "%.0f", avgMorgen)) Min. (\(morgenLang)× >30 Min.)"
+            }
+            if avgFat > 0 { rz += ", Fatigue Ø \(String(format: "%.1f", avgFat))/10" }
+            if avgSchlaf > 0 { rz += ", Ø Schlaf \(String(format: "%.1f", avgSchlaf)) Std." }
+            zeilen.append(rz)
+        }
+
+        // Migräne
+        if !gefilterteMigraene.isEmpty {
+            let avgStaerke = Double(gefilterteMigraene.map { $0.staerke }.reduce(0, +)) / Double(gefilterteMigraene.count)
+            let avgDauer = Double(gefilterteMigraene.map { $0.dauer }.reduce(0, +)) / Double(gefilterteMigraene.count)
+            let mitAura = gefilterteMigraene.filter { $0.hatAura }.count
+            let topAusl = Array(
+                gefilterteMigraene.flatMap { $0.ausloeserListe }
+                    .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
+                    .sorted { $0.value > $1.value }.prefix(3).map { $0.key }
+            )
+            var mz = "MIGRÄNE: \(gefilterteMigraene.count) Anfälle, Ø Stärke \(String(format: "%.1f", avgStaerke))/10, Ø Dauer \(String(format: "%.0f", avgDauer / 60)) Std., \(mitAura)× mit Aura"
+            if !topAusl.isEmpty { mz += "; Top-Auslöser: \(topAusl.joined(separator: ", "))" }
+            zeilen.append(mz)
+        }
+
+        // Haut
+        if !hautEintraege.isEmpty {
+            let avgSchmerz = { () -> Double in
+                let e = hautEintraege.filter { $0.schmerzstaerke > 0 }
+                return e.isEmpty ? 0 : Double(e.map { $0.schmerzstaerke }.reduce(0, +)) / Double(e.count)
+            }()
+            let topArt = Array(
+                hautEintraege.flatMap { $0.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty } }
+                    .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
+                    .sorted { $0.value > $1.value }.prefix(3).map { $0.key }
+            )
+            let avgStress = { () -> Double in
+                let e = hautEintraege.filter { $0.stressLevel > 0 }
+                return e.isEmpty ? 0 : Double(e.map { $0.stressLevel }.reduce(0, +)) / Double(e.count)
+            }()
+            var hz = "HAUT: \(hautEintraege.count) Einträge"
+            if avgSchmerz > 0 { hz += ", Ø Schmerzstärke \(String(format: "%.1f", avgSchmerz))/10" }
+            if !topArt.isEmpty { hz += ", häufigste Arten: \(topArt.joined(separator: ", "))" }
+            if avgStress > 0 { hz += ", Ø Stress \(String(format: "%.1f", avgStress))/5" }
+            zeilen.append(hz)
+        }
+
+        // Diabetes
+        if !gefilterteBlutzucker.isEmpty {
+            let avgBZ = gefilterteBlutzucker.map { $0.wert }.reduce(0, +) / Double(gefilterteBlutzucker.count)
+            let hypo = gefilterteBlutzucker.filter { $0.wert < 3.9 }.count
+            let hyper = gefilterteBlutzucker.filter { $0.wert > 7.8 }.count
+            let normal = gefilterteBlutzucker.count - hypo - hyper
+            let mitInsulin = gefilterteBlutzucker.filter { $0.insulinEinheiten > 0 }.count
+            zeilen.append("DIABETES: \(gefilterteBlutzucker.count) Messungen, Ø BZ \(String(format: "%.1f", avgBZ)) mmol/L (\(hypo) Hypos, \(normal) normal, \(hyper) erhöht)\(mitInsulin > 0 ? ", \(mitInsulin)× Insulin dokumentiert" : "")")
+        }
+
+        // Zyklus
+        if !gefilterteZyklus.isEmpty {
+            let periodeTage = gefilterteZyklus.filter { $0.istPeriode }.count
+            let mitSymptome = gefilterteZyklus.filter { !$0.symptome.isEmpty }.count
+            let topSympt = Array(
+                gefilterteZyklus.flatMap { $0.symptome.components(separatedBy: ", ").filter { !$0.isEmpty } }
+                    .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
+                    .sorted { $0.value > $1.value }.prefix(3).map { $0.key }
+            )
+            var zz = "ZYKLUS: \(gefilterteZyklus.count) Einträge, \(periodeTage) Perioden-Tage, \(mitSymptome)× Symptome erfasst"
+            if !topSympt.isEmpty { zz += "; häufigste: \(topSympt.joined(separator: ", "))" }
+            zeilen.append(zz)
+        }
+
+        // Modul-übergreifendes Wohlbefinden
+        let alleWohlbefinden = gefilterteEintraege.filter { $0.schlafStunden > 0 }
+        if !alleWohlbefinden.isEmpty {
+            let avgSchlaf = alleWohlbefinden.map { $0.schlafStunden }.reduce(0, +) / Double(alleWohlbefinden.count)
+            let avgStimmung = Double(gefilterteEintraege.map { $0.stimmung }.reduce(0, +)) / Double(gefilterteEintraege.count)
+            let avgStress = Double(gefilterteEintraege.map { $0.stressLevel }.reduce(0, +)) / Double(gefilterteEintraege.count)
+            zeilen.append("WOHLBEFINDEN (alle PainEntry-Module): Ø Schlaf \(String(format: "%.1f", avgSchlaf)) Std., Ø Stimmung \(String(format: "%.1f", avgStimmung))/5, Ø Stress \(String(format: "%.1f", avgStress))/5")
+        }
+
+        zeilen.append("Analysiere Zusammenhänge zwischen den Modulen und gib 3–4 konkrete, klinisch relevante Einblicke auf Deutsch. Keine Diagnosen stellen.")
+        return zeilen.joined(separator: "\n")
     }
 }
 
