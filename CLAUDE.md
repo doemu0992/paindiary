@@ -231,10 +231,62 @@ ScrollView {
 
 | Element | Implementierung |
 |---|---|
+| Stimmung | 5 Herz-Buttons, **Einzelauswahl** (nur aktiver Button farbig), Hintergrundkarte pro Button (`farbe.opacity(0.12)` aktiv / `secondary.opacity(0.06)` inaktiv), Label darunter, gewähltes Label als Caption-Zeile unter Grid |
+| Stress | 5 dünne vertikale Balken (`width: 6`, Höhe = `stufe * 5 + 8`) in Hintergrundkarte, Farben: green/mint/yellow/orange/red, Labels: Entspannt/Ruhig/Mittel/Gestresst/Sehr hoch |
+| Energie | Optional (`energielevel: Binding<Int>? = nil`), 5 Batterie-Icons (`battery.0/25/50/75/100`) in Hintergrundkarte, Labels: Erschöpft/Müde/Okay/Gut/Top, Farben: red/orange/yellow/mint/green |
 | Schlaf | Slider 0–12 h, Schritt 0.5, Tint `.indigo` |
-| Stimmung | 5 Herz-Buttons, Farben: red/orange/yellow/green/teal |
-| Stress | 5 variable-hohe Balken-Buttons, Farben: green/mint/yellow/orange/red, Labels: Entspannt/Ruhig/Mittel/Gestresst/Sehr hoch |
-| Fatigue | Slider 0–10, Schritt 1, dynamischer Tint |
+| Fatigue | Optional (`fatigue: Binding<Int>? = nil`), Slider 0–10, Schritt 1, dynamischer Tint (green/orange/red) |
+| Morgensteifigkeit | Optional (`morgensteifigkeit: Binding<Int>? = nil`), Button-Grid –/15'/30'/60'/90'+, Tint `.orange` |
+
+**Button-Karte-Muster (bindend für Stimmung, Stress, Energie):**
+
+```swift
+Button { wert = stufe } label: {
+    VStack(spacing: 5) {
+        // Icon (heart.fill / thin bar / battery.X)
+        Text(label(stufe))
+            .font(.caption2)
+            .foregroundStyle(aktiv ? .primary : .secondary)
+            .lineLimit(1).minimumScaleFactor(0.7)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 10)
+    .background(
+        aktiv ? farbe.opacity(0.12) : Color.secondary.opacity(0.06),
+        in: RoundedRectangle(cornerRadius: 10)
+    )
+    .animation(.easeInOut(duration: 0.15), value: aktiv)
+}
+.buttonStyle(.plain)
+```
+
+**Gewähltes Label unter dem Grid:**
+```swift
+if wert > 0 {
+    Text(label(wert))
+        .font(.caption).foregroundStyle(farbe(wert))
+        .frame(maxWidth: .infinity, alignment: .center)
+        .transition(.opacity)
+}
+```
+`.animation(.easeInOut(duration: 0.15), value: wert)` auf der umgebenden `VStack`.
+
+**Parameter von `WohlbefindenStepView` (alle optionalen Bindings sind `nil` by default):**
+
+```swift
+struct WohlbefindenStepView: View {
+    @Binding var stimmung: Int
+    @Binding var schlafStunden: Double
+    @Binding var stressLevel: Int
+    @Binding var notizen: String
+    var morgensteifigkeit: Binding<Int>? = nil
+    var fatigue: Binding<Int>? = nil
+    var energielevel: Binding<Int>? = nil
+    var healthSchlafVorschlag: Double? = nil
+}
+```
+
+**Neues Modul mit Wohlbefinden-Schritt:** `energielevel` immer übergeben. Dafür muss das SwiftData-Modell `var energielevel: Int = 0` als Feld haben (lightweight migration, Default 0).
 
 ### Schlafstunden-Vorbelegung (bindend)
 
