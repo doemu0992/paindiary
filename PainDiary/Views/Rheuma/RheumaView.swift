@@ -8,6 +8,7 @@ struct RheumaView: View {
     @Query(sort: \BiologikaInjektion.datum, order: .reverse) private var injektionen: [BiologikaInjektion]
     @Query(sort: \Remissionsphase.beginn, order: .reverse) private var remissionsphasen: [Remissionsphase]
 
+    @Environment(\.modelContext) private var modelContext
     @State private var zeigeForm = false
     @State private var zeigeAnalyse = false
 
@@ -21,6 +22,21 @@ struct RheumaView: View {
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .listRowBackground(Color.clear)
+            }
+
+            if !rheumaEintraege.isEmpty {
+                Section("Einträge") {
+                    ForEach(rheumaEintraege.prefix(50)) { eintrag in
+                        NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
+                            SchmerzZeile(eintrag: eintrag)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                modelContext.delete(eintrag)
+                            } label: { Label("Löschen", systemImage: "trash") }
+                        }
+                    }
+                }
             }
 
             Section("Scores & Verlauf") {
