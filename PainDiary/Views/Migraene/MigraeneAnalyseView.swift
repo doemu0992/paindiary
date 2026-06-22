@@ -167,14 +167,17 @@ struct MigraeneAnalyseView: View {
     private var medWirksamkeit: [MedWirksamkeit] {
         var map: [String: (Int, Int, Int)] = [:]
         for a in gefiltert where !a.akutmedikament.isEmpty {
-            var (g, t, n) = map[a.akutmedikament] ?? (0, 0, 0)
-            switch a.medikamentWirksam {
-            case "Ja":        g += 1
-            case "Teilweise": t += 1
-            case "Nein":      n += 1
-            default: break
+            let meds = a.akutmedikament.components(separatedBy: ", ").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            for medName in meds {
+                var (g, t, n) = map[medName] ?? (0, 0, 0)
+                switch a.medikamentWirksam {
+                case "Ja":        g += 1
+                case "Teilweise": t += 1
+                case "Nein":      n += 1
+                default: break
+                }
+                map[medName] = (g, t, n)
             }
-            map[a.akutmedikament] = (g, t, n)
         }
         return map.map { MedWirksamkeit(name: $0.key, gut: $0.value.0, teilweise: $0.value.1, nicht: $0.value.2) }
             .filter { $0.total > 0 }
