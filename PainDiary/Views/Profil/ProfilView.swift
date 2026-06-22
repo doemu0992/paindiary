@@ -60,6 +60,7 @@ private struct ProfilInhaltView: View {
         .onAppear {
             if profil.geschlecht == "Nicht angegeben" { profil.geschlecht = "" }
             if profil.blutgruppe == "Unbekannt" { profil.blutgruppe = "" }
+            syncProfilZuAppGroup(profil)
         }
     }
 
@@ -190,6 +191,16 @@ private struct ProfilInhaltView: View {
         .foregroundStyle(farbe)
         .padding(.horizontal, 10).padding(.vertical, 4)
         .background(farbe.opacity(0.12), in: Capsule())
+    }
+
+    private func syncProfilZuAppGroup(_ p: Benutzerprofil) {
+        let defaults = UserDefaults(suiteName: "group.com.doemu0992.sleepbuddy")
+        defaults?.set(p.vorname, forKey: "shared_vorname")
+        defaults?.set(p.nachname, forKey: "shared_nachname")
+        defaults?.set(p.geschlecht, forKey: "shared_geschlecht")
+        if let geb = p.geburtsdatum {
+            defaults?.set(geb.timeIntervalSince1970, forKey: "shared_geburtsdatum")
+        }
     }
 
     private func bmiTint(_ bmi: Double) -> Color {
@@ -516,7 +527,10 @@ private struct StammdatenSheet: View {
             .scrollDismissesKeyboard(.interactively)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Fertig") { dismiss() }
+                    Button("Fertig") {
+                        syncZuAppGroup()
+                        dismiss()
+                    }
                 }
             }
 #if os(iOS)
@@ -534,6 +548,16 @@ private struct StammdatenSheet: View {
                 }
             }
 #endif
+        }
+    }
+
+    private func syncZuAppGroup() {
+        let defaults = UserDefaults(suiteName: "group.com.doemu0992.sleepbuddy")
+        defaults?.set(profil.vorname, forKey: "shared_vorname")
+        defaults?.set(profil.nachname, forKey: "shared_nachname")
+        defaults?.set(profil.geschlecht, forKey: "shared_geschlecht")
+        if let geb = profil.geburtsdatum {
+            defaults?.set(geb.timeIntervalSince1970, forKey: "shared_geburtsdatum")
         }
     }
 
