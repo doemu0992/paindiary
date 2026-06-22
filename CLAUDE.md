@@ -770,3 +770,167 @@ Wenn ein neues Modell eigene Notifications plant:
 2. `loescheXxx(fuer:)` Funktion in `NotificationManager` anlegen
 3. **Alle** Delete-Stellen des Modells im gesamten Codebase suchen und Cleanup eintragen
 4. Modell und Cleanup-Funktion in die Tabelle oben eintragen
+
+---
+
+## Schmerztagebuch – Standard (bindend)
+
+### PainEntryListView – Aufbau
+
+`Views/Tagebuch/PainEntryListView.swift` — **nie komplett neu implementieren**, bestehende Struktur erweitern.
+
+```
+List
+├── Section: Sparkline-Header (letzte 7 Tage)
+├── Section: Filter-Chips (horizontal scrollbar)
+└── ForEach(gruppiertNachDatum) → Section pro Tag
+    ├── Header: "Heute" / "Gestern" / "Mo. 2. Jun."
+    └── NavigationLink / Button pro Eintrag → Zeilen-View
+```
+
+**Sparkline-Header (7 Tage):**
+- 7 Spalten, je: Wochentag-Kürzel (narrow) + farbige Dots pro Modul + Tageszahl
+- Heute: leichter `Color.secondary.opacity(0.08)` Hintergrund, fetter Font
+- Dots: je 1 pro Modultyp (dedupliziert), max. 3 anzeigen, Modul-Tintfarbe
+- Implementiert in `uniqueModulFarben(aus:)` — nie duplizieren
+
+**Filter-Chips:**
+- Alle `ModulFilter`-Cases als Capsule-Chips horizontal scrollbar
+- Aktiv: `filter.farbe` Hintergrund, weißer Text
+- Inaktiv: `Color.secondary.opacity(0.12)`, primärer Text
+
+**Zeilen-Views pro Typ:**
+
+| Typ | View | Linkes Icon | Titel | Untertitel | Rechts |
+|---|---|---|---|---|---|
+| Schmerz | `SchmerzZeile` | `ModulKreis(farbe: .red, zahl: schmerzstaerke)` | koerperstelle | schmerzart · Uhrzeit · Wetter-Icon | — |
+| Rheuma | `SchmerzZeile` | `ModulKreis(farbe: .teal, zahl: schmerzstaerke)` | "Rheuma" | Uhrzeit · Wetter-Icon | Schub-Badge, Morgensteifigkeit |
+| Haut | `SchmerzZeile` | `ModulKreis(farbe: .orange, symbol: "bandage.fill")` | hautStellen | Uhrzeit | — |
+| Migräne | `MigraeneZeile` | `ModulKreis(farbe: .purple, zahl: staerke)` | kopfschmerzTyp | charakter · Uhrzeit | Aura-Badge, Dauer |
+| Zyklus | `ZyklusTagesbuchZeile` | `ModulKreis(farbe: .pink, symbol: ...)` | "Periode" / "Zyklus-Eintrag" | Uhrzeit · Blutungsfluss | — |
+| Diabetes | `DiabetesTagesbuchZeile` | `ModulKreis(farbe: wertFarbe, symbol: ...)` | Blutzucker-Wert | Uhrzeit · Messzeitpunkt | Insulin |
+
+**`ModulKreis`-Komponente** (privat in PainEntryListView):
+```swift
+ZStack {
+    Circle().fill(farbe.opacity(0.18)).frame(width: 40, height: 40)
+    // entweder Zahl (schmerzstaerke) oder SF Symbol
+}
+```
+
+**Routing beim Tippen:**
+- Schmerz/Rheuma/Haut → `NavigationLink → PainEntryDetailView(eintrag:)`
+- Migräne → `NavigationLink → MigraeneAnfallDetailView(anfall:)`
+- Zyklus → Button → Sheet `ZyklusEintragSheet`
+- Diabetes → Button → Sheet `BlutzuckerForm`
+
+**Swipe-to-Delete:**
+- Immer `.swipeActions(edge: .trailing)` mit `.destructive` Button
+- Vor `modelContext.delete()` immer Notifications abbrechen (siehe Löschen-Standard)
+
+---
+
+### PainEntryDetailView – Aufbau
+
+`Views/Tagebuch/PainEntryDetailView.swift` — modul-aware, zeigt **alle** Felder des jeweiligen Wizards.
+
+**Modul-Erkennung:**
+```swift
+if eintrag.koerperstelle == "Rheuma" → .rheuma (.teal)
+else if eintrag.istHautEintrag       → .haut   (.orange)
+else                                 → .schmerz (.red)
+```
+
+**Karten-Reihenfolge (für alle Module):**
+```
+1. heroKarte          (immer, Modul-Tint)
+2. modulSpezifisch    (switch modulTyp)
+3. wohlbefindenKarte  (immer, .pink)
+4. wetterKarte        (wenn wetterCode != nil)
+5. notizenKarte       (wenn notizen nicht leer)
+```
+
+**Hero-Karte (bindend):**
+- Modul-Badge: Icon + Label in Capsule (Modul-Tint)
+- Titel: displayTitle (koerperstelle / hautStellen / "Rheuma & Gelenke")
+- Datum + Uhrzeit
+- `istSchub`-Badge: rote Capsule "Rheumaschub 🔥" (nur wenn true)
+- Schmerzstärke-Kreis (64pt, Modul-Tint) + Balken — **bei Haut ausblenden** (schmerzstaerke = 0)
+
+**Modul-spezifische Karten:**
+
+*Schmerz:*
+- Schmerz-Karte: Körperstelle, Schmerzart, Dauer
+- Auslöser-Karte (wenn nicht leer)
+- Begleiterscheinungen-Karte (wenn nicht leer)
+- Massnahmen-Karte (wenn nicht leer)
+
+*Rheuma:*
+- Gelenkstatus-Karte (wenn gelenkStatus nicht leer): TJC/SJC/Gesamt statPills + Chip-Grid der betroffenen Gelenke farbkodiert (rot=schmerzhaft, blau=geschwollen, lila=beides) + Legende
+- Symptome-Karte (wenn morgensteifigkeit > 0 oder fatigue > 0): Morgensteifigkeit (orange wenn > 30 Min), Fatigue mit Batterie-Icon
+
+*Haut:*
+- Hautbild-Karte: betroffene Stellen als Chips (orange), Hautart als Chips, Verlauf-Badge (↑grün/=orange/↓rot), Foto als echtes Bild via `FotoManager.laden(dateiname:)`
+
+**Wohlbefinden-Karte (alle Module, .pink):**
+
+| Feld | Bedingung | Darstellung |
+|---|---|---|
+| Stimmung | stimmung > 0 | Text-Label + Herz-Icon, farbkodiert 1–5 |
+| Stresslevel | stressLevel > 0 | Text-Label + 5 farbige Balken |
+| Schlaf | schlafStunden > 0 | "X.X Stunden" |
+| Fatigue | fatigue > 0 **und** modulTyp == .schmerz | Batterie-Icon + "X/10" |
+| Morgensteifigkeit | morgensteifigkeit > 0 **und** modulTyp == .schmerz | Sunrise-Icon + "X Min" |
+
+> Fatigue und Morgensteifigkeit für Rheuma-Einträge erscheinen **nicht** in der Wohlbefinden-Karte — sie werden in der separaten Symptome-Karte gezeigt.
+
+**Bearbeiten-Button (Toolbar .primaryAction):**
+```swift
+if koerperstelle == "Rheuma" → RheumaSchnellForm(eintrag:)
+else if istHautEintrag       → HautForm(eintrag:)
+else                         → SchmerzForm(eintrag:)
+```
+
+**Karten-Stil (`.karte()` Extension):**
+```swift
+.padding()
+.background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+.shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+```
+
+---
+
+### MigraeneAnfallDetailView – Pflichtfelder
+
+`Views/Migraene/MigraeneAnfallDetailView.swift`
+
+Karten-Reihenfolge:
+```
+heroKarte (staerke, kopfschmerzTyp, hatAura-Badge)
+anfallKarte (seite, dauer, endZeit)
+prodromsymptomeKarte (wenn nicht leer)
+charakterKarte (hatAura + charakter)
+begleitsymptomeKarte (wenn nicht leer)
+auslöserKarte (wenn nicht leer)
+akutmedikamentKarte (wenn nicht leer)
+postdromKarte (immer — zeigt "Noch nicht erfasst" + Erfassen-Button wenn leer)
+wohlbefindenKarte (stimmung, stressLevel, schlafStunden, fatigue — wenn mind. 1 Wert > 0)
+wetterKarte (wenn wetterCode != nil)
+zyklusKarte (wenn zyklusPhase nicht leer)
+notizenKarte (wenn notizen nicht leer)
+```
+
+Wohlbefinden-Karte: identisch zu PainEntryDetailView, Tint `.pink`.
+
+---
+
+### Vollständigkeits-Checkliste für Detail-Views (bindend)
+
+> Jedes Feld, das ein Wizard erfasst, **muss** in der zugehörigen DetailView sichtbar sein.
+
+Vor dem Merge einer neuen DetailView oder Wizard-Änderung:
+- [ ] Alle `@State`-Felder im Wizard gegen die DetailView abgeglichen
+- [ ] Jedes Feld, das in `speichern()` geschrieben wird, hat eine entsprechende Anzeige
+- [ ] Felder mit Wert 0 / leer werden korrekt ausgeblendet (keine leeren Karten)
+- [ ] Modul-Tintfarbe korrekt (siehe Farbtabelle)
+- [ ] Bearbeiten-Button routet zum richtigen Wizard
