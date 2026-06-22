@@ -356,41 +356,7 @@ extension GesamtAnalyseView {
                     }
                 }
 
-                let eintraegeRef = eintraege
-                let migraeneRef = migraeneAnfaelle
-                let bwRef = blutzuckerMessungen
-                let zyklusRef = zyklusEintraege
-
-                var module: [(name: String, farbe: Color, hatDaten: (Date) -> Bool)] = [
-                    ("Schmerz", .red, { tag in
-                        eintraegeRef.contains { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && cal.startOfDay(for: $0.datum) == tag }
-                    }),
-                ]
-                if rheumaModulAktiv {
-                    module.append(("Rheuma", .teal, { tag in
-                        eintraegeRef.contains { $0.koerperstelle == "Rheuma" && cal.startOfDay(for: $0.datum) == tag }
-                    }))
-                }
-                if migraeneModulAktiv {
-                    module.append(("Migräne", .purple, { tag in
-                        migraeneRef.contains { cal.startOfDay(for: $0.datum) == tag }
-                    }))
-                }
-                if hautModulAktiv {
-                    module.append(("Haut", .orange, { tag in
-                        eintraegeRef.contains { $0.istHautEintrag && cal.startOfDay(for: $0.datum) == tag }
-                    }))
-                }
-                if diabetesModulAktiv {
-                    module.append(("Diabetes", .blue, { tag in
-                        bwRef.contains { cal.startOfDay(for: $0.datum) == tag }
-                    }))
-                }
-                if zyklusModulAktiv {
-                    module.append(("Zyklus", .pink, { tag in
-                        zyklusRef.contains { cal.startOfDay(for: $0.datum) == tag }
-                    }))
-                }
+                let module = aktiveModuleTimeline
 
                 ForEach(module, id: \.name) { modul in
                     HStack(spacing: 0) {
@@ -913,6 +879,46 @@ extension GesamtAnalyseView {
 // MARK: - Helpers
 
 extension GesamtAnalyseView {
+
+    private var aktiveModuleTimeline: [(name: String, farbe: Color, hatDaten: (Date) -> Bool)] {
+        let cal = Calendar.current
+        let ei = eintraege
+        let mi = migraeneAnfaelle
+        let bw = blutzuckerMessungen
+        let zy = zyklusEintraege
+        var result: [(name: String, farbe: Color, hatDaten: (Date) -> Bool)] = [
+            ("Schmerz", .red, { tag in
+                ei.contains { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && cal.startOfDay(for: $0.datum) == tag }
+            }),
+        ]
+        if rheumaModulAktiv {
+            result.append(("Rheuma", .teal, { tag in
+                ei.contains { $0.koerperstelle == "Rheuma" && cal.startOfDay(for: $0.datum) == tag }
+            }))
+        }
+        if migraeneModulAktiv {
+            result.append(("Migräne", .purple, { tag in
+                mi.contains { cal.startOfDay(for: $0.datum) == tag }
+            }))
+        }
+        if hautModulAktiv {
+            result.append(("Haut", .orange, { tag in
+                ei.contains { $0.istHautEintrag && cal.startOfDay(for: $0.datum) == tag }
+            }))
+        }
+        if diabetesModulAktiv {
+            result.append(("Diabetes", .blue, { tag in
+                bw.contains { cal.startOfDay(for: $0.datum) == tag }
+            }))
+        }
+        if zyklusModulAktiv {
+            result.append(("Zyklus", .pink, { tag in
+                zy.contains { cal.startOfDay(for: $0.datum) == tag }
+            }))
+        }
+        return result
+    }
+
     private func berechneTagesPunkte(aus eintraege: [PainEntry]) -> [(datum: Date, wert: Double)] {
         let cal = Calendar.current
         var tageDaten: [Date: [Int]] = [:]
