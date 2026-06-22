@@ -371,11 +371,17 @@ struct PainEntryDetailView: View {
                 }
             }
 
-            if !eintrag.fotoDateiname.isEmpty {
+            if !eintrag.fotoDateiname.isEmpty,
+               let bild = FotoManager.laden(dateiname: eintrag.fotoDateiname) {
                 Divider()
-                Label("Foto aufgenommen", systemImage: "photo")
-                    .font(.subheadline)
-                    .foregroundStyle(tint)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Foto").font(.caption).foregroundStyle(.secondary)
+                    Image(uiImage: bild)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 240)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
             }
         }
         .karte()
