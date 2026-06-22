@@ -495,15 +495,8 @@ struct MigraeneAnfallForm: View {
     // MARK: - Schritt 0: Intensität
 
     private var intensitaetSchritt: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 6) {
-                Image(systemName: "brain.head.profile")
-                    .font(.largeTitle)
-                    .foregroundStyle(.purple)
-                Text("Wie stark?")
-                    .font(.title2.bold())
-            }
-            .padding(.top, 8)
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "brain.head.profile", titel: "Wie stark?", untertitel: "Intensität und Dauer des Anfalls")
 
             karte {
                 VStack(alignment: .leading, spacing: 10) {
@@ -610,34 +603,14 @@ struct MigraeneAnfallForm: View {
     // MARK: - Schritt 1: Prodromsymptome
 
     private var prodromSchritt: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 6) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.largeTitle)
-                    .foregroundStyle(.indigo)
-                Text("Vor dem Anfall")
-                    .font(.title2.bold())
-                Text("Optional – überspringen wenn nichts bemerkt")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.top, 8)
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "clock.arrow.circlepath", titel: "Vor dem Anfall", untertitel: "Optional – überspringen wenn nichts bemerkt")
 
-            karte {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Prodromsymptome").font(.headline)
-                    FlowLayout(prodromOptionen) { opt in
-                        ChipButton(
-                            label: opt,
-                            ausgewaehlt: ausgewaehlteProdrom.contains(opt),
-                            farbe: .purple
-                        ) {
-                            if ausgewaehlteProdrom.contains(opt) { ausgewaehlteProdrom.remove(opt) }
-                            else { ausgewaehlteProdrom.insert(opt) }
-                        }
-                    }
-                }
-            }
+            chipKarte(
+                titel: "Prodromsymptome (mehrere möglich)",
+                optionen: prodromOptionen,
+                ausgewaehlt: $ausgewaehlteProdrom
+            )
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
@@ -646,31 +619,14 @@ struct MigraeneAnfallForm: View {
     // MARK: - Schritt 2: Charakter
 
     private var charakterSchritt: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 6) {
-                Image(systemName: "waveform.path.ecg")
-                    .font(.largeTitle)
-                    .foregroundStyle(.purple)
-                Text("Wie & Wo?")
-                    .font(.title2.bold())
-            }
-            .padding(.top, 8)
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "waveform.path.ecg", titel: "Wie & Wo?", untertitel: "Lokalisation und Schmerzcharakter")
 
-            karte {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Lokalisation (mehrere möglich)").font(.headline)
-                    FlowLayout(lokalisationen) { opt in
-                        ChipButton(
-                            label: opt,
-                            ausgewaehlt: ausgewaehlteSeiten.contains(opt),
-                            farbe: .purple
-                        ) {
-                            if ausgewaehlteSeiten.contains(opt) { ausgewaehlteSeiten.remove(opt) }
-                            else { ausgewaehlteSeiten.insert(opt) }
-                        }
-                    }
-                }
-            }
+            chipKarte(
+                titel: "Lokalisation (mehrere möglich)",
+                optionen: lokalisationen,
+                ausgewaehlt: $ausgewaehlteSeiten
+            )
 
             karte {
                 Toggle(isOn: $hatAura) {
@@ -689,22 +645,11 @@ struct MigraeneAnfallForm: View {
                 .tint(.purple)
             }
 
-            karte {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Schmerzcharakter (mehrere möglich)").font(.headline)
-                    FlowLayout(charakterOptionen) { opt in
-                        ChipButton(
-                            label: opt,
-                            ausgewaehlt: ausgewaehlterCharakter.contains(opt),
-                            farbe: .purple
-                        ) {
-                            if ausgewaehlterCharakter.contains(opt) { ausgewaehlterCharakter.remove(opt) }
-                            else { ausgewaehlterCharakter.insert(opt) }
-                        }
-                    }
-                }
-            }
-
+            chipKarte(
+                titel: "Schmerzcharakter (mehrere möglich)",
+                optionen: charakterOptionen,
+                ausgewaehlt: $ausgewaehlterCharakter
+            )
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
@@ -713,47 +658,20 @@ struct MigraeneAnfallForm: View {
     // MARK: - Schritt 3: Symptome & Auslöser
 
     private var symptomeSchritt: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 6) {
-                Image(systemName: "list.clipboard.fill")
-                    .font(.largeTitle)
-                    .foregroundStyle(.red)
-                Text("Symptome & Auslöser")
-                    .font(.title2.bold())
-            }
-            .padding(.top, 8)
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "list.clipboard.fill", titel: "Symptome & Auslöser", untertitel: "Was hat begleitet und ausgelöst?")
 
-            karte {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Begleitsymptome (mehrere möglich)").font(.headline)
-                    FlowLayout(begleitOptionen) { opt in
-                        ChipButton(
-                            label: opt,
-                            ausgewaehlt: ausgewaehlteBegleitsymptome.contains(opt),
-                            farbe: .purple
-                        ) {
-                            if ausgewaehlteBegleitsymptome.contains(opt) { ausgewaehlteBegleitsymptome.remove(opt) }
-                            else { ausgewaehlteBegleitsymptome.insert(opt) }
-                        }
-                    }
-                }
-            }
+            chipKarte(
+                titel: "Begleitsymptome (mehrere möglich)",
+                optionen: begleitOptionen,
+                ausgewaehlt: $ausgewaehlteBegleitsymptome
+            )
 
-            karte {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Mögliche Auslöser (mehrere möglich)").font(.headline)
-                    FlowLayout(ausloeserOptionen) { opt in
-                        ChipButton(
-                            label: opt,
-                            ausgewaehlt: ausgewaehlteAusloeser.contains(opt),
-                            farbe: .purple
-                        ) {
-                            if ausgewaehlteAusloeser.contains(opt) { ausgewaehlteAusloeser.remove(opt) }
-                            else { ausgewaehlteAusloeser.insert(opt) }
-                        }
-                    }
-                }
-            }
+            chipKarte(
+                titel: "Mögliche Auslöser (mehrere möglich)",
+                optionen: ausloeserOptionen,
+                ausgewaehlt: $ausgewaehlteAusloeser
+            )
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
@@ -762,15 +680,8 @@ struct MigraeneAnfallForm: View {
     // MARK: - Schritt 3: Abschluss
 
     private var medikamentSchritt: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 6) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.largeTitle)
-                    .foregroundStyle(.purple)
-                Text("Abschluss")
-                    .font(.title2.bold())
-            }
-            .padding(.top, 8)
+        VStack(spacing: 20) {
+            schrittHeader(symbol: "checkmark.seal.fill", titel: "Abschluss", untertitel: "Medikament und Postdrom")
 
             let aktiveMeds = alleMedikamente.filter(\.aktiv)
             karte {
@@ -829,23 +740,11 @@ struct MigraeneAnfallForm: View {
                 }
             }
 
-            karte {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Postdromsymptome").font(.headline)
-                    Text("Beschwerden nach dem Anfall")
-                        .font(.caption).foregroundStyle(.secondary)
-                    FlowLayout(postdromOptionen) { opt in
-                        ChipButton(
-                            label: opt,
-                            ausgewaehlt: ausgewaehltePostdrom.contains(opt),
-                            farbe: .purple
-                        ) {
-                            if ausgewaehltePostdrom.contains(opt) { ausgewaehltePostdrom.remove(opt) }
-                            else { ausgewaehltePostdrom.insert(opt) }
-                        }
-                    }
-                }
-            }
+            chipKarte(
+                titel: "Postdromsymptome (mehrere möglich)",
+                optionen: postdromOptionen,
+                ausgewaehlt: $ausgewaehltePostdrom
+            )
 
             if zyklusModulAktiv && !autoZyklusPhase.isEmpty {
                 karte {
@@ -923,7 +822,7 @@ struct MigraeneAnfallForm: View {
         .background(.ultraThinMaterial)
     }
 
-    // MARK: - Card helper
+    // MARK: - Card helpers
 
     @ViewBuilder
     private func karte<C: View>(@ViewBuilder content: () -> C) -> some View {
@@ -932,6 +831,51 @@ struct MigraeneAnfallForm: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func chipKarte(
+        titel: String,
+        optionen: [String],
+        ausgewaehlt: Binding<Set<String>>,
+        farbe: Color = .purple
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(titel).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                ForEach(optionen, id: \.self) { opt in
+                    let sel = ausgewaehlt.wrappedValue.contains(opt)
+                    Button {
+                        var s = ausgewaehlt.wrappedValue
+                        if s.contains(opt) { s.remove(opt) } else { s.insert(opt) }
+                        ausgewaehlt.wrappedValue = s
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: sel ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(sel ? farbe : .secondary)
+                                .font(.caption)
+                            Text(opt).font(.caption).lineLimit(1)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(
+                            sel ? farbe.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .animation(.easeInOut(duration: 0.15), value: sel)
+                }
+            }
+        }
+    }
+
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(progressTint)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity).padding(.bottom, 4)
     }
 
     private var wetterAnzeige: WetterSnapshot? {
