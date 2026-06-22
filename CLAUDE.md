@@ -883,6 +883,40 @@ struct MeinModulAnalyseView: View {
 
 ---
 
+## SubRegionen – Namenskonvention (bindend)
+
+> **Alle Sub-Regionen bilateral symmetrischer Körperstellen müssen den Seitenbezeichner ` links` / ` rechts` enthalten.**
+
+### Warum
+
+Die Highlight-Logik in `KoerperKarte3DView` prüft:
+
+```swift
+let isSelected = ausgewaehlt.contains(name)
+    || (SubRegionen.map[name]?.contains { ausgewaehlt.contains($0) } ?? false)
+```
+
+Enthält `SubRegionen.map["Unterschenkel links"]` und `SubRegionen.map["Unterschenkel rechts"]` beide denselben String `"Wade"`, leuchten beim Antippen von **einer** Seite **beide** Nodes auf — weil der String in beiden Listen gefunden wird.
+
+### Regel (bindend für alle Einträge in `SubRegionen.swift`)
+
+| Körperstelle | ✗ Falsch | ✓ Richtig |
+|---|---|---|
+| Unterschenkel links/rechts | `"Wade"`, `"Schienbein"` | `"Wade links"`, `"Wade rechts"` |
+| Hand links/rechts | `"Daumen"`, `"Zeigefinger"` | `"Daumen links"`, `"Daumen rechts"` |
+| Fuss links/rechts | `"Großzehe"`, `"Ferse"` | `"Großzehe links"`, `"Ferse rechts"` |
+| Schulter links/rechts | `"Schultergelenk"`, `"Achselhöhle"` | `"Schultergelenk links"`, `"Achselhöhle rechts"` |
+
+**Einzige Ausnahme:** Sub-Regionen, die bereits in ihrem Namen die Seite tragen (z.B. `"Hals links"`, `"Flanke rechts"`) brauchen keinen weiteren Suffix.
+
+### Checkliste beim Hinzufügen neuer Sub-Regionen
+
+- [ ] Neue Sub-Region gehört zu einer bilateral symmetrischen Node? → Suffix ` links` / ` rechts` zwingend
+- [ ] Beide Seiten der Map aktualisiert (map **und** hautMap falls vorhanden)?
+- [ ] Node-Namen in `BodySceneBuilder.addParts()` geprüft — dort sind die exakten Schlüssel-Namen der Map?
+
+---
+
 ## Neue Features / Module – Checkliste
 
 Vor dem Merge eines neuen Moduls prüfen:
