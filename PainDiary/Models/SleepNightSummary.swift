@@ -30,4 +30,17 @@ extension SleepNightSummary {
         guard let defaults = UserDefaults(suiteName: appGroupSuite) else { return false }
         return defaults.data(forKey: appGroupKey) != nil
     }
+
+    static func loeschen(_ nacht: SleepNightSummary) {
+        var alle = laden()
+        alle.removeAll { $0.datum == nacht.datum }
+        speichern(alle)
+    }
+
+    private static func speichern(_ summaries: [SleepNightSummary]) {
+        guard let defaults = UserDefaults(suiteName: appGroupSuite),
+              let data = try? JSONEncoder().encode(summaries)
+        else { return }
+        defaults.set(data, forKey: appGroupKey)
+    }
 }
