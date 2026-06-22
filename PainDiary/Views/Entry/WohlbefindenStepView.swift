@@ -10,10 +10,21 @@ struct WohlbefindenStepView: View {
     var healthSchlafVorschlag: Double? = nil
 
     var body: some View {
-        VStack(spacing: 24) {
-            Text("Wie geht es dir?")
-                .font(.title2.bold())
-                .multilineTextAlignment(.center)
+        VStack(spacing: 20) {
+            // Header — matches schrittHeader style
+            VStack(spacing: 8) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.indigo)
+                Text("Wie geht es dir?")
+                    .font(.title3.bold())
+                Text("Stimmung, Schlaf und Wohlbefinden")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 4)
 
             VStack(alignment: .leading, spacing: 20) {
                 // Stimmung
