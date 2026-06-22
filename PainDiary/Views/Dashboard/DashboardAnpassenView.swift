@@ -276,7 +276,7 @@ struct KorrelationsPickerView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            List {
                 // X-Achse
                 Section("Einflussfaktor (X-Achse)") {
                     ForEach(xOptionen, id: \.id) { opt in

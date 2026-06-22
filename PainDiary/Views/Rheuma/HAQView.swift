@@ -275,67 +275,126 @@ struct HAQFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Datum") {
-                    DatePicker("Datum", selection: $datum, displayedComponents: [.date])
-                }
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        schrittHeader(
+                            symbol: "figure.arms.open",
+                            titel: "HAQ-Fragebogen",
+                            untertitel: "Health Assessment Questionnaire – Einschätzung der Alltagsfunktionen"
+                        )
 
-                Section {
-                    haqFrage("Ankleiden & Körperpflege", wert: $ankleiden,
-                             beispiel: "Knöpfe öffnen, Haare kämmen")
-                    haqFrage("Aufstehen", wert: $aufstehen,
-                             beispiel: "Vom Stuhl/Bett aufstehen")
-                    haqFrage("Essen", wert: $essen,
-                             beispiel: "Glas heben, Messer benutzen")
-                    haqFrage("Gehen", wert: $gehen,
-                             beispiel: "Ebene Strecken, Treppensteigen")
-                    haqFrage("Hygiene", wert: $hygiene,
-                             beispiel: "Waschen, Baden, WC-Benutzung")
-                    haqFrage("Greifen", wert: $greifen,
-                             beispiel: "Objekte heben, Türen öffnen")
-                    haqFrage("Andere Aktivitäten", wert: $aktivitaeten,
-                             beispiel: "Einkaufen, Auto fahren")
-                } header: {
-                    Text("Aktivitätskategorien (HAQ-DI)")
-                } footer: {
-                    let score = Double([ankleiden, aufstehen, essen, gehen, hygiene, greifen, aktivitaeten].reduce(0,+)) / 7.0
-                    Text(String(format: "Aktueller HAQ-DI Score: %.2f", score))
-                }
-
-                Section("Allgemeines Befinden (0–100)") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Globale Selbsteinschätzung")
-                                .font(.subheadline)
-                            Spacer()
-                            Text("\(globalBewertung)")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(globalFarbe)
+                        // Datum
+                        VStack(spacing: 0) {
+                            DatePicker("Datum", selection: $datum, displayedComponents: [.date])
+                                .font(.subheadline).padding(16)
                         }
-                        Slider(value: Binding(
-                            get: { Double(globalBewertung) },
-                            set: { globalBewertung = Int($0) }
-                        ), in: 0...100, step: 5)
-                        .tint(globalFarbe)
-                        HStack {
-                            Text("Sehr gut").font(.caption2).foregroundStyle(.secondary)
-                            Spacer()
-                            Text("Sehr schlecht").font(.caption2).foregroundStyle(.secondary)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                        // HAQ-Fragen
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Aktivitätskategorien (HAQ-DI)")
+                                .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+
+                            VStack(spacing: 12) {
+                                haqFrage("Ankleiden & Körperpflege", wert: $ankleiden,
+                                         beispiel: "Knöpfe öffnen, Haare kämmen")
+                                haqFrage("Aufstehen", wert: $aufstehen,
+                                         beispiel: "Vom Stuhl/Bett aufstehen")
+                                haqFrage("Essen", wert: $essen,
+                                         beispiel: "Glas heben, Messer benutzen")
+                                haqFrage("Gehen", wert: $gehen,
+                                         beispiel: "Ebene Strecken, Treppensteigen")
+                                haqFrage("Hygiene", wert: $hygiene,
+                                         beispiel: "Waschen, Baden, WC-Benutzung")
+                                haqFrage("Greifen", wert: $greifen,
+                                         beispiel: "Objekte heben, Türen öffnen")
+                                haqFrage("Andere Aktivitäten", wert: $aktivitaeten,
+                                         beispiel: "Einkaufen, Auto fahren")
+                            }
+                        }
+
+                        // Live Score Card
+                        let score = Double([ankleiden, aufstehen, essen, gehen, hygiene, greifen, aktivitaeten].reduce(0, +)) / 7.0
+                        VStack(spacing: 8) {
+                            HStack {
+                                Label("Aktueller HAQ-DI Score", systemImage: "chart.bar.fill")
+                                    .font(.caption).foregroundStyle(.teal)
+                                Spacer()
+                                Text(String(format: "%.2f", score))
+                                    .font(.title2.bold())
+                                    .foregroundStyle(stufenFarbe(score <= 0.5 ? 0 : score <= 1.0 ? 1 : score <= 2.0 ? 2 : 3))
+                            }
+                        }
+                        .padding(16)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                        // Allgemeines Befinden
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Allgemeines Befinden (VAS 0–100)")
+                                .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Text("Globale Selbsteinschätzung")
+                                        .font(.subheadline)
+                                    Spacer()
+                                    Text("\(globalBewertung)")
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(globalFarbe)
+                                }
+                                Slider(value: Binding(
+                                    get: { Double(globalBewertung) },
+                                    set: { globalBewertung = Int($0) }
+                                ), in: 0...100, step: 5)
+                                .tint(.teal)
+                                HStack {
+                                    Text("Sehr gut").font(.caption2).foregroundStyle(.secondary)
+                                    Spacer()
+                                    Text("Sehr schlecht").font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(16)
+                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                         }
                     }
+                    .padding(.horizontal).padding(.vertical, 24)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .background(Color(.systemGroupedBackground))
+
+                // Save button
+                HStack {
+                    Button { speichern() } label: {
+                        Label("Speichern", systemImage: "checkmark")
+                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 14)
+                            .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding()
+                .background(.ultraThinMaterial)
             }
             .navigationTitle("HAQ-Fragebogen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Abbrechen") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Speichern") { speichern() } }
             }
         }
     }
 
+    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(Color.teal)
+            Text(titel).font(.title3.bold())
+            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity).padding(.bottom, 4)
+    }
+
     private func haqFrage(_ titel: String, wert: Binding<Int>, beispiel: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(titel).font(.subheadline.bold())
                 Text(beispiel).font(.caption).foregroundStyle(.secondary)
@@ -359,7 +418,7 @@ struct HAQFormView: View {
                         .background(
                             wert.wrappedValue == i
                                 ? stufenFarbe(i).opacity(0.18)
-                                : Color(.tertiarySystemBackground),
+                                : Color(.secondarySystemGroupedBackground),
                             in: RoundedRectangle(cornerRadius: 8)
                         )
                         .overlay(
@@ -373,7 +432,8 @@ struct HAQFormView: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private func stufenFarbe(_ i: Int) -> Color {

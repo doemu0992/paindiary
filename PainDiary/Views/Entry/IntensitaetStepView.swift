@@ -112,7 +112,7 @@ struct IntensitaetStepView: View {
             }
             .padding()
             .background(
-                aktiv ? farbe.opacity(0.1) : Color(.secondarySystemBackground),
+                aktiv ? farbe.opacity(0.1) : Color(.secondarySystemGroupedBackground),
                 in: RoundedRectangle(cornerRadius: 16)
             )
             .overlay(

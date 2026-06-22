@@ -154,7 +154,7 @@ struct VorhersageKarte: View {
                     )
                 }
                 .padding(10)
-                .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
             }
 
             HStack(spacing: 4) {
