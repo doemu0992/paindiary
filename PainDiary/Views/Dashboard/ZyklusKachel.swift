@@ -202,6 +202,7 @@ struct ZyklusKachel: View {
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .sheet(isPresented: $zeigeForm) {
             ZyklusEintragSheet(datum: Calendar.current.startOfDay(for: Date()), bestehend: nil)
         }

@@ -17,10 +17,19 @@ struct DiabetesKachel: View {
     }
 
     private var chartDaten: [(datum: Date, wert: Double)] {
-        messungen.prefix(14).reversed().map { (datum: $0.datum, wert: $0.wert) }
+        let cal = Calendar.current
+        return (0..<14).reversed().map { offset in
+            let tag = cal.date(byAdding: .day, value: -offset, to: Date()) ?? Date()
+            let start = cal.startOfDay(for: tag)
+            let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
+            let tagesMessungen = messungen.filter { $0.datum >= start && $0.datum < end }
+            let avg = tagesMessungen.isEmpty ? 0.0
+                : tagesMessungen.map(\.wert).reduce(0.0, +) / Double(tagesMessungen.count)
+            return (datum: start, wert: avg)
+        }
     }
 
-    private var hatDaten: Bool { !messungen30.isEmpty }
+    private var hatDaten: Bool { chartDaten.contains { $0.wert > 0 } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -57,26 +66,25 @@ struct DiabetesKachel: View {
                 )
             }
 
-            if chartDaten.count > 1 {
-                Chart(chartDaten, id: \.datum) { punkt in
-                    LineMark(
-                        x: .value("Datum", punkt.datum),
-                        y: .value("mmol/L", punkt.wert)
-                    )
-                    .foregroundStyle(Color.blue.opacity(0.8))
-                    .interpolationMethod(.catmullRom)
-                    PointMark(
-                        x: .value("Datum", punkt.datum),
-                        y: .value("mmol/L", punkt.wert)
-                    )
-                    .foregroundStyle(wertFarbe(punkt.wert))
-                    .symbolSize(24)
+            Chart(chartDaten, id: \.datum) { punkt in
+                BarMark(
+                    x: .value("Tag", punkt.datum, unit: .day),
+                    y: .value("mmol/L", hatDaten ? punkt.wert : 1.0)
+                )
+                .foregroundStyle(
+                    hatDaten && punkt.wert > 0
+                        ? wertFarbe(punkt.wert).opacity(0.75)
+                        : Color.blue.opacity(hatDaten ? 0.12 : 0.07)
+                )
+                .cornerRadius(3)
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .frame(height: 44)
+            .overlay(alignment: .center) {
+                if !hatDaten {
+                    Text("Noch keine Einträge").font(.caption2).foregroundStyle(.secondary)
                 }
-                .chartXAxis(.hidden)
-                .chartYAxis(.hidden)
-                .frame(height: 44)
-            } else {
-                placeholderChart
             }
 
             Divider()
@@ -96,30 +104,8 @@ struct DiabetesKachel: View {
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .sheet(isPresented: $zeigeForm) { BlutzuckerForm() }
-    }
-
-    private var placeholderChart: some View {
-        let daten = (0..<14).map { i -> (datum: Date, wert: Double) in
-            let tag = Calendar.current.date(byAdding: .day, value: -i, to: Date()) ?? Date()
-            return (datum: tag, wert: 1.0)
-        }
-        return Chart(daten, id: \.datum) { punkt in
-            BarMark(
-                x: .value("Tag", punkt.datum, unit: .day),
-                y: .value("Wert", punkt.wert)
-            )
-            .foregroundStyle(Color.blue.opacity(0.07))
-            .cornerRadius(3)
-        }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-        .frame(height: 44)
-        .overlay(alignment: .center) {
-            Text("Noch keine Einträge")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
     }
 
     private func wertFarbe(_ wert: Double) -> Color {

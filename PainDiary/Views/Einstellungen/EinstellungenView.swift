@@ -155,6 +155,9 @@ struct EinstellungenView: View {
 
     private func alleDatenLoeschen() {
         NotificationManager.shared.loescheAlleGesundheitsDatenErinnerungen()
+        for entry in eintraege where entry.istHautEintrag {
+            FotoManager.loeschen(dateiname: entry.fotoDateiname)
+        }
         do {
             try modelContext.delete(model: PainEntry.self)
             try modelContext.delete(model: MigraeneEintrag.self)
