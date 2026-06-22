@@ -315,7 +315,7 @@ struct WohlbefindenAnalyseView: View {
         case .schlaf:          schlafKarte
         case .wasser:          wasserKarte
         case .ernaehrung:      if !ernaehrungsDaten.isEmpty { ernaehrungKarte }
-        case .kiInsicht:       KIAnalyseKarte(prompt: kiPrompt, modulTint: .teal).id(kiPrompt)
+        case .kiInsicht:       KIAnalyseKarte(prompt: kiPrompt, modulTint: .mint).id(kiPrompt)
         }
     }
 
@@ -323,8 +323,15 @@ struct WohlbefindenAnalyseView: View {
 
     private var zusammenfassungKarte: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Zusammenfassung", systemImage: "chart.bar.fill")
-                .font(.headline).foregroundStyle(.teal)
+            HStack {
+                Label("Zusammenfassung", systemImage: "chart.bar.fill")
+                    .font(.headline).foregroundStyle(.mint)
+                Spacer()
+                InfoButton(
+                    titel: "Zusammenfassung",
+                    text: "Überblick über Stimmung, Schlaf und Wasseraufnahme im gewählten Zeitraum. Daten aus Schmerzeinträgen und Wohlbefinden-Erfassung werden zusammengeführt."
+                )
+            }
             Divider()
             HStack(spacing: 0) {
                 statPill(
@@ -373,8 +380,15 @@ struct WohlbefindenAnalyseView: View {
 
     private var stimmungStressKarte: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Stimmung & Stress", systemImage: "heart.fill")
-                .font(.headline).foregroundStyle(.pink)
+            HStack {
+                Label("Stimmung & Stress", systemImage: "heart.fill")
+                    .font(.headline).foregroundStyle(.pink)
+                Spacer()
+                InfoButton(
+                    titel: "Stimmung & Stress",
+                    text: "Stimmung und Stress werden auf einer Skala von 1–5 erfasst. Stimmung: 1 = sehr schlecht, 5 = sehr gut. Stress: 1 = entspannt, 5 = sehr gestresst.\n\nDaten stammen aus Schmerzeinträgen und der täglichen Wohlbefinden-Erfassung. Hat ein Tag mehrere Einträge, wird der Durchschnitt angezeigt."
+                )
+            }
             Divider()
             if stimmungsDaten.isEmpty {
                 Text("Noch keine Daten im ausgewählten Zeitraum.")
@@ -428,6 +442,10 @@ struct WohlbefindenAnalyseView: View {
                         .font(.caption.bold())
                         .foregroundStyle(avgSchlaf >= 7 ? .green : avgSchlaf >= 6 ? .orange : .red)
                 }
+                InfoButton(
+                    titel: "Schlaf",
+                    text: "Empfehlung für Erwachsene: 7–9 Stunden pro Nacht (National Sleep Foundation).\n\n• Unter 6 Stunden: erhöhtes Risiko für Schmerzempfindlichkeit, Konzentrationsprobleme und geschwächtes Immunsystem\n• 6–7 Stunden: akzeptabel, aber nicht optimal\n• 7+ Stunden: empfohlener Bereich\n\nDaten aus Schmerzeinträgen und Wohlbefinden-Erfassung werden zusammengeführt."
+                )
             }
             Divider()
             if schlafDaten.isEmpty {
@@ -470,8 +488,15 @@ struct WohlbefindenAnalyseView: View {
 
     private var wasserKarte: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Wasseraufnahme", systemImage: "drop.fill")
-                .font(.headline).foregroundStyle(.teal)
+            HStack {
+                Label("Wasseraufnahme", systemImage: "drop.fill")
+                    .font(.headline).foregroundStyle(.teal)
+                Spacer()
+                InfoButton(
+                    titel: "Wasseraufnahme",
+                    text: "Allgemeine Empfehlung: mindestens 1,5–2 Liter pro Tag (bei normaler Aktivität und Temperatur). Bei körperlicher Aktivität oder Hitze mehr.\n\nAusreichend Wasser trinken unterstützt:\n• Konzentration und Energielevel\n• Nierenfunktion und Entgiftung\n• Schmerzverarbeitung und Entzündungsregulation\n\nDunkle Balken = Tagesziel erreicht. Helle Balken = unter Ziel."
+                )
+            }
             Divider()
             if wasserDaten.isEmpty {
                 Text("Noch keine Wasserdaten im ausgewählten Zeitraum.")
@@ -521,8 +546,15 @@ struct WohlbefindenAnalyseView: View {
     private var ernaehrungKarte: some View {
         let braun = Color(red: 0.55, green: 0.35, blue: 0.15)
         return VStack(alignment: .leading, spacing: 12) {
-            Label("Ernährung", systemImage: "fork.knife")
-                .font(.headline).foregroundStyle(braun)
+            HStack {
+                Label("Ernährung", systemImage: "fork.knife")
+                    .font(.headline).foregroundStyle(braun)
+                Spacer()
+                InfoButton(
+                    titel: "Ernährung",
+                    text: "Koffein: Bis zu 4 Tassen (ca. 400 mg Koffein) pro Tag gelten für gesunde Erwachsene als unbedenklich. Mehr als 4 Tassen können Schlafqualität, Herzrhythmus und Schmerzempfindlichkeit negativ beeinflussen.\n\nAlkohol: Die WHO empfiehlt, Alkohol so weit wie möglich zu reduzieren. Alkohol kann Entzündungen fördern, Schlaf stören und Medikamentenwirkungen beeinflussen."
+                )
+            }
             Divider()
             HStack(spacing: 0) {
                 statPill(
@@ -586,7 +618,7 @@ private struct WohlbefindenAnalyseAnpassenView: View {
             List {
                 ForEach(sektionen) { sektion in
                     HStack(spacing: 12) {
-                        Image(systemName: sektion.symbol).foregroundStyle(.teal).frame(width: 24)
+                        Image(systemName: sektion.symbol).foregroundStyle(.mint).frame(width: 24)
                         Text(sektion.rawValue).font(.subheadline)
                     }
                 }

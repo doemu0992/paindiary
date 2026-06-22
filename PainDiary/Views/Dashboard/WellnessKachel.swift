@@ -3,11 +3,13 @@ import SwiftData
 import Charts
 
 struct WellnessKachel: View {
-    let eintraege: [PainEntry]               // for stimmung/schlaf trend from pain data
-    let wellnessEintraege: [WellnessEintrag] // for wasser/historical data
+    let eintraege: [PainEntry]
+    let wellnessEintraege: [WellnessEintrag]
     @State private var zeigeView = false
+    @State private var ausgewaehltTag: Date? = nil
+    @State private var versteckTask: Task<Void, Never>? = nil
 
-    // MARK: - Stats
+    // MARK: - Stats (PainEntry + WellnessEintrag merged)
 
     private var heuteWasser: Int {
         let heute = Calendar.current.startOfDay(for: Date())
@@ -16,19 +18,37 @@ struct WellnessKachel: View {
 
     private var avgStimmung7T: Double {
         let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        let gefiltert = eintraege.filter { $0.datum >= cutoff && $0.stimmung > 0 }
-        guard !gefiltert.isEmpty else { return 0 }
-        return Double(gefiltert.map(\.stimmung).reduce(0, +)) / Double(gefiltert.count)
+        let cal = Calendar.current
+        var tageValues: [Double] = []
+        for offset in 0..<7 {
+            guard let tag = cal.date(byAdding: .day, value: -offset, to: cal.startOfDay(for: Date())) else { continue }
+            let painEntries = eintraege.filter { $0.datum >= cutoff && cal.isDate($0.datum, inSameDayAs: tag) && $0.stimmung > 0 }
+            if !painEntries.isEmpty {
+                tageValues.append(Double(painEntries.map(\.stimmung).reduce(0, +)) / Double(painEntries.count))
+            } else if let w = wellnessEintraege.first(where: { cal.isDate($0.datum, inSameDayAs: tag) }), w.stimmung > 0 {
+                tageValues.append(Double(w.stimmung))
+            }
+        }
+        return tageValues.isEmpty ? 0 : tageValues.reduce(0, +) / Double(tageValues.count)
     }
 
     private var avgSchlaf7T: Double {
         let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        let gefiltert = eintraege.filter { $0.datum >= cutoff && $0.schlafStunden > 0 }
-        guard !gefiltert.isEmpty else { return 0 }
-        return gefiltert.map(\.schlafStunden).reduce(0, +) / Double(gefiltert.count)
+        let cal = Calendar.current
+        var tageValues: [Double] = []
+        for offset in 0..<7 {
+            guard let tag = cal.date(byAdding: .day, value: -offset, to: cal.startOfDay(for: Date())) else { continue }
+            let painEntries = eintraege.filter { $0.datum >= cutoff && cal.isDate($0.datum, inSameDayAs: tag) && $0.schlafStunden > 0 }
+            if !painEntries.isEmpty {
+                tageValues.append(painEntries.map(\.schlafStunden).reduce(0, +) / Double(painEntries.count))
+            } else if let w = wellnessEintraege.first(where: { cal.isDate($0.datum, inSameDayAs: tag) }), w.schlafStunden > 0 {
+                tageValues.append(w.schlafStunden)
+            }
+        }
+        return tageValues.isEmpty ? 0 : tageValues.reduce(0, +) / Double(tageValues.count)
     }
 
-    // MARK: - Chart Data (14-day mood, one point per day)
+    // MARK: - Chart Data (14-day mood, merges PainEntry + WellnessEintrag)
 
     private var chartDaten: [(datum: Date, stimmung: Double)] {
         let cal = Calendar.current
@@ -36,10 +56,15 @@ struct WellnessKachel: View {
             let tag = cal.date(byAdding: .day, value: -offset, to: Date()) ?? Date()
             let start = cal.startOfDay(for: tag)
             let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
-            let tagesEintraege = eintraege.filter { $0.datum >= start && $0.datum < end && $0.stimmung > 0 }
-            let avg = tagesEintraege.isEmpty ? 0.0
-                : Double(tagesEintraege.map(\.stimmung).reduce(0, +)) / Double(tagesEintraege.count)
-            return (datum: start, stimmung: avg)
+            let painTages = eintraege.filter { $0.datum >= start && $0.datum < end && $0.stimmung > 0 }
+            if !painTages.isEmpty {
+                let avg = Double(painTages.map(\.stimmung).reduce(0, +)) / Double(painTages.count)
+                return (datum: start, stimmung: avg)
+            }
+            if let w = wellnessEintraege.first(where: { cal.isDate($0.datum, inSameDayAs: start) }), w.stimmung > 0 {
+                return (datum: start, stimmung: Double(w.stimmung))
+            }
+            return (datum: start, stimmung: 0)
         }
     }
 
@@ -56,12 +81,21 @@ struct WellnessKachel: View {
         }
     }
 
+    private func stimmungLabel(_ s: Double) -> String {
+        switch s {
+        case ..<2:  return "Schlecht"
+        case ..<3:  return "Mäßig"
+        case ..<4:  return "Okay"
+        case ..<5:  return "Gut"
+        default:    return "Sehr gut"
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
 
-            // 1. Header: Titel + Plus-Button
             HStack {
                 Label("Wohlbefinden", systemImage: "heart.text.square.fill")
                     .font(.headline).foregroundStyle(.mint)
@@ -73,7 +107,6 @@ struct WellnessKachel: View {
                 .buttonStyle(.plain)
             }
 
-            // 2. Drei Stat-Boxes
             HStack(spacing: 0) {
                 statBox(
                     wert: avgStimmung7T > 0 ? String(format: "%.1f", avgStimmung7T) : "–",
@@ -94,7 +127,6 @@ struct WellnessKachel: View {
                 )
             }
 
-            // 3. Mini-Chart 14 Tage (immer anzeigen)
             Chart(chartDaten, id: \.datum) { punkt in
                 BarMark(
                     x: .value("Tag", punkt.datum, unit: .day),
@@ -106,15 +138,37 @@ struct WellnessKachel: View {
             .chartXAxis(.hidden).chartYAxis(.hidden)
             .chartYScale(domain: 0...5)
             .frame(height: 44)
+            .chartOverlay { proxy in
+                GeometryReader { _ in
+                    Rectangle().fill(.clear).contentShape(Rectangle())
+                        .onTapGesture { location in balkenTippen(proxy: proxy, location: location) }
+                }
+            }
             .overlay(alignment: .center) {
                 if !hatDaten {
                     Text("Noch keine Einträge").font(.caption2).foregroundStyle(.secondary)
                 }
             }
 
+            if let tag = ausgewaehltTag,
+               let punkt = chartDaten.first(where: { Calendar.current.isDate($0.datum, inSameDayAs: tag) }) {
+                HStack(spacing: 6) {
+                    Text(tag, format: .dateTime.weekday(.abbreviated).day().month())
+                        .font(.caption2.bold()).foregroundStyle(.secondary)
+                    if punkt.stimmung > 0 {
+                        Text("Stimmung \(String(format: "%.1f", punkt.stimmung)) – \(stimmungLabel(punkt.stimmung))")
+                            .font(.caption2)
+                            .foregroundStyle(stimmungFarbe(punkt.stimmung))
+                    } else {
+                        Text("Kein Eintrag").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .transition(.opacity)
+            }
+
             Divider()
 
-            // 4. NavigationLink zum Modul
             NavigationLink(destination: WellnessView()) {
                 HStack {
                     Text("Wohlbefinden öffnen").font(.caption.bold()).foregroundStyle(.mint)
@@ -124,6 +178,7 @@ struct WellnessKachel: View {
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: ausgewaehltTag)
         .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -141,5 +196,20 @@ struct WellnessKachel: View {
             Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 4)
+    }
+
+    private func balkenTippen(proxy: ChartProxy, location: CGPoint) {
+        guard let date: Date = proxy.value(atX: location.x, as: Date.self) else { return }
+        let snapped = chartDaten.min(by: {
+            abs($0.datum.timeIntervalSince(date)) < abs($1.datum.timeIntervalSince(date))
+        })?.datum
+        guard let snapped else { return }
+        withAnimation { ausgewaehltTag = snapped }
+        versteckTask?.cancel()
+        versteckTask = Task {
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { withAnimation { ausgewaehltTag = nil } }
+        }
     }
 }
