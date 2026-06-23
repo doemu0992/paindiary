@@ -4,6 +4,7 @@ import Charts
 
 enum SchlafAnalyseSektion: String, CaseIterable, Codable, Identifiable {
     case korrelation = "Schmerz-Schlaf-Korrelation"
+    case folgetag = "Folgetag-Analyse"
     case qualitaetTrend = "Qualitätstrend"
     case phasenVerteilung = "Schlafphasen"
     case kiInsicht = "KI-Einblick"
@@ -12,6 +13,7 @@ enum SchlafAnalyseSektion: String, CaseIterable, Codable, Identifiable {
     var symbol: String {
         switch self {
         case .korrelation: return "chart.dots.scatter"
+        case .folgetag: return "sunrise.fill"
         case .qualitaetTrend: return "chart.line.uptrend.xyaxis"
         case .phasenVerteilung: return "moon.stars.fill"
         case .kiInsicht: return "sparkles"
@@ -80,6 +82,18 @@ struct SchlafAnalyseView: View {
         }
     }
 
+    // Folgetag-Korrelation: Schlaf der Nacht → Schmerzen am NÄCHSTEN Tag
+    private var folgetagPunkte: [(qualitaet: Double, schmerzAvg: Double, datum: Date)] {
+        let cal = Calendar.current
+        return gefiltert.compactMap { nacht in
+            guard let folgetag = cal.date(byAdding: .day, value: 1, to: nacht.date) else { return nil }
+            let schmerzen = gefiltertePainEntries.filter { cal.isDate($0.datum, inSameDayAs: folgetag) }
+            guard !schmerzen.isEmpty else { return nil }
+            let avg = Double(schmerzen.map(\.schmerzstaerke).reduce(0, +)) / Double(schmerzen.count)
+            return (qualitaet: nacht.qualitaet, schmerzAvg: avg, datum: nacht.date)
+        }
+    }
+
     private var kiPrompt: String {
         let punkte = korrelationsPunkte.prefix(30)
         let avgQual = gefiltert.map(\.qualitaet).reduce(0, +) / max(Double(gefiltert.count), 1)
@@ -89,9 +103,11 @@ struct SchlafAnalyseView: View {
         - Analysierte Nächte: \(gefiltert.count)
         - Ø Schlafqualität: \(String(format: "%.0f", avgQual))/100
         - Ø Schlafdauer: \(String(format: "%.1f h", avgDauer))
-        - Korrelationsdatenpunkte: \(punkte.count)
-        - Korrelationsbeispiele: \(punkte.prefix(5).map { "Qual:\(Int($0.qualitaet)) Schmerz:\(String(format: "%.1f", $0.schmerzAvg))" }.joined(separator: ", "))
-        Identifiziere Muster zwischen Schlafqualität und Schmerzintensität. Gib 3–4 kurze Einblicke auf Deutsch.
+        - Gleicher-Tag-Korrelationspunkte: \(punkte.count)
+        - Folgetag-Korrelationspunkte: \(folgetagPunkte.count)
+        - Gleicher-Tag-Beispiele: \(punkte.prefix(3).map { "Qual:\(Int($0.qualitaet)) Schmerz:\(String(format: "%.1f", $0.schmerzAvg))" }.joined(separator: ", "))
+        - Folgetag-Beispiele: \(folgetagPunkte.prefix(3).map { "Qual:\(Int($0.qualitaet)) FolgetagSchmerz:\(String(format: "%.1f", $0.schmerzAvg))" }.joined(separator: ", "))
+        Identifiziere Muster zwischen Schlafqualität und Schmerzintensität (gleicher Tag und Folgetag). Gib 3–4 kurze Einblicke auf Deutsch.
         """
     }
 
@@ -138,6 +154,7 @@ struct SchlafAnalyseView: View {
     private func sektionView(_ sektion: SchlafAnalyseSektion) -> some View {
         switch sektion {
         case .korrelation:      korrelationsKarte
+        case .folgetag:         folgetagKarte
         case .qualitaetTrend:   qualitaetTrendKarte
         case .phasenVerteilung: phasenKarte
         case .kiInsicht:
@@ -222,6 +239,97 @@ struct SchlafAnalyseView: View {
         if r < -0.5 { return "starker negativer Zusammenhang (mehr Schlaf → weniger Schmerz)" }
         if r < -0.3 { return "moderater Zusammenhang" }
         if r > 0.3 { return "kein klarer positiver Zusammenhang" }
+        return "kein eindeutiger Zusammenhang"
+    }
+
+    // MARK: - Folgetag-Analyse
+
+    private var folgetagKarte: some View {
+        karte(titel: "Folgetag-Analyse", symbol: "sunrise.fill") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Wie beeinflusst der Schlaf der letzten Nacht den Schmerz am nächsten Tag?")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if folgetagPunkte.count < 3 {
+                    Text("Nicht genug Daten — mindestens 3 Nächte mit Schmerzeinträgen am Folgetag nötig.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 8)
+                } else {
+                    Chart(folgetagPunkte, id: \.datum) { p in
+                        PointMark(
+                            x: .value("Schlafqualität", p.qualitaet),
+                            y: .value("Folgetag-Schmerz", p.schmerzAvg)
+                        )
+                        .foregroundStyle(
+                            LinearGradient(colors: [.indigo, .orange], startPoint: .leading, endPoint: .trailing)
+                        )
+                        .symbolSize(80)
+                    }
+                    .chartXAxis {
+                        AxisMarks(values: [0, 25, 50, 75, 100]) { v in
+                            AxisValueLabel { Text("\(v.as(Int.self) ?? 0)").font(.caption2) }
+                            AxisGridLine()
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(values: [0, 3, 6, 10]) { v in
+                            AxisValueLabel { Text("\(v.as(Int.self) ?? 0)").font(.caption2) }
+                            AxisGridLine()
+                        }
+                    }
+                    .chartXScale(domain: 0...100)
+                    .chartYScale(domain: 0...10)
+                    .frame(height: 180)
+
+                    Text("X: Schlafqualität · Y: Schmerzstärke am Folgetag")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+
+                    if let r = pearsonKorrelation(folgetagPunkte) {
+                        let text = folgetagKorrelationsText(r)
+                        HStack(spacing: 6) {
+                            Image(systemName: r < -0.3 ? "arrow.down.right" : r > 0.3 ? "arrow.up.right" : "minus")
+                            Text(String(format: "r = %.2f — %@", r, text))
+                        }
+                        .font(.caption.bold())
+                        .foregroundStyle(r < -0.3 ? Color.green : r > 0.3 ? Color.red : Color.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 2)
+                    }
+
+                    // Ø Schmerzdifferenz: guter Schlaf (≥70) vs. schlechter Schlaf (<50)
+                    let gut = folgetagPunkte.filter { $0.qualitaet >= 70 }.map(\.schmerzAvg)
+                    let schlecht = folgetagPunkte.filter { $0.qualitaet < 50 }.map(\.schmerzAvg)
+                    if !gut.isEmpty && !schlecht.isEmpty {
+                        let avgGut = gut.reduce(0, +) / Double(gut.count)
+                        let avgSchlecht = schlecht.reduce(0, +) / Double(schlecht.count)
+                        let diff = avgSchlecht - avgGut
+                        HStack(spacing: 6) {
+                            Image(systemName: diff > 0 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                                .foregroundStyle(diff > 0 ? Color.orange : Color.green)
+                            if diff > 0.3 {
+                                Text(String(format: "Nach schlechtem Schlaf im Ø %.1f Punkte mehr Schmerz am Folgetag", diff))
+                            } else {
+                                Text("Kein signifikanter Folgetag-Effekt erkennbar")
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 2)
+                    }
+                }
+            }
+        }
+    }
+
+    private func folgetagKorrelationsText(_ r: Double) -> String {
+        if r < -0.5 { return "starker Effekt: guter Schlaf → deutlich weniger Schmerz am Folgetag" }
+        if r < -0.3 { return "moderater Effekt auf den Folgetag" }
+        if r > 0.3  { return "kein klarer Schutzeffekt erkennbar" }
         return "kein eindeutiger Zusammenhang"
     }
 
