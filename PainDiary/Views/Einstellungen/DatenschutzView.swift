@@ -51,6 +51,14 @@ Diese Daten werden nur lokal verwendet und nie an Dritte weitergegeben. Du kanns
 """)
                 }
 
+                abschnitt(titel: "Datenaustausch mit SleepBuddy") {
+                    Text("""
+Wenn du auch die App SleepBuddy desselben Entwicklers nutzt und die Verknüpfung aktivierst, überträgt SleepBuddy eine Zusammenfassung deiner Nacht (z. B. Schlafdauer und -qualität) an PainDiary.
+
+Dieser Austausch findet ausschliesslich lokal auf deinem Gerät über eine gemeinsame, geschützte App-Gruppe statt. Es werden dabei keine Daten an Server des Entwicklers oder an Dritte übertragen. Du kannst die Verknüpfung jederzeit in SleepBuddy deaktivieren.
+""")
+                }
+
                 abschnitt(titel: "Gesundheitsdaten – besonderer Schutz") {
                     Text("""
 PainDiary verarbeitet sensible Gesundheitsdaten gemäss dem Schweizer Datenschutzgesetz (DSG) und der EU-DSGVO. Da alle Daten ausschliesslich auf deinem Gerät bzw. in deinem persönlichen iCloud-Konto gespeichert werden, liegt die Kontrolle vollständig bei dir.
