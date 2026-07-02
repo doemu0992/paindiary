@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var zeigeZyklus = false
     @State private var zeigeMigraeneBearbeiten: MigraeneEintrag? = nil
     @Query(sort: \Dauermedikation.name) private var medikamente: [Dauermedikation]
+    @Query private var profile: [Benutzerprofil]
     @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneEintraege: [MigraeneEintrag]
     @Environment(\.scenePhase) private var scenePhase
 
@@ -101,8 +102,23 @@ struct ContentView: View {
         }
         .onAppear {
             pruefWhatsNew()
+            syncProfilZuAppGroupBeimStart()
             // Pfad 3: Cold Launch — pendingDeepLink wurde gesetzt bevor ContentView erschien
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { verarbeiteDeepLink() }
+        }
+    }
+
+    /// Profildaten bei JEDEM Start in die App Group spiegeln — nicht nur beim Öffnen
+    /// der Profil-Seite. So findet SleepBuddy die Daten auch, wenn das Profil vor der
+    /// Verknüpfung angelegt wurde (Bestandsnutzer) oder die Profil-Seite nie geöffnet wird.
+    private func syncProfilZuAppGroupBeimStart() {
+        guard let p = profile.first, !p.vorname.isEmpty else { return }
+        let defaults = UserDefaults(suiteName: "group.com.doemu0992.sleepbuddy")
+        defaults?.set(p.vorname, forKey: "shared_vorname")
+        defaults?.set(p.nachname, forKey: "shared_nachname")
+        defaults?.set(p.geschlecht, forKey: "shared_geschlecht")
+        if let geb = p.geburtsdatum {
+            defaults?.set(geb.timeIntervalSince1970, forKey: "shared_geburtsdatum")
         }
     }
 
