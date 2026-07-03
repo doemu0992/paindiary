@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0 Build 32] – 2026-07-03
+
+### Fehlerbehebungen
+- **Zyklus – Erfassungszeit**: Heutige Zyklus-Einträge speichern jetzt die tatsächliche Uhrzeit der Erfassung (statt sinnlosem 00:00). Wird mittags eine Blutung nachgetragen, zeigt der Eintrag die Mittagszeit. Rückwirkende Einträge zeigen keine Uhrzeit.
+
+---
+
 ## [2.0 Build 31] – 2026-07-03
 
 ### Neu
