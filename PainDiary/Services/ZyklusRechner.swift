@@ -108,8 +108,8 @@ struct ZyklusRechner {
             .sorted()
 
         func lhOffset(zyklusStart: Date, zyklusEnde: Date?) -> Int? {
-            let inZyklus = lhPositivTage.filter {
-                $0 >= zyklusStart && (zyklusEnde.map { ende in $0 < ende } ?? true)
+            let inZyklus = lhPositivTage.filter { tag in
+                tag >= zyklusStart && (zyklusEnde.map { ende in tag < ende } ?? true)
             }
             guard let ersterPositiver = inZyklus.first else { return nil }
             return (kal.dateComponents([.day], from: zyklusStart, to: ersterPositiver).day ?? 0) + 1
