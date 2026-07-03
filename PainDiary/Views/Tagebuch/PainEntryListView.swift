@@ -683,14 +683,18 @@ struct ZyklusTagesbuchZeile: View {
                         .font(.headline)
                         .lineLimit(1)
                     HStack(spacing: 4) {
-                        Text(eintrag.datum, style: .time)
                         if !eintrag.blutungsfluss.isEmpty && eintrag.istPeriode {
-                            Text("·").foregroundStyle(.secondary)
                             Text(eintrag.blutungsfluss.capitalized)
+                            if !eintrag.symptome.isEmpty {
+                                Text("·").foregroundStyle(.secondary)
+                                Text(eintrag.symptome.components(separatedBy: ", ").prefix(2).joined(separator: ", "))
+                                    .lineLimit(1)
+                            }
                         } else if !eintrag.symptome.isEmpty {
-                            Text("·").foregroundStyle(.secondary)
                             Text(eintrag.symptome.components(separatedBy: ", ").prefix(2).joined(separator: ", "))
                                 .lineLimit(1)
+                        } else {
+                            Text("Tages-Eintrag")
                         }
                     }
                     .font(.caption)
