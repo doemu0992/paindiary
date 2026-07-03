@@ -100,19 +100,25 @@ struct ZyklusRechner {
         }()
 
         // LH surge: a positive ovulation test means ovulation follows in ~24–36 h.
-        // Day granularity → ovulation = FIRST positive test day + 1.
         // (First day of the surge counts; later positives are the same surge.)
-        let lhPositivTage = eintraege
+        // Capture time refines the day-granularity prediction:
+        //   morning/afternoon test → ovulation next day (+24–36 h lands there)
+        //   evening test (>= 18:00) → ovulation the day after next
+        //   no capture time (00:00, retroactive entry) → next day
+        let lhPositive = eintraege
             .filter { $0.ovulationstest.lowercased() == "positiv" }
-            .map { kal.startOfDay(for: $0.datum) }
-            .sorted()
+            .sorted { $0.datum < $1.datum }
 
         func lhOffset(zyklusStart: Date, zyklusEnde: Date?) -> Int? {
-            let inZyklus = lhPositivTage.filter { tag in
-                tag >= zyklusStart && (zyklusEnde.map { ende in tag < ende } ?? true)
+            let inZyklus = lhPositive.filter { e in
+                let tag = kal.startOfDay(for: e.datum)
+                return tag >= zyklusStart && (zyklusEnde.map { ende in tag < ende } ?? true)
             }
-            guard let ersterPositiver = inZyklus.first else { return nil }
-            return (kal.dateComponents([.day], from: zyklusStart, to: ersterPositiver).day ?? 0) + 1
+            guard let erster = inZyklus.first else { return nil }
+            let tag = kal.startOfDay(for: erster.datum)
+            let hatUhrzeit = tag != erster.datum
+            let abends = hatUhrzeit && kal.component(.hour, from: erster.datum) >= 18
+            return (kal.dateComponents([.day], from: zyklusStart, to: tag).day ?? 0) + (abends ? 2 : 1)
         }
 
         // Personalized ovulation offset, per completed cycle:

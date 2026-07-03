@@ -561,14 +561,21 @@ struct ZyklusAnalyseView: View {
 
         if !tests.isEmpty {
             karte(titel: "Ovulationstests", symbol: "circle.dotted", farbe: .pink,
-                  info: "Übersicht deiner Ovulationstests. Ein positiver Test (Testlinie so stark oder stärker als Kontrolllinie) deutet auf den LH-Anstieg hin. Der Eisprung tritt meist 12–36 Stunden nach dem LH-Peak auf — die fruchtbarsten Tage sind der Tag des LH-Peaks und der Folgetag.") {
+                  info: "Übersicht deiner Ovulationstests mit Erfassungszeit. Ein positiver Test (Testlinie so stark oder stärker als Kontrolllinie) deutet auf den LH-Anstieg hin. Der Eisprung tritt ca. 24–36 Stunden nach dem ersten positiven Test auf. Die Uhrzeit der Erfassung fliesst in die Eisprung-Vorhersage ein: Abendtests (ab 18 Uhr) verschieben den erwarteten Eisprung auf den übernächsten Tag.") {
                 VStack(spacing: 8) {
                     ForEach(Array(tests.suffix(10).enumerated()), id: \.offset) { _, test in
+                        let hatUhrzeit = Calendar.current.startOfDay(for: test.datum) != test.datum
                         HStack(spacing: 12) {
                             Circle().fill(ovuFarbe(test.ergebnis)).frame(width: 12, height: 12)
-                            Text(test.datum.formatted(.dateTime.day().month(.abbreviated).year()))
-                                .font(.caption).foregroundStyle(.secondary)
-                                .frame(width: 80, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(test.datum.formatted(.dateTime.day().month(.abbreviated).year()))
+                                    .font(.caption).foregroundStyle(.secondary)
+                                if hatUhrzeit {
+                                    Text(test.datum.formatted(.dateTime.hour().minute()) + " Uhr")
+                                        .font(.caption2).foregroundStyle(.tertiary)
+                                }
+                            }
+                            .frame(width: 80, alignment: .leading)
                             Text(test.ergebnis.capitalized).font(.subheadline)
                             Spacer()
                             if test.ergebnis == "positiv" {
