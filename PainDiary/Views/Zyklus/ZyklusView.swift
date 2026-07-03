@@ -185,7 +185,7 @@ struct ZyklusView: View {
                 HStack(spacing: 3) {
                     Text("Eisprung erwartet").font(.caption2).foregroundStyle(.secondary)
                     InfoButton(titel: "Eisprung erwartet",
-                               text: "Vorhergesagtes Datum des Eisprungs. Die App lernt aus deinen Zervixschleim-Einträgen und passt den Zeitpunkt anhand des persönlichen Musters an.")
+                               text: "Vorhergesagtes Datum des Eisprungs. Ein positiver Ovulationstest (LH) setzt den Eisprung fest auf ca. 24–36 Stunden nach dem ersten positiven Test — er hat Vorrang vor allen anderen Signalen. Zusätzlich lernt die App aus deinen Zervixschleim-Einträgen und passt den Zeitpunkt anhand des persönlichen Musters an.")
                 }
             }
             .frame(maxWidth: .infinity)
@@ -237,7 +237,7 @@ struct ZyklusView: View {
 
             legendeItem(farbe: .orange, gefuellt: true, text: "Eisprung",
                         info: ("Eisprung (Ovulation)",
-                               "Der Moment, in dem ein Ei aus dem Eierstock freigesetzt wird. Tritt meist 12–16 Tage vor der nächsten Periode auf und ist der fruchtbarste Punkt im Zyklus."))
+                               "Der Moment, in dem ein Ei aus dem Eierstock freigesetzt wird. Tritt meist 12–16 Tage vor der nächsten Periode auf und ist der fruchtbarste Punkt im Zyklus. Ein positiver Ovulationstest (LH) verschiebt den angezeigten Eisprung auf den Folgetag des ersten positiven Tests (Eisprung erfolgt ca. 24–36 h nach LH-Anstieg)."))
 
             HStack(spacing: 4) {
                 Circle().fill(Color.purple.opacity(0.6)).frame(width: 7, height: 7)

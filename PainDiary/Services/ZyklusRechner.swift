@@ -99,11 +99,29 @@ struct ZyklusRechner {
             }
         }()
 
-        // Personalized ovulation offset from mucus peak days.
-        // Requires mucus at least 4 days after period end to exclude post-period discharge.
-        let mucusOffsets: [Int] = (0..<starts.count).compactMap { i in
+        // LH surge: a positive ovulation test means ovulation follows in ~24–36 h.
+        // Day granularity → ovulation = FIRST positive test day + 1.
+        // (First day of the surge counts; later positives are the same surge.)
+        let lhPositivTage = eintraege
+            .filter { $0.ovulationstest.lowercased() == "positiv" }
+            .map { kal.startOfDay(for: $0.datum) }
+            .sorted()
+
+        func lhOffset(zyklusStart: Date, zyklusEnde: Date?) -> Int? {
+            let inZyklus = lhPositivTage.filter {
+                $0 >= zyklusStart && (zyklusEnde.map { ende in $0 < ende } ?? true)
+            }
+            guard let ersterPositiver = inZyklus.first else { return nil }
+            return (kal.dateComponents([.day], from: zyklusStart, to: ersterPositiver).day ?? 0) + 1
+        }
+
+        // Personalized ovulation offset, per completed cycle:
+        // LH test (strongest signal) > mucus peak > calendar fallback.
+        // Mucus requires at least 4 days after period end to exclude post-period discharge.
+        let ovulationsOffsets: [Int] = (0..<starts.count).compactMap { i in
             guard i + 1 < starts.count else { return nil }
             let zyklusStart = starts[i]; let zyklusEnde = starts[i + 1]
+            if let lh = lhOffset(zyklusStart: zyklusStart, zyklusEnde: zyklusEnde) { return lh }
             let zyklusPeriodEnd = periodeTage.last(where: { $0 >= zyklusStart && $0 < zyklusEnde })
             let fruehesteMucus: Date = zyklusPeriodEnd.map {
                 kal.date(byAdding: .day, value: 4, to: $0)!
@@ -118,14 +136,17 @@ struct ZyklusRechner {
             guard let peak = spitzenTage.last else { return nil }
             return (kal.dateComponents([.day], from: zyklusStart, to: peak).day ?? 0) + 1
         }
-        let persOvulationsOffset: Int = mucusOffsets.count >= 2
-            ? mucusOffsets.reduce(0, +) / mucusOffsets.count
+        let persOvulationsOffset: Int = ovulationsOffsets.count >= 2
+            ? ovulationsOffsets.reduce(0, +) / ovulationsOffsets.count
             : Int(round(adaptZyklus)) - 14
 
-        // Current cycle: use this cycle's own observed mucus peak to position ovulation.
-        // Only counts mucus at least 4 days after the period ends to exclude post-period discharge.
+        // Current cycle: LH test beats everything — ovulation is a hard fact
+        // ~24–36 h after the first positive test. Otherwise use this cycle's
+        // observed mucus peak (only mucus at least 4 days after the period ends,
+        // to exclude post-period discharge).
         let aktuellerZyklusOvOffset: Int = {
             guard let currentStart = starts.last else { return persOvulationsOffset }
+            if let lh = lhOffset(zyklusStart: currentStart, zyklusEnde: nil) { return lh }
             let currentPeriodEnd = periodeTage.last(where: { $0 >= currentStart })
             let fruehesteMucusTag: Date = currentPeriodEnd.map {
                 kal.date(byAdding: .day, value: 4, to: $0)!
@@ -181,10 +202,12 @@ struct ZyklusRechner {
 
         for i in 0..<starts.count {
             if i < zyklusLaengen.count {
-                // Completed cycle: use actual cycle length to back-calculate ovulation
-                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: Int(zyklusLaengen[i]) - 14)
+                // Completed cycle: LH test wins, else back-calculate from actual cycle length
+                let offset = lhOffset(zyklusStart: starts[i], zyklusEnde: starts[i + 1])
+                    ?? (Int(zyklusLaengen[i]) - 14)
+                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: offset)
             } else {
-                // Current (incomplete) cycle: use this cycle's own mucus peak if available
+                // Current (incomplete) cycle: LH test or mucus peak (see aktuellerZyklusOvOffset)
                 fuegeZyklusHinzu(start: starts[i], ovulationsOffset: aktuellerZyklusOvOffset)
             }
         }
@@ -223,7 +246,7 @@ struct ZyklusRechner {
             periodeTageSet: periodeTageSet,
             fruchtbareTageSet: fruchtbarSet,
             ovulationsTageSet: ovulationsSet,
-            gelernterOvulationsOffset: mucusOffsets.count >= 2 ? persOvulationsOffset : nil,
+            gelernterOvulationsOffset: ovulationsOffsets.count >= 2 ? persOvulationsOffset : nil,
             adaptierteZykluslaenge: adaptZyklus,
             adaptiertePeriodendauer: adaptPeriod
         )
