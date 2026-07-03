@@ -904,6 +904,12 @@ struct ZyklusEintragSheet: View {
             eintrag = ZyklusEintrag(datum: Calendar.current.startOfDay(for: datum))
             modelContext.insert(eintrag)
         }
+        // Erfassungszeit: bei Einträgen für heute die tatsächliche Uhrzeit speichern
+        // (auch bei Updates — "mittags Blutung nachgetragen" zeigt dann mittags).
+        // Rückwirkende Einträge bleiben auf 00:00, dort wird keine Zeit angezeigt.
+        if Calendar.current.isDateInToday(datum) {
+            eintrag.datum = Date()
+        }
         eintrag.istPeriode = istPeriode
         eintrag.blutungsfluss = istPeriode ? blutungsfluss : ""
         eintrag.nurHalberTag = istPeriode ? nurHalberTag : false

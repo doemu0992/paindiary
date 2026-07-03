@@ -669,6 +669,11 @@ struct MigraeneZeile: View {
 struct ZyklusTagesbuchZeile: View {
     let eintrag: ZyklusEintrag
 
+    // 00:00 = rückwirkend erfasster Tages-Eintrag ohne echte Erfassungszeit
+    private var hatUhrzeit: Bool {
+        Calendar.current.startOfDay(for: eintrag.datum) != eintrag.datum
+    }
+
     var body: some View {
         NavigationLink(destination: ZyklusEintragDetailView(eintrag: eintrag)) {
             HStack(spacing: 12) {
@@ -683,18 +688,16 @@ struct ZyklusTagesbuchZeile: View {
                         .font(.headline)
                         .lineLimit(1)
                     HStack(spacing: 4) {
+                        if hatUhrzeit {
+                            Text(eintrag.datum, style: .time)
+                        }
                         if !eintrag.blutungsfluss.isEmpty && eintrag.istPeriode {
+                            if hatUhrzeit { Text("·").foregroundStyle(.secondary) }
                             Text(eintrag.blutungsfluss.capitalized)
-                            if !eintrag.symptome.isEmpty {
-                                Text("·").foregroundStyle(.secondary)
-                                Text(eintrag.symptome.components(separatedBy: ", ").prefix(2).joined(separator: ", "))
-                                    .lineLimit(1)
-                            }
                         } else if !eintrag.symptome.isEmpty {
+                            if hatUhrzeit { Text("·").foregroundStyle(.secondary) }
                             Text(eintrag.symptome.components(separatedBy: ", ").prefix(2).joined(separator: ", "))
                                 .lineLimit(1)
-                        } else {
-                            Text("Tages-Eintrag")
                         }
                     }
                     .font(.caption)

@@ -1093,7 +1093,7 @@ List
 | Rheuma | `SchmerzZeile` | `ModulKreis(farbe: .teal, zahl: schmerzstaerke)` | "Rheuma" | Uhrzeit · Wetter-Icon | Schub-Badge, Morgensteifigkeit |
 | Haut | `SchmerzZeile` | `ModulKreis(farbe: .orange, symbol: "bandage.fill")` | hautStellen | Uhrzeit | — |
 | Migräne | `MigraeneZeile` | `ModulKreis(farbe: .purple, zahl: staerke)` | kopfschmerzTyp | charakter · Uhrzeit | Aura-Badge, Dauer |
-| Zyklus | `ZyklusTagesbuchZeile` | `ModulKreis(farbe: .pink, symbol: ...)` | "Periode" / "Zyklus-Eintrag" | Blutungsfluss · Symptome (**keine Uhrzeit** — datum ist `startOfDay`) | — |
+| Zyklus | `ZyklusTagesbuchZeile` | `ModulKreis(farbe: .pink, symbol: ...)` | "Periode" / "Zyklus-Eintrag" | Uhrzeit · Blutungsfluss/Symptome (Uhrzeit nur wenn ≠ 00:00 — heutige Einträge speichern die Erfassungszeit, rückwirkende bleiben `startOfDay`) | — |
 | Diabetes | `DiabetesTagesbuchZeile` | `ModulKreis(farbe: wertFarbe, symbol: ...)` | Blutzucker-Wert | Uhrzeit · Messzeitpunkt | Insulin |
 
 **`ModulKreis`-Komponente** (`struct`, nicht `private`, in PainEntryListView):

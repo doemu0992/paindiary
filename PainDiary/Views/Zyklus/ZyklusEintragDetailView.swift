@@ -43,6 +43,16 @@ struct ZyklusEintragDetailView: View {
 
     // MARK: - Hero
 
+    // 00:00 = rückwirkend erfasster Tages-Eintrag ohne echte Erfassungszeit
+    private var datumText: String {
+        let hatUhrzeit = Calendar.current.startOfDay(for: eintrag.datum) != eintrag.datum
+        var text = eintrag.datum.formatted(.dateTime.day().month(.wide).year())
+        if hatUhrzeit {
+            text += " · " + eintrag.datum.formatted(.dateTime.hour().minute())
+        }
+        return text
+    }
+
     private var heroKarte: some View {
         VStack(spacing: 12) {
             HStack(spacing: 8) {
@@ -62,7 +72,7 @@ struct ZyklusEintragDetailView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(eintrag.istPeriode ? "Periodentag" : "Zyklus-Eintrag")
                         .font(.title2.bold())
-                    Text(eintrag.datum.formatted(.dateTime.day().month(.wide).year()))
+                    Text(datumText)
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer()
