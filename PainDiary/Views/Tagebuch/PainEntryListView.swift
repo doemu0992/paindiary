@@ -668,10 +668,9 @@ struct MigraeneZeile: View {
 
 struct ZyklusTagesbuchZeile: View {
     let eintrag: ZyklusEintrag
-    @State private var zeigeBearbeiten = false
 
     var body: some View {
-        Button { zeigeBearbeiten = true } label: {
+        NavigationLink(destination: ZyklusEintragDetailView(eintrag: eintrag)) {
             HStack(spacing: 12) {
                 ModulKreis(
                     farbe: .pink,
@@ -700,10 +699,6 @@ struct ZyklusTagesbuchZeile: View {
                 Spacer()
             }
             .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .sheet(isPresented: $zeigeBearbeiten) {
-            ZyklusEintragSheet(datum: eintrag.datum, bestehend: eintrag)
         }
     }
 }
