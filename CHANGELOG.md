@@ -1,10 +1,14 @@
 # Changelog
 
-## [2.0 Build 32] – 2026-07-03
+## [2.0 Build 33] – 2026-07-03
 
 ### Neu
 - **Ovulationstest steuert Eisprung-Vorhersage**: Ein positiver LH-Test setzt den Eisprung auf den Folgetag des ersten positiven Tests (Eisprung erfolgt ca. 24–36 h nach LH-Anstieg). Der Test hat Vorrang vor Zervixschleim und Kalender-Berechnung — im aktuellen Zyklus, in abgeschlossenen Zyklen und beim Lernen des persönlichen Ovulations-Musters. Mehrere positive Tage zählen als ein LH-Anstieg (erster Tag zählt).
 - **Erfassungszeit fliesst in Eisprung-Berechnung ein**: Abendtests (ab 18 Uhr) verschieben den erwarteten Eisprung auf den übernächsten Tag (24–36 h ab Abend landet dort). Die Ovulationstest-Karte in der Zyklus-Analyse zeigt jetzt die Erfassungszeit unter dem Datum.
+
+---
+
+## [2.0 Build 32] – 2026-07-03
 
 ### Fehlerbehebungen
 - **Zyklus – Erfassungszeit**: Heutige Zyklus-Einträge speichern jetzt die tatsächliche Uhrzeit der Erfassung (statt sinnlosem 00:00). Wird mittags eine Blutung nachgetragen, zeigt der Eintrag die Mittagszeit. Rückwirkende Einträge zeigen keine Uhrzeit.
