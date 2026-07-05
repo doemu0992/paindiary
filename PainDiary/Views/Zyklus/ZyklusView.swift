@@ -294,13 +294,22 @@ struct ZyklusView: View {
     private var naechstesFruchtbaresF: (Date, Date)? {
         let kal = Calendar.current
         let heute = kal.startOfDay(for: Date())
-        let sorted = analyse.fruchtbareTageSet.filter { $0 >= heute }.sorted()
-        guard let first = sorted.first else { return nil }
-        var end = first
-        for tag in sorted.dropFirst() {
-            if (kal.dateComponents([.day], from: end, to: tag).day ?? 99) <= 1 { end = tag } else { break }
+        let alle = analyse.fruchtbareTageSet.sorted()
+        guard let erster = alle.first else { return nil }
+        // Zusammenhängende Fenster bilden
+        var fenster: [(Date, Date)] = []
+        var start = erster; var ende = erster
+        for tag in alle.dropFirst() {
+            if (kal.dateComponents([.day], from: ende, to: tag).day ?? 99) <= 1 {
+                ende = tag
+            } else {
+                fenster.append((start, ende)); start = tag; ende = tag
+            }
         }
-        return (first, end)
+        fenster.append((start, ende))
+        // Das Fenster, in dem heute liegt oder das als nächstes kommt —
+        // in VOLLER Länge, damit Kopfzeile und Kalender dasselbe zeigen.
+        return fenster.first { $0.1 >= heute }
     }
 
     private func kurzDatum(_ d: Date) -> String {
