@@ -13,6 +13,7 @@
 - **Plausibilitätsgrenzen**: Nur Zykluslängen von 21–60 Tagen fliessen in Statistik, adaptive Vorhersage und Muster-Lernen ein — Tracking-Pausen verzerren die Vorhersage nicht mehr. Implausible Zyklen ohne gemessenes Signal (LH/BBT) werden im Kalender nicht mit Eisprung markiert.
 - **Selbstkalibrierung des gelernten Eisprung-Musters**: Der gelernte Ovulations-Offset wird gegen die eigene Zykluslänge geprüft — die Lutealphase muss 10–16 Tage betragen. Ein durch spärlich erfassten Zervixschleim zu früh gelernter Eisprung (z.B. "Tag 10" bei 27-Tage-Zyklen) wird automatisch korrigiert. Der Tracker rekalibriert sich bei jeder Datenänderung neu.
 - **Anzeige-Fix**: "Eisprung (gelernt)" in der Adaptiven Vorhersage zeigte den Zyklustag um 1 zu niedrig an (Offset statt Zyklustag).
+- **Bestätigter Eisprung fliesst sofort ins Lernen ein**: Ein per LH-Test oder Temperaturanstieg belegter Eisprung im laufenden Zyklus wird unmittelbar ins Muster-Lernen aufgenommen — die Eisprung- und Fenster-Vorhersage des Folgezyklus profitiert sofort, nicht erst nach Zyklusende.
 
 ---
 

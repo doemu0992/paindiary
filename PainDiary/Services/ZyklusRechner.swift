@@ -171,10 +171,18 @@ struct ZyklusRechner {
             return nil
         }
 
+        // Confirmed ovulation in the CURRENT cycle (measured, not estimated).
+        // Computed up front so it can feed the learning pool immediately —
+        // the next cycle's prediction must not wait for this cycle to finish.
+        let aktuellerZyklusLH  = starts.last.flatMap { lhOffset(zyklusStart: $0, zyklusEnde: nil) }
+        let aktuellerZyklusBBT = starts.last.flatMap { bbtOffset(zyklusStart: $0, zyklusEnde: nil) }
+        // LH-positiv oder Temperaturanstieg = Eisprung ist belegt, nicht geschätzt
+        let aktuellerOvBestaetigt = aktuellerZyklusLH != nil || aktuellerZyklusBBT != nil
+
         // Personalized ovulation offset, per completed cycle:
         // LH test > BBT rise > mucus peak > calendar fallback.
         // Mucus requires at least 4 days after period end to exclude post-period discharge.
-        let ovulationsOffsets: [Int] = (0..<starts.count).compactMap { i in
+        var ovulationsOffsets: [Int] = (0..<starts.count).compactMap { i in
             guard i + 1 < starts.count else { return nil }
             let zyklusStart = starts[i]; let zyklusEnde = starts[i + 1]
             if let lh = lhOffset(zyklusStart: zyklusStart, zyklusEnde: zyklusEnde) { return lh }
@@ -192,6 +200,11 @@ struct ZyklusRechner {
                 .map { kal.startOfDay(for: $0.datum) }.sorted()
             guard let peak = spitzenTage.last else { return nil }
             return (kal.dateComponents([.day], from: zyklusStart, to: peak).day ?? 0) + 1
+        }
+        // Bestätigter Eisprung im laufenden Zyklus fliesst SOFORT ins Lernen ein —
+        // die Vorhersage des Folgezyklus wartet nicht auf das Zyklusende.
+        if let bestaetigt = aktuellerZyklusLH ?? aktuellerZyklusBBT {
+            ovulationsOffsets.append(bestaetigt)
         }
         // Selbstkalibrierung des gelernten Offsets gegen die eigene Zykluslänge:
         // Die Lutealphase (Zyklus − Offset) liegt physiologisch bei 10–16 Tagen.
@@ -212,11 +225,6 @@ struct ZyklusRechner {
         // mucus at least 4 days after the period ends, to exclude post-period
         // discharge). Without a confirmed ovulation, negative tests around the
         // predicted ovulation day push the prediction later.
-        let aktuellerZyklusLH  = starts.last.flatMap { lhOffset(zyklusStart: $0, zyklusEnde: nil) }
-        let aktuellerZyklusBBT = starts.last.flatMap { bbtOffset(zyklusStart: $0, zyklusEnde: nil) }
-        // LH-positiv oder Temperaturanstieg = Eisprung ist belegt, nicht geschätzt
-        let aktuellerOvBestaetigt = aktuellerZyklusLH != nil || aktuellerZyklusBBT != nil
-
         let aktuellerZyklusOvOffset: Int = {
             guard let currentStart = starts.last else { return persOvulationsOffset }
             if let lh = aktuellerZyklusLH { return lh }
