@@ -276,8 +276,25 @@ struct ZyklusRechner {
         // Bestätigter Eisprung (LH/BBT) datiert die Periode exakt; geschätzte
         // Verschiebungen (Schleim-Peak, negative Tests) korrigieren nur nach hinten.
         let lutealTage = min(max(Int(round(adaptZyklus)) - persOvulationsOffset, 10), 16)
+
+        // Bestätigter Eisprung passt den KOMPLETTEN Zyklus an, nicht nur den
+        // Eisprungtag: Die projizierte Länge des laufenden Zyklus (Eisprung +
+        // Lutealphase) geht sofort als neuester Datenpunkt in die adaptive
+        // Zykluslänge ein — alle Folge-Vorhersagen (übernächste Periode,
+        // künftige Fenster, Phasenrechnung) rechnen damit weiter.
+        let adaptZyklusAngepasst: Double = {
+            guard aktuellerOvBestaetigt else { return adaptZyklus }
+            let projiziert = Double(aktuellerZyklusOvOffset + lutealTage)
+            let r = Array((zyklusLaengen + [projiziert]).suffix(3))
+            switch r.count {
+            case 1:  return r[0]
+            case 2:  return r[0] * 0.4 + r[1] * 0.6
+            default: return r[0] * 0.2 + r[1] * 0.3 + r[2] * 0.5
+            }
+        }()
+
         let naechstePeriode: Date? = starts.last.map { start in
-            let kalendarisch = kal.date(byAdding: .day, value: Int(round(adaptZyklus)), to: start)!
+            let kalendarisch = kal.date(byAdding: .day, value: Int(round(adaptZyklusAngepasst)), to: start)!
             let ovBasiert = kal.date(byAdding: .day, value: aktuellerZyklusOvOffset + lutealTage, to: start)!
             return aktuellerOvBestaetigt ? ovBasiert : max(kalendarisch, ovBasiert)
         }
@@ -323,7 +340,7 @@ struct ZyklusRechner {
         }
         if let np = naechstePeriode {
             fuegeZyklusHinzu(start: np, ovulationsOffset: persOvulationsOffset)
-            if let np2 = kal.date(byAdding: .day, value: Int(round(adaptZyklus)), to: np) {
+            if let np2 = kal.date(byAdding: .day, value: Int(round(adaptZyklusAngepasst)), to: np) {
                 fuegeZyklusHinzu(start: np2, ovulationsOffset: persOvulationsOffset)
             }
         }
@@ -357,7 +374,7 @@ struct ZyklusRechner {
             fruchtbareTageSet: fruchtbarSet,
             ovulationsTageSet: ovulationsSet,
             gelernterOvulationsOffset: ovulationsOffsets.count >= 2 ? persOvulationsOffset : nil,
-            adaptierteZykluslaenge: adaptZyklus,
+            adaptierteZykluslaenge: adaptZyklusAngepasst,
             adaptiertePeriodendauer: adaptPeriod
         )
     }

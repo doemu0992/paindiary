@@ -14,6 +14,7 @@
 - **Selbstkalibrierung des gelernten Eisprung-Musters**: Der gelernte Ovulations-Offset wird gegen die eigene Zykluslänge geprüft — die Lutealphase muss 10–16 Tage betragen. Ein durch spärlich erfassten Zervixschleim zu früh gelernter Eisprung (z.B. "Tag 10" bei 27-Tage-Zyklen) wird automatisch korrigiert. Der Tracker rekalibriert sich bei jeder Datenänderung neu.
 - **Anzeige-Fix**: "Eisprung (gelernt)" in der Adaptiven Vorhersage zeigte den Zyklustag um 1 zu niedrig an (Offset statt Zyklustag).
 - **Bestätigter Eisprung fliesst sofort ins Lernen ein**: Ein per LH-Test oder Temperaturanstieg belegter Eisprung im laufenden Zyklus wird unmittelbar ins Muster-Lernen aufgenommen — die Eisprung- und Fenster-Vorhersage des Folgezyklus profitiert sofort, nicht erst nach Zyklusende.
+- **Bestätigter Eisprung passt den kompletten Zyklus an**: Die projizierte Länge des laufenden Zyklus (bestätigter Eisprung + Lutealphase) geht sofort als neuester, am stärksten gewichteter Datenpunkt in die adaptive Zykluslänge ein. Übernächste Periode, künftige fruchtbare Fenster, Phasenberechnung und die "Adaptive Vorhersage"-Karte rechnen unmittelbar mit dem angepassten Zyklus.
 
 ---
 
