@@ -11,7 +11,8 @@ struct ZyklusAnalyse {
     let periodeTageSet: Set<Date>
     let fruchtbareTageSet: Set<Date>
     let ovulationsTageSet: Set<Date>
-    // Personalized ovulation offset learned from mucus peak days. nil = <2 cycles with data.
+    // Personalized ovulation offset learned per cycle (LH test > BBT rise > mucus peak).
+    // nil = fewer than 2 cycles with usable data.
     let gelernterOvulationsOffset: Int?
     // Recent-weighted averages used for predictions (last 3 cycles, 50/30/20 %).
     // Equal to zykluslaenge/periodendauer when fewer than 2 completed cycles exist.
@@ -54,10 +55,16 @@ struct ZyklusRechner {
         let periodeTageSet = Set(periodeTage)
         let starts = findeZyklusStarts(aus: periodeTage)
 
-        var zyklusLaengen: [Double] = []
+        // Zykluslängen pro abgeschlossenem Zyklus. Nur plausible Längen (21–60 Tage)
+        // fliessen in Statistik, adaptive Vorhersage und Lernen ein — Ausreisser
+        // (Tracking-Pausen, Datenlücken) würden sonst alle Vorhersagen verzerren.
+        var zyklusLaengen: [Double] = []            // nur plausible
+        var zyklusLaengenProZyklus: [Double?] = []  // pro Zyklus, nil = implausibel
         for i in 1..<starts.count {
-            let diff = kal.dateComponents([.day], from: starts[i-1], to: starts[i]).day ?? 28
-            zyklusLaengen.append(Double(diff))
+            let diff = Double(kal.dateComponents([.day], from: starts[i-1], to: starts[i]).day ?? 28)
+            let plausibel = diff >= 21 && diff <= 60
+            zyklusLaengenProZyklus.append(plausibel ? diff : nil)
+            if plausibel { zyklusLaengen.append(diff) }
         }
         let avgZyklus = zyklusLaengen.isEmpty ? 28.0 : zyklusLaengen.reduce(0, +) / Double(zyklusLaengen.count)
         let variation: Double = {
@@ -67,14 +74,22 @@ struct ZyklusRechner {
             return sqrt(variance)
         }()
 
+        // Periodendauer je Zyklus: zusammenhängende Blutungstage ab Zyklusstart.
+        // Eine Lücke von 1 Tag (vergessene Erfassung) wird toleriert, maximal
+        // 10 Tage insgesamt — spätere Zwischenblutungen zählen nicht zur Periode.
         var periodDauern: [Double] = []
-        for start in starts {
-            var len = 0; var check = start
-            while periodeTageSet.contains(check) {
-                len += 1
-                check = kal.date(byAdding: .day, value: 1, to: check) ?? check
+        for (i, start) in starts.enumerated() {
+            let ende = i + 1 < starts.count ? starts[i + 1] : nil
+            var letzter = start
+            for tag in periodeTage where tag > start {
+                if let e = ende, tag >= e { break }
+                let luecke = kal.dateComponents([.day], from: letzter, to: tag).day ?? 99
+                let seitStart = kal.dateComponents([.day], from: start, to: tag).day ?? 99
+                guard luecke <= 2, seitStart <= 9 else { break }
+                letzter = tag
             }
-            if len > 0 { periodDauern.append(Double(len)) }
+            let dauer = (kal.dateComponents([.day], from: start, to: letzter).day ?? 0) + 1
+            periodDauern.append(Double(dauer))
         }
         let avgPeriod = periodDauern.isEmpty ? 5.0 : periodDauern.reduce(0, +) / Double(periodDauern.count)
 
@@ -122,13 +137,48 @@ struct ZyklusRechner {
             return (kal.dateComponents([.day], from: zyklusStart, to: erster.tag).day ?? 0) + (abends ? 2 : 1)
         }
 
+        // Basaltemperatur: 3-über-6-Regel (Sensiplan / symptothermale Methode).
+        // Drei aufeinanderfolgende Messwerte liegen über dem Maximum der bis zu
+        // 6 vorherigen Messwerte, der dritte davon mindestens 0,2 °C darüber.
+        // Der Eisprung liegt am Tag VOR dem ersten erhöhten Wert (der Anstieg
+        // bestätigt den Eisprung retrospektiv).
+        let tempTage: [(tag: Date, temp: Double)] = eintraege
+            .filter { $0.basaltemperatur > 0 }
+            .map { (kal.startOfDay(for: $0.datum), $0.basaltemperatur) }
+            .sorted { $0.tag < $1.tag }
+
+        func bbtOffset(zyklusStart: Date, zyklusEnde: Date?) -> Int? {
+            let imZyklus = tempTage.filter { t in
+                t.tag >= zyklusStart && (zyklusEnde.map { ende in t.tag < ende } ?? true)
+            }
+            guard imZyklus.count >= 6 else { return nil }
+            for i in 3..<(imZyklus.count - 2) {
+                let vorher = imZyklus[max(0, i - 6)..<i]
+                guard vorher.count >= 3, let referenz = vorher.map(\.temp).max() else { continue }
+                // Die 3 Anstiegswerte müssen zeitlich eng beieinander liegen (≤ 4 Tage),
+                // sonst ist die Messreihe zu lückenhaft für eine Bestätigung.
+                let spanne = kal.dateComponents([.day], from: imZyklus[i].tag, to: imZyklus[i + 2].tag).day ?? 99
+                guard spanne <= 4,
+                      imZyklus[i].temp > referenz,
+                      imZyklus[i + 1].temp > referenz,
+                      imZyklus[i + 2].temp >= referenz + 0.2 else { continue }
+                let ovTag = kal.date(byAdding: .day, value: -1, to: imZyklus[i].tag)!
+                let offset = kal.dateComponents([.day], from: zyklusStart, to: ovTag).day ?? -1
+                // Eisprung vor Zyklustag 5 ist physiologisch unplausibel
+                guard offset >= 5 else { continue }
+                return offset
+            }
+            return nil
+        }
+
         // Personalized ovulation offset, per completed cycle:
-        // LH test (strongest signal) > mucus peak > calendar fallback.
+        // LH test > BBT rise > mucus peak > calendar fallback.
         // Mucus requires at least 4 days after period end to exclude post-period discharge.
         let ovulationsOffsets: [Int] = (0..<starts.count).compactMap { i in
             guard i + 1 < starts.count else { return nil }
             let zyklusStart = starts[i]; let zyklusEnde = starts[i + 1]
             if let lh = lhOffset(zyklusStart: zyklusStart, zyklusEnde: zyklusEnde) { return lh }
+            if let bbt = bbtOffset(zyklusStart: zyklusStart, zyklusEnde: zyklusEnde) { return bbt }
             let zyklusPeriodEnd = periodeTage.last(where: { $0 >= zyklusStart && $0 < zyklusEnde })
             let fruehesteMucus: Date = zyklusPeriodEnd.map {
                 kal.date(byAdding: .day, value: 4, to: $0)!
@@ -148,13 +198,20 @@ struct ZyklusRechner {
             : Int(round(adaptZyklus)) - 14
 
         // Current cycle: LH test beats everything — ovulation is a hard fact
-        // ~24–36 h after the first positive test. Otherwise use this cycle's
-        // observed mucus peak (only mucus at least 4 days after the period ends,
-        // to exclude post-period discharge). Without a positive test, negative
-        // tests around the predicted ovulation day push the prediction later.
+        // ~24–36 h after the first positive test. A BBT rise confirms ovulation
+        // retrospectively. Otherwise use this cycle's observed mucus peak (only
+        // mucus at least 4 days after the period ends, to exclude post-period
+        // discharge). Without a confirmed ovulation, negative tests around the
+        // predicted ovulation day push the prediction later.
+        let aktuellerZyklusLH  = starts.last.flatMap { lhOffset(zyklusStart: $0, zyklusEnde: nil) }
+        let aktuellerZyklusBBT = starts.last.flatMap { bbtOffset(zyklusStart: $0, zyklusEnde: nil) }
+        // LH-positiv oder Temperaturanstieg = Eisprung ist belegt, nicht geschätzt
+        let aktuellerOvBestaetigt = aktuellerZyklusLH != nil || aktuellerZyklusBBT != nil
+
         let aktuellerZyklusOvOffset: Int = {
             guard let currentStart = starts.last else { return persOvulationsOffset }
-            if let lh = lhOffset(zyklusStart: currentStart, zyklusEnde: nil) { return lh }
+            if let lh = aktuellerZyklusLH { return lh }
+            if let bbt = aktuellerZyklusBBT { return bbt }
 
             let basis: Int = {
                 let currentPeriodEnd = periodeTage.last(where: { $0 >= currentStart })
@@ -197,9 +254,16 @@ struct ZyklusRechner {
         let aktuellerTag: Int? = starts.last.map {
             (kal.dateComponents([.day], from: $0, to: heute).day ?? 0) + 1
         }
-        let naechstePeriode: Date? = starts.last.map {
-            kal.date(byAdding: .day, value: Int(round(adaptZyklus)), to: $0)
-        } ?? nil
+        // Die Lutealphase ist konstant (~12–16 Tage), die Follikelphase variiert:
+        // verschiebt sich der Eisprung, verschiebt sich auch die Periode.
+        // Bestätigter Eisprung (LH/BBT) datiert die Periode exakt; geschätzte
+        // Verschiebungen (Schleim-Peak, negative Tests) korrigieren nur nach hinten.
+        let lutealTage = min(max(Int(round(adaptZyklus)) - persOvulationsOffset, 10), 16)
+        let naechstePeriode: Date? = starts.last.map { start in
+            let kalendarisch = kal.date(byAdding: .day, value: Int(round(adaptZyklus)), to: start)!
+            let ovBasiert = kal.date(byAdding: .day, value: aktuellerZyklusOvOffset + lutealTage, to: start)!
+            return aktuellerOvBestaetigt ? ovBasiert : max(kalendarisch, ovBasiert)
+        }
 
         let aktuellerZyklusOv: Date? = starts.last.map {
             kal.date(byAdding: .day, value: aktuellerZyklusOvOffset, to: $0)!
@@ -227,15 +291,18 @@ struct ZyklusRechner {
         }
 
         for i in 0..<starts.count {
-            if i < zyklusLaengen.count {
-                // Completed cycle: LH test wins, else back-calculate from actual cycle length
-                let offset = lhOffset(zyklusStart: starts[i], zyklusEnde: starts[i + 1])
-                    ?? (Int(zyklusLaengen[i]) - 14)
-                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: offset)
-            } else {
-                // Current (incomplete) cycle: LH test or mucus peak (see aktuellerZyklusOvOffset)
+            if i == starts.count - 1 {
+                // Current (incomplete) cycle: LH / BBT / mucus (see aktuellerZyklusOvOffset)
                 fuegeZyklusHinzu(start: starts[i], ovulationsOffset: aktuellerZyklusOvOffset)
+            } else if let direkt = lhOffset(zyklusStart: starts[i], zyklusEnde: starts[i + 1])
+                        ?? bbtOffset(zyklusStart: starts[i], zyklusEnde: starts[i + 1]) {
+                // Completed cycle with a measured signal: LH test or BBT rise
+                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: direkt)
+            } else if let laenge = zyklusLaengenProZyklus[i] {
+                // Plausible completed cycle: back-calculate from actual length
+                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: Int(laenge) - 14)
             }
+            // Implausible length without a direct signal → no ovulation marking
         }
         if let np = naechstePeriode {
             fuegeZyklusHinzu(start: np, ovulationsOffset: persOvulationsOffset)
@@ -323,7 +390,11 @@ struct ZyklusRechner {
         var starts = [tage[0]]
         for i in 1..<tage.count {
             let diff = kal.dateComponents([.day], from: tage[i-1], to: tage[i]).day ?? 0
-            if diff > 1 { starts.append(tage[i]) }
+            // Lücken bis 5 Tage gehören zur selben Periode (vergessene Erfassung).
+            // Zusätzlich: kein Zyklus ist kürzer als 21 Tage — Blutungen davor sind
+            // Zwischen-/Ovulationsblutungen, kein neuer Zyklusstart.
+            let seitStart = kal.dateComponents([.day], from: starts.last!, to: tage[i]).day ?? 0
+            if diff > 5 && seitStart >= 21 { starts.append(tage[i]) }
         }
         return starts
     }
