@@ -561,17 +561,16 @@ struct ZyklusAnalyseView: View {
 
         if !tests.isEmpty {
             karte(titel: "Ovulationstests", symbol: "circle.dotted", farbe: .pink,
-                  info: "Übersicht deiner Ovulationstests mit Erfassungszeit. Ein positiver Test (Testlinie so stark oder stärker als Kontrolllinie) deutet auf den LH-Anstieg hin. Der Eisprung tritt ca. 24–36 Stunden nach dem ersten positiven Test auf. Die Uhrzeit der Erfassung fliesst in die Eisprung-Vorhersage ein: Abendtests (ab 18 Uhr) verschieben den erwarteten Eisprung auf den übernächsten Tag.") {
+                  info: "Übersicht deiner Ovulationstests mit Uhrzeit — mehrere Tests pro Tag sind möglich. Ein positiver Test (Testlinie so stark oder stärker als Kontrolllinie) deutet auf den LH-Anstieg hin. Der Eisprung tritt ca. 24–36 Stunden nach dem ersten positiven Test auf; Abendtests (ab 18 Uhr) verschieben den erwarteten Eisprung auf den übernächsten Tag. Negative Tests rund um den erwarteten Eisprung schieben die Vorhersage nach hinten — frühestens auf den Tag nach dem letzten negativen Test.") {
                 VStack(spacing: 8) {
                     ForEach(Array(tests.suffix(10).enumerated()), id: \.offset) { _, test in
-                        let hatUhrzeit = Calendar.current.startOfDay(for: test.datum) != test.datum
                         HStack(spacing: 12) {
                             Circle().fill(ovuFarbe(test.ergebnis)).frame(width: 12, height: 12)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(test.datum.formatted(.dateTime.day().month(.abbreviated).year()))
                                     .font(.caption).foregroundStyle(.secondary)
-                                if hatUhrzeit {
-                                    Text(test.datum.formatted(.dateTime.hour().minute()) + " Uhr")
+                                if let zeit = test.zeit {
+                                    Text(zeit.formatted(.dateTime.hour().minute()) + " Uhr")
                                         .font(.caption2).foregroundStyle(.tertiary)
                                 }
                             }
@@ -780,13 +779,15 @@ struct ZyklusAnalyseView: View {
 
     private struct OvuTest {
         let datum: Date
+        let zeit: Date?
         let ergebnis: String
     }
 
     private func ovulationstests() -> [OvuTest] {
-        gefilterteEintraege.filter { !$0.ovulationstest.isEmpty }
-                            .map { OvuTest(datum: $0.datum, ergebnis: $0.ovulationstest) }
-                            .sorted { $0.datum < $1.datum }
+        gefilterteEintraege.flatMap { e in
+            e.ovulationstestMessungen.map { OvuTest(datum: e.datum, zeit: $0.zeit, ergebnis: $0.ergebnis) }
+        }
+        .sorted { ($0.zeit ?? $0.datum) < ($1.zeit ?? $1.datum) }
     }
 
     private func ovuFarbe(_ ergebnis: String) -> Color {

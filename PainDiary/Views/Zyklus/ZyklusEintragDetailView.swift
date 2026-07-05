@@ -150,9 +150,12 @@ struct ZyklusEintragDetailView: View {
                 .font(.headline).foregroundStyle(.pink)
             Divider()
             VStack(spacing: 10) {
-                if !eintrag.ovulationstest.isEmpty {
-                    datenZeile(symbol: "circle.dotted", label: "Ovulationstest",
-                               wert: ovulationstestLabel, farbe: ovulationstestFarbe)
+                ForEach(eintrag.ovulationstestMessungen) { messung in
+                    datenZeile(symbol: "circle.dotted",
+                               label: messung.zeit.map { "Ovulationstest · \($0.formatted(.dateTime.hour().minute())) Uhr" }
+                                   ?? "Ovulationstest",
+                               wert: ovulationstestLabel(messung.ergebnis),
+                               farbe: ovulationstestFarbe(messung.ergebnis))
                 }
                 if !eintrag.zervixschleim.isEmpty {
                     datenZeile(symbol: "drop.halffull", label: "Zervixschleim",
@@ -182,17 +185,17 @@ struct ZyklusEintragDetailView: View {
         }
     }
 
-    private var ovulationstestLabel: String {
-        switch eintrag.ovulationstest {
+    private func ovulationstestLabel(_ ergebnis: String) -> String {
+        switch ergebnis {
         case "positiv": return "Positiv"
         case "negativ": return "Negativ"
         case "unklar":  return "Unklar"
-        default:        return eintrag.ovulationstest
+        default:        return ergebnis
         }
     }
 
-    private var ovulationstestFarbe: Color {
-        switch eintrag.ovulationstest {
+    private func ovulationstestFarbe(_ ergebnis: String) -> Color {
+        switch ergebnis {
         case "positiv": return .green
         case "negativ": return .secondary
         default:        return .orange

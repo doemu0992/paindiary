@@ -156,7 +156,13 @@ struct PDFZyklusEintrag {
             istPeriode: e.istPeriode || e.typ == "Periode",
             blutungsfluss: e.blutungsfluss,
             symptome: e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty },
-            ovulationstest: e.ovulationstest,
+            // Mehrfach-Tests lesbar zusammenfassen: "positiv 18:30, negativ 09:12"
+            ovulationstest: e.ovulationstestMessungen.map { m in
+                if let zeit = m.zeit {
+                    return "\(m.ergebnis) \(zeit.formatted(.dateTime.hour().minute()))"
+                }
+                return m.ergebnis
+            }.joined(separator: ", "),
             basaltemperatur: e.basaltemperatur,
             zervixschleim: e.zervixschleim,
             notizen: e.notizen,

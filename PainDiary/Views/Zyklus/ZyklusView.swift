@@ -185,7 +185,7 @@ struct ZyklusView: View {
                 HStack(spacing: 3) {
                     Text("Eisprung erwartet").font(.caption2).foregroundStyle(.secondary)
                     InfoButton(titel: "Eisprung erwartet",
-                               text: "Vorhergesagtes Datum des Eisprungs. Ein positiver Ovulationstest (LH) setzt den Eisprung fest auf ca. 24–36 Stunden nach dem ersten positiven Test — er hat Vorrang vor allen anderen Signalen. Zusätzlich lernt die App aus deinen Zervixschleim-Einträgen und passt den Zeitpunkt anhand des persönlichen Musters an.")
+                               text: "Vorhergesagtes Datum des Eisprungs. Ein positiver Ovulationstest (LH) setzt den Eisprung fest auf ca. 24–36 Stunden nach dem ersten positiven Test — er hat Vorrang vor allen anderen Signalen. Negative Tests rund um den erwarteten Eisprung verschieben die Vorhersage nach hinten (frühestens auf den Tag nach dem letzten negativen Test). Zusätzlich lernt die App aus deinen Zervixschleim-Einträgen und passt den Zeitpunkt anhand des persönlichen Musters an.")
                 }
             }
             .frame(maxWidth: .infinity)
@@ -536,7 +536,8 @@ struct ZyklusEintragSheet: View {
     @State private var blutungsfluss: String
     @State private var nurHalberTag: Bool
     @State private var symptome: Set<String>
-    @State private var ovulationstest: String
+    @State private var ovuTests: [OvulationstestMessung]
+    @State private var neueTestZeit = Date()
     @State private var zervixschleim: String
     @State private var basaltemperatur: String
     @State private var sexuelleAktivitaet: String
@@ -557,7 +558,7 @@ struct ZyklusEintragSheet: View {
             _blutungsfluss = State(initialValue: e.blutungsfluss.isEmpty ? "mittel" : e.blutungsfluss)
             _nurHalberTag = State(initialValue: e.nurHalberTag)
             _symptome = State(initialValue: Set(e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty }))
-            _ovulationstest = State(initialValue: e.ovulationstest)
+            _ovuTests = State(initialValue: e.ovulationstestMessungen)
             _zervixschleim = State(initialValue: e.zervixschleim)
             _basaltemperatur = State(initialValue: e.basaltemperatur > 0 ? String(format: "%.1f", e.basaltemperatur) : "")
             _sexuelleAktivitaet = State(initialValue: e.sexuelleAktivitaet)
@@ -567,7 +568,7 @@ struct ZyklusEintragSheet: View {
             _blutungsfluss = State(initialValue: "mittel")
             _nurHalberTag = State(initialValue: false)
             _symptome = State(initialValue: [])
-            _ovulationstest = State(initialValue: "")
+            _ovuTests = State(initialValue: [])
             _zervixschleim = State(initialValue: "")
             _basaltemperatur = State(initialValue: "")
             _sexuelleAktivitaet = State(initialValue: "")
@@ -727,24 +728,63 @@ struct ZyklusEintragSheet: View {
             VStack(spacing: 20) {
                 schrittHeader(symbol: "waveform.path.ecg", titel: "Weitere Daten", untertitel: "Eisprung, Schleim & Temperatur")
 
-                // Ovulationstest
+                // Ovulationstests (mehrere pro Tag möglich)
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 4) {
-                        Text("Ovulationstest (LH-Test)").font(.caption).foregroundStyle(.secondary)
-                        InfoButton(titel: "Ovulationstest (LH-Test)",
-                                   text: "Ein LH-Test aus der Apotheke zeigt den Anstieg des luteinisierenden Hormons, der 24–36 Stunden vor dem Eisprung auftritt. Positiv = Eisprung steht bevor.")
+                        Text("Ovulationstests (LH-Test)").font(.caption).foregroundStyle(.secondary)
+                        InfoButton(titel: "Ovulationstests (LH-Test)",
+                                   text: "Ein LH-Test aus der Apotheke zeigt den Anstieg des luteinisierenden Hormons, der 24–36 Stunden vor dem Eisprung auftritt. Positiv = Eisprung steht bevor.\n\nDa der LH-Anstieg kurz sein kann, lohnt es sich, rund um den erwarteten Eisprung mehrmals täglich zu testen (z.B. morgens und abends). Erfasse jeden Test mit Uhrzeit — der erste positive Test bestimmt die Eisprung-Vorhersage, negative Tests verschieben sie nach hinten.")
                     }.padding(.horizontal, 4)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
-                        ForEach([("", "Kein Test"), ("positiv", "Positiv"),
-                                  ("negativ", "Negativ"), ("unklar", "Unklar")], id: \.0) { wert, label in
-                            let sel = ovulationstest == wert
-                            Button { ovulationstest = wert } label: {
-                                Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
+
+                    // Erfasste Tests des Tages
+                    if !ovuTests.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(ovuTests) { test in
+                                HStack(spacing: 10) {
+                                    Circle().fill(ovuTestFarbe(test.ergebnis)).frame(width: 10, height: 10)
+                                    if let zeit = test.zeit {
+                                        Text(zeit.formatted(.dateTime.hour().minute()) + " Uhr")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                            .frame(width: 70, alignment: .leading)
+                                    } else {
+                                        Text("–").font(.caption).foregroundStyle(.secondary)
+                                            .frame(width: 70, alignment: .leading)
+                                    }
+                                    Text(ovuTestLabel(test.ergebnis)).font(.subheadline)
+                                    Spacer()
+                                    Button {
+                                        ovuTests.removeAll { $0.id == test.id }
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.subheadline).foregroundStyle(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.horizontal, 16).padding(.vertical, 10)
+                                if test.id != ovuTests.last?.id {
+                                    Divider().padding(.leading, 16)
+                                }
+                            }
+                        }
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    // Neuen Test hinzufügen
+                    HStack(spacing: 8) {
+                        DatePicker("", selection: $neueTestZeit, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                        ForEach([("positiv", "Positiv"), ("negativ", "Negativ"), ("unklar", "Unklar")], id: \.0) { wert, label in
+                            Button {
+                                ovuTests.append(OvulationstestMessung(ergebnis: wert, zeit: neueTestZeit))
+                                ovuTests.sort { ($0.zeit ?? .distantPast) < ($1.zeit ?? .distantPast) }
+                            } label: {
+                                Text("+ \(label)").font(.caption.bold()).frame(maxWidth: .infinity)
                                     .padding(.vertical, 10)
-                                    .background(sel ? Color.orange : Color(.secondarySystemGroupedBackground))
-                                    .foregroundStyle(sel ? .white : .primary)
+                                    .background(Color(.secondarySystemGroupedBackground))
+                                    .foregroundStyle(wert == "positiv" ? .orange : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }.buttonStyle(.plain)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -878,10 +918,27 @@ struct ZyklusEintragSheet: View {
         neuesSymptom = ""
     }
 
+    private func ovuTestLabel(_ ergebnis: String) -> String {
+        switch ergebnis {
+        case "positiv": return "Positiv"
+        case "negativ": return "Negativ"
+        case "unklar":  return "Unklar"
+        default:        return ergebnis
+        }
+    }
+
+    private func ovuTestFarbe(_ ergebnis: String) -> Color {
+        switch ergebnis {
+        case "positiv": return .orange
+        case "negativ": return .gray
+        default:        return .secondary
+        }
+    }
+
     private var istLeer: Bool {
         !istPeriode &&
         symptome.isEmpty &&
-        ovulationstest.isEmpty &&
+        ovuTests.isEmpty &&
         zervixschleim.isEmpty &&
         (Double(basaltemperatur.replacingOccurrences(of: ",", with: ".")) ?? 0) == 0 &&
         sexuelleAktivitaet.isEmpty &&
@@ -914,7 +971,7 @@ struct ZyklusEintragSheet: View {
         eintrag.blutungsfluss = istPeriode ? blutungsfluss : ""
         eintrag.nurHalberTag = istPeriode ? nurHalberTag : false
         eintrag.symptome = symptome.sorted().joined(separator: ", ")
-        eintrag.ovulationstest = ovulationstest
+        eintrag.ovulationstest = ZyklusEintrag.kodiereOvulationstests(ovuTests)
         eintrag.zervixschleim = zervixschleim
         eintrag.basaltemperatur = Double(basaltemperatur.replacingOccurrences(of: ",", with: ".")) ?? 0
         eintrag.sexuelleAktivitaet = sexuelleAktivitaet

@@ -99,26 +99,27 @@ struct ZyklusRechner {
             }
         }()
 
-        // LH surge: a positive ovulation test means ovulation follows in ~24–36 h.
-        // (First day of the surge counts; later positives are the same surge.)
-        // Capture time refines the day-granularity prediction:
+        // LH tests (multiple per day possible, each with its own time).
+        // A positive test means ovulation follows in ~24–36 h:
         //   morning/afternoon test → ovulation next day (+24–36 h lands there)
         //   evening test (>= 18:00) → ovulation the day after next
-        //   no capture time (00:00, retroactive entry) → next day
-        let lhPositive = eintraege
-            .filter { $0.ovulationstest.lowercased() == "positiv" }
-            .sorted { $0.datum < $1.datum }
+        //   no time known → next day
+        // The FIRST positive test counts; later positives are the same surge.
+        let alleTestMessungen: [(tag: Date, zeit: Date?, ergebnis: String)] = eintraege.flatMap { e in
+            let tag = kal.startOfDay(for: e.datum)
+            return e.ovulationstestMessungen.map { (tag, $0.zeit, $0.ergebnis.lowercased()) }
+        }
 
         func lhOffset(zyklusStart: Date, zyklusEnde: Date?) -> Int? {
-            let inZyklus = lhPositive.filter { e in
-                let tag = kal.startOfDay(for: e.datum)
-                return tag >= zyklusStart && (zyklusEnde.map { ende in tag < ende } ?? true)
-            }
-            guard let erster = inZyklus.first else { return nil }
-            let tag = kal.startOfDay(for: erster.datum)
-            let hatUhrzeit = tag != erster.datum
-            let abends = hatUhrzeit && kal.component(.hour, from: erster.datum) >= 18
-            return (kal.dateComponents([.day], from: zyklusStart, to: tag).day ?? 0) + (abends ? 2 : 1)
+            let positive = alleTestMessungen
+                .filter { m in
+                    m.ergebnis == "positiv" && m.tag >= zyklusStart
+                        && (zyklusEnde.map { ende in m.tag < ende } ?? true)
+                }
+                .sorted { ($0.zeit ?? $0.tag) < ($1.zeit ?? $1.tag) }
+            guard let erster = positive.first else { return nil }
+            let abends = erster.zeit.map { kal.component(.hour, from: $0) >= 18 } ?? false
+            return (kal.dateComponents([.day], from: zyklusStart, to: erster.tag).day ?? 0) + (abends ? 2 : 1)
         }
 
         // Personalized ovulation offset, per completed cycle:
@@ -149,27 +150,46 @@ struct ZyklusRechner {
         // Current cycle: LH test beats everything — ovulation is a hard fact
         // ~24–36 h after the first positive test. Otherwise use this cycle's
         // observed mucus peak (only mucus at least 4 days after the period ends,
-        // to exclude post-period discharge).
+        // to exclude post-period discharge). Without a positive test, negative
+        // tests around the predicted ovulation day push the prediction later.
         let aktuellerZyklusOvOffset: Int = {
             guard let currentStart = starts.last else { return persOvulationsOffset }
             if let lh = lhOffset(zyklusStart: currentStart, zyklusEnde: nil) { return lh }
-            let currentPeriodEnd = periodeTage.last(where: { $0 >= currentStart })
-            let fruehesteMucusTag: Date = currentPeriodEnd.map {
-                kal.date(byAdding: .day, value: 4, to: $0)!
-            } ?? currentStart
-            let peakTage = eintraege
-                .filter {
-                    let tag = kal.startOfDay(for: $0.datum)
-                    let s = $0.zervixschleim.lowercased()
-                    return (s == "wässrig" || s == "eiweiss") && tag >= fruehesteMucusTag
-                }
-                .map { kal.startOfDay(for: $0.datum) }
-                .sorted()
-            guard let peak = peakTage.last else { return persOvulationsOffset }
-            let observedOffset = (kal.dateComponents([.day], from: currentStart, to: peak).day ?? 0) + 1
-            // Only shift ovulation later — never earlier — to avoid treating the first
-            // day of fertile mucus as the peak (peak = last day; cycle is still ongoing).
-            return max(observedOffset, persOvulationsOffset)
+
+            let basis: Int = {
+                let currentPeriodEnd = periodeTage.last(where: { $0 >= currentStart })
+                let fruehesteMucusTag: Date = currentPeriodEnd.map {
+                    kal.date(byAdding: .day, value: 4, to: $0)!
+                } ?? currentStart
+                let peakTage = eintraege
+                    .filter {
+                        let tag = kal.startOfDay(for: $0.datum)
+                        let s = $0.zervixschleim.lowercased()
+                        return (s == "wässrig" || s == "eiweiss") && tag >= fruehesteMucusTag
+                    }
+                    .map { kal.startOfDay(for: $0.datum) }
+                    .sorted()
+                guard let peak = peakTage.last else { return persOvulationsOffset }
+                let observedOffset = (kal.dateComponents([.day], from: currentStart, to: peak).day ?? 0) + 1
+                // Only shift ovulation later — never earlier — to avoid treating the first
+                // day of fertile mucus as the peak (peak = last day; cycle is still ongoing).
+                return max(observedOffset, persOvulationsOffset)
+            }()
+
+            // Negative tests contradict the prediction: the LH surge shows up
+            // ~24–36 h BEFORE ovulation, so a negative test on or after the day
+            // before the predicted ovulation means ovulation hasn't been triggered
+            // yet → shift to (last such negative test day + 1). Only ever shift
+            // later, never cancel — a single test can miss a short surge.
+            // Negatives earlier in the cycle are expected and ignored.
+            guard let ovDatum = kal.date(byAdding: .day, value: basis, to: currentStart),
+                  let grenze = kal.date(byAdding: .day, value: -1, to: ovDatum) else { return basis }
+            let relevanteNegative = alleTestMessungen
+                .filter { $0.ergebnis == "negativ" && $0.tag >= currentStart && $0.tag >= grenze }
+                .map(\.tag)
+            guard let letzterNegativer = relevanteNegative.max() else { return basis }
+            let verschoben = (kal.dateComponents([.day], from: currentStart, to: letzterNegativer).day ?? 0) + 1
+            return max(basis, verschoben)
         }()
 
         // Predictions use adaptive cycle length and personalized ovulation offset.

@@ -5,6 +5,8 @@
 ### Neu
 - **Ovulationstest steuert Eisprung-Vorhersage**: Ein positiver LH-Test setzt den Eisprung auf den Folgetag des ersten positiven Tests (Eisprung erfolgt ca. 24–36 h nach LH-Anstieg). Der Test hat Vorrang vor Zervixschleim und Kalender-Berechnung — im aktuellen Zyklus, in abgeschlossenen Zyklen und beim Lernen des persönlichen Ovulations-Musters. Mehrere positive Tage zählen als ein LH-Anstieg (erster Tag zählt).
 - **Erfassungszeit fliesst in Eisprung-Berechnung ein**: Abendtests (ab 18 Uhr) verschieben den erwarteten Eisprung auf den übernächsten Tag (24–36 h ab Abend landet dort). Die Ovulationstest-Karte in der Zyklus-Analyse zeigt jetzt die Erfassungszeit unter dem Datum.
+- **Negative Tests verschieben die Eisprung-Vorhersage**: Fällt der Ovulationstest am oder nach dem Vortag des erwarteten Eisprungs negativ aus (und kein positiver Test liegt vor), verschiebt sich die Vorhersage auf den Tag nach dem letzten negativen Test. Frühe negative Tests im Zyklus ändern nichts; verschoben wird nur nach hinten, nie abgesagt.
+- **Mehrere Ovulationstests pro Tag**: Im Zyklus-Formular lassen sich jetzt mehrere Tests mit Uhrzeit erfassen (z.B. morgens und abends), um den kurzen LH-Anstieg nicht zu verpassen. Format abwärtskompatibel im bestehenden Feld (`ergebnis@HH:mm|…`). Analyse-Karte, Detail-View und PDF-Export zeigen alle Tests einzeln.
 
 ---
 
