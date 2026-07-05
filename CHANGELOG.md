@@ -11,6 +11,8 @@
 - **Periodenvorhersage folgt dem Eisprung**: Die Lutealphase ist konstant (~12–16 Tage, aus den eigenen Daten gelernt) — verschiebt sich der Eisprung (negative Tests, später Schleim-Peak), verschiebt sich die vorhergesagte Periode mit. Bei bestätigtem Eisprung (LH/BBT) wird die Periode exakt datiert.
 - **Zyklusstart-Erkennung robuster**: Blutungslücken bis 5 Tage (vergessene Erfassung) gehören zur selben Periode; Blutungen früher als 21 Tage nach Zyklusbeginn gelten als Zwischen-/Ovulationsblutung, nicht als neuer Zyklus. Periodendauer toleriert 1 Tag Erfassungslücke (max. 10 Tage).
 - **Plausibilitätsgrenzen**: Nur Zykluslängen von 21–60 Tagen fliessen in Statistik, adaptive Vorhersage und Muster-Lernen ein — Tracking-Pausen verzerren die Vorhersage nicht mehr. Implausible Zyklen ohne gemessenes Signal (LH/BBT) werden im Kalender nicht mit Eisprung markiert.
+- **Selbstkalibrierung des gelernten Eisprung-Musters**: Der gelernte Ovulations-Offset wird gegen die eigene Zykluslänge geprüft — die Lutealphase muss 10–16 Tage betragen. Ein durch spärlich erfassten Zervixschleim zu früh gelernter Eisprung (z.B. "Tag 10" bei 27-Tage-Zyklen) wird automatisch korrigiert. Der Tracker rekalibriert sich bei jeder Datenänderung neu.
+- **Anzeige-Fix**: "Eisprung (gelernt)" in der Adaptiven Vorhersage zeigte den Zyklustag um 1 zu niedrig an (Offset statt Zyklustag).
 
 ---
 

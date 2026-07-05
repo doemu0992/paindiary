@@ -193,9 +193,18 @@ struct ZyklusRechner {
             guard let peak = spitzenTage.last else { return nil }
             return (kal.dateComponents([.day], from: zyklusStart, to: peak).day ?? 0) + 1
         }
-        let persOvulationsOffset: Int = ovulationsOffsets.count >= 2
-            ? ovulationsOffsets.reduce(0, +) / ovulationsOffsets.count
-            : Int(round(adaptZyklus)) - 14
+        // Selbstkalibrierung des gelernten Offsets gegen die eigene Zykluslänge:
+        // Die Lutealphase (Zyklus − Offset) liegt physiologisch bei 10–16 Tagen.
+        // Ein zu früh gelernter Offset (z.B. durch spärlich erfassten Zervixschleim)
+        // wird an diese Grenzen zurückgeholt, statt alle Vorhersagen zu verzerren.
+        let persOvulationsOffset: Int = {
+            let kalenderOffset = Int(round(adaptZyklus)) - 14
+            guard ovulationsOffsets.count >= 2 else { return kalenderOffset }
+            let gelernt = ovulationsOffsets.reduce(0, +) / ovulationsOffsets.count
+            let minOffset = Int(round(adaptZyklus)) - 16   // Lutealphase max. 16 Tage
+            let maxOffset = Int(round(adaptZyklus)) - 10   // Lutealphase min. 10 Tage
+            return min(max(gelernt, minOffset), maxOffset)
+        }()
 
         // Current cycle: LH test beats everything — ovulation is a hard fact
         // ~24–36 h after the first positive test. A BBT rise confirms ovulation

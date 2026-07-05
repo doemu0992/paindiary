@@ -342,7 +342,8 @@ struct ZyklusAnalyseView: View {
                                 periodDiff != 0 ? .red : .primary, diff: periodDiff)
                 if let offset = ovOffset, let diff = ovDiff {
                     Divider().frame(height: 44)
-                    vorhersageZelle("Tag \(offset)", "Eisprung (gelernt)", .teal, diff: diff)
+                    // Offset = Tage nach Zyklusstart → Eisprung fällt auf Zyklustag offset + 1
+                    vorhersageZelle("Tag \(offset + 1)", "Eisprung (gelernt)", .teal, diff: diff)
                 }
             }
 
