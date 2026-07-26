@@ -335,6 +335,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func planeZyklusErinnerungen(analyse: ZyklusAnalyse) {
         loescheZyklusErinnerungen()
         guard status == .authorized, !analyse.zyklusStarts.isEmpty else { return }
+        // Unter hormoneller Verhütung keine Fruchtbarkeits-/Eisprung-Erinnerungen
+        let hormonelleVerhuetung = UserDefaults.standard.bool(forKey: "zyklusHormonelleVerhuetung")
         let kal = Calendar.current
         let heute = kal.startOfDay(for: Date())
 
@@ -351,6 +353,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 components: dc
             )
         }
+
+        guard !hormonelleVerhuetung else { return }
 
         // Fruchtbares Fenster: erster zukünftiger fruchtbarer Tag um 08:00
         let naechsterFruchtbar = analyse.fruchtbareTageSet
@@ -376,6 +380,36 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 id: "zyklus-eisprung",
                 titel: "Eisprung heute erwartet",
                 body: "Dein vorhergesagter Eisprung ist heute.",
+                components: dc
+            )
+        }
+
+        // Mess-Erinnerung: 3 Tage vor erwartetem Eisprung — LH-Test & Temperatur
+        // liefern die Daten, die die Vorhersage präzise machen. Entfällt, wenn
+        // der Eisprung bereits bestätigt ist.
+        if !analyse.ovulationBestaetigt,
+           let ov = analyse.vorhergesagteOvulation,
+           let messStart = kal.date(byAdding: .day, value: -3, to: kal.startOfDay(for: ov)),
+           messStart >= heute {
+            var dc = kal.dateComponents([.year, .month, .day], from: messStart)
+            dc.hour = 8; dc.minute = 0
+            scheduleEinmalig(
+                id: "zyklus-messstart",
+                titel: "Eisprung naht",
+                body: "Ab jetzt lohnen sich täglicher Ovulationstest und Morgentemperatur — so wird deine Vorhersage präzise.",
+                components: dc
+            )
+        }
+
+        // Verzögerter Eisprung (negative Tests): morgen früh ans Weitertesten erinnern
+        if analyse.ovulationVerzoegert,
+           let morgen = kal.date(byAdding: .day, value: 1, to: heute) {
+            var dc = kal.dateComponents([.year, .month, .day], from: morgen)
+            dc.hour = 8; dc.minute = 0
+            scheduleEinmalig(
+                id: "zyklus-weitertesten",
+                titel: "Eisprung verzögert",
+                body: "Deine Tests waren bisher negativ — teste heute weiter, der LH-Anstieg kann jederzeit kommen.",
                 components: dc
             )
         }
@@ -440,7 +474,10 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     func loescheZyklusErinnerungen() {
         UNUserNotificationCenter.current()
-            .removePendingNotificationRequests(withIdentifiers: ["zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung"])
+            .removePendingNotificationRequests(withIdentifiers: [
+                "zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung",
+                "zyklus-messstart", "zyklus-weitertesten"
+            ])
     }
 
     func loescheAlleGesundheitsDatenErinnerungen() {

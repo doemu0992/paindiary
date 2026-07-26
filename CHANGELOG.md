@@ -15,6 +15,15 @@
 - **Anzeige-Fix**: "Eisprung (gelernt)" in der Adaptiven Vorhersage zeigte den Zyklustag um 1 zu niedrig an (Offset statt Zyklustag).
 - **Bestätigter Eisprung fliesst sofort ins Lernen ein**: Ein per LH-Test oder Temperaturanstieg belegter Eisprung im laufenden Zyklus wird unmittelbar ins Muster-Lernen aufgenommen — die Eisprung- und Fenster-Vorhersage des Folgezyklus profitiert sofort, nicht erst nach Zyklusende.
 - **Bestätigter Eisprung passt den kompletten Zyklus an**: Die projizierte Länge des laufenden Zyklus (bestätigter Eisprung + Lutealphase) geht sofort als neuester, am stärksten gewichteter Datenpunkt in die adaptive Zykluslänge ein. Übernächste Periode, künftige fruchtbare Fenster, Phasenberechnung und die "Adaptive Vorhersage"-Karte rechnen unmittelbar mit dem angepassten Zyklus.
+- **BBT-Störfilter über Modulgrenzen**: Basaltemperatur-Messwerte an Tagen mit Alkohol am Vorabend (Wellness-Tracker) oder zu kurzem Schlaf (< 4,5 h) werden von der 3-über-6-Regel ausgeschlossen — kein anderes Zyklus-Tracking kann das.
+- **Neue Eisprung-Signale**: Mittelschmerz (Krämpfe mitten im Zyklus, Tag 8–20, abseits der Periode) und Ovulationsblutung (isolierte Schmierblutung mitten im Zyklus) fliessen als schwache Signale in Vorhersage und Lernen ein. Cremiger Zervixschleim öffnet das fruchtbare Fenster (Übergangssignal).
+- **Signal-Qualitäts-Gewichtung**: Das Muster-Lernen gewichtet LH-Tests ×3, Temperaturanstieg ×2, Schleim/Mittelschmerz/Zwischenblutung ×1.
+- **Selbstlernende Bias-Korrektur**: Systematische Über-/Unterschätzung der letzten Zyklen (aus der eigenen Vorhersagegenauigkeit) wird automatisch von künftigen Vorhersagen abgezogen (±2 Tage begrenzt).
+- **Unsicherheits-Bereiche**: Der erwartete Eisprung wird als ehrlicher Bereich angezeigt (z.B. "5.–8. Jul"), abgeleitet aus der eigenen Zyklus-Variation. Bestätigter Eisprung zeigt "✓". Bei hoher Variation wird das vorhergesagte fruchtbare Fenster automatisch breiter.
+- **Status-Kommunikation**: "Eisprung bestätigt" (grün) bzw. "Eisprung verzögert — weiter testen" (orange) direkt im Zyklus-Überblick.
+- **Smarte Mess-Erinnerungen**: 3 Tage vor dem erwarteten Eisprung erinnert die App an LH-Test und Morgentemperatur; bei verzögertem Eisprung ans Weitertesten.
+- **Hormonelle Verhütung**: Neuer Toggle im Zyklus-Modul — blendet Eisprung- und Fruchtbarkeits-Vorhersagen samt Erinnerungen aus (medizinisch nicht aussagekräftig), Perioden-Tracking bleibt aktiv.
+- **Klinische Hinweise**: Neue Analyse-Karte erkennt verkürzte Lutealphase (< 10 T), lange Zyklen (> 35 T) und starke Schwankungen (> ±4 T) — als Gesprächsvorbereitung für den Frauenarzt, ausdrücklich keine Diagnose.
 
 ---
 

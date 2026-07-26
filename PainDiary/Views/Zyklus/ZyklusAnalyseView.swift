@@ -15,6 +15,7 @@ enum ZyklusAnalyseSektion: String, CaseIterable, Codable, Identifiable {
     case ovulationstests     = "Ovulationstests"
     case schmerzKorrelation  = "Schmerz & Zyklus"
     case migraeneKorrelation = "Migräne & Zyklus"
+    case klinisch            = "Klinische Hinweise"
     case kiInsicht           = "KI-Einblick"
 
     var id: String { rawValue }
@@ -31,6 +32,7 @@ enum ZyklusAnalyseSektion: String, CaseIterable, Codable, Identifiable {
         case .ovulationstests:     return "circle.dotted"
         case .schmerzKorrelation:  return "cross.fill"
         case .migraeneKorrelation: return "brain"
+        case .klinisch:            return "stethoscope"
         case .kiInsicht:           return "sparkles"
         }
     }
@@ -70,7 +72,10 @@ struct ZyklusAnalyseView: View {
     @State private var zeigeAnpassen = false
 
     private var analyse: ZyklusAnalyse {
-        ZyklusRechner.analyse(eintraege: Array(eintraege))
+        ZyklusRechner.analyse(
+            eintraege: Array(eintraege),
+            stoerTage: ZyklusRechner.bbtStoerTage(painEntries: Array(painEntries))
+        )
     }
 
     private var gefilterteEintraege: [ZyklusEintrag] {
@@ -167,7 +172,75 @@ struct ZyklusAnalyseView: View {
         case .ovulationstests:     ovulationstestKarte
         case .schmerzKorrelation:  schmerzKorrelationKarte
         case .migraeneKorrelation: migraeneKorrelationKarte
+        case .klinisch:            klinischeHinweiseKarte
         case .kiInsicht:           KIAnalyseKarte(prompt: kiPrompt, modulTint: .pink).id(zeitraum)
+        }
+    }
+
+    // MARK: - Klinische Hinweise
+
+    private struct KlinischerHinweis: Identifiable {
+        let id = UUID()
+        let symbol: String
+        let farbe: Color
+        let titel: String
+        let text: String
+    }
+
+    private var klinischeHinweise: [KlinischerHinweis] {
+        guard analyse.zyklusStarts.count >= 3 else { return [] }
+        var hinweise: [KlinischerHinweis] = []
+
+        if analyse.gelernteLutealphase < 10 && analyse.gelernterOvulationsOffset != nil {
+            hinweise.append(KlinischerHinweis(
+                symbol: "hourglass", farbe: .orange,
+                titel: "Kurze Lutealphase (\(analyse.gelernteLutealphase) Tage)",
+                text: "Eine Lutealphase unter 10 Tagen kann auf eine Gelbkörperschwäche hindeuten — besonders relevant bei Kinderwunsch. Sprich bei Gelegenheit mit deiner Frauenärztin darüber."
+            ))
+        }
+        if analyse.zykluslaenge > 35 {
+            hinweise.append(KlinischerHinweis(
+                symbol: "calendar.badge.exclamationmark", farbe: .orange,
+                titel: "Lange Zyklen (Ø \(Int(analyse.zykluslaenge.rounded())) Tage)",
+                text: "Zyklen über 35 Tage können hormonelle Ursachen haben (z.B. PCOS oder Schilddrüse). Ein Check beim Frauenarzt kann Klarheit schaffen."
+            ))
+        }
+        if analyse.variation > 4 {
+            hinweise.append(KlinischerHinweis(
+                symbol: "waveform.path", farbe: .orange,
+                titel: "Stark schwankende Zyklen (±\(String(format: "%.0f", analyse.variation)) Tage)",
+                text: "Deine Zykluslängen schwanken deutlich. Stress, Schlaf, Gewichtsveränderungen oder hormonelle Faktoren können eine Rolle spielen. Erwähne es beim nächsten Arzttermin."
+            ))
+        }
+        return hinweise
+    }
+
+    @ViewBuilder
+    private var klinischeHinweiseKarte: some View {
+        let hinweise = klinischeHinweise
+        if !hinweise.isEmpty {
+            karte(titel: "Klinische Hinweise", symbol: "stethoscope", farbe: .pink,
+                  info: "Automatische Auffälligkeiten aus deinen Zyklusdaten: verkürzte Lutealphase (< 10 Tage), lange Zyklen (> 35 Tage) oder starke Schwankungen (> ±4 Tage). Diese Hinweise sind keine Diagnosen — sie sollen dir helfen, das Gespräch mit deiner Frauenärztin vorzubereiten.") {
+                VStack(spacing: 12) {
+                    ForEach(hinweise) { h in
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: h.symbol)
+                                .font(.subheadline)
+                                .foregroundStyle(h.farbe)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(h.titel).font(.subheadline.bold())
+                                Text(h.text).font(.caption).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer()
+                        }
+                    }
+                    Text("Keine Diagnose — nur Beobachtungen aus deinen Daten.")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
         }
     }
 

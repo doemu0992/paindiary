@@ -3,14 +3,22 @@ import SwiftData
 
 struct ZyklusView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var eintraege: [ZyklusEintrag]
+    @Query(sort: \PainEntry.datum, order: .reverse) private var painEintraege: [PainEntry]
     @Environment(\.modelContext) private var modelContext
 
     @State private var anzeigeMonat = Date()
     @State private var ausgewaehlterTag: ZyklusTagAuswahl? = nil
     @State private var zeigeAnalyse = false
     @State private var notifManager = NotificationManager.shared
+    @AppStorage("zyklusHormonelleVerhuetung") private var hormonelleVerhuetung = false
 
-    private var analyse: ZyklusAnalyse { ZyklusRechner.analyse(eintraege: Array(eintraege)) }
+    private var analyse: ZyklusAnalyse {
+        let basis = ZyklusRechner.analyse(
+            eintraege: Array(eintraege),
+            stoerTage: ZyklusRechner.bbtStoerTage(painEntries: Array(painEintraege))
+        )
+        return hormonelleVerhuetung ? basis.ohneFruchtbarkeitsPrognosen : basis
+    }
 
     var body: some View {
         List {
@@ -28,6 +36,18 @@ struct ZyklusView: View {
             .listRowSeparator(.hidden)
 
             zyklusNotifBanner
+
+            Section {
+                Toggle(isOn: $hormonelleVerhuetung) {
+                    Label {
+                        Text("Hormonelle Verhütung")
+                    } icon: {
+                        Image(systemName: "pills.fill").foregroundStyle(.pink)
+                    }
+                }
+            } footer: {
+                Text("Unter hormoneller Verhütung (Pille, Hormonspirale etc.) finden keine vorhersagbaren Eisprünge statt. Eisprung- und Fruchtbarkeits-Vorhersagen werden ausgeblendet; Perioden-Tracking und -Vorhersage bleiben aktiv.")
+            }
         }
         .navigationTitle("Zyklus")
         .navigationBarTitleDisplayMode(.large)
@@ -126,9 +146,25 @@ struct ZyklusView: View {
                     Divider().frame(height: 40)
                     statPill(zyklusLaengeText, label: "Ø Zyklus", farbe: .pink)
                 }
-                if hatZyklus {
+                if hatZyklus && !hormonelleVerhuetung {
                     Divider()
                     fruchtbarkeitReihe(fenster)
+                    if analyse.ovulationBestaetigt {
+                        Label("Eisprung bestätigt", systemImage: "checkmark.seal.fill")
+                            .font(.caption.bold()).foregroundStyle(.green)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    } else if analyse.ovulationVerzoegert {
+                        Label("Eisprung verzögert — weiter testen", systemImage: "clock.arrow.circlepath")
+                            .font(.caption.bold()).foregroundStyle(.orange)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                }
+                if hormonelleVerhuetung {
+                    Divider()
+                    Label("Hormonelle Verhütung aktiv — Eisprung- und Fruchtbarkeits-Vorhersagen sind ausgeblendet.",
+                          systemImage: "pills.fill")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding()
@@ -178,7 +214,7 @@ struct ZyklusView: View {
 
             VStack(spacing: 3) {
                 if let ov = analyse.vorhergesagteOvulation {
-                    Text(kurzDatum(ov)).font(.subheadline.bold()).foregroundStyle(.orange)
+                    Text(eisprungText(ov)).font(.subheadline.bold()).foregroundStyle(.orange)
                 } else {
                     Text("–").font(.subheadline.bold()).foregroundStyle(.orange)
                 }
@@ -314,6 +350,20 @@ struct ZyklusView: View {
 
     private func kurzDatum(_ d: Date) -> String {
         d.formatted(.dateTime.day().month(.abbreviated))
+    }
+
+    // Bestätigter Eisprung: exaktes Datum mit Haken. Geschätzter Eisprung:
+    // ehrlicher Bereich (± Unsicherheit aus der eigenen Zyklus-Variation).
+    // Bei Verzögerung durch negative Tests ist "früher" ausgeschlossen —
+    // der Bereich beginnt beim vorhergesagten Tag.
+    private func eisprungText(_ ov: Date) -> String {
+        if analyse.ovulationBestaetigt { return kurzDatum(ov) + " ✓" }
+        let u = analyse.ovulationsUnsicherheit
+        guard u > 0 else { return kurzDatum(ov) }
+        let kal = Calendar.current
+        let von = analyse.ovulationVerzoegert ? ov : (kal.date(byAdding: .day, value: -u, to: ov) ?? ov)
+        let bis = kal.date(byAdding: .day, value: u, to: ov) ?? ov
+        return "\(von.formatted(.dateTime.day()))–\(kurzDatum(bis))"
     }
 }
 

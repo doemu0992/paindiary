@@ -4,12 +4,18 @@ import Charts
 
 struct ZyklusKachel: View {
     let eintraege: [ZyklusEintrag]
+    @Query(sort: \PainEntry.datum, order: .reverse) private var painEintraege: [PainEntry]
+    @AppStorage("zyklusHormonelleVerhuetung") private var hormonelleVerhuetung = false
     @State private var zeigeForm = false
     @State private var ausgewaehltDatum: Date? = nil
     @State private var versteckTask: Task<Void, Never>? = nil
 
     private var analyse: ZyklusAnalyse {
-        ZyklusRechner.analyse(eintraege: eintraege)
+        let basis = ZyklusRechner.analyse(
+            eintraege: eintraege,
+            stoerTage: ZyklusRechner.bbtStoerTage(painEntries: Array(painEintraege))
+        )
+        return hormonelleVerhuetung ? basis.ohneFruchtbarkeitsPrognosen : basis
     }
 
     private var zyklusTagText: String {
