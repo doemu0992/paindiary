@@ -332,7 +332,11 @@ struct ZyklusRechner {
         // wird an diese Grenzen zurückgeholt, statt alle Vorhersagen zu verzerren.
         let persOvulationsOffset: Int = {
             let kalenderOffset = Int(round(adaptZyklus)) - 14
-            guard ovulationsSignale.count >= 2 else { return kalenderOffset }
+            // Lernen ab 2 Signalen — oder bereits ab EINEM gemessenen Signal
+            // (LH-Test / Temperaturanstieg, Gewicht ≥ 2): ein bestätigter
+            // Eisprung ist besser als jede Kalender-Schätzung.
+            let hatStarkesSignal = ovulationsSignale.contains { $0.gewicht >= 2 }
+            guard ovulationsSignale.count >= 2 || hatStarkesSignal else { return kalenderOffset }
             let summeGewichte = ovulationsSignale.map(\.gewicht).reduce(0, +)
             let gewichteteSumme = ovulationsSignale.map { $0.offset * $0.gewicht }.reduce(0, +)
             let gelernt = Int((Double(gewichteteSumme) / Double(summeGewichte)).rounded())
@@ -490,7 +494,9 @@ struct ZyklusRechner {
             periodeTageSet: periodeTageSet,
             fruchtbareTageSet: fruchtbarSet,
             ovulationsTageSet: ovulationsSet,
-            gelernterOvulationsOffset: ovulationsSignale.count >= 2 ? persOvulationsOffset : nil,
+            gelernterOvulationsOffset:
+                (ovulationsSignale.count >= 2 || ovulationsSignale.contains { $0.gewicht >= 2 })
+                    ? persOvulationsOffset : nil,
             adaptierteZykluslaenge: adaptZyklusAngepasst,
             adaptiertePeriodendauer: adaptPeriod,
             ovulationBestaetigt: aktuellerOvBestaetigt,
