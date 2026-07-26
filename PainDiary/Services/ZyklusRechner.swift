@@ -98,6 +98,19 @@ struct ZyklusRechner {
             zyklusLaengenProZyklus.append(plausibel ? diff : nil)
             if plausibel { zyklusLaengen.append(diff) }
         }
+        // Ausreisser-Schutz: Ein einzelner "Riesen-Zyklus" ist fast immer eine
+        // Erfassungslücke (nicht nachgetragene Periode) — zwei echte Zyklen
+        // verschmelzen zu einem. Längen, die mehr als 10 Tage vom Median der
+        // eigenen Zyklen abweichen, fliessen nicht in Statistik, adaptive
+        // Vorhersage und Lernen ein. (Der Zyklusverlauf-Chart zeigt sie weiter,
+        // damit die Lücke sichtbar bleibt.)
+        if zyklusLaengen.count >= 4 {
+            let sortiert = zyklusLaengen.sorted()
+            let median = sortiert[sortiert.count / 2]
+            let ohneAusreisser = zyklusLaengen.filter { abs($0 - median) <= 10 }
+            if ohneAusreisser.count >= 3 { zyklusLaengen = ohneAusreisser }
+        }
+
         let avgZyklus = zyklusLaengen.isEmpty ? 28.0 : zyklusLaengen.reduce(0, +) / Double(zyklusLaengen.count)
         let variation: Double = {
             guard zyklusLaengen.count >= 2 else { return 0 }
