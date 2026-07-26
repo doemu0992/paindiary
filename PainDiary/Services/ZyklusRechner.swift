@@ -42,8 +42,14 @@ struct ZyklusRechner {
 
     // MARK: - Main analysis
 
-    static func analyse(eintraege: [ZyklusEintrag]) -> ZyklusAnalyse {
+    static func analyse(eintraege alleEintraege: [ZyklusEintrag]) -> ZyklusAnalyse {
         let kal = Calendar.current
+        let heute = kal.startOfDay(for: Date())
+
+        // Zukunftsdatierte Einträge (über den Kalender möglich) fliessen nicht
+        // in die Berechnung ein — ein auf morgen datierter Test oder Periodentag
+        // würde sonst Vorhersage und Lernen verfälschen.
+        let eintraege = alleEintraege.filter { kal.startOfDay(for: $0.datum) <= heute }
 
         let periodeTage = eintraege
             .filter { $0.istPeriode || $0.typ == "Periode" }
@@ -267,7 +273,6 @@ struct ZyklusRechner {
         }()
 
         // Predictions use adaptive cycle length and personalized ovulation offset.
-        let heute = kal.startOfDay(for: Date())
         let aktuellerTag: Int? = starts.last.map {
             (kal.dateComponents([.day], from: $0, to: heute).day ?? 0) + 1
         }
