@@ -1,14 +1,17 @@
 import Foundation
 import SwiftData
 
+// CloudKit-Sync verlangt Inline-Defaults an jeder Property (Defaults nur im
+// init reichen nicht fürs Schema) — sonst lädt der Store auf Geräten mit
+// aktivem iCloud nicht.
 @Model final class BlutzuckerEintrag {
-    var datum: Date
-    var wert: Double         // in mmol/L
-    var messZeitpunkt: String
-    var insulinEinheiten: Double
-    var insulinTyp: String   // "Kurzzeit", "Langzeit", "Mischung"
-    var kohlenhydrate: Int   // in Gramm, 0 = nicht erfasst
-    var notizen: String
+    var datum: Date = Date()
+    var wert: Double = 5.5   // in mmol/L
+    var messZeitpunkt: String = "Nüchtern"
+    var insulinEinheiten: Double = 0
+    var insulinTyp: String = ""   // "Kurzzeit", "Langzeit", "Mischung"
+    var kohlenhydrate: Int = 0    // in Gramm, 0 = nicht erfasst
+    var notizen: String = ""
 
     init(datum: Date = Date(), wert: Double = 5.5,
          messZeitpunkt: String = "Nüchtern",

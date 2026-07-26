@@ -1,21 +1,24 @@
 import Foundation
 import SwiftData
 
+// CloudKit-Sync verlangt Inline-Defaults an jeder Property (Defaults nur im
+// init reichen nicht fürs Schema) — sonst lädt der Store auf Geräten mit
+// aktivem iCloud nicht.
 @Model
 class WellnessEintrag {
-    var datum: Date
-    var wasserMl: Int
-    var wasserZielMl: Int
-    var koffeinTassen: Int
-    var alkoholGlaeser: Int
-    var fruehstueck: Bool
-    var mittag: Bool
-    var abend: Bool
-    var stimmung: Int       // 1–5, 0 = nicht erfasst
-    var stressLevel: Int    // 1–5, 0 = nicht erfasst
-    var energielevel: Int   // 1–5, 0 = nicht erfasst
-    var schlafStunden: Double // 0 = nicht erfasst
-    var notizen: String
+    var datum: Date = Calendar.current.startOfDay(for: Date())
+    var wasserMl: Int = 0
+    var wasserZielMl: Int = 2000
+    var koffeinTassen: Int = 0
+    var alkoholGlaeser: Int = 0
+    var fruehstueck: Bool = false
+    var mittag: Bool = false
+    var abend: Bool = false
+    var stimmung: Int = 0       // 1–5, 0 = nicht erfasst
+    var stressLevel: Int = 0    // 1–5, 0 = nicht erfasst
+    var energielevel: Int = 0   // 1–5, 0 = nicht erfasst
+    var schlafStunden: Double = 0 // 0 = nicht erfasst
+    var notizen: String = ""
 
     init(datum: Date = Calendar.current.startOfDay(for: Date())) {
         self.datum = datum

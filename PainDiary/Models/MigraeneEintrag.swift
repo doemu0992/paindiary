@@ -1,18 +1,21 @@
 import Foundation
 import SwiftData
 
+// CloudKit-Sync verlangt Inline-Defaults an jeder Property (Defaults nur im
+// init reichen nicht fürs Schema) — sonst lädt der Store auf Geräten mit
+// aktivem iCloud nicht.
 @Model final class MigraeneEintrag {
-    var datum: Date
-    var dauer: Int          // in Minuten
-    var staerke: Int        // 1–10
-    var seite: String       // "Einseitig links", "Einseitig rechts", "Beidseitig"
-    var charakter: String   // kommagetrennt
-    var begleitsymptome: String  // kommagetrennt
-    var hatAura: Bool
-    var ausloeser: String   // kommagetrennt
-    var akutmedikament: String
-    var medikamentWirksam: String  // "Ja", "Teilweise", "Nein"
-    var notizen: String
+    var datum: Date = Date()
+    var dauer: Int = 0          // in Minuten
+    var staerke: Int = 6        // 1–10
+    var seite: String = "Einseitig links"  // "Einseitig links", "Einseitig rechts", "Beidseitig"
+    var charakter: String = ""  // kommagetrennt
+    var begleitsymptome: String = ""  // kommagetrennt
+    var hatAura: Bool = false
+    var ausloeser: String = ""  // kommagetrennt
+    var akutmedikament: String = ""
+    var medikamentWirksam: String = ""  // "Ja", "Teilweise", "Nein"
+    var notizen: String = ""
     var wetterTemperatur: Double?
     var wetterCode: Int?
     var wetterWind: Double?
