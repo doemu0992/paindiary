@@ -23,6 +23,9 @@ struct ZyklusAnalyse {
     let ovulationVerzoegert: Bool     // negative Tests haben die Vorhersage nach hinten geschoben
     let ovulationsUnsicherheit: Int   // ± Tage (0 = bestätigt)
     let gelernteLutealphase: Int      // Tage, aus eigenen Zyklen (10–16)
+    // Abweichung der letzten abgeschlossenen Periodendauer vom eigenen
+    // Durchschnitt (nil = unauffällig oder zu wenig Daten). Für klinische Hinweise.
+    let periodendauerAbweichung: Int?
 
     static let leer = ZyklusAnalyse(
         zykluslaenge: 28, periodendauer: 5, variation: 0,
@@ -32,7 +35,8 @@ struct ZyklusAnalyse {
         gelernterOvulationsOffset: nil,
         adaptierteZykluslaenge: 28, adaptiertePeriodendauer: 5,
         ovulationBestaetigt: false, ovulationVerzoegert: false,
-        ovulationsUnsicherheit: 1, gelernteLutealphase: 14
+        ovulationsUnsicherheit: 1, gelernteLutealphase: 14,
+        periodendauerAbweichung: nil
     )
 }
 
@@ -50,7 +54,8 @@ extension ZyklusAnalyse {
             adaptierteZykluslaenge: adaptierteZykluslaenge,
             adaptiertePeriodendauer: adaptiertePeriodendauer,
             ovulationBestaetigt: false, ovulationVerzoegert: false,
-            ovulationsUnsicherheit: 0, gelernteLutealphase: gelernteLutealphase
+            ovulationsUnsicherheit: 0, gelernteLutealphase: gelernteLutealphase,
+            periodendauerAbweichung: periodendauerAbweichung
         )
     }
 }
@@ -141,6 +146,22 @@ struct ZyklusRechner {
             }
         }
         let avgPeriod = periodDauern.isEmpty ? 5.0 : periodDauern.reduce(0, +) / Double(periodDauern.count)
+
+        // Klinischer Check: Weicht die letzte ABGESCHLOSSENE Periode deutlich
+        // (≥ 3 Tage) vom eigenen Durchschnitt ab? Eine noch laufende Periode
+        // wird nicht bewertet (letzter Blutungstag muss ≥ 3 Tage zurückliegen).
+        let periodendauerAbweichung: Int? = {
+            guard periodDauern.count >= 3,
+                  let letzte = periodDauern.last,
+                  let letzterStart = starts.last,
+                  let kettenEnde = kal.date(byAdding: .day, value: Int(letzte) - 1, to: letzterStart),
+                  (kal.dateComponents([.day], from: kettenEnde, to: heute).day ?? 0) >= 3
+            else { return nil }
+            let vorherige = periodDauern.dropLast()
+            let avgVorher = vorherige.reduce(0, +) / Double(vorherige.count)
+            let diff = Int((letzte - avgVorher).rounded())
+            return abs(diff) >= 3 ? diff : nil
+        }()
 
         // Recent-weighted averages: last 3 cycles get 50 / 30 / 20 % weight.
         // With fewer cycles falls back gracefully to available data or overall avg.
@@ -502,7 +523,8 @@ struct ZyklusRechner {
             ovulationBestaetigt: aktuellerOvBestaetigt,
             ovulationVerzoegert: aktuellerOvVerzoegert,
             ovulationsUnsicherheit: aktuellerOvBestaetigt ? 0 : max(1, min(2, Int(variation.rounded()))),
-            gelernteLutealphase: lutealTage
+            gelernteLutealphase: lutealTage,
+            periodendauerAbweichung: periodendauerAbweichung
         )
     }
 

@@ -212,6 +212,17 @@ struct ZyklusAnalyseView: View {
                 text: "Deine Zykluslängen schwanken deutlich. Stress, Schlaf, Gewichtsveränderungen oder hormonelle Faktoren können eine Rolle spielen. Erwähne es beim nächsten Arzttermin."
             ))
         }
+        if let abw = analyse.periodendauerAbweichung {
+            hinweise.append(KlinischerHinweis(
+                symbol: "drop.circle", farbe: .orange,
+                titel: abw > 0
+                    ? "Deutlich längere Periode (+\(abw) Tage)"
+                    : "Deutlich kürzere Periode (\(abw) Tage)",
+                text: abw > 0
+                    ? "Deine letzte Periode war \(abw) Tage länger als dein Durchschnitt. Einmalig ist das meist harmlos (Stress, Reisen, Zyklusschwankung). Wiederholt es sich, beim Frauenarzt erwähnen — mögliche Ursachen sind hormonelle Veränderungen, Myome, Polypen oder eine Spirale."
+                    : "Deine letzte Periode war \(abs(abw)) Tage kürzer als dein Durchschnitt. Einmalig meist harmlos; wiederholt es sich, beim Frauenarzt erwähnen — mögliche Ursachen sind hormonelle Veränderungen, Gewichtsverlust oder Stress."
+            ))
+        }
         return hinweise
     }
 
