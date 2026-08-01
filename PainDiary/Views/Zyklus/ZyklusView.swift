@@ -361,8 +361,15 @@ struct ZyklusView: View {
         let u = analyse.ovulationsUnsicherheit
         guard u > 0 else { return kurzDatum(ov) }
         let kal = Calendar.current
-        let von = analyse.ovulationVerzoegert ? ov : (kal.date(byAdding: .day, value: -u, to: ov) ?? ov)
-        let bis = kal.date(byAdding: .day, value: u, to: ov) ?? ov
+        var von = analyse.ovulationVerzoegert ? ov : (kal.date(byAdding: .day, value: -u, to: ov) ?? ov)
+        // Negative Tests schliessen frühe Tage aus: Untergrenze nie vor
+        // (letzter negativer Testtag + 1) — auch wenn die Vorhersage selbst
+        // noch nicht verschoben wurde.
+        if let fruehestens = analyse.ovulationFruehestens, von < fruehestens {
+            von = fruehestens
+        }
+        let bis = max(kal.date(byAdding: .day, value: u, to: ov) ?? ov, von)
+        guard von < bis else { return kurzDatum(von) }
         return "\(von.formatted(.dateTime.day()))–\(kurzDatum(bis))"
     }
 }

@@ -26,6 +26,9 @@ struct ZyklusAnalyse {
     // Abweichung der letzten abgeschlossenen Periodendauer vom eigenen
     // Durchschnitt (nil = unauffällig oder zu wenig Daten). Für klinische Hinweise.
     let periodendauerAbweichung: Int?
+    // Frühestmöglicher Eisprungtag laut negativen Tests (letzter negativer
+    // Tag + 1). Begrenzt die Untergrenze des angezeigten Eisprung-Bereichs.
+    let ovulationFruehestens: Date?
 
     static let leer = ZyklusAnalyse(
         zykluslaenge: 28, periodendauer: 5, variation: 0,
@@ -36,7 +39,7 @@ struct ZyklusAnalyse {
         adaptierteZykluslaenge: 28, adaptiertePeriodendauer: 5,
         ovulationBestaetigt: false, ovulationVerzoegert: false,
         ovulationsUnsicherheit: 1, gelernteLutealphase: 14,
-        periodendauerAbweichung: nil
+        periodendauerAbweichung: nil, ovulationFruehestens: nil
     )
 }
 
@@ -55,7 +58,7 @@ extension ZyklusAnalyse {
             adaptiertePeriodendauer: adaptiertePeriodendauer,
             ovulationBestaetigt: false, ovulationVerzoegert: false,
             ovulationsUnsicherheit: 0, gelernteLutealphase: gelernteLutealphase,
-            periodendauerAbweichung: periodendauerAbweichung
+            periodendauerAbweichung: periodendauerAbweichung, ovulationFruehestens: nil
         )
     }
 }
@@ -372,10 +375,10 @@ struct ZyklusRechner {
         // mucus at least 4 days after the period ends, to exclude post-period
         // discharge). Without a confirmed ovulation, negative tests around the
         // predicted ovulation day push the prediction later.
-        let (aktuellerZyklusOvOffset, aktuellerOvVerzoegert): (Int, Bool) = {
-            guard let currentStart = starts.last else { return (persOvulationsOffset, false) }
-            if let lh = aktuellerZyklusLH { return (lh, false) }
-            if let bbt = aktuellerZyklusBBT { return (bbt, false) }
+        let (aktuellerZyklusOvOffset, aktuellerOvVerzoegert, ovFruehestens): (Int, Bool, Date?) = {
+            guard let currentStart = starts.last else { return (persOvulationsOffset, false, nil) }
+            if let lh = aktuellerZyklusLH { return (lh, false, nil) }
+            if let bbt = aktuellerZyklusBBT { return (bbt, false, nil) }
 
             // Beobachtete schwache Signale: Schleim-Peak > Mittelschmerz > Zwischenblutung.
             // Only shift ovulation later — never earlier — to avoid treating the first
@@ -392,13 +395,16 @@ struct ZyklusRechner {
             // later, never cancel — a single test can miss a short surge.
             // Negatives earlier in the cycle are expected and ignored.
             guard let ovDatum = kal.date(byAdding: .day, value: basis, to: currentStart),
-                  let grenze = kal.date(byAdding: .day, value: -1, to: ovDatum) else { return (basis, false) }
+                  let grenze = kal.date(byAdding: .day, value: -1, to: ovDatum) else { return (basis, false, nil) }
             let relevanteNegative = alleTestMessungen
                 .filter { $0.ergebnis == "negativ" && $0.tag >= currentStart && $0.tag >= grenze }
                 .map(\.tag)
-            guard let letzterNegativer = relevanteNegative.max() else { return (basis, false) }
+            guard let letzterNegativer = relevanteNegative.max() else { return (basis, false, nil) }
             let verschoben = (kal.dateComponents([.day], from: currentStart, to: letzterNegativer).day ?? 0) + 1
-            return (max(basis, verschoben), verschoben > basis)
+            // Floor auch dann melden, wenn er die Vorhersage (noch) nicht verschiebt —
+            // die Bereichs-Untergrenze in der Anzeige darf nie vor ihm liegen.
+            let floor = kal.date(byAdding: .day, value: verschoben, to: currentStart)
+            return (max(basis, verschoben), verschoben > basis, floor)
         }()
 
         // Predictions use adaptive cycle length and personalized ovulation offset.
@@ -524,7 +530,8 @@ struct ZyklusRechner {
             ovulationVerzoegert: aktuellerOvVerzoegert,
             ovulationsUnsicherheit: aktuellerOvBestaetigt ? 0 : max(1, min(2, Int(variation.rounded()))),
             gelernteLutealphase: lutealTage,
-            periodendauerAbweichung: periodendauerAbweichung
+            periodendauerAbweichung: periodendauerAbweichung,
+            ovulationFruehestens: aktuellerOvBestaetigt ? nil : ovFruehestens
         )
     }
 
