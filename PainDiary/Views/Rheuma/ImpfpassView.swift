@@ -26,6 +26,7 @@ struct ImpfpassView: View {
                         Label("Standardimpfungen laden", systemImage: "wand.and.stars")
                     }
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 let faellig = impfungen.filter { $0.dringlichkeit == .ueberfaellig || $0.dringlichkeit == .bald }
                 if !faellig.isEmpty {
@@ -48,6 +49,7 @@ struct ImpfpassView: View {
                                 }
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 let aktuell = impfungen.filter { $0.dringlichkeit == .ok }
@@ -71,9 +73,11 @@ struct ImpfpassView: View {
                                 }
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
         }
+        .glassList()
         .navigationTitle("Impfpass")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -224,12 +228,12 @@ struct ImpfForm: View {
                     TextField("Hinweise, Chargen-Nr…", text: $notizen, axis: .vertical)
                         .lineLimit(2...4).font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var speichernLeiste: some View {

@@ -56,12 +56,14 @@ struct EinstellungenView: View {
                     .padding(.vertical, 4)
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             Section("Erinnerungen") {
                 NavigationLink(destination: PushManagerView()) {
                     Label("Benachrichtigungen verwalten", systemImage: "bell.badge")
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             Section {
                 Button {
@@ -80,6 +82,7 @@ struct EinstellungenView: View {
             } footer: {
                 Text("CSV-Dateien enthalten Schmerzeinträge, Medikamente und Einnahme-Logs.")
             }
+            .listRowBackground(Color.glassFill)
 
             Section("Sicherheit") {
                 if let profil = profile.first {
@@ -89,6 +92,7 @@ struct EinstellungenView: View {
                         }
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             Section("App") {
                 NavigationLink(destination: DatenschutzView()) {
@@ -112,7 +116,9 @@ struct EinstellungenView: View {
                 }
                 .foregroundStyle(.orange)
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("Einstellungen")
         .sheet(isPresented: $zeigeShareSheet) {
             ShareSheet(urls: exportURLs)

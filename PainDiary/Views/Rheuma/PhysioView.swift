@@ -38,7 +38,9 @@ struct PhysioView: View {
                     }
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("Physiotherapie")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -72,7 +74,7 @@ struct PhysioView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
@@ -210,12 +212,12 @@ struct PhysioFormView: View {
                         .padding(.horizontal, 16).padding(.bottom, 12)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var schritt1: some View {
@@ -251,12 +253,12 @@ struct PhysioFormView: View {
                     TextField("Optionale Notizen", text: $notizen, axis: .vertical)
                         .lineLimit(3...6).font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var navigationsLeiste: some View {
@@ -264,7 +266,7 @@ struct PhysioFormView: View {
             if schritt > 0 {
                 Button { withAnimation { schritt -= 1 } } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {

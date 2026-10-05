@@ -198,19 +198,19 @@ struct SchmerzForm: View {
                 intensitaetSchritt
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 2:
             ScrollView {
                 wieWarumSchritt
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 3:
             ScrollView {
                 wasNochSchritt
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -223,7 +223,7 @@ struct SchmerzForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         }
     }
 
@@ -318,27 +318,8 @@ struct SchmerzForm: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Schmerzstärke").font(.headline)
 
-                    HStack {
-                        Spacer()
-                        ZStack {
-                            Circle()
-                                .fill(staerkeFarbe.opacity(0.15))
-                                .frame(width: 104, height: 104)
-                            Circle()
-                                .strokeBorder(staerkeFarbe, lineWidth: 5)
-                                .frame(width: 104, height: 104)
-                            VStack(spacing: 1) {
-                                Text("\(schmerzstaerke)")
-                                    .font(.system(size: 44, weight: .bold, design: .rounded))
-                                    .foregroundStyle(staerkeFarbe)
-                                Text("/ 10")
-                                    .font(.caption2.bold())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: schmerzstaerke)
-                        Spacer()
-                    }
+                    SchmerzGauge(wert: Double(schmerzstaerke), groesse: 150, zahlGroesse: 64)
+                        .frame(maxWidth: .infinity)
 
                     Text(staerkeLabel)
                         .font(.subheadline.bold())
@@ -346,10 +327,7 @@ struct SchmerzForm: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .animation(.easeInOut(duration: 0.2), value: staerkeLabel)
 
-                    Slider(
-                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
-                        in: 0...10, step: 1
-                    ).tint(staerkeFarbe)
+                    SchmerzSlider(wert: $schmerzstaerke)
 
                     HStack {
                         Text("Kein Schmerz").font(.caption).foregroundStyle(.secondary)
@@ -461,7 +439,7 @@ struct SchmerzForm: View {
                     withAnimation { schritt -= 1 }
                 } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
@@ -500,7 +478,7 @@ struct SchmerzForm: View {
         content()
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
+            .glassFill()
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -540,7 +518,7 @@ struct SchmerzForm: View {
                         }
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
-                            sel ? farbe.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                            sel ? farbe.opacity(0.12) : Color.glassFill,
                             in: RoundedRectangle(cornerRadius: 10)
                         )
                     }
@@ -552,7 +530,7 @@ struct SchmerzForm: View {
                 TextField(ph, text: ft)
                     .font(.subheadline)
                     .padding(14)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
             }
         }
     }

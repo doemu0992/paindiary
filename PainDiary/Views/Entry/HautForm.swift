@@ -143,7 +143,7 @@ struct HautForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -156,7 +156,7 @@ struct HautForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         }
     }
 
@@ -234,7 +234,7 @@ struct HautForm: View {
                     withAnimation { schritt -= 1 }
                 } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
@@ -273,7 +273,7 @@ struct HautForm: View {
         content()
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
+            .glassFill()
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 

@@ -96,7 +96,7 @@ struct BegleitMassnahmenStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             // Card 2: Massnahmen
             VStack(alignment: .leading, spacing: 12) {
@@ -146,7 +146,7 @@ struct BegleitMassnahmenStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
         }
         .padding(.horizontal)
         .onAppear { ladeWerte() }

@@ -79,6 +79,7 @@ struct RheumaView: View {
                     }
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             Section("Medikamente & Therapie") {
                 NavigationLink(destination: BiologikaView()) {
@@ -106,6 +107,7 @@ struct RheumaView: View {
                         .foregroundStyle(.primary)
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
                 Section {
@@ -123,8 +125,10 @@ struct RheumaView: View {
                     Text(tagLabel(gruppe.tag))
                         .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                 }
+                .listRowBackground(Color.glassFill)
             }
         }
+        .glassList()
         .navigationTitle("Rheuma & Gelenke")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -170,7 +174,7 @@ struct RheumaView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
             Button { zeigeAnalyse = true } label: {

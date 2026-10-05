@@ -121,7 +121,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -146,7 +146,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -168,7 +168,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -202,7 +202,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -234,7 +234,7 @@ struct MigraeneAnfallDetailView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
     }
@@ -251,7 +251,7 @@ struct MigraeneAnfallDetailView: View {
             Spacer()
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -288,7 +288,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -349,7 +349,7 @@ struct MigraeneAnfallDetailView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
     }
@@ -366,7 +366,7 @@ struct MigraeneAnfallDetailView: View {
                 chipReihe(chips, farbe: farbe)
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
     }
@@ -379,7 +379,7 @@ struct MigraeneAnfallDetailView: View {
             Text(text).font(.body).foregroundStyle(.primary.opacity(0.85))
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 

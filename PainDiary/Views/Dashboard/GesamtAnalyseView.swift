@@ -171,7 +171,7 @@ struct GesamtAnalyseView: View {
                     Spacer(minLength: 24)
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .navigationTitle("Gesamtanalyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -221,7 +221,7 @@ extension GesamtAnalyseView {
         inhalt()
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
+            .glassFill()
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal)
     }
@@ -1075,6 +1075,7 @@ private struct GesamtAnalyseAnpassenView: View {
                     sektionenSpeichern(sektionen)
                 }
             }
+            .glassList()
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

@@ -22,6 +22,7 @@ struct HAQView: View {
                 Section {
                     das28Karte(letzterHAQ: letzterHAQ)
                 }
+                .listRowBackground(Color.glassFill)
             }
 
             // HAQ Score History
@@ -51,6 +52,7 @@ struct HAQView: View {
                     .frame(height: 140)
                     .padding(.vertical, 4)
                 }
+                .listRowBackground(Color.glassFill)
             }
 
             // Score explanation
@@ -76,7 +78,9 @@ struct HAQView: View {
                     .onDelete(perform: loeschen)
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("HAQ & DAS28")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -149,7 +153,7 @@ struct HAQView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func sdaiFarbe(_ score: Double) -> Color {
@@ -220,7 +224,7 @@ struct HAQView: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func infoPill(_ wert: String, label: String, farbe: Color) -> some View {
@@ -289,7 +293,7 @@ struct HAQFormView: View {
                             DatePicker("Datum", selection: $datum, displayedComponents: [.date])
                                 .font(.subheadline).padding(16)
                         }
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
 
                         // HAQ-Fragen
                         VStack(alignment: .leading, spacing: 10) {
@@ -327,7 +331,7 @@ struct HAQFormView: View {
                             }
                         }
                         .padding(16)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
 
                         // Allgemeines Befinden
                         VStack(alignment: .leading, spacing: 12) {
@@ -355,13 +359,13 @@ struct HAQFormView: View {
                                 }
                             }
                             .padding(16)
-                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                            .glassBackground(radius: 12)
                         }
                     }
                     .padding(.horizontal).padding(.vertical, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .background(Color(.systemGroupedBackground))
+                .auroraScreen()
 
                 // Save button
                 HStack {
@@ -418,7 +422,7 @@ struct HAQFormView: View {
                         .background(
                             wert.wrappedValue == i
                                 ? stufenFarbe(i).opacity(0.18)
-                                : Color(.secondarySystemGroupedBackground),
+                                : Color.glassFill,
                             in: RoundedRectangle(cornerRadius: 8)
                         )
                         .overlay(
@@ -433,7 +437,7 @@ struct HAQFormView: View {
             }
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .glassBackground(radius: 12)
     }
 
     private func stufenFarbe(_ i: Int) -> Color {

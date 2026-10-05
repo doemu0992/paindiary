@@ -106,6 +106,6 @@ E-Mail: doemugerber@gmail.com
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .glassBackground(radius: 12)
     }
 }

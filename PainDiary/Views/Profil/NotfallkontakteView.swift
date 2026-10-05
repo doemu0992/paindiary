@@ -23,6 +23,7 @@ struct NotfallkontakteView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 Section {
                     ForEach(kontakte) { k in
@@ -45,6 +46,7 @@ struct NotfallkontakteView: View {
                         indexSet.map { kontakte[$0] }.forEach { modelContext.delete($0) }
                     }
                 }
+                .listRowBackground(Color.glassFill)
             }
             Section {
 #if os(iOS)
@@ -56,7 +58,9 @@ struct NotfallkontakteView: View {
                     Label("Manuell hinzufügen", systemImage: "plus")
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("Notfallkontakte")
         .navigationBarTitleDisplayMode(.large)
         .sheet(item: $bearbeitet) { kontakt in
@@ -160,8 +164,7 @@ struct NotfallKontaktFormView: View {
                         .keyboardType(.phonePad)
                         .font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground),
-                            in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 // Beziehung button grid
                 VStack(alignment: .leading, spacing: 10) {
@@ -171,7 +174,7 @@ struct NotfallKontaktFormView: View {
                             let sel = beziehung == opt
                             Button { beziehung = opt } label: {
                                 Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
-                                    .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                    .background(sel ? TINT : Color.glassFill)
                                     .foregroundStyle(sel ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                                     .animation(.easeInOut(duration: 0.15), value: sel)
@@ -184,7 +187,7 @@ struct NotfallKontaktFormView: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var speichernLeiste: some View {

@@ -42,7 +42,7 @@ struct HautArtFotoStepView: View {
                             }
                             .padding(.horizontal, 10).padding(.vertical, 8)
                             .background(
-                                sel ? Color.orange.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                                sel ? Color.orange.opacity(0.12) : Color.glassFill,
                                 in: RoundedRectangle(cornerRadius: 10)
                             )
                         }
@@ -54,7 +54,7 @@ struct HautArtFotoStepView: View {
                     TextField("Eigene Beschreibung…", text: $freitext)
                         .font(.subheadline)
                         .padding(14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                         .submitLabel(.done)
                     if !freitext.isEmpty {
                         Button {
@@ -117,7 +117,7 @@ struct HautArtFotoStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
         }
         .onAppear {
             ladeWerte()

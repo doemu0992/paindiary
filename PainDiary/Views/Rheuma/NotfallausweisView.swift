@@ -77,7 +77,7 @@ struct NotfallausweisView: View {
                 }
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
 #if os(iOS)
         .sheet(isPresented: $zeigePDFVorschau) {
             if let url = pdfURL {
@@ -133,7 +133,7 @@ struct NotfallausweisView: View {
             Spacer()
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -404,7 +404,7 @@ private struct AusweisSektion<Content: View>: View {
             inhalt()
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }

@@ -62,7 +62,7 @@ struct PostdromErfassungView: View {
                                         }
                                         .padding(.horizontal, 10).padding(.vertical, 8)
                                         .background(
-                                            sel ? Color.purple.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                                            sel ? Color.purple.opacity(0.12) : Color.glassFill,
                                             in: RoundedRectangle(cornerRadius: 10)
                                         )
                                     }
@@ -72,14 +72,14 @@ struct PostdromErfassungView: View {
                             }
                         }
                         .padding()
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                        .glassBackground(radius: 16)
                     }
 
                     Spacer(minLength: 0)
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .navigationTitle("Nachklang erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

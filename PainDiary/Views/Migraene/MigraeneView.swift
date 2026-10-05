@@ -58,6 +58,7 @@ struct MigraeneView: View {
                     }
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             if anfaelle.isEmpty {
                 Section {
@@ -68,6 +69,7 @@ struct MigraeneView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 zyklusKorrelationSektion
 
@@ -90,9 +92,11 @@ struct MigraeneView: View {
                         Text(tagLabel(gruppe.tag))
                             .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
         }
+        .glassList()
         .navigationTitle("Migräne")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -141,7 +145,7 @@ struct MigraeneView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 if !anfaelle.isEmpty {
@@ -426,31 +430,31 @@ struct MigraeneAnfallForm: View {
                 intensitaetSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 1:
             ScrollView {
                 prodromSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 2:
             ScrollView {
                 charakterSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 3:
             ScrollView {
                 symptomeSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 4:
             ScrollView {
                 medikamentSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -463,7 +467,7 @@ struct MigraeneAnfallForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         }
     }
 
@@ -483,7 +487,7 @@ struct MigraeneAnfallForm: View {
                                     .font(.subheadline)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 8)
-                                    .background(kopfschmerzTyp == typ ? Color.purple : Color(.secondarySystemGroupedBackground))
+                                    .background(kopfschmerzTyp == typ ? Color.purple : Color.glassFill)
                                     .foregroundStyle(kopfschmerzTyp == typ ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
@@ -825,7 +829,7 @@ struct MigraeneAnfallForm: View {
                         .font(.subheadline.bold())
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }
                 .buttonStyle(.plain)
             }
@@ -875,7 +879,7 @@ struct MigraeneAnfallForm: View {
         content()
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
+            .glassFill()
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -907,7 +911,7 @@ struct MigraeneAnfallForm: View {
                         }
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
-                            sel ? farbe.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                            sel ? farbe.opacity(0.12) : Color.glassFill,
                             in: RoundedRectangle(cornerRadius: 10)
                         )
                     }
@@ -920,7 +924,7 @@ struct MigraeneAnfallForm: View {
                     TextField(ph, text: ft)
                         .font(.subheadline)
                         .padding(14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                     if !ft.wrappedValue.isEmpty {
                         Button {
                             let term = ft.wrappedValue.trimmingCharacters(in: .whitespaces)

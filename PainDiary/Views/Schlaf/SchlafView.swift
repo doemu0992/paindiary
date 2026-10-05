@@ -65,8 +65,10 @@ struct SchlafView: View {
                             }
                     }
                 }
+                .listRowBackground(Color.glassFill)
             }
         }
+        .glassList()
         .navigationTitle("Schlaf")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -100,7 +102,7 @@ struct SchlafView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 if !nächte.isEmpty {

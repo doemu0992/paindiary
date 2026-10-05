@@ -29,6 +29,7 @@ struct RemissionsView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 if aktivePhase != nil {
                     Section {
@@ -39,6 +40,7 @@ struct RemissionsView: View {
                                 .foregroundStyle(.red)
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 if !abgeschlossene.isEmpty {
@@ -54,9 +56,11 @@ struct RemissionsView: View {
                                 }
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
         }
+        .glassList()
         .navigationTitle("Remissionsphasen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -177,7 +181,7 @@ struct RemissionsFormView: View {
                     TextField("Optionale Anmerkungen", text: $notizen, axis: .vertical)
                         .lineLimit(3...6).font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 HStack(spacing: 8) {
                     Image(systemName: "info.circle").foregroundStyle(.secondary)
@@ -189,7 +193,7 @@ struct RemissionsFormView: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var speichernLeiste: some View {

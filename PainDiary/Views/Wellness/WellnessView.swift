@@ -69,7 +69,7 @@ struct WellnessView: View {
             .padding()
             .padding(.bottom, 30)
         }
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
         .navigationTitle("Wohlbefinden")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
@@ -112,7 +112,7 @@ struct WellnessView: View {
             .buttonStyle(.plain)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     // MARK: - Stimmung
@@ -162,7 +162,7 @@ struct WellnessView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: stimmung)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     // MARK: - Stress
@@ -212,7 +212,7 @@ struct WellnessView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: stressLevel)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     // MARK: - Energie
@@ -261,7 +261,7 @@ struct WellnessView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: energielevel)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     // MARK: - HealthKit Karte
@@ -320,7 +320,7 @@ struct WellnessView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     // MARK: - Wasser-Tracker
@@ -424,7 +424,7 @@ struct WellnessView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     // MARK: - Ernährung
@@ -460,7 +460,7 @@ struct WellnessView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func zaehlerZeile(symbol: String, farbe: Color, label: String, einheit: String,
@@ -549,7 +549,7 @@ struct WellnessView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func streakInfo(symbol: String, farbe: Color, text: String) -> some View {

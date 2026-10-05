@@ -22,6 +22,7 @@ struct DiagnoseView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 if !aktive.isEmpty {
                     Section("Aktive Diagnosen") {
@@ -46,6 +47,7 @@ struct DiagnoseView: View {
                             for i in indexSet { modelContext.delete(aktive[i]) }
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 if !fruehereD.isEmpty {
@@ -71,9 +73,11 @@ struct DiagnoseView: View {
                             for i in indexSet { modelContext.delete(fruehereD[i]) }
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
         }
+        .glassList()
         .navigationTitle("Diagnosen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -209,12 +213,12 @@ struct DiagnoseForm: View {
                     }
                     .font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var schritt1: some View {
@@ -249,12 +253,12 @@ struct DiagnoseForm: View {
                     TextField("Hinweise, Verlauf…", text: $notizen, axis: .vertical)
                         .lineLimit(2...5).font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var navigationsLeiste: some View {
@@ -262,7 +266,7 @@ struct DiagnoseForm: View {
             if schritt > 0 {
                 Button { withAnimation { schritt -= 1 } } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {

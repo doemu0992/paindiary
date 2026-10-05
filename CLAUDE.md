@@ -5,6 +5,33 @@ Every new screen, module, and edit must follow these rules.
 
 ---
 
+## Glass-Design-System „Calm Glass" (bindend, ersetzt alle älteren Karten-/Hintergrund-Vorgaben)
+
+Der Design-Layer liegt in `PainDiary/Design/GlassTheme.swift`. **Nie** eigene Karten-/Button-Styles bauen.
+
+| Zweck | API |
+|---|---|
+| Screen-Hintergrund (ScrollView/VStack/Wizard-Schritt) | `.auroraScreen(schmerzLevel:)` (statt `Color(.systemGroupedBackground)`) |
+| `List` | `.glassList()` + auf jeder `Section`/`ForEach` `.listRowBackground(Color.glassFill)` |
+| Vollständige Karte (Padding, Material, Gradient-Rand, 3-stufiger Schatten) | `.glassCard(radius: 24, tint:, padding: 20)` |
+| Nur Hintergrund (Padding beim Aufrufer) | `.glassBackground(radius:)` (statt `.background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(...))`) |
+| Füllung vor `.clipShape` | `.glassFill()` ; als Farbe in Ternaries `Color.glassFill` |
+| Nav-/Tab-Bar | `.glassBars()` (`.ultraThinMaterial`) |
+| Buttons | `.buttonStyle(.glassPrimary(tint:, hoehe:))` (64–72 pt) / `.buttonStyle(.glassSecondary)` (56 pt) |
+| Auswahl-Chips | `GlassChip` (min. 48 pt) |
+| Section-Label | `GlassSectionLabel("TEXT")` |
+| Schmerz-Eingabe | `SchmerzSlider` (64 pt Track, 48 pt Perle, Haptik) + `SchmerzGauge` — nie `Slider` für Schmerzstärke |
+
+**Regeln:** Eckenradius `.continuous` (Karten 22–28, Chips/Rows 12–20). Touch-Targets ≥ 56 pt (Haupt-Aktionen 72 pt). Schmerzstufen nie nur farbig — immer Zahl + Wort (`SchmerzSkala.wort`). Reduce Transparency → opake Karte, Reduce Motion → statischer Hintergrund (bereits im Layer). Modul-Tintfarben (Tabelle unten) bleiben, erscheinen aber nur als **Akzent** (Icon-Glow, Chart, Capsule-Tönung).
+
+**Navigation:** Tabs `Heute` (`HeuteView`) · `Verlauf` (`VerlaufContainerView`: Segment Liste | Einblicke; Einblicke = frühere Dashboard-Kacheln, `DashboardView(segment:)`) · `＋` · `Wohlbefinden` · `Profil`.
+**Erfassung:** „+" öffnet `QuickCaptureSheet` (1 Screen: Slider, Körperstellen-Chips, Speichern; „Mehr…" = `SchmerzForm`-Wizard). Mit aktiven Zusatzmodulen zuerst `EintragAuswahlView` (mit „Schnell erfassen").
+**Heute-Screen:** Hero-Gauge, eine Hauptaktion, 3 Info-Chips, 2-spaltiges Modul-Grid (Modul-Mini-Kacheln: 1 Kennwert + Sparkline), Einblick-Zeile. Keine langen Kachel-Stapel mehr.
+
+> Hinweis: Die Code-Beispiele weiter unten zeigen teils noch `secondarySystemGroupedBackground` / `systemGroupedBackground` — sie sind durch die obige Tabelle ersetzt. Alle sonstigen Standards (Wizard-Struktur, Löschen, KI, Zeitraum 7 T, InfoButton, Heatmap, SubRegionen) bleiben unverändert.
+
+---
+
 ## Module-Tint Colors
 
 | Modul | Primärfarbe | `progressTint` |
@@ -199,10 +226,10 @@ content()
     .clipShape(RoundedRectangle(cornerRadius: 16))
 ```
 
-- **Hintergrund**: immer `Color(.secondarySystemGroupedBackground)` — nie `.secondarySystemBackground`
+- **Hintergrund**: `.glassCard()` / `.glassBackground()` (siehe Glass-Design-System)
 - **Eckenradius**: 16 pt
 - **Padding**: 16 pt innen
-- **Screen-Hintergrund**: `Color(.systemGroupedBackground)`
+- **Screen-Hintergrund**: `.auroraScreen()`
 
 ---
 
@@ -936,7 +963,7 @@ Enthält `SubRegionen.map["Unterschenkel links"]` und `SubRegionen.map["Untersch
 Vor dem Merge eines neuen Moduls prüfen:
 - [ ] Neue Modul-Farbe gewählt (noch nicht vergeben) und in Farbtabelle eingetragen
 - [ ] **Modul-Tintfarbe durch alle Views gezogen** (Kachel / Hauptseite / AnalyseView / alle Sub-Views)
-- [ ] Card-Hintergrund `secondarySystemGroupedBackground`
+- [ ] Karten via `.glassCard()`/`.glassBackground()`, Screens via `.auroraScreen()`/`.glassList()`
 - [ ] Wohlbefinden-Schritt via `WohlbefindenStepView` (kein Inline-Code)
 - [ ] Wizard-Navigationsmuster identisch zu bestehenden Wizards
 - [ ] Keine doppelten `fatigueFarbe`, `stressLabel`, `stimmungFarben` etc.

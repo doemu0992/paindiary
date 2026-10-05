@@ -29,6 +29,7 @@ struct ZyklusView: View {
 
             zyklusNotifBanner
         }
+        .glassList()
         .navigationTitle("Zyklus")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -132,7 +133,7 @@ struct ZyklusView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
             if hatDaten {
@@ -394,7 +395,7 @@ private struct ZyklusKalender: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 }
 
@@ -650,7 +651,7 @@ struct ZyklusEintragSheet: View {
                                     Button { blutungsfluss = wert } label: {
                                         Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
                                             .padding(.vertical, 10)
-                                            .background(sel ? Color.red : Color(.secondarySystemGroupedBackground))
+                                            .background(sel ? Color.red : Color.glassFill)
                                             .foregroundStyle(sel ? .white : .primary)
                                             .clipShape(RoundedRectangle(cornerRadius: 10))
                                             .animation(.easeInOut(duration: 0.15), value: sel)
@@ -664,13 +665,13 @@ struct ZyklusEintragSheet: View {
                             .font(.subheadline).padding(16)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
                 .animation(.easeInOut(duration: 0.2), value: istPeriode)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     // MARK: - Step 1: Symptome
@@ -694,7 +695,7 @@ struct ZyklusEintragSheet: View {
                             }
                             .padding(.horizontal, 10).padding(.vertical, 8)
                             .background(
-                                sel ? Color.pink.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                                sel ? Color.pink.opacity(0.12) : Color.glassFill,
                                 in: RoundedRectangle(cornerRadius: 10)
                             )
                         }
@@ -706,7 +707,7 @@ struct ZyklusEintragSheet: View {
                 HStack(spacing: 8) {
                     TextField("Eigenes Symptom", text: $neuesSymptom)
                         .font(.subheadline).padding(14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                         .submitLabel(.done).onSubmit { symptomHinzufuegen() }
                     Button(action: symptomHinzufuegen) {
                         Image(systemName: "plus.circle.fill").foregroundStyle(.pink).font(.title2)
@@ -717,7 +718,7 @@ struct ZyklusEintragSheet: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     // MARK: - Step 2: Weitere Daten
@@ -741,7 +742,7 @@ struct ZyklusEintragSheet: View {
                             Button { ovulationstest = wert } label: {
                                 Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
                                     .padding(.vertical, 10)
-                                    .background(sel ? Color.orange : Color(.secondarySystemGroupedBackground))
+                                    .background(sel ? Color.orange : Color.glassFill)
                                     .foregroundStyle(sel ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }.buttonStyle(.plain)
@@ -763,7 +764,7 @@ struct ZyklusEintragSheet: View {
                             Button { zervixschleim = wert } label: {
                                 Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
                                     .padding(.vertical, 10)
-                                    .background(sel ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                    .background(sel ? Color.blue : Color.glassFill)
                                     .foregroundStyle(sel ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }.buttonStyle(.plain)
@@ -789,7 +790,7 @@ struct ZyklusEintragSheet: View {
                         }
                     }.padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 // Sexuelle Aktivität
                 VStack(alignment: .leading, spacing: 10) {
@@ -801,7 +802,7 @@ struct ZyklusEintragSheet: View {
                             Button { sexuelleAktivitaet = wert } label: {
                                 Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
                                     .padding(.vertical, 10)
-                                    .background(sel ? Color.pink : Color(.secondarySystemGroupedBackground))
+                                    .background(sel ? Color.pink : Color.glassFill)
                                     .foregroundStyle(sel ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }.buttonStyle(.plain)
@@ -815,13 +816,13 @@ struct ZyklusEintragSheet: View {
                     TextEditor(text: $notizen)
                         .font(.subheadline).frame(minHeight: 80)
                         .padding(12)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     // MARK: - Navigation
@@ -831,7 +832,7 @@ struct ZyklusEintragSheet: View {
             if schritt > 0 {
                 Button { withAnimation { schritt -= 1 } } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {

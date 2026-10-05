@@ -115,17 +115,17 @@ struct RheumaSchnellForm: View {
                     .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 1:
             ScrollView {
                 schmerzMorgenSchritt
                     .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 2:
             GelenkStepView(gelenkStatus: $gelenkStatus)
-                .background(Color(.systemGroupedBackground))
+                .auroraScreen()
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -139,7 +139,7 @@ struct RheumaSchnellForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         }
     }
 
@@ -256,7 +256,7 @@ struct RheumaSchnellForm: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
                                 .background(
-                                    morgensteifigkeit == min ? Color.teal : Color(.secondarySystemGroupedBackground)
+                                    morgensteifigkeit == min ? Color.teal : Color.glassFill
                                 )
                                 .foregroundStyle(morgensteifigkeit == min ? .white : .primary)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -291,7 +291,7 @@ struct RheumaSchnellForm: View {
                         .font(.subheadline.bold())
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }
                 .buttonStyle(.plain)
             }
@@ -341,7 +341,7 @@ struct RheumaSchnellForm: View {
         content()
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
+            .glassFill()
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 

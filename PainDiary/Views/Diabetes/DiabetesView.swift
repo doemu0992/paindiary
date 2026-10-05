@@ -31,6 +31,7 @@ struct DiabetesView: View {
                     }
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             if messungen.isEmpty {
                 Section {
@@ -41,6 +42,7 @@ struct DiabetesView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 Section("Messungen") {
                     ForEach(messungen) { m in
@@ -57,8 +59,10 @@ struct DiabetesView: View {
                     }
                     .onDelete { idx in idx.forEach { modelContext.delete(messungen[$0]) } }
                 }
+                .listRowBackground(Color.glassFill)
             }
         }
+        .glassList()
         .navigationTitle("Diabetes")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -108,7 +112,7 @@ struct DiabetesView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 Button { zeigeAnalyse = true } label: {
@@ -323,19 +327,19 @@ struct BlutzuckerForm: View {
                 messungSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 1:
             ScrollView {
                 insulinMahlzeitSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         default:
             ScrollView {
                 notizenSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         }
     }
 
@@ -400,7 +404,7 @@ struct BlutzuckerForm: View {
                                 .font(.subheadline)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(messZeitpunkt == zp ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                .background(messZeitpunkt == zp ? Color.blue : Color.glassFill)
                                 .foregroundStyle(messZeitpunkt == zp ? .white : .primary)
                                 .clipShape(Capsule())
                         }
@@ -457,7 +461,7 @@ struct BlutzuckerForm: View {
                                         .font(.subheadline)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 8)
-                                        .background(insulinTyp == typ ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                        .background(insulinTyp == typ ? Color.blue : Color.glassFill)
                                         .foregroundStyle(insulinTyp == typ ? .white : .primary)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                 }
@@ -513,7 +517,7 @@ struct BlutzuckerForm: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .semibold))
                         .frame(width: 40, height: 40)
-                        .background(Color(.secondarySystemGroupedBackground), in: Circle())
+                        .background(Color.glassFill, in: Circle())
                 }
                 .buttonStyle(.plain)
             } else {
@@ -573,7 +577,7 @@ struct BlutzuckerForm: View {
         content()
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
+            .glassFill()
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 

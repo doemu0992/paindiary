@@ -3,6 +3,7 @@ import SwiftData
 import Charts
 
 struct DashboardView: View {
+    var segment: Binding<VerlaufSegment>? = nil
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query private var profile: [Benutzerprofil]
     @Query private var medikamente: [Dauermedikation]
@@ -35,7 +36,11 @@ struct DashboardView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                begrüssungsHeader
+                if let segment {
+                    VerlaufSegmentPicker(auswahl: segment)
+                } else {
+                    begrüssungsHeader
+                }
 
                 ForEach(sichtbareKacheln, id: \.id) { kachel in
                     kachelView(kachel)
@@ -43,7 +48,9 @@ struct DashboardView: View {
             }
             .padding()
         }
-        .navigationTitle("Übersicht")
+        .auroraScreen()
+        .glassBars()
+        .navigationTitle(segment == nil ? "Übersicht" : "Verlauf")
         .navigationBarTitleDisplayMode(.large)
         .onChange(of: eintraege)    { _, neu in viewModel.eintraege = neu }
         .onChange(of: scenePhase)   { _, phase in if phase == .active { tagesstart = Calendar.current.startOfDay(for: Date()); schlafNächte = SleepNightSummary.laden() } }
@@ -228,7 +235,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -376,7 +383,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
@@ -459,7 +466,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -475,7 +482,7 @@ struct DashboardView: View {
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .buttonStyle(.plain)
@@ -487,7 +494,7 @@ struct DashboardView: View {
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .buttonStyle(.plain)
@@ -569,6 +576,7 @@ private struct ExportOptionsSheet: View {
                     }
                     .pickerStyle(.inline).labelsHidden()
                 }
+                .listRowBackground(Color.glassFill)
                 Section("Abschnitte") {
                     Toggle("Zusammenfassung",      isOn: $optionen.mitZusammenfassung)
                     Toggle("Medikamente",          isOn: $optionen.mitMedikamente)
@@ -578,7 +586,9 @@ private struct ExportOptionsSheet: View {
                     if hatMigraeneDaten { Toggle("Migräne", isOn: $optionen.mitMigraene) }
                     Toggle("Alle Einträge",        isOn: $optionen.mitEintraege)
                 }
+                .listRowBackground(Color.glassFill)
             }
+            .glassList()
             .navigationTitle("PDF exportieren")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

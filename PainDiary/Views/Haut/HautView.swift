@@ -43,6 +43,7 @@ struct HautView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
                     Section {
@@ -61,9 +62,11 @@ struct HautView: View {
                         Text(tagLabel(gruppe.tag))
                             .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
         }
+        .glassList()
         .navigationTitle("Hautveränderungen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -107,7 +110,7 @@ struct HautView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 Button { zeigeAnalyse = true } label: {

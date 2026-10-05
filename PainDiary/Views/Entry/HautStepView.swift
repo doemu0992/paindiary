@@ -33,7 +33,7 @@ struct HautStepView: View {
                 KoerperPickerView(auswahl: $hautStellen, tintColor: .systemOrange, frameHeight: 300, subRegionenMap: SubRegionen.hautMap)
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Art der Veränderung")
@@ -63,7 +63,7 @@ struct HautStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Foto-Anhang")
@@ -99,7 +99,7 @@ struct HautStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             Text("Optional – du kannst diesen Schritt überspringen.")
                 .font(.caption)

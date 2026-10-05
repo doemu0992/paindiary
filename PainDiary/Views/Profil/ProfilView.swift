@@ -53,6 +53,7 @@ private struct ProfilInhaltView: View {
             notfallSektion
             einstellungen
         }
+        .glassList()
         .navigationTitle("Profil")
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $stammdatenAnzeigen) {
@@ -509,6 +510,7 @@ private struct StammdatenSheet: View {
                             .multilineTextAlignment(.trailing)
                     }
                 }
+                .listRowBackground(Color.glassFill)
                 Section("Medizinisch") {
                     LabeledContent("Versicherung") {
                         TextField("Krankenversicherung", text: Bindable(profil).versicherung)
@@ -537,7 +539,9 @@ private struct StammdatenSheet: View {
                         LabeledContent("BMI", value: String(format: "%.1f – %@", bmi, profil.bmiKategorie ?? ""))
                     }
                 }
+                .listRowBackground(Color.glassFill)
             }
+            .glassList()
             .navigationTitle("Stammdaten")
             .navigationBarTitleDisplayMode(.inline)
             .scrollDismissesKeyboard(.interactively)

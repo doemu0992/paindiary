@@ -130,7 +130,7 @@ struct SchlafAnalyseView: View {
                 }
                 .padding(.vertical)
             }
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .navigationTitle("Schlaf-Analyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -422,7 +422,7 @@ struct SchlafAnalyseView: View {
             content()
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 }
@@ -448,6 +448,7 @@ private struct SchlafAnalyseAnpassenView: View {
                     sektionenSpeichern(sektionen)
                 }
             }
+            .glassList()
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

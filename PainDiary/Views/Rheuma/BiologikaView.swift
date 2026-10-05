@@ -39,6 +39,7 @@ struct BiologikaView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 statistikSektion
 
@@ -69,6 +70,7 @@ struct BiologikaView: View {
                         .padding(.vertical, 4)
                         .listRowBackground(Color.accentColor.opacity(0.08))
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 // Verlaufschart
@@ -97,6 +99,7 @@ struct BiologikaView: View {
                         .frame(height: 140)
                         .padding(.vertical, 4)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 // Alle Einträge
@@ -120,8 +123,10 @@ struct BiologikaView: View {
                             }
                     }
                 }
+                .listRowBackground(Color.glassFill)
             }
         }
+        .glassList()
         .navigationTitle("Biologika / Injektionen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -151,7 +156,7 @@ struct BiologikaView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .padding(.vertical, 4)
@@ -319,8 +324,7 @@ struct BiologikaForm: View {
                                 .font(.subheadline).padding(16)
                         }
                     }
-                    .background(Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
 
                     // Datum & Dosis card
                     VStack(spacing: 0) {
@@ -344,8 +348,7 @@ struct BiologikaForm: View {
                         }
                         .padding(16)
                     }
-                    .background(Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
 
                     // Injektionsort button grid
                     VStack(alignment: .leading, spacing: 10) {
@@ -355,7 +358,7 @@ struct BiologikaForm: View {
                                 let sel = injektionsstelle == opt
                                 Button { injektionsstelle = opt } label: {
                                     Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
-                                        .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                        .background(sel ? TINT : Color.glassFill)
                                         .foregroundStyle(sel ? .white : .primary)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                         .animation(.easeInOut(duration: 0.15), value: sel)
@@ -368,7 +371,7 @@ struct BiologikaForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
 
         default:
@@ -382,8 +385,7 @@ struct BiologikaForm: View {
                         TextField("Chargen-Nummer (optional)", text: $chargenNummer)
                             .font(.subheadline).padding(16)
                     }
-                    .background(Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
 
                     // Nächste Dosis card
                     VStack(spacing: 0) {
@@ -401,8 +403,7 @@ struct BiologikaForm: View {
                             .padding(16)
                         }
                     }
-                    .background(Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
 
                     // Nebenwirkungen card
                     VStack(alignment: .leading, spacing: 0) {
@@ -415,14 +416,13 @@ struct BiologikaForm: View {
                             .padding(.horizontal, 16)
                             .padding(.bottom, 12)
                     }
-                    .background(Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
         }
     }
@@ -432,7 +432,7 @@ struct BiologikaForm: View {
             if schritt > 0 {
                 Button { withAnimation { schritt -= 1 } } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {

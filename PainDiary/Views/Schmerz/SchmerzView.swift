@@ -56,6 +56,7 @@ struct SchmerzView: View {
                     )
                     .listRowBackground(Color.clear)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
                     Section {
@@ -73,9 +74,11 @@ struct SchmerzView: View {
                         Text(tagLabel(gruppe.tag))
                             .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
         }
+        .glassList()
         .navigationTitle("Schmerztagebuch")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -109,7 +112,7 @@ struct SchmerzView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 if !schmerzEintraege.isEmpty {

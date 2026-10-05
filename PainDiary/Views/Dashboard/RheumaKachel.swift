@@ -132,7 +132,7 @@ struct RheumaKachel: View {
         }
         .animation(.easeInOut(duration: 0.2), value: ausgewaehltTag)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .sheet(isPresented: $zeigeForm) { RheumaSchnellForm() }

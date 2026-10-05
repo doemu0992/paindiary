@@ -42,7 +42,7 @@ struct LaborwerteView: View {
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 6)
                                             .background(
-                                                ausgewaehlterTyp == typ ? Color.accentColor : Color(.secondarySystemGroupedBackground),
+                                                ausgewaehlterTyp == typ ? Color.accentColor : Color.glassFill,
                                                 in: Capsule()
                                             )
                                             .foregroundStyle(ausgewaehlterTyp == typ ? .white : .primary)
@@ -53,6 +53,7 @@ struct LaborwerteView: View {
                             .padding(.vertical, 4)
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 }
 
@@ -82,6 +83,7 @@ struct LaborwerteView: View {
                             .frame(height: 140)
                             .padding(.vertical, 4)
                         }
+                        .listRowBackground(Color.glassFill)
                     }
                 }
 
@@ -95,6 +97,7 @@ struct LaborwerteView: View {
                 .onDelete(perform: loeschen)
             }
         }
+        .glassList()
         .navigationTitle("Laborwerte")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -220,6 +223,7 @@ struct LaborwertForm: View {
                             }
                         }
                     }
+                    .glassList()
                     .navigationTitle("Labortyp wählen")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Schliessen") { zeigePicker = false } } }
@@ -260,12 +264,12 @@ struct LaborwertForm: View {
                     }
                     .font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var schritt1: some View {
@@ -286,12 +290,12 @@ struct LaborwertForm: View {
                     TextField("Notizen", text: $notizen, axis: .vertical)
                         .lineLimit(3...6).font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var navigationsLeiste: some View {
@@ -299,7 +303,7 @@ struct LaborwertForm: View {
             if schritt > 0 {
                 Button { withAnimation { schritt -= 1 } } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {

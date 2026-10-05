@@ -410,7 +410,7 @@ struct MigraeneAnalyseView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .overlay(alignment: .topTrailing) {
             InfoButton(
@@ -437,7 +437,7 @@ struct MigraeneAnalyseView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .overlay(alignment: .topTrailing) {
             InfoButton(
@@ -644,7 +644,7 @@ struct MigraeneAnalyseView: View {
             Spacer()
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -662,7 +662,7 @@ struct MigraeneAnalyseView: View {
             content()
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 }
@@ -691,6 +691,7 @@ struct AnalyseAnpassenView: View {
                     sektionenSpeichern(sektionen)
                 }
             }
+            .glassList()
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

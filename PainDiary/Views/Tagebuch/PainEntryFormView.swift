@@ -25,6 +25,7 @@ struct PainEntryFormView: View {
                 Section("Zeitpunkt") {
                     DatePicker("Datum & Uhrzeit", selection: $datum)
                 }
+                .listRowBackground(Color.glassFill)
 
                 Section("Schmerz") {
                     VStack(alignment: .leading, spacing: 8) {
@@ -46,12 +47,14 @@ struct PainEntryFormView: View {
 
                     Stepper("Dauer: \(formatierteDauer(dauerMinuten))", value: $dauerMinuten, in: 0...480, step: 15)
                 }
+                .listRowBackground(Color.glassFill)
 
                 Section("Auslöser & Symptome") {
                     TextField("Auslöser", text: $ausloeser)
                     TextField("Begleiterscheinungen", text: $begleiterscheinungen)
                     TextField("Massnahmen", text: $massnahmen)
                 }
+                .listRowBackground(Color.glassFill)
 
                 Section("Wohlbefinden") {
                     HStack {
@@ -79,12 +82,15 @@ struct PainEntryFormView: View {
                     }
                     .padding(.vertical, 4)
                 }
+                .listRowBackground(Color.glassFill)
 
                 Section("Notizen") {
                     TextEditor(text: $notizen)
                         .frame(minHeight: 80)
                 }
+                .listRowBackground(Color.glassFill)
             }
+            .glassList()
             .navigationTitle(eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -92,6 +92,7 @@ struct MedikamenteView: View {
             heuteSektion
             if !inaktive.isEmpty { inaktiveSektion }
         }
+        .glassList()
         .navigationTitle("Medikamente")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -147,7 +148,7 @@ struct MedikamenteView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 if !logs.isEmpty {
@@ -684,7 +685,7 @@ struct MedikamentFormView: View {
                     TextField("Dosierung (z.B. 400 mg)", text: $dosierung)
                         .font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Art").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
@@ -708,7 +709,7 @@ struct MedikamentFormView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
-                                .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                                 .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
                             }
@@ -729,7 +730,7 @@ struct MedikamentFormView: View {
                                     Text(opt.isEmpty ? "Kein Hinweis" : opt)
                                         .font(.caption.bold())
                                         .padding(.horizontal, 12).padding(.vertical, 7)
-                                        .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                        .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                         .foregroundStyle(ausgewaehlt ? .white : .primary)
                                         .clipShape(Capsule())
                                         .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
@@ -745,7 +746,7 @@ struct MedikamentFormView: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     // MARK: - Schritt 1: Einnahme
@@ -770,7 +771,7 @@ struct MedikamentFormView: View {
                                     .multilineTextAlignment(.center)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 11)
-                                    .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                    .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                     .foregroundStyle(ausgewaehlt ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                                     .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
@@ -795,7 +796,7 @@ struct MedikamentFormView: View {
                             .font(.subheadline).padding(16)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 if !frequenz.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -808,7 +809,7 @@ struct MedikamentFormView: View {
                                         .font(.caption.bold())
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 10)
-                                        .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                        .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                         .foregroundStyle(ausgewaehlt ? .white : .primary)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                         .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
@@ -823,7 +824,7 @@ struct MedikamentFormView: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     // MARK: - Schritt 2: Extras
@@ -858,7 +859,7 @@ struct MedikamentFormView: View {
                             }
                         }
                     }
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
                 }
 
                 VStack(spacing: 0) {
@@ -873,7 +874,7 @@ struct MedikamentFormView: View {
                             .font(.subheadline).padding(16)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 VStack(spacing: 0) {
                     Toggle("Ablaufdatum setzen", isOn: $ablaufAktiv)
@@ -884,13 +885,13 @@ struct MedikamentFormView: View {
                             .font(.subheadline).padding(16)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal)
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     // MARK: - Navigation
@@ -904,7 +905,7 @@ struct MedikamentFormView: View {
                     Text("Zurück")
                         .font(.subheadline.bold())
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }
                 .buttonStyle(.plain)
             }
@@ -1067,6 +1068,7 @@ struct EinnahmeLogSheet: View {
                         Text("Einzelne Einnahme zu einem bestimmten Zeitpunkt erfassen.")
                     }
                 }
+                .listRowBackground(Color.glassFill)
 
                 if !med.dosierung.isEmpty {
                     Section {
@@ -1076,12 +1078,14 @@ struct EinnahmeLogSheet: View {
                             Text(med.dosierung).foregroundStyle(.secondary)
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 Section("Notizen") {
                     TextField("Besonderheiten, Nebenwirkungen…", text: $notizen, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
                 }
+                .listRowBackground(Color.glassFill)
 
                 // Rückwirkend nacherfassen (nur für Dauermedikamente mit fixer Einnahmezeit)
                 if !istBeiBedarfs && !istWöchentlich && !istMonatlich && !fehlende.isEmpty {
@@ -1103,8 +1107,10 @@ struct EinnahmeLogSheet: View {
                         let zeitText = zeiten.map(\.anzeigeText).joined(separator: ", ")
                         Text("Erstellt Einträge ab \(med.startDatum, format: .dateTime.day().month(.abbreviated).year()) bis heute zu den Zeiten \(zeitText). Bereits vorhandene Einnahmen werden übersprungen.")
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
+            .glassList()
             .navigationTitle("Einnahme erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1235,6 +1241,7 @@ struct EinnahmeLogView: View {
                 }
             }
         }
+        .glassList()
         .navigationTitle("Einnahme-Verlauf")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

@@ -84,7 +84,7 @@ struct KonsultationsGuideView: View {
                 .padding(.top, 16)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .navigationTitle("Termin vorbereiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -133,7 +133,7 @@ struct KonsultationsGuideView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -173,7 +173,7 @@ struct KonsultationsGuideView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 

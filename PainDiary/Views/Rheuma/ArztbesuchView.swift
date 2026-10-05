@@ -29,6 +29,7 @@ struct ArztbesuchView: View {
                     }
                     .padding(.vertical, 4)
                 }
+                .listRowBackground(Color.glassFill)
             }
 
             if besuche.isEmpty {
@@ -56,6 +57,7 @@ struct ArztbesuchView: View {
                         }
                         .padding(.vertical, 4)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 Section("Verlauf") {
@@ -67,8 +69,10 @@ struct ArztbesuchView: View {
                     }
                     .onDelete(perform: loeschen)
                 }
+                .listRowBackground(Color.glassFill)
             }
         }
+        .glassList()
         .navigationTitle("Arztbesuche")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -234,12 +238,12 @@ struct ArztbesuchForm: View {
                         .padding(.horizontal, 16).padding(.bottom, 12)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var schritt1: some View {
@@ -273,12 +277,12 @@ struct ArztbesuchForm: View {
                         .font(.subheadline).padding(16)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var navigationsLeiste: some View {
@@ -286,7 +290,7 @@ struct ArztbesuchForm: View {
             if schritt > 0 {
                 Button { withAnimation { schritt -= 1 } } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {

@@ -64,7 +64,7 @@ struct BegleitschmerzStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             Text("Optional – du kannst diesen Schritt überspringen.")
                 .font(.caption)
