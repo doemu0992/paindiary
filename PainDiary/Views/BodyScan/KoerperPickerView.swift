@@ -13,7 +13,7 @@ struct KoerperPickerView: View {
     @State private var pendingRegion: RegionItem? = nil
 
     private var ausgewaehltSet: Set<String> {
-        Set(auswahl.components(separatedBy: ", ").filter { !$0.isEmpty })
+        Set(ListenFeld.parse(auswahl))
     }
 
     var body: some View {
@@ -131,7 +131,7 @@ struct SubRegionenSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Übernehmen") {
                         var result = lokalAusgewaehlt
-                        let t = freitext.trimmingCharacters(in: .whitespaces)
+                        let t = ListenFeld.bereinige(freitext)
                         if !t.isEmpty { result.insert(t) }
                         onConfirm(result.isEmpty ? [region] : result)
                         dismiss()

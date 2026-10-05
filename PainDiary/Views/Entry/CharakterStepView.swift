@@ -44,7 +44,7 @@ struct CharakterStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !eigenerText.isEmpty {
                         Button {
-                            let term = eigenerText.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(eigenerText)
                             guard !term.isEmpty else { return }
                             ausgewaehlt.insert(term)
                             eigenerText = ""

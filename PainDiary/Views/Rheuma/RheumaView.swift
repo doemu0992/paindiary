@@ -12,7 +12,7 @@ struct RheumaView: View {
     @State private var zeigeForm = false
     @State private var zeigeAnalyse = false
 
-    private var rheumaEintraege: [PainEntry] { eintraege.filter { $0.koerperstelle == "Rheuma" } }
+    private var rheumaEintraege: [PainEntry] { eintraege.filter { $0.eintragsArt == .rheuma } }
 
     private var gruppiertNachDatum: [(tag: Date, items: [PainEntry])] {
         let cal = Calendar.current
@@ -117,7 +117,7 @@ struct RheumaView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
-                                modelContext.delete(eintrag)
+                                EintragLoeschService(context: modelContext).loesche(eintrag)
                             } label: { Label("Löschen", systemImage: "trash") }
                         }
                     }

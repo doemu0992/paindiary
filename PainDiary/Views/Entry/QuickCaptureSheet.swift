@@ -24,7 +24,7 @@ struct QuickCaptureSheet: View {
     /// Häufigste Körperstellen aus bisherigen Schmerz-Einträgen
     private var haeufigeStellen: [String] {
         var zaehler: [String: Int] = [:]
-        for e in alleEintraege where !e.istHautEintrag && e.koerperstelle != "Rheuma" {
+        for e in alleEintraege where !e.istHautEintrag && e.eintragsArt != .rheuma {
             for ort in e.koerperstelle.components(separatedBy: ", ") where !ort.isEmpty {
                 zaehler[ort, default: 0] += 1
             }
@@ -75,7 +75,7 @@ struct QuickCaptureSheet: View {
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Fertig") {
-                                let neu = pickerText.components(separatedBy: ", ").filter { !$0.isEmpty }
+                                let neu = ListenFeld.parse(pickerText)
                                 ausgewaehlt.formUnion(neu)
                                 zeigeKoerperPicker = false
                             }
@@ -205,7 +205,7 @@ struct QuickCaptureSheet: View {
         if let letzter = alleEintraege.first(where: { $0.datum >= heute }) {
             neu.schlafStunden = letzter.schlafStunden
         }
-        modelContext.insert(neu)
+        modelContext.einfuegenValidiert(neu)
 #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 #endif

@@ -135,7 +135,7 @@ struct MigraeneAnfallDetailView: View {
             if !anfall.seite.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Lokalisation").font(.subheadline).foregroundStyle(.secondary)
-                    chipReihe(anfall.seite.components(separatedBy: ", ").filter { !$0.isEmpty }, farbe: .purple)
+                    chipReihe(ListenFeld.parse(anfall.seite), farbe: .purple)
                 }
             }
             if anfall.dauer > 0 {

@@ -26,7 +26,7 @@ struct HeuteView: View {
     // MARK: - Daten
 
     private var schmerzEintraege: [PainEntry] {
-        eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }
+        eintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma }
     }
     private var heuteEintraege: [PainEntry] {
         schmerzEintraege.filter { kal.isDateInToday($0.datum) }
@@ -234,7 +234,7 @@ struct HeuteView: View {
             ))
         }
         if rheumaAktiv {
-            let rheuma = eintraege.filter { $0.koerperstelle == "Rheuma" }
+            let rheuma = eintraege.filter { $0.eintragsArt == .rheuma }
             let schuebe = rheuma.filter { $0.istSchub && $0.datum >= grenze30 }.count
             liste.append(ModulInfo(
                 id: "rheuma", titel: "Rheuma", symbol: "figure.arms.open", tint: .teal,

@@ -119,11 +119,11 @@ struct GesamtAnalyseView: View {
     }
 
     private var schmerzEintraege: [PainEntry] {
-        gefilterteEintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }
+        gefilterteEintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma }
     }
 
     private var rheumaEintraege: [PainEntry] {
-        gefilterteEintraege.filter { $0.koerperstelle == "Rheuma" }
+        gefilterteEintraege.filter { $0.eintragsArt == .rheuma }
     }
 
     private var hautEintraege: [PainEntry] {
@@ -890,7 +890,7 @@ extension GesamtAnalyseView {
                 return e.isEmpty ? 0 : Double(e.map { $0.schmerzstaerke }.reduce(0, +)) / Double(e.count)
             }()
             let topArt = Array(
-                hautEintraege.flatMap { $0.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty } }
+                hautEintraege.flatMap { ListenFeld.parse($0.hautArt) }
                     .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
                     .sorted { $0.value > $1.value }.prefix(3).map { $0.key }
             )
@@ -920,7 +920,7 @@ extension GesamtAnalyseView {
             let periodeTage = gefilterteZyklus.filter { $0.istPeriode }.count
             let mitSymptome = gefilterteZyklus.filter { !$0.symptome.isEmpty }.count
             let topSympt = Array(
-                gefilterteZyklus.flatMap { $0.symptome.components(separatedBy: ", ").filter { !$0.isEmpty } }
+                gefilterteZyklus.flatMap { ListenFeld.parse($0.symptome) }
                     .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
                     .sorted { $0.value > $1.value }.prefix(3).map { $0.key }
             )
@@ -962,12 +962,12 @@ extension GesamtAnalyseView {
         let zy = zyklusEintraege
         var result: [(name: String, farbe: Color, hatDaten: (Date) -> Bool)] = [
             ("Schmerz", .red, { tag in
-                ei.contains { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && cal.startOfDay(for: $0.datum) == tag }
+                ei.contains { !$0.istHautEintrag && $0.eintragsArt != .rheuma && cal.startOfDay(for: $0.datum) == tag }
             }),
         ]
         if rheumaModulAktiv {
             result.append(("Rheuma", .teal, { tag in
-                ei.contains { $0.koerperstelle == "Rheuma" && cal.startOfDay(for: $0.datum) == tag }
+                ei.contains { $0.eintragsArt == .rheuma && cal.startOfDay(for: $0.datum) == tag }
             }))
         }
         if migraeneModulAktiv {

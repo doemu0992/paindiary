@@ -69,7 +69,7 @@ struct CharakterAusloeserStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !charFreitext.isEmpty {
                         Button {
-                            let term = charFreitext.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(charFreitext)
                             guard !term.isEmpty else { return }
                             charAusgewaehlt.insert(term)
                             charFreitext = ""
@@ -127,7 +127,7 @@ struct CharakterAusloeserStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !ausloeserFreitext.isEmpty {
                         Button {
-                            let term = ausloeserFreitext.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(ausloeserFreitext)
                             guard !term.isEmpty else { return }
                             ausloeserAusgewaehlt.insert(term)
                             ausloeserFreitext = ""

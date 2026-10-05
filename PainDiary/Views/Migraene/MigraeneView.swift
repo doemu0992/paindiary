@@ -81,8 +81,7 @@ struct MigraeneView: View {
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfall.datum)
-                                    modelContext.delete(anfall)
+                                    EintragLoeschService(context: modelContext).loesche(anfall)
                                 } label: { Label("Löschen", systemImage: "trash") }
                                 Button { bearbeitet = anfall } label: { Label("Bearbeiten", systemImage: "pencil") }
                                     .tint(.blue)
@@ -738,7 +737,7 @@ struct MigraeneAnfallForm: View {
                             .submitLabel(.done)
                         if !freiTextMedikament.isEmpty {
                             Button {
-                                let term = freiTextMedikament.trimmingCharacters(in: .whitespaces)
+                                let term = ListenFeld.bereinige(freiTextMedikament)
                                 guard !term.isEmpty else { return }
                                 ausgewaehltesMedikamenteNamen.insert(term)
                                 freiTextMedikament = ""
@@ -927,7 +926,7 @@ struct MigraeneAnfallForm: View {
                         .glassBackground(radius: 12)
                     if !ft.wrappedValue.isEmpty {
                         Button {
-                            let term = ft.wrappedValue.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(ft.wrappedValue)
                             guard !term.isEmpty else { return }
                             var s = ausgewaehlt.wrappedValue
                             s.insert(term)
@@ -1002,7 +1001,7 @@ struct MigraeneAnfallForm: View {
             staerke = a.staerke
             hatAura = a.hatAura
             kopfschmerzTyp = a.kopfschmerzTyp.isEmpty ? "Migräne" : a.kopfschmerzTyp
-            ausgewaehlteSeiten = Set(a.seite.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlteSeiten = Set(ListenFeld.parse(a.seite))
             ausgewaehlterCharakter = Set(a.charakterListe)
             ausgewaehlteProdrom = Set(a.prodromListe)
             ausgewaehlteBegleitsymptome = Set(a.begleitsymptomeListe)
@@ -1011,7 +1010,7 @@ struct MigraeneAnfallForm: View {
             hatEndZeit = a.endZeit != nil
             endZeit = a.endZeit ?? Date()
             medikamentWirksam = a.medikamentWirksam
-            ausgewaehltesMedikamenteNamen = Set(a.akutmedikament.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehltesMedikamenteNamen = Set(ListenFeld.parse(a.akutmedikament))
             notizen = a.notizen
             wetterTemperatur = a.wetterTemperatur
             wetterCode = a.wetterCode
@@ -1104,7 +1103,7 @@ struct MigraeneAnfallForm: View {
             neu.stressLevel = stressLevel
             neu.fatigue = fatigue
             neu.energielevel = energielevel
-            modelContext.insert(neu)
+            modelContext.einfuegenValidiert(neu)
 
             let wirkungMap = ["Ja": "gut", "Teilweise": "teilweise", "Nein": "nicht"]
             var ersterMedName: String? = nil
@@ -1116,7 +1115,8 @@ struct MigraeneAnfallForm: View {
                     medikamentName: med.name,
                     dosierung: med.dosierung,
                     eingenommen: true,
-                    notizen: "Migräne-Anfall"
+                    notizen: "Migräne-Anfall",
+                    medikamentID: med.notifID
                 )
                 log.wirkung = wirkungMap[medikamentWirksam] ?? ""
                 modelContext.insert(log)

@@ -138,12 +138,12 @@ struct PainEntryListView: View {
             return alle
         case .schmerz:
             return alle.filter {
-                if case .schmerz(let e) = $0 { return !e.istHautEintrag && e.koerperstelle != "Rheuma" }
+                if case .schmerz(let e) = $0 { return !e.istHautEintrag && e.eintragsArt != .rheuma }
                 return false
             }
         case .rheuma:
             return alle.filter {
-                if case .schmerz(let e) = $0 { return e.koerperstelle == "Rheuma" }
+                if case .schmerz(let e) = $0 { return e.eintragsArt == .rheuma }
                 return false
             }
         case .migraene:
@@ -246,10 +246,7 @@ struct PainEntryListView: View {
                                 }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
-                                        if eintrag.istHautEintrag {
-                                            FotoManager.loeschen(dateiname: eintrag.fotoDateiname)
-                                        }
-                                        modelContext.delete(eintrag)
+                                        EintragLoeschService(context: modelContext).loesche(eintrag)
                                     } label: {
                                         Label("Löschen", systemImage: "trash")
                                     }
@@ -260,8 +257,7 @@ struct PainEntryListView: View {
                                 }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
-                                        NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfall.datum)
-                                        modelContext.delete(anfall)
+                                        EintragLoeschService(context: modelContext).loesche(anfall)
                                     } label: {
                                         Label("Löschen", systemImage: "trash")
                                     }
@@ -394,7 +390,7 @@ struct PainEntryListView: View {
         for item in items {
             let (farbe, key): (Color, String)
             switch item {
-            case .schmerz(let e) where e.koerperstelle == "Rheuma":
+            case .schmerz(let e) where e.eintragsArt == .rheuma:
                 (farbe, key) = (.teal, "rheuma")
             case .schmerz(let e) where e.istHautEintrag:
                 (farbe, key) = (.orange, "haut")
@@ -550,7 +546,7 @@ struct ModulKreis: View {
 struct SchmerzZeile: View {
     let eintrag: PainEntry
 
-    private var isRheuma: Bool { eintrag.koerperstelle == "Rheuma" }
+    private var isRheuma: Bool { eintrag.eintragsArt == .rheuma }
     private var isHaut: Bool   { eintrag.istHautEintrag }
 
     private var modulFarbe: Color {

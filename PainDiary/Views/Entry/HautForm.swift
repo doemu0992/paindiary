@@ -183,7 +183,7 @@ struct HautForm: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            let ausgewaehlt = Set(hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let ausgewaehlt = Set(ListenFeld.parse(hautStellen))
             if ausgewaehlt.isEmpty {
                 Text("Tippe auf das Modell um eine Stelle auszuwählen.")
                     .font(.caption)
@@ -363,7 +363,7 @@ struct HautForm: View {
                 verlauf: verlauf
             )
             neu.istHautEintrag = true
-            modelContext.insert(neu)
+            modelContext.einfuegenValidiert(neu)
         }
 
 #if os(iOS)

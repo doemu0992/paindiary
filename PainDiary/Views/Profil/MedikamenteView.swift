@@ -117,7 +117,7 @@ struct MedikamenteView: View {
         )) {
             Button("Löschen", role: .destructive) {
                 if let z = loeschenZiel {
-                    z.offsets.forEach { notif.loescheErinnerungen(fuer: z.liste[$0]); modelContext.delete(z.liste[$0]) }
+                    z.offsets.forEach { EintragLoeschService(context: modelContext).loesche(z.liste[$0]) }
                 }
                 loeschenZiel = nil
             }
@@ -517,7 +517,7 @@ struct MedikamenteView: View {
     }
 
     private func loggeMedikament(_ med: Dauermedikation) {
-        let log = EinnahmeLog(medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
+        let log = EinnahmeLog(medikamentName: med.name, dosierung: med.dosierung, eingenommen: true, medikamentID: med.notifID)
         modelContext.insert(log)
         notif.planeWirkungsAbfrage(fuer: log, stunden: med.wirkungsAbfrageStunden)
         if let vorrat = med.vorrat, vorrat > 0 {
@@ -1122,7 +1122,7 @@ struct EinnahmeLogSheet: View {
 
     private func speichereEinzelLog() {
         let log = EinnahmeLog(datum: logDatum, medikamentName: med.name,
-                              dosierung: med.dosierung, eingenommen: true, notizen: notizen)
+                              dosierung: med.dosierung, eingenommen: true, notizen: notizen, medikamentID: med.notifID)
         modelContext.insert(log)
         let stundenBisJetzt = max(0, Date().timeIntervalSince(logDatum)) / 3600
         let verbleibend = Double(med.wirkungsAbfrageStunden) - stundenBisJetzt
@@ -1173,7 +1173,7 @@ struct EinnahmeLogSheet: View {
     private func erstelleFehlendeLogs() {
         for datum in fehlende {
             let log = EinnahmeLog(datum: datum, medikamentName: med.name,
-                                  dosierung: med.dosierung, eingenommen: true)
+                                  dosierung: med.dosierung, eingenommen: true, medikamentID: med.notifID)
             modelContext.insert(log)
         }
     }
@@ -1229,8 +1229,7 @@ struct EinnahmeLogView: View {
             }
             .onDelete { idx in
                 idx.forEach {
-                    NotificationManager.shared.loescheWirkungsAbfrage(fuer: logs[$0])
-                    modelContext.delete(logs[$0])
+                    EintragLoeschService(context: modelContext).loesche(logs[$0])
                 }
             }
         }

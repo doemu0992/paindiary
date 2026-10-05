@@ -155,7 +155,7 @@ struct PDFZyklusEintrag {
             datum: e.datum,
             istPeriode: e.istPeriode || e.typ == "Periode",
             blutungsfluss: e.blutungsfluss,
-            symptome: e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty },
+            symptome: ListenFeld.parse(e.symptome),
             ovulationstest: e.ovulationstest,
             basaltemperatur: e.basaltemperatur,
             zervixschleim: e.zervixschleim,
@@ -1464,7 +1464,7 @@ class PDFExportService: @unchecked Sendable {
                 farbe: .systemBlue)
         y += 88
 
-        let ausloeserMap = anfaelle.flatMap { $0.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty } }
+        let ausloeserMap = anfaelle.flatMap { ListenFeld.parse($0.ausloeser) }
             .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
         let topAusloeser = ausloeserMap.sorted { $0.value > $1.value }.prefix(5)
 
@@ -1639,7 +1639,7 @@ class PDFExportService: @unchecked Sendable {
 
         for eintrag in eintraege {
             let quelleStellen = eintrag.istHautEintrag ? eintrag.hautStellen : eintrag.koerperstelle
-            let koerperstellen = quelleStellen.components(separatedBy: ", ").filter { !$0.isEmpty }
+            let koerperstellen = ListenFeld.parse(quelleStellen)
             let mehrereStellen = koerperstellen.count > 1
 
             // Build sub-rows

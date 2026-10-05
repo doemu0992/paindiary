@@ -58,7 +58,7 @@ struct HautArtFotoStepView: View {
                         .submitLabel(.done)
                     if !freitext.isEmpty {
                         Button {
-                            let term = freitext.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(freitext)
                             guard !term.isEmpty else { return }
                             ausgewaehlt.insert(term)
                             freitext = ""

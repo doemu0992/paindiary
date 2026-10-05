@@ -53,8 +53,7 @@ struct HautView: View {
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    FotoManager.loeschen(dateiname: eintrag.fotoDateiname)
-                                    modelContext.delete(eintrag)
+                                    EintragLoeschService(context: modelContext).loesche(eintrag)
                                 } label: { Label("Löschen", systemImage: "trash") }
                             }
                         }
@@ -138,12 +137,12 @@ struct HautView: View {
     }
 
     private func topArt(in liste: [PainEntry]) -> String? {
-        let alle = liste.flatMap { $0.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty } }
+        let alle = liste.flatMap { ListenFeld.parse($0.hautArt) }
         return Dictionary(grouping: alle, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key
     }
 
     private func topStelle(in liste: [PainEntry]) -> String? {
-        let alle = liste.flatMap { $0.hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty } }
+        let alle = liste.flatMap { ListenFeld.parse($0.hautStellen) }
         return Dictionary(grouping: alle, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key
     }
 }

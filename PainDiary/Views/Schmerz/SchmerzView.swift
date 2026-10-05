@@ -8,7 +8,7 @@ struct SchmerzView: View {
     @State private var zeigeForm = false
     @State private var zeigeAnalyse = false
 
-    private var schmerzEintraege: [PainEntry] { eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" } }
+    private var schmerzEintraege: [PainEntry] { eintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma } }
 
     private var eintraege30: [PainEntry] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
@@ -66,7 +66,7 @@ struct SchmerzView: View {
                             }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
-                                    modelContext.delete(eintrag)
+                                    EintragLoeschService(context: modelContext).loesche(eintrag)
                                 } label: { Label("Löschen", systemImage: "trash") }
                             }
                         }

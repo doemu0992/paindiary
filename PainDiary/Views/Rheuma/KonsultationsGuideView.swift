@@ -12,7 +12,7 @@ struct KonsultationsGuideView: View {
 
     private var letzteVierwochenEintraege: [PainEntry] {
         let grenze = Calendar.current.date(byAdding: .day, value: -28, to: Date()) ?? Date()
-        return alleEintraege.filter { $0.datum >= grenze && $0.koerperstelle == "Rheuma" }
+        return alleEintraege.filter { $0.datum >= grenze && $0.eintragsArt == .rheuma }
     }
 
     private var avgSchmerz: Double {

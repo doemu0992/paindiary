@@ -32,7 +32,7 @@ enum RheumaAnalyseSektion: String, CaseIterable, Codable, Identifiable {
 
 struct RheumaAnalyseView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
-    private var eintraege: [PainEntry] { alleEintraege.filter { $0.koerperstelle == "Rheuma" } }
+    private var eintraege: [PainEntry] { alleEintraege.filter { $0.eintragsArt == .rheuma } }
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
 
     @StateObject private var scanService = BodyScanService.shared

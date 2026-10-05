@@ -50,7 +50,7 @@ struct HautStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !eigenerText.isEmpty {
                         Button {
-                            let t = eigenerText.trimmingCharacters(in: .whitespaces)
+                            let t = ListenFeld.bereinige(eigenerText)
                             guard !t.isEmpty else { return }
                             artAusgewaehlt.insert(t); eigenerText = ""
                             hautArt = artAusgewaehlt.sorted().joined(separator: ", ")
@@ -108,7 +108,7 @@ struct HautStepView: View {
         }
         .padding(.horizontal)
         .onAppear {
-            artAusgewaehlt = Set(hautArt.components(separatedBy: ", ").filter { !$0.isEmpty })
+            artAusgewaehlt = Set(ListenFeld.parse(hautArt))
             fotoBild = FotoManager.laden(dateiname: fotoDateiname)
             customArt = ChipSpeicher.laden(schluessel: "hautCustomArt")
         }

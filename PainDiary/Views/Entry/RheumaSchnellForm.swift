@@ -457,7 +457,7 @@ struct RheumaSchnellForm: View {
                 wetterCode: finalCode,
                 wetterWind: finalWind
             )
-            modelContext.insert(neu)
+            modelContext.einfuegenValidiert(neu)
         }
 #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.success)

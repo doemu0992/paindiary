@@ -557,7 +557,7 @@ struct ZyklusEintragSheet: View {
             _istPeriode = State(initialValue: e.istPeriode)
             _blutungsfluss = State(initialValue: e.blutungsfluss.isEmpty ? "mittel" : e.blutungsfluss)
             _nurHalberTag = State(initialValue: e.nurHalberTag)
-            _symptome = State(initialValue: Set(e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty }))
+            _symptome = State(initialValue: Set(ListenFeld.parse(e.symptome)))
             _ovulationstest = State(initialValue: e.ovulationstest)
             _zervixschleim = State(initialValue: e.zervixschleim)
             _basaltemperatur = State(initialValue: e.basaltemperatur > 0 ? String(format: "%.1f", e.basaltemperatur) : "")
@@ -863,7 +863,7 @@ struct ZyklusEintragSheet: View {
     // MARK: - Actions
 
     private func symptomHinzufuegen() {
-        let s = neuesSymptom.trimmingCharacters(in: .whitespaces)
+        let s = ListenFeld.bereinige(neuesSymptom)
         guard !s.isEmpty, !alleSymptome.contains(s) else { neuesSymptom = ""; return }
         var custom = zusatzSymptomeRaw.isEmpty ? [] : zusatzSymptomeRaw.components(separatedBy: "|")
         custom.append(s)

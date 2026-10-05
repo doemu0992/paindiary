@@ -95,7 +95,7 @@ struct PostdromErfassungView: View {
             }
             .onAppear {
                 if !anfall.postdrom.isEmpty {
-                    ausgewaehlte = Set(anfall.postdrom.components(separatedBy: ", ").filter { !$0.isEmpty })
+                    ausgewaehlte = Set(ListenFeld.parse(anfall.postdrom))
                 }
             }
         }

@@ -165,8 +165,8 @@ struct KorrelationsView: View {
         let kal = Calendar.current
         let grenze30 = kal.date(byAdding: .day, value: -30, to: Date()) ?? Date()
 
-        let schmerzEintraege = alleEintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && $0.datum >= grenze30 }
-        let rheumaEintraege  = alleEintraege.filter { $0.koerperstelle == "Rheuma" && $0.datum >= grenze30 }
+        let schmerzEintraege = alleEintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma && $0.datum >= grenze30 }
+        let rheumaEintraege  = alleEintraege.filter { $0.eintragsArt == .rheuma && $0.datum >= grenze30 }
         let alleLetzte30     = alleEintraege.filter { $0.datum >= grenze30 }
         let migraeneLetzte30 = migraeneEintraege.filter { $0.datum >= grenze30 }
 

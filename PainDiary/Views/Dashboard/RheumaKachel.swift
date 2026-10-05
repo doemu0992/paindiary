@@ -8,7 +8,7 @@ struct RheumaKachel: View {
     @State private var ausgewaehltTag: Date? = nil
     @State private var versteckTask: Task<Void, Never>? = nil
 
-    private var rheumaEintraege: [PainEntry] { eintraege.filter { $0.koerperstelle == "Rheuma" } }
+    private var rheumaEintraege: [PainEntry] { eintraege.filter { $0.eintragsArt == .rheuma } }
 
     private var schube30: Int {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()

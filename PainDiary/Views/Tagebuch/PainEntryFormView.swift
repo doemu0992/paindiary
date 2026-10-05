@@ -161,7 +161,7 @@ struct PainEntryFormView: View {
                 stimmung: stimmung,
                 schlafStunden: schlafStunden
             )
-            modelContext.insert(neu)
+            modelContext.einfuegenValidiert(neu)
         }
         dismiss()
     }

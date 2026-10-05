@@ -267,7 +267,7 @@ struct SchmerzForm: View {
             KoerperPickerView(auswahl: $koerperstelle, tintColor: .systemRed)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            let ausgewaehlt = Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let ausgewaehlt = Set(ListenFeld.parse(koerperstelle))
             if ausgewaehlt.isEmpty {
                 Text("Tippe auf das Modell um eine Stelle auszuwählen.")
                     .font(.caption)
@@ -567,13 +567,13 @@ struct SchmerzForm: View {
             schmerzstaerke = e.schmerzstaerke
             dauerStunden = e.dauerMinuten / 60
             dauerMinuten = e.dauerMinuten % 60
-            ausgewaehlterCharakter = Set(e.schmerzart.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlterCharakter = Set(ListenFeld.parse(e.schmerzart))
                 .intersection(Set(charakterOptionen))
-            ausgewaehlteAusloeser  = Set(e.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlteAusloeser  = Set(ListenFeld.parse(e.ausloeser))
                 .intersection(Set(ausloeserOptionen))
-            ausgewaehlteBegleit    = Set(e.begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlteBegleit    = Set(ListenFeld.parse(e.begleiterscheinungen))
                 .intersection(Set(begleitOptionen))
-            ausgewaehlteMassnahmen = Set(e.massnahmen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlteMassnahmen = Set(ListenFeld.parse(e.massnahmen))
                 .intersection(Set(massnahmenOptionen))
             stimmung = e.stimmung
             stressLevel = e.stressLevel
@@ -592,10 +592,10 @@ struct SchmerzForm: View {
             dauerStunden = e.dauerMinuten / 60
             dauerMinuten = e.dauerMinuten % 60
 
-            let alleChar  = Set(e.schmerzart.components(separatedBy: ", ").filter { !$0.isEmpty })
-            let alleAusl  = Set(e.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty })
-            let alleBegl  = Set(e.begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty })
-            let alleMass  = Set(e.massnahmen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let alleChar  = Set(ListenFeld.parse(e.schmerzart))
+            let alleAusl  = Set(ListenFeld.parse(e.ausloeser))
+            let alleBegl  = Set(ListenFeld.parse(e.begleiterscheinungen))
+            let alleMass  = Set(ListenFeld.parse(e.massnahmen))
 
             ausgewaehlterCharakter = alleChar.intersection(Set(charakterOptionen))
             charakterFreitext      = alleChar.subtracting(Set(charakterOptionen)).sorted().joined(separator: ", ")
@@ -647,7 +647,7 @@ struct SchmerzForm: View {
     private func speichern() {
         func merge(_ set: Set<String>, _ text: String) -> String {
             var s = set
-            let t = text.trimmingCharacters(in: .whitespaces)
+            let t = ListenFeld.bereinige(text)
             if !t.isEmpty { s.insert(t) }
             return s.sorted().joined(separator: ", ")
         }
@@ -684,12 +684,12 @@ struct SchmerzForm: View {
                 wetterTemperatur: finalTemp, wetterCode: finalCode,
                 wetterWind: finalWind
             )
-            modelContext.insert(neu)
+            modelContext.einfuegenValidiert(neu)
         }
         // Migräne-Erkennung bei Kopfschmerz mit Migräne-Symptomen
         if eintrag == nil, migraeneModulAktiv, koerperstelle.contains("Kopf") {
             let migraeneSym: Set<String> = ["Lichtempfindlichkeit", "Lärmempfindlichkeit", "Übelkeit", "Sehstörungen (Aura)"]
-            let symptomListe = Set(beglStr.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let symptomListe = Set(ListenFeld.parse(beglStr))
             if !symptomListe.isDisjoint(with: migraeneSym) {
                 migraeneVorDatum = datum
                 migraeneVorStaerke = min(10, max(1, schmerzstaerke))

@@ -32,7 +32,7 @@ enum SchmerzAnalyseSektion: String, CaseIterable, Codable, Identifiable {
 
 struct SchmerzAnalyseView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
-    private var eintraege: [PainEntry] { alleEintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" } }
+    private var eintraege: [PainEntry] { alleEintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma } }
 
     @StateObject private var scanService = BodyScanService.shared
     @State private var sektionen: [SchmerzAnalyseSektion] = SchmerzAnalyseView.sektionenLaden()

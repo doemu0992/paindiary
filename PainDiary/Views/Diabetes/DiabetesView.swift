@@ -624,7 +624,11 @@ struct BlutzuckerForm: View {
                 insulinTyp: erfasseInsulin ? insulinTyp : "",
                 kohlenhydrate: kohlenhydrate, notizen: notizen
             )
-            modelContext.insert(neu)
+            if (try? modelContext.einfuegenValidiert(neu)) == nil {
+                // Wert außerhalb des Messbereichs → begrenzen statt Erfassung zu verlieren
+                neu.wert = neu.wert.isFinite ? neu.wert.begrenzt(auf: Wertebereich.blutzucker) : Wertebereich.blutzucker.lowerBound
+                modelContext.insert(neu)
+            }
         }
 #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.success)

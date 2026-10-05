@@ -19,12 +19,12 @@ enum DatenPflege {
     }
 
     @discardableResult
-    static func run(context: ModelContext) -> Bericht {
+    static func run(context: ModelContext, ignoriereVersion: Bool = false) -> Bericht {
         var bericht = Bericht()
         do {
-            if UserDefaults.standard.integer(forKey: versionKey) < aktuelleVersion {
+            if ignoriereVersion || UserDefaults.standard.integer(forKey: versionKey) < aktuelleVersion {
                 try backfill(context: context, bericht: &bericht)
-                UserDefaults.standard.set(aktuelleVersion, forKey: versionKey)
+                if !ignoriereVersion { UserDefaults.standard.set(aktuelleVersion, forKey: versionKey) }
             }
             bericht.wellnessZusammengefuehrt = try dedupliziereWellness(context: context)
             if context.hasChanges { try context.save() }

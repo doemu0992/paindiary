@@ -7,7 +7,7 @@ struct SchmerzKachel: View {
     @State private var ausgewaehltTag: Date? = nil
     @State private var versteckTask: Task<Void, Never>? = nil
 
-    private var schmerzEintraege: [PainEntry] { eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" } }
+    private var schmerzEintraege: [PainEntry] { eintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma } }
 
     private var avgSchmerz30: String {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
