@@ -53,6 +53,12 @@ enum PersistenceController {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
     }
 
+    /// Einstellung „iCloud-Synchronisierung" (Standard: an, wie bisher). Änderung wirkt nach App-Neustart.
+    static let iCloudSyncKey = "iCloudSyncAktiv"
+    static var iCloudSyncGewuenscht: Bool {
+        UserDefaults.standard.object(forKey: iCloudSyncKey) as? Bool ?? true
+    }
+
     static var storeURL: URL? { applicationSupport?.appendingPathComponent(storeName) }
 
     /// Vorhandene Store-Dateien (für Export/Support).
@@ -76,14 +82,16 @@ enum PersistenceController {
         sichereStoreVorStart(in: dir)
 
         var cloudFehler: String? = nil
-        let cloud = ModelConfiguration("hauptdaten", schema: schema, url: url, cloudKitDatabase: .automatic)
-        do {
-            let c = try ModelContainer(for: schema, configurations: [cloud])
-            logger.info("Store geöffnet (iCloud-Sync)")
-            return PersistenceResult(container: c, status: .cloud)
-        } catch {
-            cloudFehler = error.localizedDescription
-            logger.error("Cloud-Store fehlgeschlagen: \(error.localizedDescription, privacy: .public)")
+        if iCloudSyncGewuenscht {
+            let cloud = ModelConfiguration("hauptdaten", schema: schema, url: url, cloudKitDatabase: .automatic)
+            do {
+                let c = try ModelContainer(for: schema, configurations: [cloud])
+                logger.info("Store geöffnet (iCloud-Sync)")
+                return PersistenceResult(container: c, status: .cloud)
+            } catch {
+                cloudFehler = error.localizedDescription
+                logger.error("Cloud-Store fehlgeschlagen: \(error.localizedDescription, privacy: .public)")
+            }
         }
 
         let lokal = ModelConfiguration("hauptdaten", schema: schema, url: url, cloudKitDatabase: .none)

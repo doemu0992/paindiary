@@ -38,6 +38,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let segment {
                     VerlaufSegmentPicker(auswahl: segment)
+                    ArztZusammenfassungKarte()
                 } else {
                     begrüssungsHeader
                 }

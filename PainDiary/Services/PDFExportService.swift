@@ -255,7 +255,7 @@ struct PDFErnaehrungsTag {
         let ud = UserDefaults.standard
         let kal = Calendar.current
         let ende = kal.startOfDay(for: Date())
-        var von = start.map { kal.startOfDay(for: $0) } ?? kal.date(byAdding: .year, value: -1, to: ende)!
+        var von = start.map { kal.startOfDay(for: $0) } ?? kal.date(byAdding: .year, value: -1, to: ende) ?? ende
         var ergebnis: [PDFErnaehrungsTag] = []
         while von <= ende {
             let k = df.string(from: von)
@@ -270,7 +270,8 @@ struct PDFErnaehrungsTag {
                     alkoholGlaeser: alkohol, wasserMl: wasser,
                     hatFruehstueck: frueh, hatMittag: mittag, hatAbend: abend))
             }
-            von = kal.date(byAdding: .day, value: 1, to: von)!
+            guard let naechster = kal.date(byAdding: .day, value: 1, to: von), naechster > von else { break }
+            von = naechster
         }
         return ergebnis
     }
@@ -567,7 +568,7 @@ class PDFExportService: @unchecked Sendable {
         seitenKopf(ctx: ctx, titel: "Zusammenfassung", seite: 2)
         var y: CGFloat = rand + 52
 
-        let avg = eintraege.map { Double($0.schmerzstaerke) }.reduce(0, +) / Double(eintraege.count)
+        let avg = eintraege.isEmpty ? 0 : eintraege.map { Double($0.schmerzstaerke) }.reduce(0, +) / Double(eintraege.count)
         let maxVal = eintraege.map(\.schmerzstaerke).max() ?? 0
         let tage = Set(eintraege.map { Calendar.current.startOfDay(for: $0.datum) }).count
         let schube = eintraege.filter(\.istSchub).count
@@ -877,7 +878,7 @@ class PDFExportService: @unchecked Sendable {
                                  headers: ["Medikament", "Dosierung", "Hinweis", "Treue", "Einnahmen"])
                     y += 26
                 }
-                let fensterStart = kal.date(byAdding: .day, value: -30, to: heute)!
+                let fensterStart = kal.date(byAdding: .day, value: -30, to: heute) ?? heute
                 let tageSeitStart = max(1, kal.dateComponents([.day],
                     from: kal.startOfDay(for: med.startDatum), to: heute).day ?? 1)
                 let fensterTage = min(30, tageSeitStart)

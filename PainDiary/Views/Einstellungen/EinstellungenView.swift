@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct EinstellungenView: View {
     @AppStorage("akzentFarbe") private var akzentFarbe = "blau"
+    @AppStorage("iCloudSyncAktiv") private var iCloudSync = true
 
     @Environment(\.modelContext) private var modelContext
     @Query private var profile: [Benutzerprofil]
@@ -101,6 +102,17 @@ struct EinstellungenView: View {
                 Text("Daten")
             } footer: {
                 Text("CSV enthält alle Module (Zeitpunkte als ISO 8601, mit Zeitzone). Das JSON-Backup sichert Schmerz, Migräne, Medikation, Einnahmen, Blutzucker, Wellness und Zyklus; beim Wiederherstellen werden vorhandene Einträge nicht doppelt angelegt. Fotos sind nicht enthalten.")
+            }
+            .listRowBackground(Color.glassFill)
+
+            Section {
+                Toggle(isOn: $iCloudSync) {
+                    Label("iCloud-Synchronisierung", systemImage: "icloud")
+                }
+            } header: {
+                Text("Synchronisierung")
+            } footer: {
+                Text("Wenn aktiv, werden deine Gesundheitsdaten über deine iCloud auf deine Geräte synchronisiert. Wenn aus, bleiben sie nur auf diesem Gerät. Eine Änderung gilt nach einem Neustart der App.")
             }
             .listRowBackground(Color.glassFill)
 
