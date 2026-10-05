@@ -32,6 +32,33 @@ Der Design-Layer liegt in `PainDiary/Design/GlassTheme.swift`. **Nie** eigene Ka
 
 ---
 
+## Daten- & Logik-Architektur (bindend)
+
+```
+Views (SwiftUI)        keine Berechnungs-/Fetch-Logik; nur Darstellung + ViewModel-Aufrufe
+ViewModels             @Observable @MainActor (z. B. HeuteViewModel) — rechnen über Domain
+Domain/                reine Typen/Funktionen, KEIN SwiftData/UI: DayKey, EintragArt, ListenFeld, Validierung,
+                       Statistik, TriggerAnalyse, Gesundheitsregeln (MOH, Wirksamkeit, Schub, Schlaf), ArztZusammenfassung
+Services/Repository/   PainRepository (Predicates statt „alles laden"), EintragLoeschService, Normalisierung
+Services/Persistence/  PersistenceController (sicherer Store), DatenPflege (Backfill/Dedupe)
+Services/              Export (CSV v2), BackupService (JSON), HealthKit, Wetter, Notifications
+```
+
+**Regeln:**
+- **Store nie löschen.** Öffnen läuft über `PersistenceController.oeffne()`; bei Fehler Notfall-Modus mit sichtbarem Banner, Store-Dateien bleiben unangetastet. Vor jedem neuen Build wird ein Snapshot angelegt.
+- **Einfügen:** `modelContext.einfuegenValidiert(...)` statt `insert` für `PainEntry`/`MigraeneEintrag`/`BlutzuckerEintrag` (Wertebereiche in `Wertebereich`).
+- **Löschen:** ausschließlich über `EintragLoeschService` (räumt Benachrichtigungen/Fotos auf).
+- **Eintragstyp:** `eintrag.eintragsArt` (`.schmerz/.rheuma/.haut`) — nie `koerperstelle == "Rheuma"`.
+- **Listenfelder** (`"a, b"`): lesen mit `ListenFeld.parse`, Freitext vor dem Speichern mit `ListenFeld.bereinige` (Kommas im Element zerstören sonst das Format).
+- **Tage:** `entry.tag` (`DayKey`, nutzt die Erfassungs-Zeitzone `timeZoneID`) statt `Calendar.current` für Tageszuordnung/Statistik. Neue Modelle mit Datum erhalten `timeZoneID` + `tag`.
+- **„Nicht erfasst" = 0** (Stimmung, Stress, Energie, Fatigue). Keine Fake-Defaults wie 3. Auswertungen filtern `> 0`.
+- **Medikament↔Einnahme:** `EinnahmeLog.medikamentID` (= `Dauermedikation.notifID`), Abgleich über `log.gehoertZu(med)`.
+- **Neue Statistik/Regel** gehört nach `Domain/` und bekommt Tests in `PainDiaryTests/` (Swift Testing). Domain-Typen sind `nonisolated`.
+- **Neue Felder** in `@Model`: immer mit Default (lightweight Migration, CloudKit-tauglich), Backfill in `DatenPflege`, in `BackupService`-DTO und `CSVExportService` aufnehmen.
+- **Export/Backup:** CSV ISO 8601 mit Offset, UTF-8-BOM, Formel-Injection-Schutz; JSON-Backup idempotent (Import überspringt Vorhandenes).
+
+---
+
 ## Module-Tint Colors
 
 | Modul | Primärfarbe | `progressTint` |

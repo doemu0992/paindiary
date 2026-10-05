@@ -91,8 +91,8 @@ struct NormalisierungTests {
     }
 
     @Test func migraeneEndeVorBeginnWirdVerworfen() {
-        let a = MigraeneEintrag(datum: zeit(2026, 10, 5, 12))
-        a.endZeit = zeit(2026, 10, 5, 10)
+        let a = MigraeneEintrag(datum: zeit(2024, 10, 5, 12))
+        a.endZeit = zeit(2024, 10, 5, 10)
         Normalisierung.normalisiere(a)
         #expect(a.endZeit == nil)
     }
@@ -261,7 +261,7 @@ struct ExportTests {
         #expect(CSVExportService.iso(moment, TimeZone(identifier: "UTC")!) == "2026-10-05T12:00:00Z")
     }
 
-    @Test func schmerzCSVSpaltenzahlUndLeereZellen() {
+    @Test func schmerzCSVSpaltenzahlUndLeereZellen() throws {
         let e = PainEntry(datum: zeit(2026, 10, 5), schmerzstaerke: 7, koerperstelle: "Kopf")
         e.wetterTemperatur = -3.5
         let csv = CSVExportService.schmerzCSV([e])
@@ -270,9 +270,9 @@ struct ExportTests {
         let kopf = zeilen[0].components(separatedBy: ",")
         let zelle = zeilen[1].components(separatedBy: ",")
         #expect(kopf.count == zelle.count)
-        let idxStimmung = try! #require(kopf.firstIndex(of: "Stimmung (1-5)"))
+        let idxStimmung = try #require(kopf.firstIndex(of: "Stimmung (1-5)"))
         #expect(zelle[idxStimmung].isEmpty)           // nicht erfasst → leer, nicht „0"
-        let idxTemp = try! #require(kopf.firstIndex(of: "Temperatur (°C)"))
+        let idxTemp = try #require(kopf.firstIndex(of: "Temperatur (°C)"))
         #expect(zelle[idxTemp] == "-3.5")             // negative Temperatur bleibt erhalten
     }
 
@@ -291,16 +291,16 @@ struct ExportTests {
 struct BackupTests {
     @Test func roundtripUndIdempotenterImport() throws {
         let quelle = try testContext()
-        let e = PainEntry(datum: zeit(2026, 10, 5), schmerzstaerke: 6, koerperstelle: "Kopf", ausloeser: "Stress")
+        let e = PainEntry(datum: zeit(2024, 10, 5), schmerzstaerke: 6, koerperstelle: "Kopf", ausloeser: "Stress")
         quelle.insert(e)
-        quelle.insert(MigraeneEintrag(datum: zeit(2026, 10, 4), staerke: 8))
+        quelle.insert(MigraeneEintrag(datum: zeit(2024, 10, 4), staerke: 8))
         let med = Dauermedikation(name: "Sumatriptan", dosierung: "50 mg")
         quelle.insert(med)
-        quelle.insert(EinnahmeLog(datum: zeit(2026, 10, 4, 13), medikamentName: "Sumatriptan", dosierung: "50 mg", medikamentID: med.notifID))
-        quelle.insert(BlutzuckerEintrag(datum: zeit(2026, 10, 3), wert: 6.2))
-        let w = WellnessEintrag(datum: zeit(2026, 10, 2)); w.wasserMl = 1500
+        quelle.insert(EinnahmeLog(datum: zeit(2024, 10, 4, 13), medikamentName: "Sumatriptan", dosierung: "50 mg", medikamentID: med.notifID))
+        quelle.insert(BlutzuckerEintrag(datum: zeit(2024, 10, 3), wert: 6.2))
+        let w = WellnessEintrag(datum: zeit(2024, 10, 2)); w.wasserMl = 1500
         quelle.insert(w)
-        let z = ZyklusEintrag(datum: zeit(2026, 10, 1)); z.istPeriode = true
+        let z = ZyklusEintrag(datum: zeit(2024, 10, 1)); z.istPeriode = true
         quelle.insert(z)
         try quelle.save()
 
