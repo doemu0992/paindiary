@@ -53,6 +53,9 @@ struct PainDiaryApp: App {
         await berechtigungenAnfordern()
         if !r.status.istNotfall {
             await planeAlleErinnerungen(container: c)
+            if await NotificationManager.shared.budgetKnapp() {
+                PersistenceController.logger.warning("Benachrichtigungs-Budget fast erschöpft (Limit 64)")
+            }
         }
     }
 

@@ -443,6 +443,19 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             .removePendingNotificationRequests(withIdentifiers: ["zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung"])
     }
 
+    /// iOS erlaubt höchstens 64 gleichzeitig geplante lokale Benachrichtigungen; weitere werden verworfen.
+    static let systemLimit = 64
+
+    /// Anzahl aktuell geplanter Benachrichtigungen.
+    func geplanteAnzahl() async -> Int {
+        await UNUserNotificationCenter.current().pendingNotificationRequests().count
+    }
+
+    /// `true`, wenn das System-Limit (fast) erreicht ist → neue Erinnerungen könnten verloren gehen.
+    func budgetKnapp(reserve: Int = 4) async -> Bool {
+        await geplanteAnzahl() >= Self.systemLimit - reserve
+    }
+
     func loescheAlleGesundheitsDatenErinnerungen() {
         let behalten: Set<String> = ["tages-erinnerung", "wasser-erinnerung"]
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in

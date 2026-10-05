@@ -36,7 +36,7 @@ struct MedikamenteView: View {
                 guard n > 0 else { continue }
                 erwartet += n
                 let genommen = logs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 eingenommen += min(genommen, n)
@@ -54,7 +54,7 @@ struct MedikamenteView: View {
             let n = notif.anzahlDosen(med.frequenz)
             guard n > 0 else { return 0 }
             return min(n, heutigeLogs.filter {
-                $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen
+                $0.gehoertZu(med) && $0.eingenommen
             }.count)
         }.reduce(0, +)
     }
@@ -68,7 +68,7 @@ struct MedikamenteView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 guard n > 0 else { return true }
                 return logs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count >= n
             }
@@ -454,7 +454,7 @@ struct MedikamenteView: View {
     private func einnahmeKontrolle(med: Dauermedikation) -> some View {
         if med.frequenz == "Wöchentlich" || med.frequenz == "Monatlich" {
             let intervall = med.frequenz == "Monatlich" ? 30 : 7
-            let letzteEinnahme = logs.first { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
+            let letzteEinnahme = logs.first { $0.gehoertZu(med) && $0.eingenommen }
             let tageSeit: Int? = letzteEinnahme.map {
                 max(0, Calendar.current.dateComponents([.day], from: $0.datum, to: Date()).day ?? 0)
             }
@@ -484,7 +484,7 @@ struct MedikamenteView: View {
         } else {
             let anzahlErwartet = notif.anzahlDosen(med.frequenz)
             let anzahlHeute = heutigeLogs.filter {
-                $0.medikamentName == med.name && $0.dosierung == med.dosierung
+                $0.gehoertZu(med)
             }.count
 
             if anzahlErwartet == 0 {
@@ -1156,8 +1156,7 @@ struct EinnahmeLogSheet: View {
                 dc.hour = zeit.stunde; dc.minute = zeit.minute
                 guard let datum = kal.date(from: dc), datum <= heute else { continue }
                 let schonVorhanden = logs.contains { log in
-                    log.medikamentName == med.name &&
-                    log.dosierung == med.dosierung &&
+                    log.gehoertZu(med) &&
                     log.eingenommen &&
                     kal.isDate(log.datum, inSameDayAs: tag) &&
                     abs(log.datum.timeIntervalSince(datum)) < 7200

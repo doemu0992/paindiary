@@ -685,6 +685,11 @@ struct SchmerzForm: View {
                 wetterWind: finalWind
             )
             modelContext.einfuegenValidiert(neu)
+            // Nachträglich erfasster Eintrag: Wetter zum Eintragszeitpunkt statt aktuellem Wetter
+            if abs(datum.timeIntervalSinceNow) > 90 * 60, wetterTemperatur == nil {
+                neu.wetterTemperatur = nil; neu.wetterCode = nil; neu.wetterWind = nil
+                Task { await wetter.historischeWerteSetzen(fuer: neu) }
+            }
         }
         // Migräne-Erkennung bei Kopfschmerz mit Migräne-Symptomen
         if eintrag == nil, migraeneModulAktiv, koerperstelle.contains("Kopf") {

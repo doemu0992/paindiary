@@ -1367,7 +1367,7 @@ struct KorrelationsView: View {
                 let treue = Double(geloggteTage.count) / Double(fensterTage)
 
                 let logTage = Set(einnahmeLogs
-                    .filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
+                    .filter { $0.gehoertZu(med) && $0.eingenommen }
                     .map { kal.startOfDay(for: $0.datum) })
                 var mitMed: [Double] = []; var ohneMed: [Double] = []
                 for e in alleEintraege where e.schmerzstaerke > 0 {

@@ -17,7 +17,7 @@ struct HeuteView: View {
     @AppStorage("wellnessModulAktiv") private var wellnessAktiv = false
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var viewModel = DashboardViewModel()
+    @State private var vm = HeuteViewModel()
     @State private var zeigeSchnellerfassung = false
     @State private var zeigeAnalyse = false
 
@@ -29,32 +29,11 @@ struct HeuteView: View {
         eintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma }
     }
     private var heuteEintraege: [PainEntry] {
-        schmerzEintraege.filter { kal.isDateInToday($0.datum) }
-    }
-    private var heuteSchnitt: Double? {
-        guard !heuteEintraege.isEmpty else { return nil }
-        return Double(heuteEintraege.map(\.schmerzstaerke).reduce(0, +)) / Double(heuteEintraege.count)
+        let heute = DayKey.heute()
+        return schmerzEintraege.filter { $0.tag == heute }
     }
     private var heuteWellness: WellnessEintrag? {
-        wellnessEintraege.first { kal.isDateInToday($0.datum) }
-    }
-
-    /// Tagesdurchschnitt der letzten 7 Tage (nur Tage mit Einträgen)
-    private var wocheDaten: [(datum: Date, wert: Double)] {
-        let heute = kal.startOfDay(for: Date())
-        return (0..<7).reversed().compactMap { offset -> (datum: Date, wert: Double)? in
-            guard let tag = kal.date(byAdding: .day, value: -offset, to: heute) else { return nil }
-            let items = schmerzEintraege.filter { kal.isDate($0.datum, inSameDayAs: tag) }
-            guard !items.isEmpty else { return nil }
-            return (tag, Double(items.map(\.schmerzstaerke).reduce(0, +)) / Double(items.count))
-        }
-    }
-
-    private var trendText: String? {
-        guard let vor = viewModel.vorwochenschmerz, viewModel.wochenschmerz > 0 else { return nil }
-        let diff = viewModel.wochenschmerz - vor
-        if abs(diff) < 0.05 { return "= wie letzte Woche" }
-        return "\(diff < 0 ? "↓" : "↑") \(String(format: "%.1f", abs(diff))) zur Vorwoche"
+        wellnessEintraege.first { $0.tag == DayKey.heute() }
     }
 
     private var gruss: String {
@@ -82,6 +61,7 @@ struct HeuteView: View {
                     .padding(.horizontal, 4)
 
                 heroKarte
+                hinweisKarten
                 hauptAktion
                 heuteChips
                 modulGrid
@@ -91,12 +71,14 @@ struct HeuteView: View {
             .padding(.bottom, 40)
         }
         .scrollIndicators(.hidden)
-        .auroraScreen(schmerzLevel: heuteSchnitt.map { Int($0.rounded()) })
+        .auroraScreen(schmerzLevel: vm.heuteSchnitt.map { Int($0.rounded()) })
         .navigationTitle(gruss)
         .navigationBarTitleDisplayMode(.large)
         .glassBars()
-        .onAppear { viewModel.eintraege = eintraege }
-        .onChange(of: eintraege) { _, neu in viewModel.eintraege = neu }
+        .onAppear { vm.aktualisiere(eintraege: eintraege, migraene: migraeneAnfaelle) }
+        .onChange(of: eintraege) { _, neu in vm.aktualisiere(eintraege: neu, migraene: migraeneAnfaelle) }
+        .onChange(of: migraeneAnfaelle) { _, neu in vm.aktualisiere(eintraege: eintraege, migraene: neu) }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { vm.aktualisiere(eintraege: eintraege, migraene: migraeneAnfaelle) } }
         .sheet(isPresented: $zeigeSchnellerfassung) { QuickCaptureSheet() }
         .sheet(isPresented: $zeigeAnalyse) { GesamtAnalyseView() }
     }
@@ -108,17 +90,17 @@ struct HeuteView: View {
             GlassSectionLabel("Heute")
 
             SchmerzGauge(
-                wert: heuteSchnitt ?? 0,
+                wert: vm.heuteSchnitt ?? 0,
                 groesse: 190, zahlGroesse: 84,
                 nachkomma: false,
-                platzhalter: heuteSchnitt == nil
+                platzhalter: vm.heuteSchnitt == nil
             )
 
             VStack(spacing: 4) {
-                Text(heuteSchnitt.map { SchmerzSkala.wort(Int($0.rounded())) } ?? "Noch kein Eintrag heute")
+                Text(vm.heuteSchnitt.map { SchmerzSkala.wort(Int($0.rounded())) } ?? "Noch kein Eintrag heute")
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(heuteSchnitt == nil ? Color.secondary : SchmerzBadge.farbe(fuer: Int((heuteSchnitt ?? 0).rounded())))
-                if let trend = trendText {
+                    .foregroundStyle(vm.heuteSchnitt == nil ? Color.secondary : SchmerzBadge.farbe(fuer: Int((vm.heuteSchnitt ?? 0).rounded())))
+                if let trend = vm.trendText {
                     Text(trend).font(.subheadline).foregroundStyle(.secondary)
                 }
             }
@@ -130,7 +112,7 @@ struct HeuteView: View {
     }
 
     private var wochenWelle: some View {
-        Chart(wocheDaten, id: \.datum) { p in
+        Chart(vm.wocheDaten, id: \.datum) { p in
             AreaMark(x: .value("Tag", p.datum, unit: .day), y: .value("Schmerz", p.wert))
                 .interpolationMethod(.catmullRom)
                 .foregroundStyle(LinearGradient(colors: [Color.accentColor.opacity(0.28), .clear], startPoint: .top, endPoint: .bottom))
@@ -143,11 +125,44 @@ struct HeuteView: View {
         .chartXAxis(.hidden).chartYAxis(.hidden)
         .frame(height: 56)
         .overlay {
-            if wocheDaten.count < 2 {
+            if vm.wocheDaten.count < 2 {
                 Text("Letzte 7 Tage").font(.caption2).foregroundStyle(.secondary)
             }
         }
         .accessibilityLabel("Schmerzverlauf der letzten 7 Tage")
+    }
+
+    // MARK: - Hinweise
+
+    @ViewBuilder
+    private var hinweisKarten: some View {
+        if let schub = vm.schubHinweis {
+            hinweisZeile(
+                symbol: "arrow.up.right.circle.fill", farbe: .orange,
+                titel: "Schmerzen über deinem üblichen Niveau",
+                text: String(format: "Ø %.1f in den letzten 3 Tagen, sonst Ø %.1f. Sprich bei Bedarf mit deiner Ärztin oder deinem Arzt.",
+                             schub.aktuellerMittelwert, schub.baselineMittelwert))
+        }
+        if let moh = vm.uebergebrauch, moh.stufe != .unauffaellig {
+            hinweisZeile(
+                symbol: "pills.circle.fill", farbe: moh.stufe == .ueberschritten ? .red : .orange,
+                titel: moh.stufe == .ueberschritten ? "Viele Tage mit Akutmedikation" : "Akutmedikation häufig",
+                text: "An \(moh.tageMitAkutmedikation) der letzten 30 Tage hast du Akutmedikation genommen (Richtwert: ab \(moh.schwelle) Tagen besprechen). Das ist ein Hinweis, keine Diagnose.")
+        }
+    }
+
+    private func hinweisZeile(symbol: String, farbe: Color, titel: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol).font(.title3).foregroundStyle(farbe)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(titel).font(.subheadline.weight(.semibold))
+                Text(text).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(radius: 20, tint: farbe, padding: 16)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Hauptaktion

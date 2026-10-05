@@ -257,7 +257,7 @@ struct DashboardView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 erwartet += n
                 let g = einnahmeLogs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 eingenommen += min(g, n)
@@ -278,7 +278,7 @@ struct DashboardView: View {
         return medikamente.filter(\.aktiv).map { med in
             let n = notif.anzahlDosen(med.frequenz)
             guard n > 0 else { return 0 }
-            return min(n, heuteLogs.filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung }.count)
+            return min(n, heuteLogs.filter { $0.gehoertZu(med) }.count)
         }.reduce(0, +)
     }
 
@@ -294,7 +294,7 @@ struct DashboardView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 erw += n
                 let g = einnahmeLogs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 ein += min(g, n)

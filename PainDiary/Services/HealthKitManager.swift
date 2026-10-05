@@ -28,25 +28,32 @@ class HealthKitManager {
         #endif
     }
 
+    /// Schlafdauer der letzten Nacht (gestern 18:00 – heute 12:00, Ortszeit).
+    /// Zählt nur echte Schlafphasen (keine „im Bett"/„wach"-Segmente) und vereinigt überlappende
+    /// Segmente mehrerer Quellen (iPhone + Apple Watch), damit nichts doppelt gezählt wird.
     func schlafStundenLetztteNacht() async -> Double? {
         #if canImport(HealthKit)
         guard istVerfuegbar else { return nil }
         guard let schlafTyp = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return nil }
-        let kal = Calendar.current
-        let heute = kal.startOfDay(for: Date())
-        let gestern = kal.date(byAdding: .day, value: -1, to: heute)!
-        let predicate = HKQuery.predicateForSamples(withStart: gestern, end: Date())
+        let fenster = SchlafAggregator.nachtFenster()
+        let predicate = HKQuery.predicateForSamples(withStart: fenster.von, end: fenster.bis, options: [])
+        let schlafWerte: Set<Int> = [
+            HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+            HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+            HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+            HKCategoryValueSleepAnalysis.asleepREM.rawValue
+        ]
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(sampleType: schlafTyp, predicate: predicate,
-                                      limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
-                guard let samples = samples as? [HKCategorySample] else {
+                                      limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                guard error == nil, let samples = samples as? [HKCategorySample] else {
                     continuation.resume(returning: nil); return
                 }
-                let sek = samples
-                    .filter { $0.value != HKCategoryValueSleepAnalysis.inBed.rawValue }
-                    .map { $0.endDate.timeIntervalSince($0.startDate) }
-                    .reduce(0, +)
-                continuation.resume(returning: sek > 0 ? sek / 3600 : nil)
+                let segmente = samples
+                    .filter { schlafWerte.contains($0.value) }
+                    .map { SchlafSegment(start: max($0.startDate, fenster.von), ende: min($0.endDate, fenster.bis)) }
+                let stunden = SchlafAggregator.stunden(aus: segmente)
+                continuation.resume(returning: stunden > 0 ? stunden : nil)
             }
             store.execute(query)
         }

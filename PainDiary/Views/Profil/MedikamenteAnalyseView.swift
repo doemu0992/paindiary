@@ -83,7 +83,7 @@ struct MedikamenteAnalyseView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 erwartet += n
                 let taken = logs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 eingenommen += min(taken, n)
@@ -137,7 +137,7 @@ struct MedikamenteAnalyseView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 erwartet += n
                 let taken = logs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 eingenommen += min(taken, n)
