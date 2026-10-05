@@ -33,6 +33,12 @@ import SwiftData
     var fotoDateiname: String = ""
     var verlauf: String = ""   // "besser" | "gleich" | "schlechter" | ""
 
+    // Datenmodell v2 (lightweight migration — Defaults, Backfill durch DatenPflege)
+    /// `EintragArt.rawValue`; leer = Altdaten, dann gilt die Legacy-Regel (siehe `eintragsArt`).
+    var artRaw: String = ""
+    /// IANA-Zeitzone zum Zeitpunkt der Erfassung (z. B. "Europe/Zurich"); leer = unbekannt.
+    var timeZoneID: String = ""
+
     init(
         datum: Date = .now,
         schmerzstaerke: Int = 5,
@@ -43,9 +49,9 @@ import SwiftData
         begleiterscheinungen: String = "",
         massnahmen: String = "",
         notizen: String = "",
-        stimmung: Int = 3,
+        stimmung: Int = 0,
         schlafStunden: Double = 0,
-        stressLevel: Int = 3,
+        stressLevel: Int = 0,
         morgensteifigkeit: Int = 0,
         istSchub: Bool = false,
         fatigue: Int = 0,
@@ -83,5 +89,33 @@ import SwiftData
         self.hautArt = hautArt
         self.fotoDateiname = fotoDateiname
         self.verlauf = verlauf
+        self.timeZoneID = TimeZone.current.identifier
     }
+}
+
+// MARK: - Abgeleitete Eigenschaften
+
+extension PainEntry {
+    /// Typ des Eintrags. Neue Einträge nutzen `artRaw`, Altdaten fallen auf die Legacy-Regel zurück.
+    var eintragsArt: EintragArt {
+        get {
+            EintragArt(rawValue: artRaw)
+                ?? EintragArt.ausLegacy(koerperstelle: koerperstelle, istHautEintrag: istHautEintrag)
+        }
+        set {
+            artRaw = newValue.rawValue
+            // Legacy-Felder konsistent halten (Exporte, Altlogik)
+            istHautEintrag = newValue == .haut
+            if newValue == .rheuma { koerperstelle = EintragArt.rheumaMarker }
+        }
+    }
+
+    var zeitzone: TimeZone { TimeZone(identifier: timeZoneID) ?? .current }
+
+    /// Kalendertag in der Erfassungs-Zeitzone.
+    var tag: DayKey { DayKey(datum, zeitzone: zeitzone) }
+
+    /// Körperstellen als Liste.
+    var koerperstellenListe: [String] { ListenFeld.parse(koerperstelle) }
+    var ausloeserListe: [String] { ListenFeld.parse(ausloeser) }
 }

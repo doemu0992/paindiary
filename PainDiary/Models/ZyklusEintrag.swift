@@ -28,7 +28,13 @@ import SwiftData
     // Sexual activity
     var sexuelleAktivitaet: String = "" // "geschützt" | "ungeschützt"
 
+    var timeZoneID: String = ""         // IANA-Zeitzone bei Erfassung
+
     init(datum: Date = .now) {
         self.datum = datum
+        self.timeZoneID = TimeZone.current.identifier
     }
+
+    var zeitzone: TimeZone { TimeZone(identifier: timeZoneID) ?? .current }
+    var tag: DayKey { DayKey(datum, zeitzone: zeitzone) }
 }
