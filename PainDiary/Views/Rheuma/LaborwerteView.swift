@@ -181,14 +181,7 @@ struct LaborwertForm: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.teal.opacity(0.15)).frame(height: 3)
-                        Capsule().fill(Color.teal)
-                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
-                            .animation(.easeInOut(duration: 0.3), value: schritt)
-                    }
-                }
+                GlassProgressBar(tint: Color.teal, fortschritt: CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), schritt: schritt)
                 .frame(height: 3).padding(.horizontal).padding(.top, 10)
 
                 Group {
@@ -315,13 +308,13 @@ struct LaborwertForm: View {
                 Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
                     Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(kannWeiter ? Color.teal : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(kannWeiter ? Color.teal : Color.secondary, radius: 12)
                 }.buttonStyle(.plain).disabled(!kannWeiter)
             } else {
                 Button { speichern() } label: {
                     Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(Color.teal, radius: 12)
                 }.buttonStyle(.plain)
             }
         }

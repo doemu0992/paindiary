@@ -240,7 +240,7 @@ struct ImpfForm: View {
         Button { speichern() } label: {
             Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                 .frame(maxWidth: .infinity).padding(.vertical, 14)
-                .background(impfstoff.isEmpty ? Color.secondary : Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                .glassTintBackground(impfstoff.isEmpty ? Color.secondary : Color.teal, radius: 12)
         }
         .buttonStyle(.plain)
         .disabled(impfstoff.isEmpty)

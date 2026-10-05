@@ -119,7 +119,7 @@ struct DiabetesView: View {
                     Label("Diabetes-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
                         .font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(Color.blue, radius: 12)
                 }
                 .buttonStyle(.plain)
             }

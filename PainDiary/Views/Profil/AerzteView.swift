@@ -319,7 +319,7 @@ struct ArztFormView: View {
                 Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
                     Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(kannWeiter ? TINT : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(kannWeiter ? TINT : Color.secondary, radius: 12)
                 }.buttonStyle(.plain).disabled(!kannWeiter)
             } else {
                 Button {
@@ -328,7 +328,7 @@ struct ArztFormView: View {
                 } label: {
                     Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(TINT, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(TINT, radius: 12)
                 }.buttonStyle(.plain)
             }
         }

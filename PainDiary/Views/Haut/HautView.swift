@@ -119,7 +119,7 @@ struct HautView: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.orange, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(Color.orange, radius: 12)
                 }
                 .buttonStyle(.plain)
             }

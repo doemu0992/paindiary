@@ -183,7 +183,7 @@ struct RheumaView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                    .glassTintBackground(Color.teal, radius: 12)
             }
             .buttonStyle(.plain)
         }

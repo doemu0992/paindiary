@@ -122,7 +122,7 @@ struct SchmerzView: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.red, in: RoundedRectangle(cornerRadius: 12))
+                            .glassTintBackground(Color.red, radius: 12)
                     }
                     .buttonStyle(.plain)
                 }

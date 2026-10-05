@@ -155,7 +155,7 @@ struct MigraeneView: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.purple, in: RoundedRectangle(cornerRadius: 12))
+                            .glassTintBackground(Color.purple, radius: 12)
                     }
                     .buttonStyle(.plain)
                 }
@@ -734,7 +734,7 @@ struct MigraeneAnfallForm: View {
                         TextField(aktiveMeds.isEmpty ? "z.B. Sumatriptan 50 mg" : "Anderes Medikament…", text: $freiTextMedikament)
                             .font(.subheadline)
                             .padding(14)
-                            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                            .glassBackground(radius: 12)
                             .submitLabel(.done)
                         if !freiTextMedikament.isEmpty {
                             Button {
@@ -853,7 +853,7 @@ struct MigraeneAnfallForm: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(progressTint, radius: 12)
                 }
                 .buttonStyle(.plain)
             } else {
@@ -863,7 +863,7 @@ struct MigraeneAnfallForm: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(progressTint, radius: 12)
                 }
                 .buttonStyle(.plain)
             }

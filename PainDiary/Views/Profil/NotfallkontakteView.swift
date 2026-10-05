@@ -194,7 +194,7 @@ struct NotfallKontaktFormView: View {
         Button { onSave(name, phone, beziehung); dismiss() } label: {
             Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                 .frame(maxWidth: .infinity).padding(.vertical, 14)
-                .background(name.isEmpty ? Color.secondary : TINT, in: RoundedRectangle(cornerRadius: 12))
+                .glassTintBackground(name.isEmpty ? Color.secondary : TINT, radius: 12)
         }
         .buttonStyle(.plain)
         .disabled(name.isEmpty)

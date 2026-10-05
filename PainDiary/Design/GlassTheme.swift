@@ -368,3 +368,46 @@ struct SchmerzSlider: View {
         }
     }
 }
+
+// MARK: - Wizard-Bausteine
+
+extension View {
+    /// Primär-Aktion in Wizards (Weiter / Speichern): Tint-Verlauf, heller Rand, weicher Glow.
+    /// Drop-in für `.background(tint, in: RoundedRectangle(cornerRadius: N))`.
+    func glassTintBackground(_ tint: Color, radius: CGFloat = 12) -> some View {
+        let form = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return self
+            .background(form.fill(LinearGradient(colors: [tint, tint.opacity(0.8)], startPoint: .top, endPoint: .bottom)))
+            .overlay(
+                form.strokeBorder(
+                    LinearGradient(colors: [.white.opacity(0.55), .white.opacity(0.05)], startPoint: .top, endPoint: .bottom),
+                    lineWidth: 1
+                )
+            )
+            .shadow(color: tint.opacity(0.28), radius: 10, x: 0, y: 5)
+    }
+}
+
+/// Glas-Fortschrittsbalken (Capsule, 3 pt) in Modul-Tint.
+struct GlassProgressBar: View {
+    var tint: Color
+    /// 0...1
+    var fortschritt: CGFloat
+    var schritt: Int = 0
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.ultraThinMaterial)
+                    .overlay(Capsule().fill(tint.opacity(0.15)))
+                Capsule()
+                    .fill(LinearGradient(colors: [tint.opacity(0.7), tint], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: geo.size.width * fortschritt)
+                    .shadow(color: tint.opacity(0.5), radius: 4)
+                    .animation(.easeInOut(duration: 0.3), value: schritt)
+            }
+        }
+        .frame(height: 3)
+        .accessibilityHidden(true)
+    }
+}

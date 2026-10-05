@@ -74,7 +74,7 @@ struct KonsultationsGuideView: View {
                             .font(.subheadline.bold())
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 14))
+                            .glassTintBackground(Color.blue, radius: 14)
                             .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)

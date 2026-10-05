@@ -112,7 +112,7 @@ struct SchlafView: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.indigo, in: RoundedRectangle(cornerRadius: 12))
+                            .glassTintBackground(Color.indigo, radius: 12)
                     }
                     .buttonStyle(.plain)
                 }

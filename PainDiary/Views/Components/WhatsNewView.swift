@@ -87,7 +87,7 @@ struct WhatsNewView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 14))
+                    .glassTintBackground(Color.accentColor, radius: 14)
             }
             .padding(.horizontal, 28)
             .padding(.top, 16)

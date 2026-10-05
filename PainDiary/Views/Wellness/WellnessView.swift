@@ -107,7 +107,7 @@ struct WellnessView: View {
                 Label("Wohlbefinden-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
                     .font(.subheadline.bold()).foregroundStyle(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
-                    .background(Color.mint, in: RoundedRectangle(cornerRadius: 12))
+                    .glassTintBackground(Color.mint, radius: 12)
             }
             .buttonStyle(.plain)
         }

@@ -156,7 +156,7 @@ struct MedikamenteView: View {
                         Label("Medikamenten-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
                             .font(.subheadline.bold()).foregroundStyle(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
+                            .glassTintBackground(Color.blue, radius: 12)
                     }
                     .buttonStyle(.plain)
                 }
@@ -635,14 +635,7 @@ struct MedikamentFormView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.blue.opacity(0.15)).frame(height: 3)
-                        Capsule().fill(Color.blue)
-                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
-                            .animation(.easeInOut(duration: 0.3), value: schritt)
-                    }
-                }
+                GlassProgressBar(tint: Color.blue, fortschritt: CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), schritt: schritt)
                 .frame(height: 3)
                 .padding(.horizontal)
                 .padding(.top, 10)
@@ -925,7 +918,7 @@ struct MedikamentFormView: View {
                     Text("Weiter ›")
                         .font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(kannWeiter ? Color.blue : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(kannWeiter ? Color.blue : Color.secondary, radius: 12)
                 }
                 .buttonStyle(.plain)
                 .disabled(!kannWeiter)
@@ -934,7 +927,7 @@ struct MedikamentFormView: View {
                     Label("Speichern", systemImage: "checkmark")
                         .font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(Color.blue, radius: 12)
                 }
                 .buttonStyle(.plain)
                 .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || frequenz.isEmpty)

@@ -356,7 +356,7 @@ struct PainEntryDetailView: View {
                             .font(.caption.bold())
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
-                            .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
+                            .background(Color.glassFill, in: Capsule())
                             .foregroundStyle(.primary)
                     }
                 }

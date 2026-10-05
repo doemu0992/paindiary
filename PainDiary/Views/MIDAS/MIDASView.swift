@@ -338,7 +338,7 @@ struct MIDASFragebogenView: View {
                         Label("Speichern", systemImage: "checkmark")
                             .font(.subheadline.bold()).foregroundStyle(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(Color.purple, in: RoundedRectangle(cornerRadius: 12))
+                            .glassTintBackground(Color.purple, radius: 12)
                     }
                     .buttonStyle(.plain)
                 }
