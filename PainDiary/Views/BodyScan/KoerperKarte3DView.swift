@@ -187,37 +187,53 @@ enum BodySceneBuilder {
     static let koerperMaske = 1
     static let dekoMaske    = 2
 
-    /// Normalzustand: kaum sichtbares, milchiges Dunkelglas (PBR, transparent, kein Eigenleuchten).
+    /// Frosted-Glass-Shader (Vorlage: blau-weißer Hologramm-Körper). Die Farbe entsteht komplett hier, ohne
+    /// Lichtberechnung → kann nicht überbelichten. Mitte: durchscheinendes Graublau, Rand (Fresnel): milchig-weiß,
+    /// `aktiv` (0…1): leuchtendes Weiß-Blau mit `tint`, fast opak. Ausgabe premultiplied.
+    private static let glasShader = """
+    #pragma arguments
+    float aktiv;
+    float3 tint;
+    #pragma body
+    float3 n = normalize(_surface.normal);
+    float3 v = normalize(_surface.view);
+    float f = pow(1.0 - saturate(dot(n, v)), 1.8);
+    float licht = 0.85 + 0.15 * saturate(dot(n, normalize(float3(-0.35, 0.65, 0.65))));
+    float3 innen = float3(0.50, 0.62, 0.84) * licht;
+    float3 rand  = float3(0.80, 0.89, 1.00);
+    float3 c = mix(innen, rand, f);
+    float a = mix(0.30, 0.78, f);
+    float3 glut = mix(tint, float3(0.92, 0.97, 1.0), 0.45 + 0.25 * f);
+    c = mix(c, glut, aktiv);
+    a = mix(a, 0.92, aktiv);
+    _output.color = float4(c * a, a);
+    """
+
+    /// Normalzustand: milchiges, durchscheinendes Glas.
     static func stileNormal(_ m: SCNMaterial) {
-        m.diffuse.contents   = UIColor(white: 0.8, alpha: 0.15)
-        m.emission.contents  = UIColor.black
-        m.emission.intensity = 0
-        m.roughness.contents = 0.5
-        m.metalness.contents = 0.05
-        m.transparency       = 1
+        m.transparency = 1
+        m.setValue(0.0 as Float, forKey: "aktiv")
+        m.setValue(SCNVector3(0.55, 0.75, 1.0), forKey: "tint")
     }
 
-    /// Aktiver Zustand (ausgewählt / Häufigkeit): weiches, medizinisches Blau (#4A90E2) als Innenleuchten.
-    /// Emission strikt auf 0.4…0.8 begrenzt, damit nichts ins Weiße ausbrennt. `staerke` 0…1.
+    /// Aktiver Zustand (ausgewählt / Häufigkeit): weiches Blau-Weiß-Leuchten. `staerke` 0…1.
     static func stileAktiv(_ m: SCNMaterial, tint: UIColor, staerke: Double) {
-        let s = CGFloat(min(max(staerke, 0), 1))
-        let farbe = tint.mischung(mit: glasGlow, anteil: 0.6)
-        m.diffuse.contents   = farbe.withAlphaComponent(0.35 + 0.25 * s)
-        m.emission.contents  = farbe
-        m.emission.intensity = 0.4 + 0.4 * s
-        m.roughness.contents = 0.5
-        m.metalness.contents = 0.05
-        m.transparency       = 1
+        let s = min(max(staerke, 0), 1)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, al: CGFloat = 0
+        tint.mischung(mit: glasGlow, anteil: 0.6).getRed(&r, green: &g, blue: &b, alpha: &al)
+        m.transparency = 1
+        m.setValue(Float(0.45 + 0.55 * s), forKey: "aktiv")
+        m.setValue(SCNVector3(Float(r), Float(g), Float(b)), forKey: "tint")
     }
 
-    /// Glas-Material: PBR, alpha-geblendet, einseitig mit Tiefenpuffer (kein Flackern). Das Innenleben wird vorher
-    /// gezeichnet (`renderingOrder -1`) und scheint durch.
+    /// Glas-Material: einseitig mit Tiefenpuffer (kein Flackern); Innenleben (`renderingOrder -1`) scheint durch.
     private static func glasMaterial() -> SCNMaterial {
         let m = SCNMaterial()
-        m.lightingModel    = .physicallyBased
-        m.blendMode        = .alpha
-        m.isDoubleSided    = false
-        m.cullMode         = .back
+        m.lightingModel   = .constant
+        m.diffuse.contents = UIColor.white
+        m.isDoubleSided   = false
+        m.cullMode        = .back
+        m.shaderModifiers = [.fragment: glasShader]
         stileNormal(m)
         return m
     }
