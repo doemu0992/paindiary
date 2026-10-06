@@ -190,10 +190,10 @@ enum BodySceneBuilder {
     /// Inaktives Frosted Glass: fast durchsichtiges Eisblau (α 0,15), milchig durch Roughness 0,42,
     /// Clearcoat als scharfe Außenhaut, keine Emission.
     static func stileNormal(_ m: SCNMaterial) {
-        m.diffuse.contents           = UIColor(red: 0.9, green: 0.95, blue: 1.0, alpha: 0.15)
+        m.diffuse.contents           = UIColor(red: 0.9, green: 0.95, blue: 1.0, alpha: 0.3)
         m.roughness.contents         = 0.42
         m.metalness.contents         = 0.1
-        m.clearCoat.contents         = 0.5
+        m.clearCoat.contents         = 1.0
         m.clearCoatRoughness.contents = 0.1
         m.emission.contents          = UIColor.black
         m.emission.intensity         = 0
@@ -353,7 +353,7 @@ enum BodySceneBuilder {
         ambient.light = SCNLight()
         ambient.light?.type = .ambient
         ambient.light?.color = ambientFarbe
-        ambient.light?.intensity = 250   // 0,25
+        ambient.light?.intensity = 550   // 0,55
         scene.rootNode.addChildNode(ambient)
 
         func richtung(_ farbe: UIColor, _ pos: SCNVector3, _ intensitaet: CGFloat) {
@@ -367,8 +367,8 @@ enum BodySceneBuilder {
             scene.rootNode.addChildNode(n)
             n.look(at: SCNVector3Zero)
         }
-        richtung(glasGlow,     SCNVector3(-4,  6,  5), 400)   // #4A90E2, 0,4, oben links
-        richtung(lichtViolett, SCNVector3( 4, -5,  5), 200)   // #8A2BE2, 0,2, unten rechts
+        richtung(glasGlow,     SCNVector3(-4,  6,  5), 700)   // #4A90E2, 0,4, oben links
+        richtung(lichtViolett, SCNVector3( 4, -5,  5), 450)   // #8A2BE2, 0,2, unten rechts
     }
 
     // MARK: USDZ-Körper (body.obj, mit tools/segment_body_obj.py in 42 Regionen zerschnitten)
@@ -426,7 +426,6 @@ enum BodySceneBuilder {
         let breite = Float(p.schulterBreite / 0.42)
         let basis: Float = 1.0           // Modell ist in Metern modelliert (1.76 m hoch)
         container.scale = SCNVector3(basis * breite, basis * hoehe, basis * hoehe)
-        addGelenke(to: container)
         body.addChildNode(container)
         return true
     }
