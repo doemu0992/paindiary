@@ -187,51 +187,54 @@ enum BodySceneBuilder {
     static let koerperMaske = 1
     static let dekoMaske    = 2
 
-    /// Fresnel-Glas: Mitte fast durchsichtig, Rand milchig-weiß leuchtend; `aktiv` (0…1) macht das Teil
-    /// opak und hell. Ausgabe ist premultiplied.
+    /// Fresnel-Glas, vollständig im Shader gefärbt (kein PBR → nichts wird überbelichtet):
+    /// Mitte durchscheinend blau, Rand milchig-weiß. `aktiv` (0…1) färbt mit `tint` und macht das Teil opak.
+    /// Ausgabe ist premultiplied.
     private static let glasShader = """
     #pragma arguments
     float aktiv;
+    float3 tint;
     #pragma body
-    float4 roh = _output.color;
-    float3 c = roh.rgb / max(roh.a, 0.001);
-    float f = 1.0 - saturate(dot(normalize(_surface.normal), normalize(_surface.view)));
-    f = pow(f, 2.0);
-    float a = mix(0.20, 0.88, f);
-    a = mix(a, 0.95, aktiv * 0.85);
-    c += (0.55 * f + 0.45 * aktiv) * float3(0.60, 0.80, 1.0);
+    float3 n = normalize(_surface.normal);
+    float3 v = normalize(_surface.view);
+    float ndv = saturate(dot(n, v));
+    float f = pow(1.0 - ndv, 2.2);
+    float licht = 0.80 + 0.20 * saturate(dot(n, normalize(float3(-0.4, 0.7, 0.6))));
+    float3 innen = float3(0.40, 0.58, 0.92) * licht;
+    float3 rand  = float3(0.86, 0.94, 1.00);
+    float3 c = mix(innen, rand, f);
+    float a = mix(0.26, 0.82, f);
+    float3 glut = mix(tint, float3(1.0), 0.35 + 0.25 * f);
+    c = mix(c, glut, aktiv);
+    a = mix(a, 0.96, aktiv);
     _output.color = float4(c * a, a);
     """
 
     /// Normalzustand eines Körperteils: milchiges, bläulich-weißes Glas.
     static func stileNormal(_ m: SCNMaterial) {
-        m.diffuse.contents   = glasFarbe
-        m.emission.contents  = glasGlow
-        m.emission.intensity = 0.08
-        m.transparency       = 1
+        m.transparency = 1
         m.setValue(0.0 as Float, forKey: "aktiv")
+        m.setValue(SCNVector3(0.8, 0.9, 1.0), forKey: "tint")
     }
 
     /// Aktiver Zustand (ausgewählt / Häufigkeit): hell leuchtend, kaum noch durchsichtig. `staerke` 0…1.
     static func stileAktiv(_ m: SCNMaterial, tint: UIColor, staerke: Double) {
-        let s = CGFloat(min(max(staerke, 0), 1))
-        m.diffuse.contents   = tint.mischung(mit: .white, anteil: 0.55)
-        m.emission.contents  = tint.mischung(mit: glasGlow, anteil: 0.5)
-        m.emission.intensity = 0.45 + 0.55 * s
-        m.transparency       = 1
+        let s = min(max(staerke, 0), 1)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, al: CGFloat = 0
+        tint.mischung(mit: glasGlow, anteil: 0.35).getRed(&r, green: &g, blue: &b, alpha: &al)
+        m.transparency = 1
         m.setValue(Float(0.35 + 0.65 * s), forKey: "aktiv")
+        m.setValue(SCNVector3(Float(r), Float(g), Float(b)), forKey: "tint")
     }
 
-    /// Glas-Material (PBR, dual-layer + Fresnel-Shader). Schreibt nicht in den Tiefenpuffer,
-    /// damit das Innenleben (Gelenke, Wirbelsäule) durchscheint.
+    /// Glas-Material: einseitig mit Tiefenpuffer (keine Flackerartefakte); Innenleben wird vorher gezeichnet
+    /// (`renderingOrder -1`) und scheint durch den halbtransparenten Körper.
     private static func glasMaterial() -> SCNMaterial {
         let m = SCNMaterial()
-        m.lightingModel       = .physicallyBased
-        m.roughness.contents  = 0.35
-        m.metalness.contents  = 0.10
-        m.transparencyMode    = .dualLayer
-        m.isDoubleSided       = true
-        m.writesToDepthBuffer = false
+        m.lightingModel       = .constant
+        m.diffuse.contents    = UIColor.white
+        m.isDoubleSided       = false
+        m.cullMode            = .back
         m.shaderModifiers     = [.fragment: glasShader]
         stileNormal(m)
         return m
@@ -273,7 +276,7 @@ enum BodySceneBuilder {
         for seite in ["links", "rechts"] {
             let schulter = mitte("Schulter \(seite)")
             let ellbogen = mitte("Ellbogen \(seite)")
-            let hand     = mitte("Handfläche \(seite)", oben: true)
+            let hand     = mitte("Unterarm \(seite)", unten: true)
             let hueft    = mitte("Oberschenkel vorne \(seite)", oben: true)
             let knie     = mitte("Kniescheibe \(seite)")
             let fuss     = mitte("Schienbein \(seite)", unten: true)
@@ -286,19 +289,6 @@ enum BodySceneBuilder {
             if let e = ellbogen, let h = hand { container.addChildNode(stab(von: e, bis: h)) }
             if let h = hueft, let k = knie { container.addChildNode(stab(von: h, bis: k)) }
             if let k = knie, let f = fuss { container.addChildNode(stab(von: k, bis: f)) }
-        }
-        // Halswirbel: gestapelte flache Scheiben
-        if let n = mitte("Nacken") {
-            for i in 0..<5 {
-                let r = 0.020 - 0.0012 * CGFloat(i)
-                let y = n.y + 0.045 - 0.022 * Float(i)
-                container.addChildNode(deko(SCNCylinder(radius: r, height: 0.016), SCNVector3(0, y, n.z + 0.01)))
-            }
-        }
-        // Mittellinie Brustbein
-        if let br = mitte("Brust"), let ba = mitte("Bauch") {
-            container.addChildNode(stab(von: SCNVector3(0, br.y + 0.08, br.z + 0.07),
-                                        bis: SCNVector3(0, ba.y - 0.05, ba.z + 0.07), radius: 0.0025))
         }
     }
 
