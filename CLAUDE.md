@@ -59,6 +59,16 @@ Services/              Export (CSV v2), BackupService (JSON), HealthKit, Wetter,
 
 ---
 
+## 3D-Körper (USDZ, bindend)
+
+- Der Körper in Picker und Heatmap ist `PainDiary/Resources/KoerperGlas.usdz` (aus dem Meshy-Quellmodell `tools/source/Meshy_Holographic_Human.usdz`). **Nie von Hand ändern**, sondern mit `python3 tools/segment_body.py` neu erzeugen (`pip install usd-core numpy`).
+- Das Skript zerlegt das Einzelmesh in 41 Regionen (Vorder-/Rückseite über die Flächennormale). Prim-Namen sind ASCII; `BodySceneBuilder.usdzRegionen` ordnet sie den Knotennamen aus `SubRegionen` zu. Konvention: **links = x < 0** (links im Bild bei Frontansicht).
+- Fehlt die Datei oder sind < 30 Regionen ladbar, fällt `BodySceneBuilder` auf den prozeduralen Körper zurück. Die Gelenk-Ansicht (`GelenkKoerperView`) nutzt bewusst immer den prozeduralen Körper (`build(_, mitUSDZ: false)`).
+- Fein aufgelöste Regionen (z. B. „Wade links") leuchten auch, wenn nur die Oberregion („Unterschenkel links") gespeichert ist: `SubRegionen.elternIndex`. Neue Teilregionen immer in `SubRegionen.map` eintragen (Seitenbezeichner!).
+- Glas-Material: PBR (roughness 0.35, metalness 0.1), Stile über `BodySceneBuilder.stileNormal/stileAktiv` — nie Materialien direkt setzen.
+
+---
+
 ## Module-Tint Colors
 
 | Modul | Primärfarbe | `progressTint` |

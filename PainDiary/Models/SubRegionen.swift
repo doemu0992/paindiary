@@ -39,6 +39,16 @@ enum SubRegionen {
                         "Fußsohle rechts", "Ferse rechts", "Fußspann rechts"]
     ]
 
+    /// Umkehrung von `map`: Teilregion → übergeordnete Regionen (z. B. „Wade links" → „Unterschenkel links").
+    /// Damit leuchten fein aufgelöste Körperteile auch, wenn nur die Oberregion gespeichert wurde (Altdaten).
+    static let elternIndex: [String: [String]] = {
+        var index: [String: [String]] = [:]
+        for (eltern, kinder) in map {
+            for kind in kinder { index[kind, default: []].append(eltern) }
+        }
+        return index
+    }()
+
     /// Skin-surface-only sub-regions (no internal anatomy, no bones)
     static let hautMap: [String: [String]] = [
         "Kopf": ["Stirn", "Schläfe links", "Schläfe rechts", "Wange links", "Wange rechts",

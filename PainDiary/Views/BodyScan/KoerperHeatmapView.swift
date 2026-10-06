@@ -31,7 +31,10 @@ struct KoerperHeatmapView: UIViewRepresentable {
             let direct = intensitaeten[name] ?? 0
             let viaSubRegion = SubRegionen.map[name]?
                 .compactMap { intensitaeten[$0] }.max() ?? 0
-            let intensity = max(direct, viaSubRegion)
+            // Fein aufgelöste Körperteile (z. B. „Wade links") erben die Intensität ihrer Oberregion
+            let viaEltern = SubRegionen.elternIndex[name]?
+                .compactMap { intensitaeten[$0] }.max() ?? 0
+            let intensity = max(direct, viaSubRegion, viaEltern)
 
             node.geometry?.materials.forEach { mat in
                 if intensity > 0 {

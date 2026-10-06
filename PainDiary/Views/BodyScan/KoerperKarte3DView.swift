@@ -45,6 +45,7 @@ struct KoerperKarte3DView: UIViewRepresentable {
             guard let name = node.name else { return }
             let isSelected = ausgewaehlt.contains(name)
                 || (SubRegionen.map[name]?.contains { ausgewaehlt.contains($0) } ?? false)
+                || (SubRegionen.elternIndex[name]?.contains { ausgewaehlt.contains($0) } ?? false)
             node.geometry?.materials.forEach { mat in
                 if isSelected {
                     BodySceneBuilder.stileAktiv(mat, tint: tintColor, staerke: 1)
@@ -109,7 +110,9 @@ struct KoerperKarte3DView: UIViewRepresentable {
                 SCNHitTestOption.categoryBitMask: BodySceneBuilder.koerperMaske
             ])
             guard let name = hits.compactMap({ $0.node.name }).first else { return }
-            let resolved = isFrontView ? name : (backMap[name] ?? name)
+            // Beim USDZ-Körper sind Vorder- und Rückseite eigene Regionen → keine Umdeutung nötig
+            let hatUSDZ = v.scene?.rootNode.childNode(withName: "usdzKoerper", recursively: true) != nil
+            let resolved = (hatUSDZ || isFrontView) ? name : (backMap[name] ?? name)
             onTap(resolved)
         }
 
@@ -165,28 +168,34 @@ enum BodySceneBuilder {
         m.transparency       = 0.65 + 0.30 * s
     }
 
-    /// Glas-Material (Blinn + Fresnel-Rand + Dual-Layer-Transparenz).
+    /// Glas-Material (PBR wie im RealityKit-Beispiel: roughness 0.35, metallic 0.1; Dual-Layer-Transparenz).
     private static func glasMaterial() -> SCNMaterial {
         let m = SCNMaterial()
-        m.lightingModel       = .blinn
-        m.specular.contents   = UIColor(white: 0.85, alpha: 1)
-        m.shininess           = 25
-        m.fresnelExponent     = 1.4
+        m.lightingModel       = .physicallyBased
+        m.roughness.contents  = 0.35      // Milchglas: Rauheit bricht das Licht weich
+        m.metalness.contents  = 0.10
         m.transparencyMode    = .dualLayer
         m.isDoubleSided       = true
         stileNormal(m)
         return m
     }
 
-    static func build(_ p: BodyProportionen) -> SCNScene {
+    /// - Parameter mitUSDZ: `false` erzwingt den prozeduralen Körper (nötig für die Gelenk-Ansicht, deren
+    ///   Marker auf die prozeduralen Proportionen abgestimmt sind).
+    static func build(_ p: BodyProportionen, mitUSDZ: Bool = true) -> SCNScene {
         let scene = SCNScene()
         scene.background.contents = hintergrundBild()
+        // Weiche Umgebungsbeleuchtung für das PBR-Glas
+        scene.lightingEnvironment.contents = UIColor(red: 0.30, green: 0.38, blue: 0.58, alpha: 1)
+        scene.lightingEnvironment.intensity = 0.8
         addLights(to: scene)
         addCamera(to: scene)
 
         let body = SCNNode()
         body.name = "body"
-        addParts(to: body, p: p)
+        if !(mitUSDZ && addUSDZParts(to: body, p: p)) {
+            addParts(to: body, p: p)   // Fallback: prozeduraler Körper
+        }
 
         let (lo, hi) = body.boundingBox
         body.position.y = -(lo.y + (hi.y - lo.y) / 2)
@@ -258,6 +267,63 @@ enum BodySceneBuilder {
         richtung(lichtViolett, SCNVector3(-5, -5, -5),  800)
         // Weiches Frontlicht, damit die Vorderseite lesbar bleibt
         richtung(.white,       SCNVector3( 0,  2,  6),  350)
+    }
+
+    // MARK: USDZ-Körper (Meshy-Modell, mit tools/segment_body.py in Regionen zerlegt)
+
+    /// Prim-Name im USDZ → Knotenname (= Name in `SubRegionen`, Konvention: links = x < 0).
+    static let usdzRegionen: [String: String] = {
+        var d: [String: String] = [
+            "Kopf": "Kopf", "Hals": "Hals", "Nacken": "Nacken", "Brust": "Brust",
+            "Ruecken_oben": "Rücken oben", "Bauch": "Bauch", "Ruecken_unten": "Rücken unten",
+            "Huefte": "Hüfte", "Gesaess": "Gesäss",
+        ]
+        let seitig: [(String, String)] = [
+            ("Schulter", "Schulter"), ("Bizeps", "Bizeps"), ("Trizeps", "Trizeps"),
+            ("Ellbogen", "Ellbogen"), ("Unterarm", "Unterarm"), ("Hand", "Hand"),
+            ("Oberschenkel_vorne", "Oberschenkel vorne"), ("Oberschenkel_hinten", "Oberschenkel hinten"),
+            ("Kniescheibe", "Kniescheibe"), ("Kniekehle", "Kniekehle"),
+            ("Schienbein", "Schienbein"), ("Wade", "Wade"), ("Knoechel", "Knöchel"),
+            ("Fussspann", "Fußspann"), ("Fussohle", "Fußsohle"), ("Ferse", "Ferse"),
+        ]
+        for (id, anzeige) in seitig {
+            d["\(id)_links"] = "\(anzeige) links"
+            d["\(id)_rechts"] = "\(anzeige) rechts"
+        }
+        return d
+    }()
+
+    /// Lädt `KoerperGlas.usdz` und hängt jede Region als eigenen, benannten Knoten an `body`.
+    /// Gibt `false` zurück, wenn die Datei fehlt oder unvollständig ist (dann greift der prozedurale Körper).
+    private static func addUSDZParts(to body: SCNNode, p: BodyProportionen) -> Bool {
+        guard let url = Bundle.main.url(forResource: "KoerperGlas", withExtension: "usdz"),
+              let quelle = try? SCNScene(url: url, options: nil) else { return false }
+
+        let container = SCNNode()
+        container.name = "usdzKoerper"
+        var anzahl = 0
+        quelle.rootNode.enumerateHierarchy { node, _ in
+            guard let geo = node.geometry else { return }
+            let id = node.name ?? geo.name ?? ""
+            guard let anzeige = usdzRegionen[id] else { return }
+            geo.materials = [glasMaterial()]
+            let teil = SCNNode(geometry: geo)
+            teil.name = anzeige
+            teil.transform = node.worldTransform
+            teil.categoryBitMask = koerperMaske
+            container.addChildNode(teil)
+            anzahl += 1
+        }
+        // Erwartet: 41 Regionen. Deutlich weniger → Datei/Importer passt nicht → Fallback
+        guard anzahl >= 30 else { return false }
+
+        // Personalisierung (Körperscan): Höhe → Gesamtskalierung, Schulterbreite → X-Skalierung
+        let hoehe = Float(p.geschaetzteGroesseCM / 164.5)
+        let breite = Float(p.schulterBreite / 0.42)
+        let basis: Float = 0.9           // Modell ist 1.9 hoch, Kamera/Rahmen sind auf ca. 1.7 ausgelegt
+        container.scale = SCNVector3(basis * breite, basis * hoehe, basis * hoehe)
+        body.addChildNode(container)
+        return true
     }
 
     // MARK: Camera

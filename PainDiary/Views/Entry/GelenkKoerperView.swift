@@ -112,7 +112,7 @@ struct GelenkKoerperView: UIViewRepresentable {
 
     static func buildScene() -> SCNScene {
         let p = BodyProportionen.standard
-        let scene = BodySceneBuilder.build(p)
+        let scene = BodySceneBuilder.build(p, mitUSDZ: false)
         guard let body = scene.rootNode.childNode(withName: "body", recursively: false) else {
             return scene
         }
