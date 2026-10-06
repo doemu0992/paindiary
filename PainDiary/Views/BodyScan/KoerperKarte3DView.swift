@@ -187,53 +187,36 @@ enum BodySceneBuilder {
     static let koerperMaske = 1
     static let dekoMaske    = 2
 
-    /// Frosted-Glass-Shader (Vorlage: blau-weißer Hologramm-Körper). Die Farbe entsteht komplett hier, ohne
-    /// Lichtberechnung → kann nicht überbelichten. Mitte: durchscheinendes Graublau, Rand (Fresnel): milchig-weiß,
-    /// `aktiv` (0…1): leuchtendes Weiß-Blau mit `tint`, fast opak. Ausgabe premultiplied.
-    private static let glasShader = """
-    #pragma arguments
-    float aktiv;
-    float3 tint;
-    #pragma body
-    float3 n = normalize(_surface.normal);
-    float3 v = normalize(_surface.view);
-    float f = pow(1.0 - saturate(dot(n, v)), 1.8);
-    float licht = 0.85 + 0.15 * saturate(dot(n, normalize(float3(-0.35, 0.65, 0.65))));
-    float3 innen = float3(0.50, 0.62, 0.84) * licht;
-    float3 rand  = float3(0.80, 0.89, 1.00);
-    float3 c = mix(innen, rand, f);
-    float a = mix(0.30, 0.78, f);
-    float3 glut = mix(tint, float3(0.92, 0.97, 1.0), 0.45 + 0.25 * f);
-    c = mix(c, glut, aktiv);
-    a = mix(a, 0.92, aktiv);
-    _output.color = float4(c * a, a);
-    """
-
-    /// Normalzustand: milchiges, durchscheinendes Glas.
+    /// Inaktives Frosted Glass: fast durchsichtiges Eisblau (α 0,15), milchig durch Roughness 0,42,
+    /// Clearcoat als scharfe Außenhaut, keine Emission.
     static func stileNormal(_ m: SCNMaterial) {
-        m.transparency = 1
-        m.setValue(0.0 as Float, forKey: "aktiv")
-        m.setValue(SCNVector3(0.55, 0.75, 1.0), forKey: "tint")
+        m.diffuse.contents           = UIColor(red: 0.9, green: 0.95, blue: 1.0, alpha: 0.15)
+        m.roughness.contents         = 0.42
+        m.metalness.contents         = 0.1
+        m.clearCoat.contents         = 0.5
+        m.clearCoatRoughness.contents = 0.1
+        m.emission.contents          = UIColor.black
+        m.emission.intensity         = 0
+        m.transparency               = 1
     }
 
-    /// Aktiver Zustand (ausgewählt / Häufigkeit): weiches Blau-Weiß-Leuchten. `staerke` 0…1.
+    /// Aktiv (ausgewählt / Heatmap): identische transparente Basis, nur weiches Innenleuchten in #4A90E2.
+    /// Emission strikt 0,6…0,7 (nie weiß ausbrennend). `staerke` 0…1 variiert nur innerhalb dieser Spanne.
     static func stileAktiv(_ m: SCNMaterial, tint: UIColor, staerke: Double) {
-        let s = min(max(staerke, 0), 1)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, al: CGFloat = 0
-        tint.mischung(mit: glasGlow, anteil: 0.6).getRed(&r, green: &g, blue: &b, alpha: &al)
-        m.transparency = 1
-        m.setValue(Float(0.45 + 0.55 * s), forKey: "aktiv")
-        m.setValue(SCNVector3(Float(r), Float(g), Float(b)), forKey: "tint")
+        let s = CGFloat(min(max(staerke, 0), 1))
+        stileNormal(m)
+        m.emission.contents  = glasGlow
+        m.emission.intensity = 0.6 + 0.1 * s
     }
 
-    /// Glas-Material: einseitig mit Tiefenpuffer (kein Flackern); Innenleben (`renderingOrder -1`) scheint durch.
+    /// Glas-Material: PBR, alpha-transparent, einseitig mit Tiefenpuffer (kein Flackern);
+    /// Innenleben (`renderingOrder -1`) scheint durch.
     private static func glasMaterial() -> SCNMaterial {
         let m = SCNMaterial()
-        m.lightingModel   = .constant
-        m.diffuse.contents = UIColor.white
-        m.isDoubleSided   = false
-        m.cullMode        = .back
-        m.shaderModifiers = [.fragment: glasShader]
+        m.lightingModel = .physicallyBased
+        m.blendMode     = .alpha
+        m.isDoubleSided = false
+        m.cullMode      = .back
         stileNormal(m)
         return m
     }
@@ -294,10 +277,10 @@ enum BodySceneBuilder {
     ///   Marker auf die prozeduralen Proportionen abgestimmt sind).
     static func build(_ p: BodyProportionen, mitUSDZ: Bool = true) -> SCNScene {
         let scene = SCNScene()
-        scene.background.contents = hintergrundBild()
+        scene.background.contents = hintergrund   // #0D0D12
         // Weiche Umgebungsbeleuchtung für das PBR-Glas
-        scene.lightingEnvironment.contents = UIColor(red: 0.06, green: 0.07, blue: 0.14, alpha: 1)
-        scene.lightingEnvironment.intensity = 0.25
+        scene.lightingEnvironment.contents = nil   // keine Raumbeleuchtung
+        scene.lightingEnvironment.intensity = 0
         addLights(to: scene)
         addCamera(to: scene)
 
@@ -370,7 +353,7 @@ enum BodySceneBuilder {
         ambient.light = SCNLight()
         ambient.light?.type = .ambient
         ambient.light?.color = ambientFarbe
-        ambient.light?.intensity = 150
+        ambient.light?.intensity = 250   // 0,25
         scene.rootNode.addChildNode(ambient)
 
         func richtung(_ farbe: UIColor, _ pos: SCNVector3, _ intensitaet: CGFloat) {
@@ -384,10 +367,8 @@ enum BodySceneBuilder {
             scene.rootNode.addChildNode(n)
             n.look(at: SCNVector3Zero)
         }
-        richtung(glasGlow,     SCNVector3( 5, 10,  5), 450)
-        richtung(lichtViolett, SCNVector3(-5, -5, -5),  300)
-        // Weiches Frontlicht, damit die Vorderseite lesbar bleibt
-        richtung(.white,       SCNVector3( 0,  2,  6),  120)
+        richtung(glasGlow,     SCNVector3(-4,  6,  5), 400)   // #4A90E2, 0,4, oben links
+        richtung(lichtViolett, SCNVector3( 4, -5,  5), 200)   // #8A2BE2, 0,2, unten rechts
     }
 
     // MARK: USDZ-Körper (body.obj, mit tools/segment_body_obj.py in 42 Regionen zerschnitten)
