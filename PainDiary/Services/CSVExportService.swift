@@ -202,12 +202,12 @@ enum CSVExportService {
 
     // MARK: - Bausteine
 
-    static func tabelle(_ kopf: [String], _ zeilen: [[String]]) -> String {
-        ([kopf.map(escape)] + zeilen).map { $0.joined(separator: ",") }.joined(separator: "\n")
+    nonisolated static func tabelle(_ kopf: [String], _ zeilen: [[String]]) -> String {
+        ([kopf.map { escape($0) }] + zeilen).map { $0.joined(separator: ",") }.joined(separator: "\n")
     }
 
     /// RFC-4180-Quoting + Schutz vor Formel-Injection.
-    static func escape(_ s: String) -> String {
+    nonisolated static func escape(_ s: String) -> String {
         var text = s
         if let erstes = text.unicodeScalars.first, ["=", "+", "-", "@", "\t", "\r"].contains(Character(erstes)) {
             text = "'" + text
@@ -217,7 +217,7 @@ enum CSVExportService {
     }
 
     /// Kompatibilität mit bisherigem Namen.
-    static func csvEscape(_ s: String) -> String { escape(s) }
+    nonisolated static func csvEscape(_ s: String) -> String { escape(s) }
 
     /// ISO 8601 mit Offset in der angegebenen Zeitzone (z. B. 2026-10-05T14:30:00+02:00).
     static func iso(_ datum: Date, _ zone: TimeZone) -> String {
