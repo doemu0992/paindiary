@@ -1,5 +1,6 @@
 import SwiftUI
 import SceneKit
+import simd
 
 // MARK: - SwiftUI wrapper
 
@@ -186,33 +187,119 @@ enum BodySceneBuilder {
     static let koerperMaske = 1
     static let dekoMaske    = 2
 
-    /// Normalzustand eines Körperteils: halbtransparentes, mattes Glas mit schwachem Eigenleuchten.
+    /// Fresnel-Glas: Mitte fast durchsichtig, Rand milchig-weiß leuchtend; `aktiv` (0…1) macht das Teil
+    /// opak und hell. Ausgabe ist premultiplied.
+    private static let glasShader = """
+    #pragma arguments
+    float aktiv;
+    #pragma body
+    float4 roh = _output.color;
+    float3 c = roh.rgb / max(roh.a, 0.001);
+    float f = 1.0 - saturate(dot(normalize(_surface.normal), normalize(_surface.view)));
+    f = pow(f, 2.0);
+    float a = mix(0.20, 0.88, f);
+    a = mix(a, 0.95, aktiv * 0.85);
+    c += (0.55 * f + 0.45 * aktiv) * float3(0.60, 0.80, 1.0);
+    _output.color = float4(c * a, a);
+    """
+
+    /// Normalzustand eines Körperteils: milchiges, bläulich-weißes Glas.
     static func stileNormal(_ m: SCNMaterial) {
-        m.diffuse.contents      = glasFarbe
-        m.emission.contents     = glasGlow
-        m.emission.intensity    = 0.12
-        m.transparency          = 0.55
+        m.diffuse.contents   = glasFarbe
+        m.emission.contents  = glasGlow
+        m.emission.intensity = 0.08
+        m.transparency       = 1
+        m.setValue(0.0 as Float, forKey: "aktiv")
     }
 
-    /// Aktiver Zustand (ausgewählt / Häufigkeit): getönt, leuchtend, fast opak. `staerke` 0…1.
+    /// Aktiver Zustand (ausgewählt / Häufigkeit): hell leuchtend, kaum noch durchsichtig. `staerke` 0…1.
     static func stileAktiv(_ m: SCNMaterial, tint: UIColor, staerke: Double) {
         let s = CGFloat(min(max(staerke, 0), 1))
-        m.diffuse.contents   = tint.mischung(mit: .white, anteil: 0.30)
-        m.emission.contents  = tint
-        m.emission.intensity = 0.35 + 0.55 * s
-        m.transparency       = 0.65 + 0.30 * s
+        m.diffuse.contents   = tint.mischung(mit: .white, anteil: 0.55)
+        m.emission.contents  = tint.mischung(mit: glasGlow, anteil: 0.5)
+        m.emission.intensity = 0.45 + 0.55 * s
+        m.transparency       = 1
+        m.setValue(Float(0.35 + 0.65 * s), forKey: "aktiv")
     }
 
-    /// Glas-Material (PBR wie im RealityKit-Beispiel: roughness 0.35, metallic 0.1; Dual-Layer-Transparenz).
+    /// Glas-Material (PBR, dual-layer + Fresnel-Shader). Schreibt nicht in den Tiefenpuffer,
+    /// damit das Innenleben (Gelenke, Wirbelsäule) durchscheint.
     private static func glasMaterial() -> SCNMaterial {
         let m = SCNMaterial()
         m.lightingModel       = .physicallyBased
-        m.roughness.contents  = 0.35      // Milchglas: Rauheit bricht das Licht weich
+        m.roughness.contents  = 0.35
         m.metalness.contents  = 0.10
         m.transparencyMode    = .dualLayer
         m.isDoubleSided       = true
+        m.writesToDepthBuffer = false
+        m.shaderModifiers     = [.fragment: glasShader]
         stileNormal(m)
         return m
+    }
+
+    // MARK: Innenleben (Skelett-Andeutung, nicht tappbar)
+
+    private static func deko(_ geo: SCNGeometry, _ pos: SCNVector3) -> SCNNode {
+        let m = SCNMaterial()
+        m.lightingModel      = .constant
+        m.diffuse.contents   = UIColor(red: 0.80, green: 0.90, blue: 1.0, alpha: 1)
+        m.emission.contents  = glasGlow
+        m.emission.intensity = 0.35
+        geo.materials = [m]
+        let n = SCNNode(geometry: geo)
+        n.position = pos
+        n.categoryBitMask = dekoMaske
+        n.renderingOrder = -1
+        return n
+    }
+
+    private static func stab(von a: SCNVector3, bis b: SCNVector3, radius: CGFloat = 0.0035) -> SCNNode {
+        let d = simd_float3(b.x - a.x, b.y - a.y, b.z - a.z)
+        let len = simd_length(d)
+        let zyl = SCNCylinder(radius: radius, height: CGFloat(len))
+        let n = deko(zyl, SCNVector3((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2))
+        n.simdOrientation = simd_quatf(from: simd_float3(0, 1, 0), to: d / max(len, 1e-6))
+        return n
+    }
+
+    /// Gelenkkugeln + Knochenlinien + Halswirbel im Container-Koordinatensystem.
+    private static func addGelenke(to container: SCNNode) {
+        func mitte(_ name: String, oben: Bool = false, unten: Bool = false) -> SCNVector3? {
+            guard let n = container.childNode(withName: name, recursively: false) else { return nil }
+            let (lo, hi) = n.boundingBox
+            let y = oben ? hi.y : (unten ? lo.y : (lo.y + hi.y) / 2)
+            return n.convertPosition(SCNVector3((lo.x + hi.x) / 2, y, (lo.z + hi.z) / 2), to: container)
+        }
+        for seite in ["links", "rechts"] {
+            let schulter = mitte("Schulter \(seite)")
+            let ellbogen = mitte("Ellbogen \(seite)")
+            let hand     = mitte("Handfläche \(seite)", oben: true)
+            let hueft    = mitte("Oberschenkel vorne \(seite)", oben: true)
+            let knie     = mitte("Kniescheibe \(seite)")
+            let fuss     = mitte("Schienbein \(seite)", unten: true)
+            func kugel(_ p: SCNVector3?, _ r: CGFloat) {
+                if let p { container.addChildNode(deko(SCNSphere(radius: r), p)) }
+            }
+            kugel(schulter, 0.034); kugel(ellbogen, 0.026); kugel(knie, 0.040)
+            if var h = hueft { h.x *= 0.8; h.z = 0; container.addChildNode(deko(SCNSphere(radius: 0.060), h)) }
+            if let s = schulter, let e = ellbogen { container.addChildNode(stab(von: s, bis: e)) }
+            if let e = ellbogen, let h = hand { container.addChildNode(stab(von: e, bis: h)) }
+            if let h = hueft, let k = knie { container.addChildNode(stab(von: h, bis: k)) }
+            if let k = knie, let f = fuss { container.addChildNode(stab(von: k, bis: f)) }
+        }
+        // Halswirbel: gestapelte flache Scheiben
+        if let n = mitte("Nacken") {
+            for i in 0..<5 {
+                let r = 0.020 - 0.0012 * CGFloat(i)
+                let y = n.y + 0.045 - 0.022 * Float(i)
+                container.addChildNode(deko(SCNCylinder(radius: r, height: 0.016), SCNVector3(0, y, n.z + 0.01)))
+            }
+        }
+        // Mittellinie Brustbein
+        if let br = mitte("Brust"), let ba = mitte("Bauch") {
+            container.addChildNode(stab(von: SCNVector3(0, br.y + 0.08, br.z + 0.07),
+                                        bis: SCNVector3(0, ba.y - 0.05, ba.z + 0.07), radius: 0.0025))
+        }
     }
 
     /// - Parameter mitUSDZ: `false` erzwingt den prozeduralen Körper (nötig für die Gelenk-Ansicht, deren
@@ -242,20 +329,31 @@ enum BodySceneBuilder {
 
     // MARK: Dekoration
 
-    /// Dunkler Verlauf mit weichem blauem Schein (Hologramm-Bühne).
+    /// Dunkler Nebel: tiefblau mit diagonalen, weichen Lichtschlieren (Hologramm-Bühne).
     private static func hintergrundBild() -> UIImage {
         let groesse = CGSize(width: 512, height: 768)
         return UIGraphicsImageRenderer(size: groesse).image { ctx in
-            hintergrund.setFill()
-            ctx.fill(CGRect(origin: .zero, size: groesse))
-            let farben = [glasGlow.withAlphaComponent(0.30).cgColor,
-                          lichtViolett.withAlphaComponent(0.10).cgColor,
-                          UIColor.clear.cgColor] as CFArray
-            if let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: farben, locations: [0, 0.5, 1]) {
-                let mitte = CGPoint(x: groesse.width / 2, y: groesse.height * 0.45)
-                ctx.cgContext.drawRadialGradient(grad, startCenter: mitte, startRadius: 0,
-                                                 endCenter: mitte, endRadius: groesse.width * 0.85, options: [])
+            let cg = ctx.cgContext
+            UIColor(red: 0.015, green: 0.025, blue: 0.060, alpha: 1).setFill()
+            cg.fill(CGRect(origin: .zero, size: groesse))
+            func schliere(_ x: CGFloat, _ y: CGFloat, _ rx: CGFloat, _ ry: CGFloat, _ winkel: CGFloat, _ farbe: UIColor) {
+                let farben = [farbe.cgColor, farbe.withAlphaComponent(0).cgColor] as CFArray
+                guard let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: farben, locations: [0, 1]) else { return }
+                cg.saveGState()
+                cg.translateBy(x: groesse.width * x, y: groesse.height * y)
+                cg.rotate(by: winkel)
+                cg.scaleBy(x: 1, y: ry / rx)
+                cg.drawRadialGradient(g, startCenter: .zero, startRadius: 0, endCenter: .zero, endRadius: rx, options: [])
+                cg.restoreGState()
             }
+            let blau = UIColor(red: 0.10, green: 0.30, blue: 0.62, alpha: 0.55)
+            let hell = UIColor(red: 0.16, green: 0.42, blue: 0.80, alpha: 0.40)
+            let viol = UIColor(red: 0.30, green: 0.14, blue: 0.55, alpha: 0.40)
+            schliere(0.50, 0.40, 330, 70, .pi / 4, blau)       // X-förmiges Leuchten
+            schliere(0.50, 0.40, 330, 70, -.pi / 4, viol)
+            schliere(0.80, 0.30, 220, 90, .pi / 6, hell)
+            schliere(0.15, 0.62, 200, 80, -.pi / 5, blau)
+            schliere(0.50, 0.55, 240, 240, 0, UIColor(red: 0.08, green: 0.16, blue: 0.34, alpha: 0.45))
         }
     }
 
@@ -359,6 +457,7 @@ enum BodySceneBuilder {
         let breite = Float(p.schulterBreite / 0.42)
         let basis: Float = 1.0           // Modell ist in Metern modelliert (1.76 m hoch)
         container.scale = SCNVector3(basis * breite, basis * hoehe, basis * hoehe)
+        addGelenke(to: container)
         body.addChildNode(container)
         return true
     }
