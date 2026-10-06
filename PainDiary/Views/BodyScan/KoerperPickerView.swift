@@ -25,6 +25,14 @@ struct KoerperPickerView: View {
         )
         .frame(height: frameHeight)
         .frame(maxHeight: frameHeight == nil ? .infinity : nil)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.05)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 1)
+        )
         .sheet(item: $pendingRegion) { item in
             SubRegionenSheet(
                 region: item.id,

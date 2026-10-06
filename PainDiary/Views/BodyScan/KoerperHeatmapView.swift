@@ -35,11 +35,9 @@ struct KoerperHeatmapView: UIViewRepresentable {
 
             node.geometry?.materials.forEach { mat in
                 if intensity > 0 {
-                    mat.diffuse.contents  = tintColor.withAlphaComponent(0.18 + intensity * 0.62)
-                    mat.emission.contents = tintColor.withAlphaComponent(intensity * 0.28)
+                    BodySceneBuilder.stileAktiv(mat, tint: tintColor, staerke: intensity)
                 } else {
-                    mat.diffuse.contents  = BodySceneBuilder.hautfarbe
-                    mat.emission.contents = UIColor.black
+                    BodySceneBuilder.stileNormal(mat)
                 }
             }
         }

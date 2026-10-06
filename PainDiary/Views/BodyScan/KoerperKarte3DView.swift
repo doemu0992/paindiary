@@ -47,11 +47,9 @@ struct KoerperKarte3DView: UIViewRepresentable {
                 || (SubRegionen.map[name]?.contains { ausgewaehlt.contains($0) } ?? false)
             node.geometry?.materials.forEach { mat in
                 if isSelected {
-                    mat.diffuse.contents  = tintColor.withAlphaComponent(0.78)
-                    mat.emission.contents = tintColor.withAlphaComponent(0.18)
+                    BodySceneBuilder.stileAktiv(mat, tint: tintColor, staerke: 1)
                 } else {
-                    mat.diffuse.contents  = BodySceneBuilder.hautfarbe
-                    mat.emission.contents = UIColor.black
+                    BodySceneBuilder.stileNormal(mat)
                 }
             }
         }
@@ -107,9 +105,10 @@ struct KoerperKarte3DView: UIViewRepresentable {
             guard let v = scnView else { return }
             let hits = v.hitTest(g.location(in: v), options: [
                 SCNHitTestOption.firstFoundOnly: false,
-                SCNHitTestOption.backFaceCulling: false
+                SCNHitTestOption.backFaceCulling: false,
+                SCNHitTestOption.categoryBitMask: BodySceneBuilder.koerperMaske
             ])
-            guard let name = hits.first?.node.name else { return }
+            guard let name = hits.compactMap({ $0.node.name }).first else { return }
             let resolved = isFrontView ? name : (backMap[name] ?? name)
             onTap(resolved)
         }
@@ -135,10 +134,53 @@ struct KoerperKarte3DView: UIViewRepresentable {
 // MARK: - Scene builder
 
 enum BodySceneBuilder {
+    /// Alte Hautfarbe (nur noch für Bereiche, die bewusst „opak" bleiben).
     static let hautfarbe = UIColor(red: 0.91, green: 0.87, blue: 0.83, alpha: 1.0)
+
+    // MARK: Glas-Look („Hologramm") — alle Werte an einer Stelle
+    static let glasFarbe      = UIColor(red: 0.84, green: 0.90, blue: 1.00, alpha: 1)   // kühles Weiß
+    static let glasGlow       = UIColor(red: 0.29, green: 0.56, blue: 0.89, alpha: 1)   // #4A90E2
+    static let lichtViolett   = UIColor(red: 0.54, green: 0.17, blue: 0.89, alpha: 1)   // #8A2BE2
+    static let ambientFarbe   = UIColor(red: 0.10, green: 0.10, blue: 0.18, alpha: 1)   // #1A1A2E
+    static let hintergrund    = UIColor(red: 0.051, green: 0.051, blue: 0.071, alpha: 1) // #0D0D12
+
+    /// Kategorie-Masken: Körperteile sind tapp-/auswählbar, Dekoration (Bodenring) nicht.
+    static let koerperMaske = 1
+    static let dekoMaske    = 2
+
+    /// Normalzustand eines Körperteils: halbtransparentes, mattes Glas mit schwachem Eigenleuchten.
+    static func stileNormal(_ m: SCNMaterial) {
+        m.diffuse.contents      = glasFarbe
+        m.emission.contents     = glasGlow
+        m.emission.intensity    = 0.12
+        m.transparency          = 0.55
+    }
+
+    /// Aktiver Zustand (ausgewählt / Häufigkeit): getönt, leuchtend, fast opak. `staerke` 0…1.
+    static func stileAktiv(_ m: SCNMaterial, tint: UIColor, staerke: Double) {
+        let s = CGFloat(min(max(staerke, 0), 1))
+        m.diffuse.contents   = tint.mischung(mit: .white, anteil: 0.30)
+        m.emission.contents  = tint
+        m.emission.intensity = 0.35 + 0.55 * s
+        m.transparency       = 0.65 + 0.30 * s
+    }
+
+    /// Glas-Material (Blinn + Fresnel-Rand + Dual-Layer-Transparenz).
+    private static func glasMaterial() -> SCNMaterial {
+        let m = SCNMaterial()
+        m.lightingModel       = .blinn
+        m.specular.contents   = UIColor(white: 0.85, alpha: 1)
+        m.shininess           = 25
+        m.fresnelExponent     = 1.4
+        m.transparencyMode    = .dualLayer
+        m.isDoubleSided       = true
+        stileNormal(m)
+        return m
+    }
 
     static func build(_ p: BodyProportionen) -> SCNScene {
         let scene = SCNScene()
+        scene.background.contents = hintergrundBild()
         addLights(to: scene)
         addCamera(to: scene)
 
@@ -150,25 +192,72 @@ enum BodySceneBuilder {
         body.position.y = -(lo.y + (hi.y - lo.y) / 2)
 
         scene.rootNode.addChildNode(body)
+        scene.rootNode.addChildNode(bodenRing(fussY: body.position.y + lo.y - 0.01))
         return scene
+    }
+
+    // MARK: Dekoration
+
+    /// Dunkler Verlauf mit weichem blauem Schein (Hologramm-Bühne).
+    private static func hintergrundBild() -> UIImage {
+        let groesse = CGSize(width: 512, height: 768)
+        return UIGraphicsImageRenderer(size: groesse).image { ctx in
+            hintergrund.setFill()
+            ctx.fill(CGRect(origin: .zero, size: groesse))
+            let farben = [glasGlow.withAlphaComponent(0.30).cgColor,
+                          lichtViolett.withAlphaComponent(0.10).cgColor,
+                          UIColor.clear.cgColor] as CFArray
+            if let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: farben, locations: [0, 0.5, 1]) {
+                let mitte = CGPoint(x: groesse.width / 2, y: groesse.height * 0.45)
+                ctx.cgContext.drawRadialGradient(grad, startCenter: mitte, startRadius: 0,
+                                                 endCenter: mitte, endRadius: groesse.width * 0.85, options: [])
+            }
+        }
+    }
+
+    /// Dünner leuchtender Ring am Boden (Dreh-Hinweis). Nicht tappbar.
+    private static func bodenRing(fussY: Float) -> SCNNode {
+        let torus = SCNTorus(ringRadius: 0.44, pipeRadius: 0.004)
+        let m = SCNMaterial()
+        m.lightingModel      = .constant
+        m.diffuse.contents   = glasGlow
+        m.emission.contents  = glasGlow
+        m.emission.intensity = 0.9
+        m.transparency       = 0.55
+        torus.materials = [m]
+        let node = SCNNode(geometry: torus)
+        node.name = "bodenRing"
+        node.position = SCNVector3(0, fussY, 0)
+        node.categoryBitMask = dekoMaske
+        return node
     }
 
     // MARK: Lights
 
     private static func addLights(to scene: SCNScene) {
-        func light(_ type: SCNLight.LightType, intensity: CGFloat, euler: SCNVector3 = .init()) -> SCNNode {
+        // Intensität: 1000 entspricht 1.0 (Vorgabe: ambient 0.6, blau 1.2, violett 0.8)
+        let ambient = SCNNode()
+        ambient.light = SCNLight()
+        ambient.light?.type = .ambient
+        ambient.light?.color = ambientFarbe
+        ambient.light?.intensity = 800
+        scene.rootNode.addChildNode(ambient)
+
+        func richtung(_ farbe: UIColor, _ pos: SCNVector3, _ intensitaet: CGFloat) {
             let n = SCNNode()
-            n.light = SCNLight()
-            n.light!.type = type
-            n.light!.intensity = intensity
-            n.eulerAngles = euler
-            return n
+            let l = SCNLight()
+            l.type = .directional
+            l.color = farbe
+            l.intensity = intensitaet
+            n.light = l
+            n.position = pos
+            scene.rootNode.addChildNode(n)
+            n.look(at: SCNVector3Zero)
         }
-        scene.rootNode.addChildNode(light(.ambient,     intensity: 420))
-        scene.rootNode.addChildNode(light(.directional, intensity: 850,
-                                          euler: SCNVector3(-0.5,  0.55, 0)))
-        scene.rootNode.addChildNode(light(.directional, intensity: 320,
-                                          euler: SCNVector3( 0.3, -0.80, 0)))
+        richtung(glasGlow,     SCNVector3( 5, 10,  5), 1200)
+        richtung(lichtViolett, SCNVector3(-5, -5, -5),  800)
+        // Weiches Frontlicht, damit die Vorderseite lesbar bleibt
+        richtung(.white,       SCNVector3( 0,  2,  6),  350)
     }
 
     // MARK: Camera
@@ -295,19 +384,28 @@ enum BodySceneBuilder {
     }
 
     private static func n(_ name: String, _ geo: SCNGeometry, _ pos: SCNVector3) -> SCNNode {
-        let uniqueGeo = geo.copy() as! SCNGeometry
-        let mat = SCNMaterial()
-        mat.diffuse.contents  = hautfarbe
-        mat.emission.contents = UIColor.black
-        mat.lightingModel     = .phong
-        mat.specular.contents = UIColor(white: 0.18, alpha: 1)
-        mat.shininess         = 22
-        mat.isDoubleSided     = true
-        uniqueGeo.materials = [mat]
+        // Jedes Teil bekommt eigene Geometrie + eigenes Material (individuelle Färbung)
+        let uniqueGeo = (geo.copy() as? SCNGeometry) ?? geo
+        uniqueGeo.materials = [glasMaterial()]
 
         let node = SCNNode(geometry: uniqueGeo)
         node.name     = name
         node.position = pos
+        node.categoryBitMask = koerperMaske
         return node
+    }
+}
+
+// MARK: - Farb-Hilfe
+
+private extension UIColor {
+    /// Mischt mit einer anderen Farbe (`anteil` 0…1 der anderen Farbe).
+    func mischung(mit andere: UIColor, anteil: CGFloat) -> UIColor {
+        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
+        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
+        getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
+        andere.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
+        let t = min(max(anteil, 0), 1)
+        return UIColor(red: r1 + (r2 - r1) * t, green: g1 + (g2 - g1) * t, blue: b1 + (b2 - b1) * t, alpha: 1)
     }
 }

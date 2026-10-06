@@ -78,9 +78,6 @@ struct GelenkKoerperView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: SCNView, context: Context) {
-        let hautfarbe = UIColor(red: 0.91, green: 0.87, blue: 0.83, alpha: 1.0)
-        let dimmed    = UIColor(red: 0.82, green: 0.79, blue: 0.76, alpha: 1.0)
-
         uiView.scene?.rootNode.enumerateChildNodes { node, _ in
             guard let name = node.name, node.geometry != nil else { return }
 
@@ -93,18 +90,18 @@ struct GelenkKoerperView: UIViewRepresentable {
                 case .geschwollen: color = .systemBlue
                 case .beides:      color = .systemPurple
                 }
-                let glow: UIColor = zustand == .keiner ? .black : color.withAlphaComponent(0.35)
                 node.geometry?.materials.forEach {
-                    $0.diffuse.contents  = color
-                    $0.emission.contents = glow
+                    if zustand == .keiner {
+                        // Gelenk ohne Befund: etwas kräftiger als der Körper, damit es antippbar wirkt
+                        BodySceneBuilder.stileNormal($0)
+                        $0.diffuse.contents = UIColor(white: 0.92, alpha: 1)
+                        $0.transparency = 0.85
+                    } else {
+                        BodySceneBuilder.stileAktiv($0, tint: color, staerke: 1)
+                    }
                 }
             } else {
-                node.geometry?.materials.forEach {
-                    $0.diffuse.contents  = name.contains("Ohr") || name.contains("Oberschenkel")
-                        || name.contains("Unterarm") || name.contains("Unterschenkel")
-                        || name.contains("Fuss") ? dimmed : hautfarbe
-                    $0.emission.contents = UIColor.black
-                }
+                node.geometry?.materials.forEach { BodySceneBuilder.stileNormal($0) }
             }
         }
     }
