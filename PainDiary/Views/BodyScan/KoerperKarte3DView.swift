@@ -269,26 +269,28 @@ enum BodySceneBuilder {
         richtung(.white,       SCNVector3( 0,  2,  6),  350)
     }
 
-    // MARK: USDZ-Körper (Meshy-Modell, mit tools/segment_body.py in Regionen zerlegt)
+    // MARK: USDZ-Körper (body.obj, mit tools/segment_body_obj.py in 42 Regionen zerschnitten)
 
-    /// Prim-Name im USDZ → Knotenname (= Name in `SubRegionen`, Konvention: links = x < 0).
+    /// Prim-Name im USDZ (englische IDs aus `tools/segment_body_obj.py`) → Knotenname (= Name in `SubRegionen`).
+    /// Konvention: `_l` = links im Bild bei Frontansicht (x < 0).
     static let usdzRegionen: [String: String] = {
         var d: [String: String] = [
-            "Kopf": "Kopf", "Hals": "Hals", "Nacken": "Nacken", "Brust": "Brust",
-            "Ruecken_oben": "Rücken oben", "Bauch": "Bauch", "Ruecken_unten": "Rücken unten",
-            "Huefte": "Hüfte", "Gesaess": "Gesäss",
+            "head_front": "Kopf", "head_back": "Hinterkopf", "neck_front": "Hals", "neck_back": "Nacken",
+            "chest": "Brust", "abdomen": "Bauch", "hips_front": "Hüfte",
+            "back_upper": "Rücken oben", "back_lower": "Rücken unten", "glutes": "Gesäss",
         ]
         let seitig: [(String, String)] = [
-            ("Schulter", "Schulter"), ("Bizeps", "Bizeps"), ("Trizeps", "Trizeps"),
-            ("Ellbogen", "Ellbogen"), ("Unterarm", "Unterarm"), ("Hand", "Hand"),
-            ("Oberschenkel_vorne", "Oberschenkel vorne"), ("Oberschenkel_hinten", "Oberschenkel hinten"),
-            ("Kniescheibe", "Kniescheibe"), ("Kniekehle", "Kniekehle"),
-            ("Schienbein", "Schienbein"), ("Wade", "Wade"), ("Knoechel", "Knöchel"),
-            ("Fussspann", "Fußspann"), ("Fussohle", "Fußsohle"), ("Ferse", "Ferse"),
+            ("shoulder", "Schulter"), ("arm_upper_front", "Bizeps"), ("arm_upper_back", "Trizeps"),
+            ("elbow", "Ellbogen"), ("arm_lower", "Unterarm"),
+            ("hand_palm", "Handfläche"), ("hand_back", "Handrücken"),
+            ("thigh_front", "Oberschenkel vorne"), ("thigh_back", "Oberschenkel hinten"),
+            ("knee", "Kniescheibe"), ("knee_hollow", "Kniekehle"),
+            ("shin", "Schienbein"), ("calf", "Wade"),
+            ("foot_top", "Fußspann"), ("heel", "Ferse"), ("foot_sole", "Fußsohle"),
         ]
         for (id, anzeige) in seitig {
-            d["\(id)_links"] = "\(anzeige) links"
-            d["\(id)_rechts"] = "\(anzeige) rechts"
+            d["\(id)_l"] = "\(anzeige) links"
+            d["\(id)_r"] = "\(anzeige) rechts"
         }
         return d
     }()
@@ -314,13 +316,13 @@ enum BodySceneBuilder {
             container.addChildNode(teil)
             anzahl += 1
         }
-        // Erwartet: 41 Regionen. Deutlich weniger → Datei/Importer passt nicht → Fallback
-        guard anzahl >= 30 else { return false }
+        // Erwartet: 42 Regionen. Deutlich weniger → Datei/Importer passt nicht → Fallback
+        guard anzahl >= 35 else { return false }
 
         // Personalisierung (Körperscan): Höhe → Gesamtskalierung, Schulterbreite → X-Skalierung
         let hoehe = Float(p.geschaetzteGroesseCM / 164.5)
         let breite = Float(p.schulterBreite / 0.42)
-        let basis: Float = 0.9           // Modell ist 1.9 hoch, Kamera/Rahmen sind auf ca. 1.7 ausgelegt
+        let basis: Float = 1.0           // Modell ist in Metern modelliert (1.76 m hoch)
         container.scale = SCNVector3(basis * breite, basis * hoehe, basis * hoehe)
         body.addChildNode(container)
         return true

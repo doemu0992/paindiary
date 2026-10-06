@@ -19,3 +19,5 @@ DerivedData/
 Secrets.swift
 Config.plist
 GoogleService-Info.plist
+__pycache__/
+*.pyc

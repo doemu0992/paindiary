@@ -29,6 +29,9 @@ enum SubRegionen {
         "Knie rechts": ["Kniescheibe rechts", "Kniekehle rechts"],
         "Unterschenkel links":  ["Wade links",  "Schienbein links"],
         "Unterschenkel rechts": ["Wade rechts", "Schienbein rechts"],
+        // Knöchel hat im 3D-Körper kein eigenes Teil → Ferse + Fußspann leuchten (u. a. für die Rheuma-Heatmap)
+        "Knöchel links":  ["Ferse links",  "Fußspann links"],
+        "Knöchel rechts": ["Ferse rechts", "Fußspann rechts"],
         "Hand links":  ["Daumen links",  "Zeigefinger links",  "Mittelfinger links",  "Ringfinger links",  "Kleiner Finger links",
                         "Handfläche links",  "Handrücken links",  "Handgelenk links"],
         "Hand rechts": ["Daumen rechts", "Zeigefinger rechts", "Mittelfinger rechts", "Ringfinger rechts", "Kleiner Finger rechts",

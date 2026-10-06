@@ -61,11 +61,13 @@ Services/              Export (CSV v2), BackupService (JSON), HealthKit, Wetter,
 
 ## 3D-Körper (USDZ, bindend)
 
-- Der Körper in Picker und Heatmap ist `PainDiary/Resources/KoerperGlas.usdz` (aus dem Meshy-Quellmodell `tools/source/Meshy_Holographic_Human.usdz`). **Nie von Hand ändern**, sondern mit `python3 tools/segment_body.py` neu erzeugen (`pip install usd-core numpy`).
-- Das Skript zerlegt das Einzelmesh in 41 Regionen (Vorder-/Rückseite über die Flächennormale). Prim-Namen sind ASCII; `BodySceneBuilder.usdzRegionen` ordnet sie den Knotennamen aus `SubRegionen` zu. Konvention: **links = x < 0** (links im Bild bei Frontansicht).
-- Fehlt die Datei oder sind < 30 Regionen ladbar, fällt `BodySceneBuilder` auf den prozeduralen Körper zurück. Die Gelenk-Ansicht (`GelenkKoerperView`) nutzt bewusst immer den prozeduralen Körper (`build(_, mitUSDZ: false)`).
-- Fein aufgelöste Regionen (z. B. „Wade links") leuchten auch, wenn nur die Oberregion („Unterschenkel links") gespeichert ist: `SubRegionen.elternIndex`. Neue Teilregionen immer in `SubRegionen.map` eintragen (Seitenbezeichner!).
+- Der Körper in Picker und Heatmap ist `PainDiary/Resources/KoerperGlas.usdz`, erzeugt aus `tools/source/body.obj` mit `python3 tools/segment_body_obj.py` (`pip install bpy numpy usd-core`). **Nie von Hand ändern.** Dasselbe Skript schreibt `tools/export/body_segmented.fbx` (gleiche Teile/Hierarchie).
+- 42 Teile mit englischen IDs (`head_front`, `thigh_front_l`, …). Das Skript schneidet mit Ebenen (saubere Kanten), schließt die Schnittflächen, rundet die Schnittkanten leicht ab und skaliert jedes Teil auf 99 % (Mikro-Spalt für Trennlinien). `BodySceneBuilder.usdzRegionen` ordnet die IDs den Knotennamen aus `SubRegionen` zu. Konvention: **`_l` = links im Bild bei Frontansicht (x < 0)**.
+- Das Skript prüft die Abdeckung (Summe der Teilflächen ≈ 100 % des Originals); bei Änderungen an Ebenen/Landmarken diese Zahl und `--preview` prüfen.
+- Fehlt die Datei oder sind < 35 Teile ladbar, fällt `BodySceneBuilder` auf den prozeduralen Körper zurück. Die Gelenk-Ansicht (`GelenkKoerperView`) nutzt bewusst immer den prozeduralen Körper (`build(_, mitUSDZ: false)`).
+- Fein aufgelöste Regionen leuchten auch, wenn nur die Oberregion gespeichert ist: `SubRegionen.elternIndex`. Neue Teilregionen immer in `SubRegionen.map` eintragen (Seitenbezeichner!).
 - Glas-Material: PBR (roughness 0.35, metalness 0.1), Stile über `BodySceneBuilder.stileNormal/stileAktiv` — nie Materialien direkt setzen.
+- Lizenz/Herkunft von `body.obj` ist zu klären (siehe Projekt-README/Einstellungen → Lizenzen), bevor die App veröffentlicht wird.
 
 ---
 
