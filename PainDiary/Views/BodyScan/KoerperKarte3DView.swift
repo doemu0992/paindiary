@@ -104,16 +104,51 @@ struct KoerperKarte3DView: UIViewRepresentable {
 
         @objc func handleTap(_ g: UITapGestureRecognizer) {
             guard let v = scnView else { return }
-            let hits = v.hitTest(g.location(in: v), options: [
+            let punkt = g.location(in: v)
+            let hits = v.hitTest(punkt, options: [
                 SCNHitTestOption.firstFoundOnly: false,
+                SCNHitTestOption.searchMode: SCNHitTestSearchMode.all.rawValue,
                 SCNHitTestOption.backFaceCulling: false,
-                SCNHitTestOption.categoryBitMask: BodySceneBuilder.koerperMaske
+                SCNHitTestOption.ignoreHiddenNodes: true
             ])
-            guard let name = hits.compactMap({ $0.node.name }).first else { return }
+            // Dekoration (Bodenring) ausschließen; erstes Körperteil nehmen
+            let treffer = hits.first { $0.node.categoryBitMask & BodySceneBuilder.koerperMaske != 0
+                                        && $0.node.name != nil && $0.node.name != "bodenRing" }?.node.name
+            guard let name = treffer ?? strahlTreffer(in: v, punkt: punkt) else { return }
             // Beim USDZ-Körper sind Vorder- und Rückseite eigene Regionen → keine Umdeutung nötig
             let hatUSDZ = v.scene?.rootNode.childNode(withName: "usdzKoerper", recursively: true) != nil
             let resolved = (hatUSDZ || isFrontView) ? name : (backMap[name] ?? name)
             onTap(resolved)
+        }
+
+        /// Fallback, falls SceneKits Geometrie-Hittest nichts liefert: Strahl gegen die Bounding-Box
+        /// jedes Körperteils (im lokalen Raum), nächstes Teil gewinnt.
+        private func strahlTreffer(in v: SCNView, punkt: CGPoint) -> String? {
+            guard let body = v.scene?.rootNode.childNode(withName: "body", recursively: false) else { return nil }
+            let nah  = v.unprojectPoint(SCNVector3(Float(punkt.x), Float(punkt.y), 0))
+            let fern = v.unprojectPoint(SCNVector3(Float(punkt.x), Float(punkt.y), 1))
+            var bester: (name: String, t: Float)?
+            body.enumerateChildNodes { node, _ in
+                guard node.geometry != nil, node.categoryBitMask & BodySceneBuilder.koerperMaske != 0,
+                      let name = node.name else { return }
+                let o = node.convertPosition(nah, from: nil)
+                let e = node.convertPosition(fern, from: nil)
+                let d = SCNVector3(e.x - o.x, e.y - o.y, e.z - o.z)
+                let (lo, hi) = node.boundingBox
+                var tmin: Float = 0, tmax: Float = 1
+                for (oa, da, la, ha) in [(o.x, d.x, lo.x, hi.x), (o.y, d.y, lo.y, hi.y), (o.z, d.z, lo.z, hi.z)] {
+                    if abs(da) < 1e-9 {
+                        if oa < la || oa > ha { return }
+                    } else {
+                        var t1 = (la - oa) / da, t2 = (ha - oa) / da
+                        if t1 > t2 { swap(&t1, &t2) }
+                        tmin = max(tmin, t1); tmax = min(tmax, t2)
+                        if tmin > tmax { return }
+                    }
+                }
+                if bester == nil || tmin < bester!.t { bester = (name, tmin) }
+            }
+            return bester?.name
         }
 
         private var isFrontView: Bool {
