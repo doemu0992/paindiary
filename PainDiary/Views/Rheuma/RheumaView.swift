@@ -1,198 +1,185 @@
 import SwiftUI
 import SwiftData
 
+/// Rheuma-Dashboard im Bento-Aufbau: Schmerz-Ring (Ø 30 Tage), Kacheln zu Scores/Therapie, Eintrags-Chips.
 struct RheumaView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
     @Query(sort: \FACITEintrag.datum, order: .reverse) private var facitEintraege: [FACITEintrag]
     @Query(sort: \BiologikaInjektion.datum, order: .reverse) private var injektionen: [BiologikaInjektion]
     @Query(sort: \Remissionsphase.beginn, order: .reverse) private var remissionsphasen: [Remissionsphase]
+    @Environment(\.scenePhase) private var scenePhase
 
-    @Environment(\.modelContext) private var modelContext
+    @State private var vm = RheumaDashboardViewModel()
+    @State private var ansicht: ModulAnsicht = .heute
     @State private var zeigeForm = false
     @State private var zeigeAnalyse = false
 
+    private let tint = Color.teal
+    private let spalten = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
     private var rheumaEintraege: [PainEntry] { eintraege.filter { $0.eintragsArt == .rheuma } }
-
-    private var gruppiertNachDatum: [(tag: Date, items: [PainEntry])] {
-        let cal = Calendar.current
-        let grouped = Dictionary(grouping: rheumaEintraege) { cal.startOfDay(for: $0.datum) }
-        return grouped.sorted { $0.key > $1.key }
-            .map { (tag: $0.key, items: $0.value.sorted { $0.datum > $1.datum }) }
-    }
-
-    private func tagLabel(_ datum: Date) -> String {
-        let cal = Calendar.current
-        if cal.isDateInToday(datum)     { return "Heute" }
-        if cal.isDateInYesterday(datum) { return "Gestern" }
-        return datum.formatted(.dateTime.weekday(.abbreviated).day().month())
-    }
+    private var u: RheumaUebersicht { vm.uebersicht }
 
     var body: some View {
-        List {
-            if !rheumaEintraege.isEmpty {
-                Section {
-                    schnellstatistiken
-                }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
-            }
+        ScrollView {
+            VStack(spacing: 12) {
+                GlassSegmentPicker(auswahl: $ansicht, optionen: ModulAnsicht.allCases, titel: { $0.rawValue })
 
-            Section("Scores & Verlauf") {
-                NavigationLink(destination: HAQView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("HAQ & DAS28")
-                            if let letzter = haqEintraege.first {
-                                Text(String(format: "Letzter Score: %.2f", letzter.haqScore))
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    } icon: {
-                        Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(.teal)
-                    }
-                }
-                NavigationLink(destination: FACITView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("FACIT-Erschöpfung")
-                            if let letzter = facitEintraege.first {
-                                Text("Score: \(letzter.facitScore) – \(letzter.erschoepfungsgradText)")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    } icon: {
-                        Image(systemName: "battery.25percent").foregroundStyle(.orange)
-                    }
-                }
-                NavigationLink(destination: RemissionsView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Remissionsphasen")
-                            if let aktive = remissionsphasen.first(where: { $0.istAktiv }) {
-                                Text("Aktiv seit \(aktive.dauerText)")
-                                    .font(.caption).foregroundStyle(.green)
-                            }
-                        }
-                    } icon: {
-                        Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
-                    }
+                switch ansicht {
+                case .heute:
+                    heroKarte
+                    bentoRaster
+                    GlassLinkZeile(symbol: "pills.fill", titel: "Kortison-Tagebuch", tint: tint) { KortisonView() }
+                    GlassLinkZeile(symbol: "doc.text.fill", titel: "Arztbrief erstellen", tint: tint) { ArztbriefView() }
+                    zuletztBereich
+                case .verlauf:
+                    EintragTageskarten(eintraege: rheumaEintraege, tint: tint, leerText: "Noch keine Rheuma-Einträge", inhalt: chipInhalt)
                 }
             }
-            .listRowBackground(GlassRowBackground())
-
-            Section("Medikamente & Therapie") {
-                NavigationLink(destination: BiologikaView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Biologika / Injektionen")
-                            if let naechste = injektionen.compactMap(\.naechsteDosis).filter({ $0 > Date() }).min() {
-                                Text("Nächste: \(naechste.formatted(date: .abbreviated, time: .omitted))")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            } else if let letzte = injektionen.first {
-                                Text("Letzte: \(letzte.praeparat)")
-                                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                        }
-                    } icon: {
-                        Image(systemName: "syringe.fill").foregroundStyle(.indigo)
-                    }
-                }
-                NavigationLink(destination: KortisonView()) {
-                    Label("Kortison-Tagebuch", systemImage: "pills.fill")
-                        .foregroundStyle(.primary)
-                }
-                NavigationLink(destination: ArztbriefView()) {
-                    Label("Arztbrief erstellen", systemImage: "doc.text.fill")
-                        .foregroundStyle(.primary)
-                }
-            }
-            .listRowBackground(GlassRowBackground())
-
-            ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
-                Section {
-                    ForEach(gruppe.items) { eintrag in
-                        NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
-                            SchmerzZeile(eintrag: eintrag)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                EintragLoeschService(context: modelContext).loesche(eintrag)
-                            } label: { Label("Löschen", systemImage: "trash") }
-                        }
-                    }
-                } header: {
-                    Text(tagLabel(gruppe.tag))
-                        .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
-                }
-                .listRowBackground(GlassRowBackground())
-            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
-        .glassList(.rheuma)
+        .auroraScreen(.rheuma)
         .navigationTitle("Rheuma & Gelenke")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Rheuma-Eintrag erfassen")
             }
         }
         .sheet(isPresented: $zeigeForm) { RheumaSchnellForm() }
-        .sheet(isPresented: $zeigeAnalyse) {
-            RheumaAnalyseView()
-        }
+        .sheet(isPresented: $zeigeAnalyse) { RheumaAnalyseView() }
+        .onAppear { vm.aktualisiere(eintraege: eintraege) }
+        .onChange(of: eintraege) { _, neu in vm.aktualisiere(eintraege: neu) }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { vm.aktualisiere(eintraege: eintraege) } }
     }
 
-    private var schnellstatistiken: some View {
-        let schube = rheumaEintraege.filter { $0.istSchub }.count
-        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date())
-        let letzter30 = rheumaEintraege.filter { e in
-            guard let c = cutoff else { return true }
-            return e.datum >= c
-        }
-        let avgSchmerz = letzter30.isEmpty ? 0.0
-            : Double(letzter30.map(\.schmerzstaerke).reduce(0, +)) / Double(letzter30.count)
-        let mgEintraege = letzter30.filter { $0.morgensteifigkeit > 0 }
-        let avgMg = mgEintraege.isEmpty ? 0.0
-            : Double(mgEintraege.map(\.morgensteifigkeit).reduce(0, +)) / Double(mgEintraege.count)
+    // MARK: - Hero
 
-        return VStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
-                    .font(.headline).foregroundStyle(.teal)
-                Divider()
-                HStack(spacing: 0) {
-                    statPill(letzter30.isEmpty ? "–" : String(format: "%.1f", avgSchmerz),
-                             label: "Ø Schmerz",
-                             farbe: avgSchmerz <= 3 ? .green : avgSchmerz <= 6 ? .orange : .red)
-                    Divider().frame(height: 40)
-                    statPill("\(schube)", label: "Schübe gesamt",
-                             farbe: schube == 0 ? .green : .orange)
-                    Divider().frame(height: 40)
-                    statPill(avgMg > 0 ? String(format: "%.0f'", avgMg) : "–",
-                             label: "Ø Steifigkeit",
-                             farbe: avgMg > 30 ? .orange : .green)
-                }
+    private var heroKarte: some View {
+        VStack(spacing: 12) {
+            GlassSectionLabel("Ø Schmerz · 30 Tage")
+
+            SchmerzGauge(
+                wert: u.schnitt30 ?? 0,
+                groesse: 196,
+                zahlGroesse: 64,
+                nachkomma: true,
+                platzhalter: u.schnitt30 == nil
+            )
+
+            if let schnitt = u.schnitt30 {
+                Text(SchmerzSkala.wort(Int(schnitt.rounded())))
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14).padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.4), lineWidth: 1))
             }
-            .padding()
-            .glassCard(radius: 24, padding: 0)
 
-            Button { zeigeAnalyse = true } label: {
-                Label("Rheuma-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                    .font(.subheadline.bold())
+            Text(u.anzahl30 == 0 ? "Noch keine Einträge in 30 Tagen" : "\(u.anzahl30) Einträge in 30 Tagen")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Button { zeigeForm = true } label: {
+                Label("Rheuma-Eintrag erfassen", systemImage: "plus")
+                    .font(.headline)
                     .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .glassTintButton(Color.teal)
+                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .glassTintButton(tint, radius: 22)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .glassCard(radius: 28, padding: 20)
+    }
+
+    // MARK: - Bento-Raster
+
+    private var bentoRaster: some View {
+        LazyVGrid(columns: spalten, spacing: 12) {
+            BentoKachel(symbol: "bolt.fill", label: "Schübe · 30 Tage", tint: tint, leuchtet: u.schuebe30 > 0,
+                        wert: "\(u.schuebe30)")
+
+            BentoKachel(symbol: "sunrise.fill", label: "Ø Morgensteifigkeit", tint: tint,
+                        leuchtet: (u.steifigkeitSchnitt30 ?? 0) > 30,
+                        wert: u.steifigkeitSchnitt30.map { String(format: "%.0f", $0) } ?? "–",
+                        einheit: u.steifigkeitSchnitt30 == nil ? nil : "Min")
+
+            NavigationLink(destination: HAQView()) {
+                BentoKachel(symbol: "chart.line.uptrend.xyaxis", label: "HAQ & DAS28", tint: tint,
+                            wert: haqEintraege.first.map { String(format: "%.2f", $0.haqScore) } ?? "–")
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink(destination: FACITView()) {
+                BentoKachel(symbol: "battery.25percent",
+                            label: facitEintraege.first.map { "FACIT · \($0.erschoepfungsgradText)" } ?? "FACIT-Erschöpfung",
+                            tint: tint,
+                            wert: facitEintraege.first.map { "\($0.facitScore)" } ?? "–")
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink(destination: RemissionsView()) {
+                BentoKachel(symbol: "checkmark.seal.fill", label: "Remissionsphasen", tint: tint,
+                            wert: remissionsphasen.first(where: { $0.istAktiv })?.dauerText ?? "–", klein: true)
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink(destination: BiologikaView()) {
+                BentoKachel(symbol: "syringe.fill", label: biologikaLabel, tint: tint,
+                            wert: naechsteDosis.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "–", klein: true)
             }
             .buttonStyle(.plain)
         }
     }
 
-    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
-            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+    private var naechsteDosis: Date? {
+        injektionen.compactMap(\.naechsteDosis).filter { $0 > Date() }.min()
+    }
+
+    private var biologikaLabel: String {
+        naechsteDosis != nil ? "Biologika · nächste Dosis" : (injektionen.first.map { "Biologika · \($0.praeparat)" } ?? "Biologika / Injektionen")
+    }
+
+    // MARK: - Zuletzt
+
+    private var zuletztBereich: some View {
+        VStack(spacing: 8) {
+            ZuletztKopf { withAnimation { ansicht = .verlauf } }
+
+            if rheumaEintraege.isEmpty {
+                Text("Tippe auf „Rheuma-Eintrag erfassen“, um deinen ersten Eintrag anzulegen.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .glassCard(radius: 22, padding: 16)
+            } else {
+                EintragChipStreifen(eintraege: rheumaEintraege, tint: tint, inhalt: chipInhalt)
+
+                Button { zeigeAnalyse = true } label: {
+                    Label("Rheuma-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .glassTintButton(tint, radius: 20)
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .frame(maxWidth: .infinity)
+    }
+
+    private func chipInhalt(_ eintrag: PainEntry) -> EintragChipInhalt {
+        var zusatz = ""
+        if eintrag.istSchub { zusatz += " · Schub" }
+        if eintrag.morgensteifigkeit > 0 { zusatz += " · \(eintrag.morgensteifigkeit)′" }
+        return EintragChipInhalt(
+            zahl: eintrag.schmerzstaerke,
+            titel: "Rheuma",
+            untertitel: TagBeschriftung.tagUndZeit(eintrag) + zusatz,
+            hervorgehoben: eintrag.istSchub
+        )
     }
 }

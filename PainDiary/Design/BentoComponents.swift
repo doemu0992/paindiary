@@ -1,5 +1,48 @@
 import SwiftUI
 
+// MARK: - Ansicht Heute | Verlauf
+
+/// Gemeinsame Ansichten der Modul-Dashboards (Segment-Picker).
+enum ModulAnsicht: String, CaseIterable {
+    case heute = "Heute"
+    case verlauf = "Verlauf"
+}
+
+// MARK: - Link-Zeile
+
+/// Breite Glas-Zeile mit Icon, Titel und Chevron, die zu einem Unterbereich führt (z. B. „Kortison-Tagebuch").
+struct GlassLinkZeile<Ziel: View>: View {
+    let symbol: String
+    let titel: String
+    var untertitel: String? = nil
+    var tint: Color = .accentColor
+    @ViewBuilder var ziel: () -> Ziel
+
+    var body: some View {
+        NavigationLink(destination: ziel()) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(tint.opacity(0.18)))
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.45), lineWidth: 1))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(titel).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    if let untertitel {
+                        Text(untertitel).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(.tertiary)
+            }
+            .frame(minHeight: 44)
+            .glassCard(radius: 22, padding: 14)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Segment-Picker (Glas)
 
 /// Glas-Segmented-Control (44 pt) für beliebige Auswahlwerte, z. B. „Heute | Verlauf".
@@ -135,7 +178,8 @@ struct KennwertInhalt: View {
 
 /// Kompakter Glas-Chip für einen Eintrag: Kreis mit Zahl links, zwei Textzeilen rechts.
 struct GlassEintragChip: View {
-    let zahl: Int
+    var zahl: Int? = nil
+    var symbol: String? = nil
     let titel: String
     let untertitel: String
     var tint: Color = .red
@@ -145,8 +189,13 @@ struct GlassEintragChip: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text("\(zahl)")
-                .font(.system(.subheadline, design: .rounded).bold())
+            Group {
+                if let zahl {
+                    Text("\(zahl)").font(.system(.subheadline, design: .rounded).bold())
+                } else if let symbol {
+                    Image(systemName: symbol).font(.system(size: 16, weight: .semibold))
+                }
+            }
                 .foregroundStyle(hervorgehoben ? Color.white : tint)
                 .frame(width: 40, height: 40)
                 .background(Circle().fill(tint.opacity(hervorgehoben ? 0.55 : 0.2)))
@@ -171,6 +220,6 @@ struct GlassEintragChip: View {
         .overlay(Capsule().strokeBorder(Color.white.opacity(0.4), lineWidth: 1))
         .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(titel), Stärke \(zahl) von 10, \(SchmerzSkala.wort(zahl)). \(untertitel)")
+        .accessibilityLabel(zahl.map { "\(titel), Stärke \($0) von 10, \(SchmerzSkala.wort($0)). \(untertitel)" } ?? "\(titel). \(untertitel)")
     }
 }

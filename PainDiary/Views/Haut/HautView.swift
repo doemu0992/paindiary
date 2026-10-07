@@ -1,150 +1,151 @@
 import SwiftUI
 import SwiftData
 
+/// Haut-Dashboard im Bento-Aufbau (wie Schmerz/Zyklus): Körperkarte als Hero, Kachel-Raster, Eintrags-Chips.
 struct HautView: View {
-    @Environment(\.modelContext) private var modelContext
     @Query(
         filter: #Predicate<PainEntry> { $0.istHautEintrag == true },
         sort: \PainEntry.datum, order: .reverse
     ) private var eintraege: [PainEntry]
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var scanService = BodyScanService.shared
 
+    @State private var vm = HautDashboardViewModel()
+    @State private var ansicht: ModulAnsicht = .heute
     @State private var zeigeForm = false
     @State private var zeigeAnalyse = false
 
-    private var eintraege30: [PainEntry] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        return eintraege.filter { $0.datum >= cutoff }
-    }
-
-    private var gruppiertNachDatum: [(tag: Date, items: [PainEntry])] {
-        let cal = Calendar.current
-        let grouped = Dictionary(grouping: eintraege) { cal.startOfDay(for: $0.datum) }
-        return grouped.sorted { $0.key > $1.key }
-            .map { (tag: $0.key, items: $0.value.sorted { $0.datum > $1.datum }) }
-    }
-
-    private func tagLabel(_ datum: Date) -> String {
-        let cal = Calendar.current
-        if cal.isDateInToday(datum)     { return "Heute" }
-        if cal.isDateInYesterday(datum) { return "Gestern" }
-        return datum.formatted(.dateTime.weekday(.abbreviated).day().month())
-    }
+    private let tint = Color.orange
+    private let spalten = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    private var u: HautUebersicht { vm.uebersicht }
 
     var body: some View {
-        List {
-            statistikSektion
+        ScrollView {
+            VStack(spacing: 12) {
+                GlassSegmentPicker(auswahl: $ansicht, optionen: ModulAnsicht.allCases, titel: { $0.rawValue })
 
-            if eintraege.isEmpty {
-                Section {
-                    ContentUnavailableView(
-                        "Keine Einträge",
-                        systemImage: "bandage.fill",
-                        description: Text("Tippe auf + um eine Hautveränderung zu erfassen.")
-                    )
-                    .listRowSeparator(.hidden)
-                }
-                .listRowBackground(GlassRowBackground())
-            } else {
-                ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
-                    Section {
-                        ForEach(gruppe.items) { eintrag in
-                            NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
-                                SchmerzZeile(eintrag: eintrag)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    EintragLoeschService(context: modelContext).loesche(eintrag)
-                                } label: { Label("Löschen", systemImage: "trash") }
-                            }
-                        }
-                    } header: {
-                        Text(tagLabel(gruppe.tag))
-                            .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
-                    }
-                    .listRowBackground(GlassRowBackground())
+                switch ansicht {
+                case .heute:
+                    heroKarte
+                    bentoRaster
+                    zuletztBereich
+                case .verlauf:
+                    EintragTageskarten(eintraege: eintraege, tint: tint, leerText: "Noch keine Hauteinträge", inhalt: chipInhalt)
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
-        .glassList(.haut)
+        .auroraScreen(.haut)
         .navigationTitle("Hautveränderungen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Hautveränderung erfassen")
             }
         }
         .sheet(isPresented: $zeigeForm) { HautForm() }
-        .sheet(isPresented: $zeigeAnalyse) {
-            HautAnalyseView()
+        .sheet(isPresented: $zeigeAnalyse) { HautAnalyseView() }
+        .onAppear { vm.aktualisiere(eintraege: eintraege) }
+        .onChange(of: eintraege) { _, neu in vm.aktualisiere(eintraege: neu) }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { vm.aktualisiere(eintraege: eintraege) } }
+    }
+
+    // MARK: - Hero: betroffene Stellen
+
+    private var heroKarte: some View {
+        VStack(spacing: 12) {
+            GlassSectionLabel("Betroffene Stellen · 30 Tage")
+
+            KoerperHeatmapView(
+                intensitaeten: u.stellenIntensitaeten,
+                tintColor: .systemOrange,
+                proportionen: scanService.proportionen
+            )
+            .frame(height: 280)
+
+            Text(u.haeufigsteStelle.map { "Meist: \($0)" } ?? "Noch keine Stellen erfasst")
+                .font(.title3.bold())
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 8) {
+                ForEach(u.topStellen, id: \.name) { GlassPille(text: "\($0.name) · \($0.anzahl)×", tint: tint) }
+            }
+
+            Button { zeigeForm = true } label: {
+                Label("Hautveränderung erfassen", systemImage: "plus")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .glassTintButton(tint, radius: 22)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .glassCard(radius: 28, padding: 20)
+        .onTapGesture { zeigeAnalyse = true }
+    }
+
+    // MARK: - Bento-Raster
+
+    private var bentoRaster: some View {
+        LazyVGrid(columns: spalten, spacing: 12) {
+            BentoKachel(symbol: "bandage.fill", label: "Einträge · 30 Tage", tint: tint, leuchtet: u.anzahl30 > 0,
+                        wert: "\(u.anzahl30)")
+            BentoKachel(symbol: "clock", label: "Letzter Eintrag", tint: tint,
+                        wert: letzterText, klein: true)
+            BentoKachel(symbol: "square.stack.3d.up.fill", label: "Häufigste Art", tint: tint,
+                        wert: u.haeufigsteArt ?? "–", klein: true)
+            BentoKachel(symbol: "mappin.and.ellipse", label: "Häufigste Stelle", tint: tint,
+                        wert: u.haeufigsteStelle ?? "–", klein: true)
         }
     }
 
-    // MARK: - Statistik
+    private var letzterText: String {
+        guard let tage = u.letzterVorTagen else { return "–" }
+        switch tage {
+        case 0:  return "Heute"
+        case 1:  return "Gestern"
+        default: return "vor \(tage) Tagen"
+        }
+    }
 
-    private var statistikSektion: some View {
-        Section {
-            VStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
-                        .font(.headline).foregroundStyle(.orange)
-                    Divider()
-                    HStack(spacing: 0) {
-                        statPill(
-                            "\(eintraege30.count)",
-                            label: "Einträge",
-                            farbe: eintraege30.isEmpty ? .secondary : .orange
-                        )
-                        Divider().frame(height: 40)
-                        statPill(
-                            topArt(in: eintraege30) ?? "–",
-                            label: "Häufigste Art",
-                            farbe: eintraege30.isEmpty ? .secondary : .orange
-                        )
-                        Divider().frame(height: 40)
-                        statPill(
-                            topStelle(in: eintraege30) ?? "–",
-                            label: "Häufigste Stelle",
-                            farbe: eintraege30.isEmpty ? .secondary : .orange
-                        )
-                    }
-                }
-                .padding()
-                .glassCard(radius: 24, padding: 0)
+    // MARK: - Zuletzt
+
+    private var zuletztBereich: some View {
+        VStack(spacing: 8) {
+            ZuletztKopf { withAnimation { ansicht = .verlauf } }
+
+            if eintraege.isEmpty {
+                Text("Tippe auf „Hautveränderung erfassen“, um deinen ersten Eintrag anzulegen.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .glassCard(radius: 22, padding: 16)
+            } else {
+                EintragChipStreifen(eintraege: eintraege, tint: tint, inhalt: chipInhalt)
 
                 Button { zeigeAnalyse = true } label: {
                     Label("Haut-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
                         .font(.subheadline.bold())
                         .foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .glassTintButton(Color.orange)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .glassTintButton(tint, radius: 20)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.vertical, 4)
         }
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        .listRowBackground(Color.clear)
     }
 
-    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(wert).font(.title2.bold()).foregroundStyle(farbe).lineLimit(1).minimumScaleFactor(0.6)
-            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private func topArt(in liste: [PainEntry]) -> String? {
-        let alle = liste.flatMap { ListenFeld.parse($0.hautArt) }
-        return Dictionary(grouping: alle, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key
-    }
-
-    private func topStelle(in liste: [PainEntry]) -> String? {
-        let alle = liste.flatMap { ListenFeld.parse($0.hautStellen) }
-        return Dictionary(grouping: alle, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key
+    private func chipInhalt(_ eintrag: PainEntry) -> EintragChipInhalt {
+        let stellen = ListenFeld.parse(eintrag.hautStellen)
+        let arten = ListenFeld.parse(eintrag.hautArt)
+        return EintragChipInhalt(
+            symbol: "bandage.fill",
+            titel: stellen.isEmpty ? "Haut" : stellen.joined(separator: ", "),
+            untertitel: TagBeschriftung.tagUndZeit(eintrag) + (arten.first.map { " · \($0)" } ?? "")
+        )
     }
 }
-
-// MARK: - Zeile
-

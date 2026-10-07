@@ -2,22 +2,16 @@ import SwiftUI
 import SwiftData
 import Charts
 
-private enum SchmerzAnsicht: String, CaseIterable {
-    case heute = "Heute"
-    case verlauf = "Verlauf"
-}
-
 /// Schmerztagebuch als Bento-Dashboard (Aufbau wie das Zyklus-Modul): Hero-Ring, 2-spaltiges Kachel-Raster,
 /// Körperkarte und Eintrags-Chips. Rechenlogik liegt in `SchmerzUebersicht` / `SchmerzDashboardViewModel`.
 struct SchmerzView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query private var einnahmenHeute: [EinnahmeLog]
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var scanService = BodyScanService.shared
 
     @State private var vm = SchmerzDashboardViewModel()
-    @State private var ansicht: SchmerzAnsicht = .heute
+    @State private var ansicht: ModulAnsicht = .heute
     @State private var zeigeForm = false
     @State private var zeigeAnalyse = false
 
@@ -35,7 +29,7 @@ struct SchmerzView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
-                GlassSegmentPicker(auswahl: $ansicht, optionen: SchmerzAnsicht.allCases, titel: { $0.rawValue })
+                GlassSegmentPicker(auswahl: $ansicht, optionen: ModulAnsicht.allCases, titel: { $0.rawValue })
 
                 switch ansicht {
                 case .heute:
@@ -248,15 +242,7 @@ struct SchmerzView: View {
 
     private var zuletztBereich: some View {
         VStack(spacing: 8) {
-            HStack {
-                Text("Zuletzt").font(.title3.bold())
-                Spacer()
-                Button("Alle ansehen") { withAnimation { ansicht = .verlauf } }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 4)
-            .padding(.top, 4)
+            ZuletztKopf { withAnimation { ansicht = .verlauf } }
 
             if schmerzEintraege.isEmpty {
                 Text("Tippe auf „Schmerz erfassen“, um deinen ersten Eintrag anzulegen.")
@@ -266,16 +252,7 @@ struct SchmerzView: View {
                     .frame(maxWidth: .infinity)
                     .glassCard(radius: 22, padding: 16)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(schmerzEintraege.prefix(8)) { eintrag in
-                            eintragLink(eintrag, volleBreite: false)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                }
-                .padding(.horizontal, -16)
+                EintragChipStreifen(eintraege: schmerzEintraege, tint: tint, inhalt: chipInhalt)
 
                 Button { zeigeAnalyse = true } label: {
                     Label("Schmerz-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
@@ -289,80 +266,18 @@ struct SchmerzView: View {
         }
     }
 
-    // MARK: - Verlauf (Tageskarten)
-
-    private var gruppiert: [(tag: DayKey, items: [PainEntry])] {
-        Dictionary(grouping: schmerzEintraege, by: \.tag)
-            .sorted { $0.key > $1.key }
-            .map { (tag: $0.key, items: $0.value.sorted { $0.datum > $1.datum }) }
-    }
-
     private var verlaufBereich: some View {
-        LazyVStack(spacing: 12) {
-            if schmerzEintraege.isEmpty {
-                Text("Noch keine Einträge")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .glassCard(radius: 22, padding: 20)
-            }
-            ForEach(gruppiert, id: \.tag) { gruppe in
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(tagLabel(gruppe.tag)).font(.headline)
-                    ForEach(gruppe.items) { eintrag in
-                        eintragLink(eintrag, volleBreite: true)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassCard(radius: 24, padding: 16)
-            }
-        }
+        EintragTageskarten(eintraege: schmerzEintraege, tint: tint, inhalt: chipInhalt)
     }
 
-    // MARK: - Hilfen
-
-    private func eintragLink(_ eintrag: PainEntry, volleBreite: Bool) -> some View {
-        NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
-            GlassEintragChip(
-                zahl: eintrag.schmerzstaerke,
-                titel: eintragTitel(eintrag),
-                untertitel: eintragUntertitel(eintrag),
-                tint: tint,
-                hervorgehoben: eintrag.schmerzstaerke >= 7,
-                volleBreite: volleBreite
-            )
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
-            Button(role: .destructive) {
-                EintragLoeschService(context: modelContext).loesche(eintrag)
-            } label: { Label("Löschen", systemImage: "trash") }
-        }
-    }
-
-    private func eintragTitel(_ eintrag: PainEntry) -> String {
+    private func chipInhalt(_ eintrag: PainEntry) -> EintragChipInhalt {
         let orte = eintrag.koerperstellenListe
-        return orte.isEmpty ? "Schmerz" : orte.joined(separator: ", ")
-    }
-
-    private func eintragUntertitel(_ eintrag: PainEntry) -> String {
-        let zeit = eintrag.datum.formatted(date: .omitted, time: .shortened)
-        let tag = tagKurz(eintrag.tag)
         let art = eintrag.schmerzart.isEmpty ? "" : " · \(eintrag.schmerzart)"
-        return "\(tag) \(zeit)\(art)"
-    }
-
-    private func tagKurz(_ tag: DayKey) -> String {
-        let heute = DayKey.heute()
-        if tag == heute { return "Heute" }
-        if tag.tage(bis: heute) == 1 { return "Gestern" }
-        return tag.beginn().formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
-    }
-
-    private func tagLabel(_ tag: DayKey) -> String {
-        let heute = DayKey.heute()
-        if tag == heute { return "Heute" }
-        if tag.tage(bis: heute) == 1 { return "Gestern" }
-        return tag.beginn().formatted(.dateTime.weekday(.wide).day().month(.wide))
+        return EintragChipInhalt(
+            zahl: eintrag.schmerzstaerke,
+            titel: orte.isEmpty ? "Schmerz" : orte.joined(separator: ", "),
+            untertitel: TagBeschriftung.tagUndZeit(eintrag) + art,
+            hervorgehoben: eintrag.schmerzstaerke >= 7
+        )
     }
 }
