@@ -3,7 +3,7 @@ import SwiftUI
 /// Monatskalender mit durchgehenden Perioden-/Fruchtbarkeits-Bändern (44-pt-Felder).
 struct ZyklusKalenderView: View {
     let monat: Date
-    let eintraegeProTag: [Date: ZyklusEintrag]
+    let eintraegeProTag: [Date: ZyklusTagesSicht]
     let analyse: ZyklusAnalyse
     let zeigePrognosen: Bool
     let ausgewaehlterTag: Date?
@@ -134,7 +134,7 @@ private struct ZyklusTagZelle: View {
     let vorhergesagt: Bool
     let eisprung: Bool
     let ausgewaehlt: Bool
-    let eintrag: ZyklusEintrag?
+    let eintrag: ZyklusTagesSicht?
     let action: () -> Void
 
     private var istHeute: Bool { Calendar.current.isDateInToday(datum) }
@@ -197,6 +197,16 @@ private struct ZyklusTagZelle: View {
                         .fill(ZyklusFarbe.eisprung)
                         .frame(width: 34, height: 34)
                         .shadow(color: ZyklusFarbe.eisprung.opacity(0.45), radius: 4)
+                }
+
+                // Positiver Ovulationstest: immer sichtbar als Stern oben rechts
+                if eintrag?.lhTest == .positiv {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(ZyklusFarbe.eisprung)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(.top, 0).padding(.trailing, 4)
+                        .accessibilityHidden(true)
                 }
 
                 if istHeute {

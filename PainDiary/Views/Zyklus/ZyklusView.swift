@@ -27,9 +27,10 @@ struct ZyklusView: View {
 
     private var kal: Calendar { Calendar.current }
 
-    private var eintraegeProTag: [Date: ZyklusEintrag] {
-        Dictionary(eintraege.map { ($0.tag.beginn(in: kal.timeZone), $0) },
-                   uniquingKeysWith: { erster, _ in erster })
+    /// Pro Kalendertag alle Einträge zusammengeführt (Duplikate gehen so nicht verloren).
+    private var eintraegeProTag: [Date: ZyklusTagesSicht] {
+        Dictionary(grouping: eintraege) { $0.tag.beginn(in: kal.timeZone) }
+            .mapValues { ZyklusTagesSicht($0) }
     }
 
     var body: some View {
@@ -147,7 +148,7 @@ struct ZyklusView: View {
     // MARK: - Heute
 
     @ViewBuilder
-    private func heuteInhalt(_ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusEintrag]) -> some View {
+    private func heuteInhalt(_ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusTagesSicht]) -> some View {
         if analyse.zyklusStarts.isEmpty {
             leerKarte
         } else if pausiert {
@@ -357,7 +358,7 @@ struct ZyklusView: View {
 
     // MARK: Erfassen / Statistik
 
-    private func erfassenKarte(_ proTag: [Date: ZyklusEintrag]) -> some View {
+    private func erfassenKarte(_ proTag: [Date: ZyklusTagesSicht]) -> some View {
         let heute = proTag[kal.startOfDay(for: Date())]
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -439,7 +440,7 @@ struct ZyklusView: View {
     // MARK: - Monat
 
     @ViewBuilder
-    private func monatsInhalt(_ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusEintrag]) -> some View {
+    private func monatsInhalt(_ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusTagesSicht]) -> some View {
         if !kal.isDate(anzeigeMonat, equalTo: Date(), toGranularity: .month) || monatsAuswahl != nil {
             HStack {
                 Spacer()
@@ -480,7 +481,7 @@ struct ZyklusView: View {
     }
 
     /// Detailkarte zum angetippten Kalendertag: Zyklustag, Phase, Status und erfasste Werte.
-    private func tagesKarte(_ tag: Date, _ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusEintrag]) -> some View {
+    private func tagesKarte(_ tag: Date, _ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusTagesSicht]) -> some View {
         let start = kal.startOfDay(for: tag)
         let heute = kal.startOfDay(for: Date())
         let eintrag = proTag[start]
@@ -589,8 +590,12 @@ struct ZyklusView: View {
                 Text("Sex. Aktivität")
             }
             HStack(spacing: 4) {
+                Image(systemName: "star.fill").font(.system(size: 8)).foregroundStyle(ZyklusFarbe.eisprung)
+                Text("LH-Test positiv")
+            }
+            HStack(spacing: 4) {
                 Circle().fill(Color.gray.opacity(0.8)).frame(width: 7, height: 7)
-                Text("Andere Daten")
+                Text("Test / Temperatur / Notiz")
             }
         }
         .font(.caption2)

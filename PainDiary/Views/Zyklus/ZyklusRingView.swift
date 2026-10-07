@@ -43,6 +43,11 @@ struct ZyklusRingView: View {
         return analyse.ovulationsTageSet.contains(kal.startOfDay(for: d))
     }
 
+    private func istLHPositiv(_ n: Int) -> Bool {
+        guard let d = datum(fuerTag: n) else { return false }
+        return analyse.lhPositiveTageSet.contains(kal.startOfDay(for: d))
+    }
+
     private func position(tag n: Int, seite: CGFloat, radius: CGFloat) -> CGPoint {
         let winkel = (Double(n) - 0.5) / Double(anzahlTage) * 2 * Double.pi - Double.pi / 2
         return CGPoint(x: seite / 2 + radius * CGFloat(cos(winkel)),
@@ -98,6 +103,16 @@ struct ZyklusRingView: View {
                             .overlay(Circle().stroke(.white, lineWidth: 2))
                             .shadow(color: ZyklusFarbe.eisprung.opacity(0.5), radius: 5)
                             .position(position(tag: n, seite: seite, radius: (seite - dicke) / 2))
+                    }
+                }
+
+                // Positive Ovulationstests (Stern auf der Innenseite)
+                ForEach(1...anzahl, id: \.self) { n in
+                    if istLHPositiv(n) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: dicke * 0.55))
+                            .foregroundStyle(ZyklusFarbe.eisprung)
+                            .position(position(tag: n, seite: seite, radius: (seite - dicke) / 2 - dicke * 0.95))
                     }
                 }
 

@@ -307,6 +307,34 @@ struct ZyklusRechnerTests {
         #expect(a.fruchtbarRandTageSet.isDisjoint(with: a.fruchtbareTageSet))
     }
 
+    // MARK: - Tagessicht & Tests
+
+    @Test func tagessichtFuehrtMehrereEintraegeDesTagesZusammen() {
+        let periode = blutung(d(2026, 7, 6), .mittel)
+        let test = neuerEintrag(d(2026, 7, 6))
+        test.lhTest = .positiv
+        let zweiterTest = neuerEintrag(d(2026, 7, 6).addingTimeInterval(3600))
+        zweiterTest.lhTest = .negativ    // später, aber ein positives Ergebnis bleibt maßgeblich
+        zweiterTest.symptome = "Krämpfe"
+        let sicht = ZyklusTagesSicht([periode, test, zweiterTest])
+        #expect(sicht.anzahl == 3)
+        #expect(sicht.lhTest == .positiv)
+        #expect(sicht.hatBlutung)
+        #expect(sicht.fluss == .mittel)
+        #expect(sicht.symptome == "Krämpfe")
+    }
+
+    @Test func positiveLHTageWerdenInZyklusUndAnalyseGefuehrt() {
+        var e = zyklen(start: d(2026, 1, 1), laengen: [28, 28], laufenderZyklusBis: d(2026, 2, 28))
+        let lh = neuerEintrag(d(2026, 1, 13))
+        lh.lhTest = .positiv
+        e.append(lh)
+        let a = analyse(e, heute: d(2026, 2, 28))
+        #expect(a.lhPositiveTageSet == [d(2026, 1, 13)])
+        #expect(a.zyklen.first?.lhPositiveTage == [d(2026, 1, 13)])
+        #expect(a.zyklen.last?.lhPositiveTage.isEmpty == true)
+    }
+
     // MARK: - DayKey / Zeitzonen
 
     @Test func laufendeNummerIstFortlaufendUndUmkehrbar() {

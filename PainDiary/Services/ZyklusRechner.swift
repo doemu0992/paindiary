@@ -72,6 +72,8 @@ struct ZyklusInfo: Identifiable {
     let fuerStatistikGueltig: Bool
     /// Abgeschlossen: tatsächliche Länge. Laufend: erwartete Länge (verschiebt sich bei überfälliger Periode mit).
     let erwarteteLaenge: Int
+    /// Tage mit positivem Ovulationstest in diesem Zyklus.
+    let lhPositiveTage: [Date]
 }
 
 struct ZyklusAnalyse {
@@ -116,6 +118,8 @@ struct ZyklusAnalyse {
     let prognoseMethode: String
     /// Periode und Eisprung wurden anhand von Temperatur/LH-Test im laufenden Zyklus neu verankert.
     let evidenzVerankert: Bool
+    /// Alle Tage mit positivem Ovulationstest (für Ring und Kalender).
+    let lhPositiveTageSet: Set<Date>
 
     static func leerMitPeriodeTagen(_ periodeTage: Set<Date>) -> ZyklusAnalyse {
         ZyklusAnalyse(
@@ -134,7 +138,7 @@ struct ZyklusAnalyse {
             status: .normal, hinweise: [], zyklen: [],
             vorhergesagtePeriodeTageSet: [], naechstesFruchtbaresFenster: nil,
             fruchtbarRandTageSet: [], prognoseFehler: nil, prognoseMethode: "Standardwert",
-            evidenzVerankert: false
+            evidenzVerankert: false, lhPositiveTageSet: []
         )
     }
 
@@ -640,7 +644,10 @@ struct ZyklusRechner {
                 lutealLaenge: naechster.map { $0 - ov - 1 },
                 abgeschlossen: naechster != nil,
                 fuerStatistikGueltig: bereinigtIdx.contains(i),
-                erwarteteLaenge: naechster.map { $0 - s } ?? (periodeSpaetestensNr - s)
+                erwarteteLaenge: naechster.map { $0 - s } ?? (periodeSpaetestensNr - s),
+                lhPositiveTage: alleNrs
+                    .filter { $0 >= s && $0 < (naechster ?? (heuteNr + 1)) && tage[$0]?.lh == .positiv }
+                    .map { ctx.datum($0) }
             ))
         }
 
@@ -749,7 +756,8 @@ struct ZyklusRechner {
             fruchtbarRandTageSet: Set(randNrs.map { ctx.datum($0) }),
             prognoseFehler: backtestFehler,
             prognoseMethode: wahl.praediktor.titel,
-            evidenzVerankert: evidenzVerankert
+            evidenzVerankert: evidenzVerankert,
+            lhPositiveTageSet: Set(alleNrs.filter { tage[$0]?.lh == .positiv }.map { ctx.datum($0) })
         )
     }
 

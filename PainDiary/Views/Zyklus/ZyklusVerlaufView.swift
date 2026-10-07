@@ -196,6 +196,12 @@ struct ZyklusVerlaufView: View {
 
     private func details(_ info: ZyklusInfo) -> String {
         var teile = ["Periode \(info.periodenTage) T"]
+        if !info.lhPositiveTage.isEmpty {
+            let tage = info.lhPositiveTage
+                .map { $0.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de)) }
+                .joined(separator: ", ")
+            teile.append("★ LH positiv \(tage)")
+        }
         if let ov = info.eisprung {
             teile.append("Eisprung \(ov.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de))) (\(info.eisprungQuelle.titel))")
         }

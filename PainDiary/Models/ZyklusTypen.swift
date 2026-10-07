@@ -139,3 +139,54 @@ enum ZyklusGrenzen {
     /// Plausibler Bereich einer gemessenen Lutealphase.
     static let gueltigeLutealphase: ClosedRange<Int> = 8...18
 }
+
+
+// MARK: - Tagessicht (mehrere Einträge eines Kalendertags zusammengeführt)
+
+/// Alle Einträge eines Kalendertags in einer Sicht. Sonst ginge z. B. ein positiver LH-Test unter, wenn am
+/// selben Tag ein zweiter Eintrag (etwa von der Periode oder aus einem früheren Duplikat) existiert.
+/// Regeln: stärkste Blutung gewinnt, Symptome werden vereinigt, ein positiver LH-Test überstimmt andere Ergebnisse,
+/// bei Schleim/Temperatur/Sex gilt der jeweils spätere Eintrag.
+struct ZyklusTagesSicht {
+    private(set) var hatBlutung = false
+    private(set) var fluss: Blutungsfluss = .keine
+    private(set) var symptome = ""
+    private(set) var schleim: Zervixschleim = .keine
+    private(set) var lhTest: LHTest = .keine
+    private(set) var basaltemperatur: Double = 0
+    private(set) var sexAktivitaet: SexAktivitaet = .keine
+    private(set) var notizen = ""
+    private(set) var anzahl = 0
+
+    private static func rang(_ f: Blutungsfluss) -> Int {
+        switch f {
+        case .keine: return 0
+        case .schmierblutung: return 1
+        case .leicht: return 2
+        case .mittel: return 3
+        case .stark: return 4
+        }
+    }
+
+    init(_ eintraege: [ZyklusEintrag]) {
+        var symptomListe: [String] = []
+        var notizListe: [String] = []
+        for e in eintraege.sorted(by: { $0.datum < $1.datum }) {
+            anzahl += 1
+            if e.hatBlutung {
+                hatBlutung = true
+                if Self.rang(e.fluss) > Self.rang(fluss) { fluss = e.fluss }
+            }
+            symptomListe += ListenFeld.parse(e.symptome)
+            if e.schleim != .keine { schleim = e.schleim }
+            let l = e.lhTest
+            if l != .keine && (l == .positiv || lhTest != .positiv) { lhTest = l }
+            if ZyklusGrenzen.bbtBereich.contains(e.basaltemperatur) { basaltemperatur = e.basaltemperatur }
+            if e.sexAktivitaet != .keine { sexAktivitaet = e.sexAktivitaet }
+            let n = e.notizen.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !n.isEmpty && !notizListe.contains(n) { notizListe.append(n) }
+        }
+        symptome = ListenFeld.join(symptomListe)
+        notizen = notizListe.joined(separator: " · ")
+    }
+}
