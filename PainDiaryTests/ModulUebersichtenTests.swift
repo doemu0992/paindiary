@@ -145,3 +145,61 @@ struct MigraeneUebersichtTests {
         #expect(u.letzterVorTagen == 0)
     }
 }
+
+struct MedikationsUebersichtTests {
+    let heute = tag(2026, 10, 7)
+
+    private func genommen(_ id: String, _ t: DayKey, mal: Int = 1) -> [EinnahmePunkt] {
+        Array(repeating: EinnahmePunkt(medikamentID: id, tag: t), count: mal)
+    }
+
+    @Test func ohnePlanKeineAdherenzUndKeinStreak() {
+        let u = MedikationsUebersicht.berechne(plan: [], einnahmen: genommen("", heute), heute: heute)
+        #expect(u.adherenz7T == 0)
+        #expect(u.streak == 0)
+        #expect(u.einnahmenHeute == 1)
+    }
+
+    @Test func heuteErwartetUndEingenommenBegrenztAufDosen() {
+        let plan = [MedikationsPlanEintrag(id: "a", dosenProTag: 2), MedikationsPlanEintrag(id: "b", dosenProTag: 1)]
+        let u = MedikationsUebersicht.berechne(
+            plan: plan,
+            einnahmen: genommen("a", heute, mal: 3) + genommen("b", heute, mal: 0),
+            heute: heute
+        )
+        #expect(u.heuteErwartet == 3)
+        #expect(u.heuteEingenommen == 2)   // 3 Einnahmen von „a" zählen höchstens 2
+    }
+
+    @Test func bedarfsmedikamentZaehltNichtFuerPlan() {
+        let plan = [MedikationsPlanEintrag(id: "a", dosenProTag: 1), MedikationsPlanEintrag(id: "prn", dosenProTag: 0)]
+        let u = MedikationsUebersicht.berechne(plan: plan, einnahmen: genommen("a", heute) + genommen("prn", heute), heute: heute)
+        #expect(u.heuteErwartet == 1)
+        #expect(u.heuteEingenommen == 1)
+        #expect(u.einnahmenHeute == 2)
+    }
+
+    @Test func streakZaehltVollstaendigeTageUndBrichtAb() {
+        let plan = [MedikationsPlanEintrag(id: "a", dosenProTag: 1)]
+        var e = genommen("a", heute)
+        e += genommen("a", tag(2026, 10, 6))
+        // 5.10. fehlt → Streak endet
+        e += genommen("a", tag(2026, 10, 4))
+        let u = MedikationsUebersicht.berechne(plan: plan, einnahmen: e, heute: heute)
+        #expect(u.streak == 2)
+    }
+
+    @Test func heuteUnvollstaendigErgibtStreakNull() {
+        let plan = [MedikationsPlanEintrag(id: "a", dosenProTag: 1)]
+        let u = MedikationsUebersicht.berechne(plan: plan, einnahmen: genommen("a", tag(2026, 10, 6)), heute: heute)
+        #expect(u.streak == 0)
+    }
+
+    @Test func adherenzSiebenTage() {
+        let plan = [MedikationsPlanEintrag(id: "a", dosenProTag: 1)]
+        // 7 Tage erwartet, 3 genommen (heute, gestern, vorgestern) → 3/7
+        let e = genommen("a", heute) + genommen("a", tag(2026, 10, 6)) + genommen("a", tag(2026, 10, 5))
+        let u = MedikationsUebersicht.berechne(plan: plan, einnahmen: e, heute: heute)
+        #expect(abs(u.adherenz7T - 300.0 / 7.0) < 0.0001)
+    }
+}

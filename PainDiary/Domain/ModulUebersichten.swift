@@ -195,3 +195,71 @@ nonisolated struct MigraeneUebersicht: Equatable, Sendable {
         return u
     }
 }
+
+// MARK: - Medikamente
+
+/// Geplante Einnahmen pro Tag eines aktiven Medikaments (0 = „Bei Bedarf" o. Ä.).
+nonisolated struct MedikationsPlanEintrag: Equatable, Sendable {
+    let id: String
+    let dosenProTag: Int
+}
+
+/// Eine bestätigte Einnahme. `medikamentID` ist leer, wenn sie keinem aktiven Medikament zugeordnet ist.
+nonisolated struct EinnahmePunkt: Equatable, Sendable {
+    let medikamentID: String
+    let tag: DayKey
+}
+
+/// Kennzahlen für das Medikamente-Dashboard (Tagesring, Adherenz, Streak).
+nonisolated struct MedikationsUebersicht: Equatable, Sendable {
+    var heuteErwartet = 0
+    var heuteEingenommen = 0
+    /// Adherenz der letzten 7 Tage in Prozent (0…100), 0 ohne geplante Einnahmen.
+    var adherenz7T: Double = 0
+    /// Aufeinanderfolgende Tage (inkl. heute), an denen alle geplanten Dosen genommen wurden.
+    var streak = 0
+    /// Alle bestätigten Einnahmen heute (auch „Bei Bedarf").
+    var einnahmenHeute = 0
+
+    static func berechne(plan: [MedikationsPlanEintrag], einnahmen: [EinnahmePunkt], heute: DayKey) -> MedikationsUebersicht {
+        var u = MedikationsUebersicht()
+        let geplant = plan.filter { $0.dosenProTag > 0 }
+        struct Schluessel: Hashable { let id: String; let tag: DayKey }
+        var anzahl: [Schluessel: Int] = [:]
+        for e in einnahmen { anzahl[Schluessel(id: e.medikamentID, tag: e.tag), default: 0] += 1 }
+
+        func tagesSumme(_ tag: DayKey) -> (erwartet: Int, genommen: Int) {
+            var erwartet = 0, genommen = 0
+            for p in geplant {
+                erwartet += p.dosenProTag
+                genommen += min(p.dosenProTag, anzahl[Schluessel(id: p.id, tag: tag)] ?? 0)
+            }
+            return (erwartet, genommen)
+        }
+
+        let h = tagesSumme(heute)
+        u.heuteErwartet = h.erwartet
+        u.heuteEingenommen = h.genommen
+        u.einnahmenHeute = einnahmen.filter { $0.tag == heute }.count
+
+        var erwartet7 = 0, genommen7 = 0
+        for offset in 0..<7 {
+            let s = tagesSumme(heute.addiere(tage: -offset))
+            erwartet7 += s.erwartet
+            genommen7 += s.genommen
+        }
+        u.adherenz7T = erwartet7 > 0 ? Double(genommen7) / Double(erwartet7) * 100 : 0
+
+        if !geplant.isEmpty {
+            var tag = heute
+            while u.streak < 365 {
+                let s = tagesSumme(tag)
+                let vollstaendig = geplant.allSatisfy { (anzahl[Schluessel(id: $0.id, tag: tag)] ?? 0) >= $0.dosenProTag }
+                guard vollstaendig, s.erwartet > 0 else { break }
+                u.streak += 1
+                tag = tag.addiere(tage: -1)
+            }
+        }
+        return u
+    }
+}
