@@ -26,6 +26,8 @@ Der Design-Layer liegt in `PainDiary/Design/GlassTheme.swift`. **Nie** eigene Ka
 
 **Themen-Hintergründe (bindend):** `.auroraScreen(_ theme: AuroraTheme)` / `.glassList(_ theme:)` — `.schmerz` (Blau/Mint), `.medikamente` (Pfirsich/Butter), `.statistik` (Indigo/Violett), `.migraene` (gedämpft, **statisch**), `.zyklus` (Rosé/Pfirsich/Lavendel), `.rheuma`, `.haut`, `.diabetes`, `.wellness`, `.neutral` (Profil/Einstellungen). Das Thema setzt auch die Akzentfarbe des Karten-Schattens (`glasAkzent`). Ein Modul-Screen nutzt immer das Thema seines Moduls; neue Themen in `AuroraTheme` ergänzen. Zuordnung: Schmerz/Heute/Erfassung → `.schmerz`, Medikamente → `.medikamente`, Verlauf/Einblicke/Analysen → `.statistik`, Migräne/MIDAS → `.migraene`, Rheuma → `.rheuma`, Haut → `.haut`, Diabetes → `.diabetes`, Wellness/Schlaf → `.wellness`, Profil/Einstellungen/Onboarding/Sheets ohne Modul → `.neutral`. Jede `Section` in einer `glassList` braucht `.listRowBackground(GlassRowBackground())` (echtes Milchglas, nie `Color.white`/solide Füllung) (oder `.clear` bei eigener Karte). Eckenradius immer `style: .continuous`.
 
+**Bento-Bausteine** (`Design/BentoComponents.swift`): `GlassSegmentPicker`, `GlassPille`, `BentoKachel` (quadratisch: Icon, Kennwert/Inhalt, Label), `GlassEintragChip` (Zahl + 2 Zeilen, Streifen oder volle Breite). Löschen von Chips per Kontextmenü über `EintragLoeschService`. Referenz: `Views/Schmerz/SchmerzView.swift`.
+
 **Navigation:** Tabs `Heute` (`HeuteView`) · `Verlauf` (`VerlaufContainerView`: Segment Liste | Einblicke; Einblicke = frühere Dashboard-Kacheln, `DashboardView(segment:)`) · `＋` · `Wohlbefinden` · `Profil`.
 **Erfassung:** „+" öffnet `QuickCaptureSheet` (1 Screen: Slider, Körperstellen-Chips, Speichern; „Mehr…" = `SchmerzForm`-Wizard). Mit aktiven Zusatzmodulen zuerst `EintragAuswahlView` (mit „Schnell erfassen").
 **Heute-Screen:** Hero-Gauge, eine Hauptaktion, 3 Info-Chips, 2-spaltiges Modul-Grid (Modul-Mini-Kacheln: 1 Kennwert + Sparkline), Einblick-Zeile. Keine langen Kachel-Stapel mehr.
@@ -594,7 +596,7 @@ private func schrittHeader(symbol: String, titel: String, untertitel: String) ->
 
 | Element | Standard |
 |---|---|
-| Layout | `List` (nicht `ScrollView+VStack`) |
+| Layout | Bento-Dashboard wie Zyklus/Schmerz: `ScrollView` + `GlassSegmentPicker` (Heute \| Verlauf), Hero-`glassCard` (z. B. `SchmerzGauge`), `LazyVGrid` (2 Spalten) aus `BentoKachel`, Eintrags-Chips (`GlassEintragChip`). Reine `List` nur noch für Verwaltungs-/Einstellungsseiten. Kennzahlen in `Domain/` (z. B. `SchmerzUebersicht`) + ViewModel |
 | Statistik-Header | Erste Section: Rheuma-Style (3 `statPill`-Spalten + optionaler Analyse-Button) |
 | Action | Toolbar `.primaryAction` Button (kein FAB) |
 | Titel | `.navigationTitle("...")` + `.navigationBarTitleDisplayMode(.large)` |
