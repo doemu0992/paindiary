@@ -504,7 +504,7 @@ struct DiabetesAnalyseView: View {
                         Text("Ø-Wert").font(.caption2).foregroundStyle(.secondary)
                     }
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.blue.opacity(0.2)).frame(width: 12, height: 8)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(Color.blue.opacity(0.2)).frame(width: 12, height: 8)
                         Text("Min–Max").font(.caption2).foregroundStyle(.secondary)
                     }
                 }
@@ -627,11 +627,11 @@ struct DiabetesAnalyseView: View {
                 .frame(height: 100)
                 HStack(spacing: 12) {
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.red.opacity(0.75)).frame(width: 12, height: 12)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(Color.red.opacity(0.75)).frame(width: 12, height: 12)
                         Text("Hypos").font(.caption2).foregroundStyle(.secondary)
                     }
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.orange.opacity(0.75)).frame(width: 12, height: 12)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(Color.orange.opacity(0.75)).frame(width: 12, height: 12)
                         Text("Hypers").font(.caption2).foregroundStyle(.secondary)
                     }
                 }

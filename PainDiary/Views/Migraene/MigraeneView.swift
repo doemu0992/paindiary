@@ -189,6 +189,7 @@ struct MigraeneView: View {
                     }
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
     }
 
@@ -239,6 +240,7 @@ struct MigraeneView: View {
                 }
                 .padding(.vertical, 4)
             }
+            .listRowBackground(Color.glassFill)
         }
     }
 
@@ -489,7 +491,7 @@ struct MigraeneAnfallForm: View {
                                     .padding(.vertical, 8)
                                     .background(kopfschmerzTyp == typ ? Color.purple : Color.glassFill)
                                     .foregroundStyle(kopfschmerzTyp == typ ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             }
                             .buttonStyle(.plain)
                         }
@@ -880,7 +882,7 @@ struct MigraeneAnfallForm: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassFill()
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func chipKarte(
@@ -912,7 +914,7 @@ struct MigraeneAnfallForm: View {
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
                             sel ? farbe.opacity(0.12) : Color.glassFill,
-                            in: RoundedRectangle(cornerRadius: 10)
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                         )
                     }
                     .buttonStyle(.plain)

@@ -195,7 +195,7 @@ struct PhysioFormView: View {
                                     }
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                                     .background(sel ? Color.teal : Color.glassFill,
-                                                in: RoundedRectangle(cornerRadius: 10))
+                                                in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                                     .foregroundStyle(sel ? .white : .primary)
                                     .animation(.easeInOut(duration: 0.15), value: sel)
                                 }

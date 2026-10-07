@@ -472,7 +472,7 @@ struct SchmerzForm: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassFill()
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
@@ -512,7 +512,7 @@ struct SchmerzForm: View {
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
                             sel ? farbe.opacity(0.12) : Color.glassFill,
-                            in: RoundedRectangle(cornerRadius: 10)
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                         )
                     }
                     .buttonStyle(.plain)

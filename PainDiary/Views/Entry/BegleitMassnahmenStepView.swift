@@ -114,7 +114,7 @@ struct BegleitMassnahmenStepView: View {
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Color.purple.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                    .background(Color.purple.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
 
                 FlowLayout(massnahmenVorschlaege) { m in

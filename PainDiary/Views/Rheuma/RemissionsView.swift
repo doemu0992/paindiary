@@ -101,9 +101,9 @@ struct RemissionsView: View {
             }
         }
         .padding()
-        .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16).stroke(Color.green.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.green.opacity(0.3), lineWidth: 1)
         )
     }
 

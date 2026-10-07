@@ -8,7 +8,7 @@ struct ChangelogVerlaufView: View {
                     ForEach(version.aenderungen) { item in
                         HStack(alignment: .top, spacing: 14) {
                             ZStack {
-                                RoundedRectangle(cornerRadius: 10)
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(item.farbe.opacity(0.15))
                                     .frame(width: 44, height: 44)
                                 Image(systemName: item.icon)

@@ -43,7 +43,7 @@ struct HautArtFotoStepView: View {
                             .padding(.horizontal, 10).padding(.vertical, 8)
                             .background(
                                 sel ? Color.orange.opacity(0.12) : Color.glassFill,
-                                in: RoundedRectangle(cornerRadius: 10)
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                             )
                         }
                         .buttonStyle(.plain)
@@ -85,7 +85,7 @@ struct HautArtFotoStepView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(maxHeight: 220)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                         Button {
                             FotoManager.loeschen(dateiname: fotoDateiname)
@@ -110,7 +110,7 @@ struct HautArtFotoStepView: View {
                         .font(.subheadline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .foregroundStyle(.orange)
                     }
                     .buttonStyle(.plain)

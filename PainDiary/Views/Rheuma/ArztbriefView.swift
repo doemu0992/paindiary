@@ -240,7 +240,7 @@ private struct KIArztbriefContent: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 10))
+                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(isGenerating)

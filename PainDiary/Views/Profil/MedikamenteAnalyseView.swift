@@ -421,15 +421,15 @@ struct MedikamenteAnalyseView: View {
                             GeometryReader { geo in
                                 HStack(spacing: 2) {
                                     if wirkungGut > 0 {
-                                        RoundedRectangle(cornerRadius: 3).fill(Color.green)
+                                        RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.green)
                                             .frame(width: geo.size.width * CGFloat(wirkungGut) / CGFloat(total))
                                     }
                                     if wirkungTeilweise > 0 {
-                                        RoundedRectangle(cornerRadius: 3).fill(Color.orange)
+                                        RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.orange)
                                             .frame(width: geo.size.width * CGFloat(wirkungTeilweise) / CGFloat(total))
                                     }
                                     if wirkungNicht > 0 {
-                                        RoundedRectangle(cornerRadius: 3).fill(Color.red)
+                                        RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.red)
                                             .frame(width: geo.size.width * CGFloat(wirkungNicht) / CGFloat(total))
                                     }
                                 }
@@ -470,15 +470,15 @@ struct MedikamenteAnalyseView: View {
             GeometryReader { geo in
                 HStack(spacing: 2) {
                     if gut > 0 {
-                        RoundedRectangle(cornerRadius: 3).fill(Color.green)
+                        RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.green)
                             .frame(width: geo.size.width * CGFloat(gut) / CGFloat(tot))
                     }
                     if tw > 0 {
-                        RoundedRectangle(cornerRadius: 3).fill(Color.orange)
+                        RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.orange)
                             .frame(width: geo.size.width * CGFloat(tw) / CGFloat(tot))
                     }
                     if ni > 0 {
-                        RoundedRectangle(cornerRadius: 3).fill(Color.red)
+                        RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.red)
                             .frame(width: geo.size.width * CGFloat(ni) / CGFloat(tot))
                     }
                 }
@@ -550,7 +550,7 @@ struct MedikamenteAnalyseView: View {
                 HStack(spacing: 8) {
                     Text(med.name).font(.caption).frame(width: 110, alignment: .leading).lineLimit(1)
                     GeometryReader { geo in
-                        RoundedRectangle(cornerRadius: 3)
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
                             .fill(Color.blue.opacity(0.6))
                             .frame(width: geo.size.width * CGFloat(count) / CGFloat(maxCount))
                     }

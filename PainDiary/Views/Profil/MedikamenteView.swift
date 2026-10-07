@@ -290,6 +290,7 @@ struct MedikamenteView: View {
             }
             .onDelete { loeschen(aus: inaktive, offsets: $0) }
         }
+        .listRowBackground(Color.glassFill)
     }
 
     // MARK: - Warnungen
@@ -339,6 +340,7 @@ struct MedikamenteView: View {
                     .foregroundStyle(.orange)
             }
         }
+            .listRowBackground(Color.glassFill)
     }
 
     @ViewBuilder
@@ -372,6 +374,7 @@ struct MedikamenteView: View {
                     .padding(.vertical, 4)
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
     }
 
@@ -388,7 +391,7 @@ struct MedikamenteView: View {
             .padding(.vertical, 6)
             .background(ausgewaehlt ? farbe : farbe.opacity(0.12))
             .foregroundStyle(ausgewaehlt ? .white : farbe)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
         }
         .buttonStyle(.plain)
@@ -421,6 +424,7 @@ struct MedikamenteView: View {
                 }
                 .padding(.vertical, 4)
             }
+            .listRowBackground(Color.glassFill)
         }
     }
 
@@ -437,6 +441,7 @@ struct MedikamenteView: View {
                 }
                 .font(.caption)
             }
+            .listRowBackground(Color.glassFill)
         } else if notif.status == .notDetermined {
             Section {
                 Button {
@@ -445,6 +450,7 @@ struct MedikamenteView: View {
                     Label("Benachrichtigungen aktivieren", systemImage: "bell.badge")
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
     }
 
@@ -703,7 +709,7 @@ struct MedikamentFormView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
                                 .background(ausgewaehlt ? Color.blue : Color.glassFill)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                 .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
                             }
                             .buttonStyle(.plain)
@@ -766,7 +772,7 @@ struct MedikamentFormView: View {
                                     .padding(.vertical, 11)
                                     .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                     .foregroundStyle(ausgewaehlt ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                     .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
                             }
                             .buttonStyle(.plain)
@@ -804,7 +810,7 @@ struct MedikamentFormView: View {
                                         .padding(.vertical, 10)
                                         .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                         .foregroundStyle(ausgewaehlt ? .white : .primary)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                         .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
                                 }
                                 .buttonStyle(.plain)

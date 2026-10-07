@@ -441,7 +441,7 @@ struct SchmerzAnalyseView: View {
                             proportionen: scanService.proportionen
                         )
                         .frame(height: 260)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                         // Color legend
                         HStack(spacing: 0) {
@@ -476,7 +476,7 @@ struct SchmerzAnalyseView: View {
                                         .frame(width: 120, alignment: .leading)
                                         .lineLimit(1)
                                     GeometryReader { geo in
-                                        RoundedRectangle(cornerRadius: 4)
+                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
                                             .fill(Color.red.opacity(0.7))
                                             .frame(width: geo.size.width * CGFloat(ort.anzahl) / CGFloat(maxAnzahl))
                                     }
@@ -516,7 +516,7 @@ struct SchmerzAnalyseView: View {
                                     .frame(width: 120, alignment: .leading)
                                     .lineLimit(1)
                                 GeometryReader { geo in
-                                    RoundedRectangle(cornerRadius: 4)
+                                    RoundedRectangle(cornerRadius: 4, style: .continuous)
                                         .fill(Color.orange.opacity(0.7))
                                         .frame(width: geo.size.width * CGFloat(a.anzahl) / CGFloat(maxAnzahl))
                                 }

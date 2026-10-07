@@ -267,7 +267,7 @@ struct HautForm: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassFill()
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {

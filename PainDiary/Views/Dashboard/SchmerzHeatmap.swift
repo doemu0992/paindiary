@@ -104,7 +104,7 @@ struct SchmerzHeatmapKachel: View {
 
                                 ForEach(Array(woche.enumerated()), id: \.offset) { _, datum in
                                     if let d = datum {
-                                        RoundedRectangle(cornerRadius: 2)
+                                        RoundedRectangle(cornerRadius: 2, style: .continuous)
                                             .fill(ausgewaehlterTag == d
                                                   ? Color.accentColor
                                                   : zellFarbe(fuer: d))
@@ -139,7 +139,7 @@ struct SchmerzHeatmapKachel: View {
             Text("Kein Eintrag")
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
-            RoundedRectangle(cornerRadius: 2)
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
                 .fill(Color(.systemFill))
                 .frame(width: zelle, height: zelle)
             Spacer()
@@ -150,7 +150,7 @@ struct SchmerzHeatmapKachel: View {
                 (Color.red,                                 "≥9")
             ], id: \.1) { farbe, label in
                 HStack(spacing: 3) {
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
                         .fill(farbe)
                         .frame(width: zelle, height: zelle)
                     Text(label)

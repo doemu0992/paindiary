@@ -50,7 +50,7 @@ struct WohlbefindenStepView: View {
                                 .padding(.vertical, 10)
                                 .background(
                                     aktiv ? farbe.opacity(0.12) : Color.secondary.opacity(0.06),
-                                    in: RoundedRectangle(cornerRadius: 10)
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 )
                                 .animation(.easeInOut(duration: 0.15), value: aktiv)
                             }
@@ -78,7 +78,7 @@ struct WohlbefindenStepView: View {
                             let farbe = stressFarbe(stufe)
                             Button { stressLevel = stufe } label: {
                                 VStack(spacing: 6) {
-                                    RoundedRectangle(cornerRadius: 3)
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                                         .fill(aktiv ? farbe : farbe.opacity(0.2))
                                         .frame(width: 6, height: CGFloat(stufe) * 5 + 8)
                                     Text(stressBezeichnung(stufe))
@@ -91,7 +91,7 @@ struct WohlbefindenStepView: View {
                                 .padding(.vertical, 10)
                                 .background(
                                     aktiv ? farbe.opacity(0.12) : Color.secondary.opacity(0.06),
-                                    in: RoundedRectangle(cornerRadius: 10)
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 )
                                 .animation(.easeInOut(duration: 0.15), value: aktiv)
                             }
@@ -168,7 +168,7 @@ struct WohlbefindenStepView: View {
                                 .padding(.vertical, 10)
                                 .background(
                                     aktiv ? energieFarbe(stufe).opacity(0.12) : Color.secondary.opacity(0.06),
-                                    in: RoundedRectangle(cornerRadius: 10)
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 )
                                 .animation(.easeInOut(duration: 0.15), value: aktiv)
                             }
@@ -235,7 +235,7 @@ struct WohlbefindenStepView: View {
                                         mgBinding.wrappedValue == wert
                                             ? Color.orange.opacity(0.2)
                                             : Color.secondary.opacity(0.12),
-                                        in: RoundedRectangle(cornerRadius: 8)
+                                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                                     )
                                     .foregroundStyle(mgBinding.wrappedValue == wert ? .orange : .secondary)
                             }

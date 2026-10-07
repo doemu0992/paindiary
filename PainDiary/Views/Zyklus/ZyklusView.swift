@@ -229,7 +229,7 @@ struct ZyklusView: View {
                 Label("Heute erfassen", systemImage: "plus")
                     .font(.subheadline.bold()).foregroundStyle(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
-                    .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
+                    .background(Color.pink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -482,7 +482,7 @@ struct ZyklusView: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
+                .background(Color.pink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
     }

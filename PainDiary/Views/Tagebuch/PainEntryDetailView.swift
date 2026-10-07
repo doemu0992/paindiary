@@ -156,10 +156,10 @@ struct PainEntryDetailView: View {
             if modulTyp != .haut {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
                             .fill(Color.secondary.opacity(0.12))
                             .frame(height: 8)
-                        RoundedRectangle(cornerRadius: 4)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
                             .fill(LinearGradient(
                                 colors: [tint.opacity(0.7), tint],
                                 startPoint: .leading, endPoint: .trailing
@@ -388,7 +388,7 @@ struct PainEntryDetailView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxHeight: 240)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
             }
         }
@@ -446,7 +446,7 @@ struct PainEntryDetailView: View {
                             .foregroundStyle(stressFarbe(eintrag.stressLevel))
                         HStack(spacing: 3) {
                             ForEach(1...5, id: \.self) { i in
-                                RoundedRectangle(cornerRadius: 3)
+                                RoundedRectangle(cornerRadius: 3, style: .continuous)
                                     .fill(i <= eintrag.stressLevel
                                           ? stressFarbe(eintrag.stressLevel)
                                           : Color.secondary.opacity(0.2))

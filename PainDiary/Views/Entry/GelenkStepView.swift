@@ -85,7 +85,7 @@ struct GelenkStepView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(farbe.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+        .background(farbe.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var tjc28: Int { DAS28Rechner.tjc28(statusDict) }
@@ -114,7 +114,7 @@ struct GelenkZustandSheet: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            RoundedRectangle(cornerRadius: 3)
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .fill(Color(.systemGray4))
                 .frame(width: 36, height: 4)
                 .padding(.top, 8)
@@ -140,7 +140,7 @@ struct GelenkZustandSheet: View {
                             }
                         }
                         .padding()
-                        .background(z.farbe.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+                        .background(z.farbe.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .foregroundStyle(.primary)
                     }
                     .buttonStyle(.plain)

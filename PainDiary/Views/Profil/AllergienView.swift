@@ -159,7 +159,7 @@ struct AllergieForm: View {
                                 Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
                                     .background(sel ? TINT : Color.glassFill)
                                     .foregroundStyle(sel ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                     .animation(.easeInOut(duration: 0.15), value: sel)
                             }.buttonStyle(.plain)
                         }
@@ -176,7 +176,7 @@ struct AllergieForm: View {
                                 Text(grad).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
                                     .background(sel ? TINT : Color.glassFill)
                                     .foregroundStyle(sel ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                     .animation(.easeInOut(duration: 0.15), value: sel)
                             }.buttonStyle(.plain)
                         }
@@ -208,7 +208,7 @@ struct AllergieForm: View {
             Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                 .frame(maxWidth: .infinity).padding(.vertical, 14)
                 .background(substanz.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary : TINT,
-                            in: RoundedRectangle(cornerRadius: 12))
+                            in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(substanz.trimmingCharacters(in: .whitespaces).isEmpty)

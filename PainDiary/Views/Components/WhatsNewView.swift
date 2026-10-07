@@ -51,13 +51,13 @@ struct WhatsNewView: View {
             .padding(.vertical, 44)
         }
         .frame(maxWidth: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 0))
+        .clipShape(RoundedRectangle(cornerRadius: 0, style: .continuous))
     }
 
     private func aenderungZeile(_ item: WhatsNewAenderung) -> some View {
         HStack(alignment: .top, spacing: 18) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(item.farbe.opacity(0.15))
                     .frame(width: 52, height: 52)
                 Image(systemName: item.icon)

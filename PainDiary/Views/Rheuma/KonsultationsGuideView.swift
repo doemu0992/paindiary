@@ -134,7 +134,7 @@ struct KonsultationsGuideView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassFill()
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func statChip(label: String, wert: String, farbe: Color) -> some View {
@@ -148,7 +148,7 @@ struct KonsultationsGuideView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
-        .background(farbe.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+        .background(farbe.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     // MARK: - Input card
@@ -174,7 +174,7 @@ struct KonsultationsGuideView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassFill()
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - Share text

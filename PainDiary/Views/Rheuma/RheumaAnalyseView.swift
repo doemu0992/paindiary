@@ -419,11 +419,11 @@ struct RheumaAnalyseView: View {
                 .frame(height: 160)
                 HStack(spacing: 12) {
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.teal.opacity(0.7)).frame(width: 12, height: 12)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(Color.teal.opacity(0.7)).frame(width: 12, height: 12)
                         Text("Ø Schmerz").font(.caption2).foregroundStyle(.secondary)
                     }
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.orange).frame(width: 12, height: 12)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(Color.orange).frame(width: 12, height: 12)
                         Text("Monat mit Schub").font(.caption2).foregroundStyle(.secondary)
                     }
                 }
@@ -524,7 +524,7 @@ struct RheumaAnalyseView: View {
                         proportionen: scanService.proportionen
                     )
                     .frame(height: 260)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                     HStack(spacing: 0) {
                         Spacer()
@@ -550,10 +550,10 @@ struct RheumaAnalyseView: View {
                                     .minimumScaleFactor(0.8)
                                 GeometryReader { geo in
                                     ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 4)
+                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
                                             .fill(Color.secondary.opacity(0.12))
                                             .frame(height: 18)
-                                        RoundedRectangle(cornerRadius: 4)
+                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
                                             .fill(Color.teal.opacity(0.7))
                                             .frame(
                                                 width: geo.size.width * CGFloat(g.anzahl) / CGFloat(topGelenke.first?.anzahl ?? 1),

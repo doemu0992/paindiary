@@ -104,6 +104,7 @@ private struct ProfilInhaltView: View {
                 notfallKurzInfo
             }
         }
+        .listRowBackground(Color.glassFill)
     }
 
     private var notfallKurzInfo: some View {
@@ -113,7 +114,7 @@ private struct ProfilInhaltView: View {
                 .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
                 .background(Color.red)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Notfallausweis")
@@ -281,6 +282,7 @@ private struct ProfilInhaltView: View {
                 Label("Physiotherapie", systemImage: "figure.walk.motion")
             }
         }
+        .listRowBackground(Color.glassFill)
     }
 
     // MARK: - Erkrankungen
@@ -323,6 +325,7 @@ private struct ProfilInhaltView: View {
                 }
             }
         }
+        .listRowBackground(Color.glassFill)
     }
 
     // MARK: - Module
@@ -415,6 +418,7 @@ private struct ProfilInhaltView: View {
             Text("Aktivierte Module erscheinen bei der Eintragserfassung als Auswahlmöglichkeit.")
         }
     }
+        .listRowBackground(Color.glassFill)
 
     // MARK: - Kontakte
 
@@ -449,6 +453,7 @@ private struct ProfilInhaltView: View {
                 }
             }
         }
+        .listRowBackground(Color.glassFill)
     }
 
     // MARK: - Einstellungen
@@ -459,6 +464,7 @@ private struct ProfilInhaltView: View {
                 Label("App-Einstellungen", systemImage: "gearshape")
             }
         }
+        .listRowBackground(Color.glassFill)
     }
 }
 

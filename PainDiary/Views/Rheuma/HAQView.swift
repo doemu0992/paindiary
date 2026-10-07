@@ -182,7 +182,7 @@ struct HAQView: View {
         }
         .frame(minWidth: 70)
         .padding(10)
-        .background(farbe.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+        .background(farbe.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var scoreInfoBox: some View {
@@ -423,10 +423,10 @@ struct HAQFormView: View {
                             wert.wrappedValue == i
                                 ? stufenFarbe(i).opacity(0.18)
                                 : Color.glassFill,
-                            in: RoundedRectangle(cornerRadius: 8)
+                            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .stroke(wert.wrappedValue == i ? stufenFarbe(i) : Color.clear, lineWidth: 1.5)
                         )
                         .foregroundStyle(wert.wrappedValue == i ? stufenFarbe(i) : .secondary)

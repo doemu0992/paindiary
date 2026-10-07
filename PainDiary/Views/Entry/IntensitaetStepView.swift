@@ -93,10 +93,10 @@ struct IntensitaetStepView: View {
             .padding()
             .background(
                 aktiv ? farbe.opacity(0.1) : Color.glassFill,
-                in: RoundedRectangle(cornerRadius: 16)
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(aktiv ? farbe.opacity(0.4) : Color.clear, lineWidth: 1.5)
             )
         }
@@ -162,10 +162,10 @@ private struct VerlaufSektionView: View {
                         .background(verlauf == opt.wert
                             ? opt.farbe.opacity(0.22)
                             : Color.secondary.opacity(0.08),
-                            in: RoundedRectangle(cornerRadius: 10))
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .foregroundStyle(verlauf == opt.wert ? opt.farbe : .secondary)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 10)
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 .stroke(verlauf == opt.wert ? opt.farbe.opacity(0.5) : Color.clear,
                                         lineWidth: 1.5)
                         )

@@ -374,7 +374,7 @@ struct HautAnalyseView: View {
                     proportionen: scanService.proportionen
                 )
                 .frame(height: 260)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 HStack(spacing: 0) {
                     Spacer()
@@ -398,7 +398,7 @@ struct HautAnalyseView: View {
                                 .frame(width: 120, alignment: .leading)
                                 .lineLimit(1)
                             GeometryReader { geo in
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
                                     .fill(Color.orange.opacity(0.7))
                                     .frame(width: geo.size.width * CGFloat(eintrag.anzahl) / CGFloat(maxAnzahl))
                             }
@@ -435,7 +435,7 @@ struct HautAnalyseView: View {
                             .frame(width: 120, alignment: .leading)
                             .lineLimit(1)
                         GeometryReader { geo in
-                            RoundedRectangle(cornerRadius: 4)
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
                                 .fill(Color.orange.opacity(0.7))
                                 .frame(width: geo.size.width * CGFloat(eintrag.anzahl) / CGFloat(maxAnzahl))
                         }

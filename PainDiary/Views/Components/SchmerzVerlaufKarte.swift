@@ -460,7 +460,7 @@ struct SchmerzVerlaufKarte: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .glassFill()
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .shadow(color: .black.opacity(0.10), radius: 6, x: 0, y: 2)
     }
 

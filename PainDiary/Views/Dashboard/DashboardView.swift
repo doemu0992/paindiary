@@ -385,7 +385,7 @@ struct DashboardView: View {
         }
         .padding()
         .glassFill()
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -446,7 +446,7 @@ struct DashboardView: View {
                             .foregroundStyle(avgStress > 0 ? stressFarbe(Int(avgStress.rounded())) : .secondary)
                         HStack(spacing: 3) {
                             ForEach(1...5, id: \.self) { i in
-                                RoundedRectangle(cornerRadius: 3)
+                                RoundedRectangle(cornerRadius: 3, style: .continuous)
                                     .fill(Double(i) <= avgStress ? stressFarbe(Int(avgStress.rounded())) : Color.secondary.opacity(0.2))
                                     .frame(width: 8, height: 12)
                             }

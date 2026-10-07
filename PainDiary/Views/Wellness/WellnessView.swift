@@ -146,7 +146,7 @@ struct WellnessView: View {
                         .padding(.vertical, 10)
                         .background(
                             aktiv ? farbe.opacity(0.12) : Color.secondary.opacity(0.06),
-                            in: RoundedRectangle(cornerRadius: 10)
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                         )
                         .animation(.easeInOut(duration: 0.15), value: aktiv)
                     }
@@ -183,7 +183,7 @@ struct WellnessView: View {
                         speichernInEintrag()
                     } label: {
                         VStack(spacing: 6) {
-                            RoundedRectangle(cornerRadius: 3)
+                            RoundedRectangle(cornerRadius: 3, style: .continuous)
                                 .fill(aktiv ? farbe : farbe.opacity(0.2))
                                 .frame(width: 6, height: CGFloat(stufe) * 5 + 8)
                             Text(stressLabel(stufe))
@@ -196,7 +196,7 @@ struct WellnessView: View {
                         .padding(.vertical, 10)
                         .background(
                             aktiv ? farbe.opacity(0.12) : Color.secondary.opacity(0.06),
-                            in: RoundedRectangle(cornerRadius: 10)
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                         )
                         .animation(.easeInOut(duration: 0.15), value: aktiv)
                     }
@@ -245,7 +245,7 @@ struct WellnessView: View {
                         .padding(.vertical, 10)
                         .background(
                             aktiv ? energieFarbe(stufe).opacity(0.12) : Color.secondary.opacity(0.06),
-                            in: RoundedRectangle(cornerRadius: 10)
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                         )
                         .animation(.easeInOut(duration: 0.15), value: aktiv)
                     }
@@ -363,7 +363,7 @@ struct WellnessView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(Color.teal.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                        .background(Color.teal.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -506,9 +506,9 @@ struct WellnessView: View {
             .padding(.vertical, 10)
             .background(
                 aktiv.wrappedValue ? Color.orange.opacity(0.12) : Color.secondary.opacity(0.07),
-                in: RoundedRectangle(cornerRadius: 10)
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
             )
-            .overlay(RoundedRectangle(cornerRadius: 10)
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(aktiv.wrappedValue ? Color.orange.opacity(0.5) : Color.clear, lineWidth: 1))
         }
         .buttonStyle(.plain)

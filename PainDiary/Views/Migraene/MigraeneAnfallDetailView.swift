@@ -105,9 +105,9 @@ struct MigraeneAnfallDetailView: View {
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(Color.secondary.opacity(0.12)).frame(height: 8)
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(LinearGradient(colors: [farbe.opacity(0.7), farbe],
                                              startPoint: .leading, endPoint: .trailing))
                         .frame(width: geo.size.width * CGFloat(anfall.staerke) / 10, height: 8)
@@ -329,7 +329,7 @@ struct MigraeneAnfallDetailView: View {
                                 .foregroundStyle(stressFarbe(anfall.stressLevel))
                             HStack(spacing: 3) {
                                 ForEach(1...5, id: \.self) { i in
-                                    RoundedRectangle(cornerRadius: 3)
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                                         .fill(i <= anfall.stressLevel
                                               ? stressFarbe(anfall.stressLevel)
                                               : Color.secondary.opacity(0.2))

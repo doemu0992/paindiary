@@ -234,7 +234,7 @@ struct ArztFormView: View {
                                     Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
                                         .background(sel ? TINT : Color.glassFill)
                                         .foregroundStyle(sel ? .white : .primary)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                         .animation(.easeInOut(duration: 0.15), value: sel)
                                 }.buttonStyle(.plain)
                             }

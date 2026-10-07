@@ -487,6 +487,7 @@ struct PainEntryListView: View {
                         }
                     }
                 }
+                .listRowBackground(Color.glassFill)
 
                 Section("Zeitraum") {
                     Picker("Zeitraum", selection: $filterZeitraum) {
@@ -496,6 +497,7 @@ struct PainEntryListView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                .listRowBackground(Color.glassFill)
 
                 if filterAktiv {
                     Section {
@@ -505,6 +507,7 @@ struct PainEntryListView: View {
                             filterZeitraum = .alle
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
             .navigationTitle("Filter")

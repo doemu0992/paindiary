@@ -382,9 +382,9 @@ struct MigraeneAnalyseView: View {
                             .lineLimit(1)
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
                                     .fill(Color.orange.opacity(0.15))
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
                                     .fill(Color.orange.gradient)
                                     .frame(width: geo.size.width * CGFloat(item.anzahl) / CGFloat(maxVal))
                             }
@@ -459,15 +459,15 @@ struct MigraeneAnalyseView: View {
                         GeometryReader { geo in
                             HStack(spacing: 2) {
                                 if med.gut > 0 {
-                                    RoundedRectangle(cornerRadius: 3).fill(Color.green)
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.green)
                                         .frame(width: geo.size.width * CGFloat(med.gut) / CGFloat(med.total))
                                 }
                                 if med.teilweise > 0 {
-                                    RoundedRectangle(cornerRadius: 3).fill(Color.orange)
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.orange)
                                         .frame(width: geo.size.width * CGFloat(med.teilweise) / CGFloat(med.total))
                                 }
                                 if med.nicht > 0 {
-                                    RoundedRectangle(cornerRadius: 3).fill(Color.red)
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.red)
                                         .frame(width: geo.size.width * CGFloat(med.nicht) / CGFloat(med.total))
                                 }
                             }
@@ -580,9 +580,9 @@ struct MigraeneAnalyseView: View {
                             .lineLimit(1)
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
                                     .fill(Color.blue.opacity(0.15))
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
                                     .fill(Color.blue.gradient)
                                     .frame(width: geo.size.width * CGFloat(item.anzahl) / CGFloat(maxVal))
                             }

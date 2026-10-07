@@ -75,7 +75,7 @@ struct HautStepView: View {
                             .scaledToFill()
                             .frame(maxWidth: .infinity)
                             .frame(height: 180)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         Button {
                             FotoManager.loeschen(dateiname: fotoDateiname)
                             fotoDateiname = ""; fotoBild = nil
@@ -93,7 +93,7 @@ struct HautStepView: View {
                             .font(.subheadline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                            .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                             .foregroundStyle(.primary)
                     }
                 }

@@ -222,7 +222,7 @@ extension GesamtAnalyseView {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassFill()
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .padding(.horizontal)
     }
 

@@ -115,7 +115,7 @@ struct NotfallausweisView: View {
                 .foregroundStyle(.white)
                 .frame(width: 56, height: 56)
                 .background(Color.red)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Medizinischer Notfallausweis")
@@ -134,7 +134,7 @@ struct NotfallausweisView: View {
         }
         .padding(16)
         .glassFill()
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var warnungsKarte: some View {
@@ -151,9 +151,9 @@ struct NotfallausweisView: View {
         }
         .padding(14)
         .background(Color.orange.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(Color.orange.opacity(0.4), lineWidth: 1)
         )
     }
@@ -405,7 +405,7 @@ private struct AusweisSektion<Content: View>: View {
         }
         .padding(16)
         .glassFill()
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

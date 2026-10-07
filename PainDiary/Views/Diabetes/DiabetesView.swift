@@ -463,7 +463,7 @@ struct BlutzuckerForm: View {
                                         .padding(.vertical, 8)
                                         .background(insulinTyp == typ ? Color.blue : Color.glassFill)
                                         .foregroundStyle(insulinTyp == typ ? .white : .primary)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -578,7 +578,7 @@ struct BlutzuckerForm: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassFill()
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - Computed helpers

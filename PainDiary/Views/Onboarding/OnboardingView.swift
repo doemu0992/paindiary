@@ -45,7 +45,7 @@ struct OnboardingView: View {
                             .padding()
                             .background(weiterFarbe)
                             .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .disabled(schritt == gesamtSchritte - 1 && !datenschutzAkzeptiert)
 
@@ -314,10 +314,10 @@ private struct SchmerzTypSchritt: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(aktiv ? typ.farbe.opacity(0.1) : Color.glassFill)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                                         .stroke(aktiv ? typ.farbe : Color.clear, lineWidth: 2)
                                 )
                         )

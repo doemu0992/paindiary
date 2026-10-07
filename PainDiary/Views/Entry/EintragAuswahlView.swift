@@ -176,7 +176,7 @@ struct EintragAuswahlView: View {
                     .foregroundStyle(typ.farbe)
                     .frame(width: 36, height: 36)
                     .background(typ.farbe.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(typ.label)

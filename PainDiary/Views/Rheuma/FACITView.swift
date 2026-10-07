@@ -336,10 +336,10 @@ struct FACITFormView: View {
                             binding.wrappedValue == stufe
                                 ? farbe.opacity(0.18)
                                 : Color.glassFill,
-                            in: RoundedRectangle(cornerRadius: 8)
+                            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .stroke(binding.wrappedValue == stufe ? farbe : Color.clear, lineWidth: 1.5)
                         )
                         .foregroundStyle(binding.wrappedValue == stufe ? farbe : .secondary)

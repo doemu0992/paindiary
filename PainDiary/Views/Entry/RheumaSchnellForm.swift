@@ -259,7 +259,7 @@ struct RheumaSchnellForm: View {
                                     morgensteifigkeit == min ? Color.teal : Color.glassFill
                                 )
                                 .foregroundStyle(morgensteifigkeit == min ? .white : .primary)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         }
                         .buttonStyle(.plain)
                     }
@@ -342,7 +342,7 @@ struct RheumaSchnellForm: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassFill()
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - schrittHeader helper

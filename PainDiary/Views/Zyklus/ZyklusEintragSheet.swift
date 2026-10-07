@@ -296,7 +296,7 @@ struct ZyklusEintragSheet: View {
                         .foregroundStyle(aktiv ? Color.pink : Color.primary)
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(aktiv ? Color.pink.opacity(0.15) : Color.secondary.opacity(0.08),
-                                    in: RoundedRectangle(cornerRadius: 10))
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(aktiv ? .isSelected : [])
@@ -435,9 +435,9 @@ private struct OptionsZeile<T: Hashable>: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(aktiv ? farbe.opacity(0.18) : Color.secondary.opacity(0.08),
-                                in: RoundedRectangle(cornerRadius: 12))
+                                in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .strokeBorder(aktiv ? farbe.opacity(0.6) : Color.clear, lineWidth: 1.5)
                     )
                 }

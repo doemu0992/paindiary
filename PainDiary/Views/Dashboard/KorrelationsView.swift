@@ -247,7 +247,7 @@ struct KorrelationsView: View {
 
     private func abschnittTitel(_ titel: String) -> some View {
         HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2).fill(Color.indigo).frame(width: 3, height: 18)
+            RoundedRectangle(cornerRadius: 2, style: .continuous).fill(Color.indigo).frame(width: 3, height: 18)
             Text(titel).font(.title3.bold())
             Spacer()
         }
@@ -378,7 +378,7 @@ struct KorrelationsView: View {
                     ForEach(alleErkenntnisse) { e in
                         HStack(alignment: .top, spacing: 14) {
                             ZStack {
-                                RoundedRectangle(cornerRadius: 10)
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(e.farbe.opacity(0.15))
                                     .frame(width: 42, height: 42)
                                 Image(systemName: e.symbol)
@@ -1226,7 +1226,7 @@ struct KorrelationsView: View {
                         GeometryReader { geo in
                             HStack(spacing: 0) {
                                 if d.gut > 0 {
-                                    RoundedRectangle(cornerRadius: 0).fill(Color.green)
+                                    RoundedRectangle(cornerRadius: 0, style: .continuous).fill(Color.green)
                                         .frame(width: geo.size.width * Double(d.gut) / Double(d.gesamt))
                                 }
                                 if d.teilweise > 0 {
@@ -1238,7 +1238,7 @@ struct KorrelationsView: View {
                                         .frame(width: geo.size.width * Double(d.nicht) / Double(d.gesamt))
                                 }
                             }
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                         }
                         .frame(height: 10)
                         HStack(spacing: 12) {
@@ -1405,7 +1405,7 @@ struct KorrelationsView: View {
         karte {
             HStack(spacing: 10) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8).fill(Color.blue.opacity(0.12)).frame(width: 36, height: 36)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.blue.opacity(0.12)).frame(width: 36, height: 36)
                     Image(systemName: a.med.typSymbol).foregroundStyle(.blue)
                 }
                 VStack(alignment: .leading, spacing: 2) {
@@ -1487,7 +1487,7 @@ struct KorrelationsView: View {
                         }
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background((diff > 0 ? Color.green : Color.red).opacity(0.1),
-                                    in: RoundedRectangle(cornerRadius: 8))
+                                    in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                 }
             }
@@ -1793,8 +1793,8 @@ private struct MedAdherenzZeile: View {
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4).fill(Color.secondary.opacity(0.15)).frame(height: 6)
-                    RoundedRectangle(cornerRadius: 4).fill(adherenzFarbe.gradient)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous).fill(Color.secondary.opacity(0.15)).frame(height: 6)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous).fill(adherenzFarbe.gradient)
                         .frame(width: geo.size.width * med.adherenzRate, height: 6)
                 }
             }

@@ -47,7 +47,7 @@ struct MassnahmenStepView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
+                .background(Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
 
             VStack(alignment: .leading, spacing: 12) {

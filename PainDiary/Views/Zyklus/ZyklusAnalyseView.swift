@@ -416,11 +416,11 @@ struct ZyklusAnalyseView: View {
 
                 HStack(spacing: 16) {
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.orange).frame(width: 10, height: 8)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(Color.orange).frame(width: 10, height: 8)
                         Text("Zu spät").font(.caption2).foregroundStyle(.secondary)
                     }
                     HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(Color.blue).frame(width: 10, height: 8)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(Color.blue).frame(width: 10, height: 8)
                         Text("Zu früh").font(.caption2).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -488,7 +488,7 @@ struct ZyklusAnalyseView: View {
                             Text(item.typ.capitalized)
                                 .font(.subheadline).frame(width: 72, alignment: .leading)
                             GeometryReader { geo in
-                                RoundedRectangle(cornerRadius: 4)
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
                                     .fill(schleimFarbe(item.typ).opacity(0.3))
                                     .frame(
                                         width: geo.size.width * CGFloat(item.anzahl) / CGFloat(maxAnzahl),
