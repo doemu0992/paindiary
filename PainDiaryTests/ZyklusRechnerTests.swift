@@ -23,8 +23,15 @@ struct ZyklusRechnerTests {
         kal.date(byAdding: .day, value: n, to: start)!
     }
 
-    private func blutung(_ datum: Date, _ fluss: Blutungsfluss = .mittel) -> ZyklusEintrag {
+    /// Eintrag mit fixer Erfassungs-Zeitzone (UTC) — unabhängig von der Zeitzone der Test-Maschine.
+    private func neuerEintrag(_ datum: Date, zeitzone: String = "UTC") -> ZyklusEintrag {
         let e = ZyklusEintrag(datum: datum)
+        e.timeZoneID = zeitzone
+        return e
+    }
+
+    private func blutung(_ datum: Date, _ fluss: Blutungsfluss = .mittel) -> ZyklusEintrag {
+        let e = neuerEintrag(datum)
         e.istPeriode = true
         e.fluss = fluss
         return e
@@ -129,7 +136,7 @@ struct ZyklusRechnerTests {
 
     @Test func positiverLHTestLegtEisprungAufFolgetag() {
         var e = zyklen(start: d(2026, 1, 1), laengen: [28, 28], laufenderZyklusBis: d(2026, 2, 28))
-        let lh = ZyklusEintrag(datum: d(2026, 1, 12))
+        let lh = neuerEintrag(d(2026, 1, 12))
         lh.lhTest = .positiv
         e.append(lh)
         let a = analyse(e, heute: d(2026, 2, 28))
@@ -141,7 +148,7 @@ struct ZyklusRechnerTests {
     @Test func bbtAnstiegBestaetigtEisprung() {
         var e = zyklen(start: d(2026, 1, 1), laengen: [28, 28], laufenderZyklusBis: d(2026, 2, 28))
         for i in 0..<28 {
-            let m = ZyklusEintrag(datum: tag(d(2026, 1, 1), plus: i))
+            let m = neuerEintrag(tag(d(2026, 1, 1), plus: i))
             m.basaltemperatur = i < 14 ? 36.25 + Double(i % 3) * 0.05 : 36.7   // Anstieg ab Zyklustag 15
             e.append(m)
         }
@@ -155,7 +162,7 @@ struct ZyklusRechnerTests {
         var e = zyklen(start: d(2026, 1, 1), laengen: [28], laufenderZyklusBis: d(2026, 1, 31))
         // 20 gültige Werte mit klarem Anstieg ab Tag 15 → würde bestätigen …
         for i in 0..<20 {
-            let g = ZyklusEintrag(datum: tag(d(2026, 1, 1), plus: i))
+            let g = neuerEintrag(tag(d(2026, 1, 1), plus: i))
             g.basaltemperatur = i < 14 ? 36.3 : 36.7
             if i == 9 { g.basaltemperatur = 3.65 }   // … Tippfehler wird ignoriert, Anstieg bleibt erkannt
             e.append(g)
@@ -168,7 +175,7 @@ struct ZyklusRechnerTests {
     @Test func eisprungKannAuchFruehererAlsKalenderPrognoseSein() {
         // Früher Eisprung (LH positiv Zyklustag 9) im laufenden Zyklus verschiebt die Prognose nach vorn.
         var e = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 28], laufenderZyklusBis: d(2026, 4, 25))
-        let lh = ZyklusEintrag(datum: d(2026, 4, 3))   // laufender Zyklus ab 26.3. → Zyklustag 9
+        let lh = neuerEintrag(d(2026, 4, 3))   // laufender Zyklus ab 26.3. → Zyklustag 9
         lh.lhTest = .positiv
         e.append(lh)
         let a = analyse(e, heute: d(2026, 4, 25))
@@ -222,6 +229,41 @@ struct ZyklusRechnerTests {
         #expect(letzteVorhersage! >= d(2026, 8, 17))
     }
 
+    // MARK: - DayKey / Zeitzonen
+
+    @Test func laufendeNummerIstFortlaufendUndUmkehrbar() {
+        var vorher: Int? = nil
+        var key = DayKey(jahr: 2023, monat: 12, tag: 25)
+        for _ in 0..<800 {   // über Jahreswechsel und Schaltjahr 2024
+            if let v = vorher { #expect(key.laufendeNummer == v + 1) }
+            #expect(DayKey(laufendeNummer: key.laufendeNummer) == key)
+            vorher = key.laufendeNummer
+            key = key.addiere(tage: 1)
+        }
+        #expect(DayKey(jahr: 1970, monat: 1, tag: 1).laufendeNummer == 0)
+        #expect(DayKey(jahr: 2026, monat: 1, tag: 1).laufendeNummer == 20454)
+    }
+
+    @Test func eintragGehoertZumTagSeinerErfassungsZeitzone() {
+        // 1.1.2026 20:00 UTC = 2.1.2026 09:00 in Auckland (UTC+13) → der Eintrag zählt als 2.1.
+        let zeitpunkt = kal.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 20))!
+        var e: [ZyklusEintrag] = []
+        for i in 0..<5 {
+            e.append(neuerEintrag(tag(zeitpunkt, plus: i), zeitzone: "Pacific/Auckland").mitBlutung())
+        }
+        let a = analyse(e, heute: d(2026, 1, 10))
+        #expect(a.zyklusStarts == [d(2026, 1, 2)])
+    }
+
+    @Test func gleicheEintraegeInAndererZeitzoneAendernKeineZykluslaenge() {
+        // Erfasst in UTC, Auswertung auf einem Gerät in einer anderen Zeitzone → identische Zykluslängen
+        let e = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 28], laufenderZyklusBis: d(2026, 4, 1))
+        var tokio = Calendar(identifier: .gregorian)
+        tokio.timeZone = TimeZone(identifier: "Asia/Tokyo")!
+        let a = ZyklusRechner.analyse(eintraege: e, heute: d(2026, 4, 1), kalender: tokio)
+        #expect(a.zyklen.compactMap { $0.laenge } == [28, 28, 28])
+    }
+
     // MARK: - Typen
 
     @Test func enumsNormalisierenAltdaten() {
@@ -238,5 +280,13 @@ struct ZyklusRechnerTests {
         #expect(a.zyklusStarts.isEmpty)
         #expect(a.naechstePeriodeStart == nil)
         #expect(a.datenQualitaet == .standardwert)
+    }
+}
+
+private extension ZyklusEintrag {
+    func mitBlutung() -> ZyklusEintrag {
+        istPeriode = true
+        fluss = .mittel
+        return self
     }
 }

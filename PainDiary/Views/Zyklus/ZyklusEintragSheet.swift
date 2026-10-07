@@ -64,7 +64,7 @@ struct ZyklusEintragSheet: View {
     private var kal: Calendar { Calendar.current }
 
     private var vorhandenerEintrag: ZyklusEintrag? {
-        bestehend ?? alleEintraege.first { kal.isDate($0.datum, inSameDayAs: datum) }
+        bestehend ?? alleEintraege.first { $0.tag == DayKey(datum, zeitzone: kal.timeZone) }
     }
 
     private var bbtWert: Double? {

@@ -110,7 +110,7 @@ final class ZyklusHealthKitService {
 
         var proTag: [Date: ZyklusEintrag] = [:]
         for e in vorhandene {
-            let tag = kal.startOfDay(for: e.datum)
+            let tag = e.tag.beginn(in: kal.timeZone)
             if proTag[tag] == nil { proTag[tag] = e }
         }
         var geaendert = 0
@@ -219,11 +219,6 @@ final class ZyklusHealthKitService {
 
     // MARK: - Export
 
-    private static func tagKennung(_ tag: Date, _ kal: Calendar) -> String {
-        let c = kal.dateComponents([.year, .month, .day], from: tag)
-        return String(format: "%04ld%02ld%02ld", c.year ?? 0, c.month ?? 0, c.day ?? 0)
-    }
-
     func exportieren(eintraege: [ZyklusEintrag]) async throws -> Int {
         let kal = Calendar.current
         let analyse = ZyklusRechner.analyse(eintraege: eintraege)
@@ -231,9 +226,13 @@ final class ZyklusHealthKitService {
         var objekte: [HKObject] = []
 
         for e in eintraege where !e.kommtAusHealth {
-            let tag = kal.startOfDay(for: e.datum)
-            let ende = (kal.date(byAdding: .day, value: 1, to: tag) ?? tag).addingTimeInterval(-1)
-            let kennung = Self.tagKennung(tag, kal)
+            // Tag in der Erfassungs-Zeitzone des Eintrags (DayKey) — nicht in der aktuellen Gerätezeitzone
+            let tagKey = e.tag
+            var eintragsKalender = Calendar(identifier: .gregorian)
+            eintragsKalender.timeZone = e.zeitzone
+            let tag = tagKey.beginn(in: e.zeitzone)
+            let ende = (eintragsKalender.date(byAdding: .day, value: 1, to: tag) ?? tag).addingTimeInterval(-1)
+            let kennung = String(format: "%08ld", tagKey.wert)
 
             func metadaten(_ art: String, _ extra: [String: Any] = [:]) -> [String: Any] {
                 var m = extra
@@ -251,7 +250,9 @@ final class ZyklusHealthKitService {
                 default:      wert = 1   // unspecified
                 }
                 var extra: [String: Any] = [:]
-                if analyse.zyklusStarts.contains(tag) { extra[HKMetadataKeyMenstrualCycleStart] = true }
+                if analyse.zyklusStarts.contains(where: { DayKey($0, zeitzone: kal.timeZone) == tagKey }) {
+                    extra[HKMetadataKeyMenstrualCycleStart] = true
+                }
                 objekte.append(HKCategorySample(type: HKCategoryType(.menstrualFlow), value: wert,
                                                 start: tag, end: ende, metadata: metadaten("fluss", extra)))
             } else if e.istSpotting {

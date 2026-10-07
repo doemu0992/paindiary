@@ -163,6 +163,7 @@ struct ZyklusRechner {
         h.combine(eintraege.count)
         for e in eintraege {
             h.combine(e.datum)
+            h.combine(e.timeZoneID)
             h.combine(e.istPeriode)
             h.combine(e.typ)
             h.combine(e.blutungsfluss)
@@ -173,6 +174,10 @@ struct ZyklusRechner {
         return h.finalize()
     }
 
+    /// Tagesrechnung über `DayKey`: Jeder Eintrag gehört zu dem Kalendertag, an dem er in *seiner*
+    /// Erfassungs-Zeitzone erfasst wurde (`ZyklusEintrag.tag`). Reisen, Zeitzonenwechsel und Sommerzeit
+    /// verschieben damit keinen Eintrag auf einen anderen Tag. „Heute" und die ausgegebenen Datums-Werte
+    /// (Beginn des Tages) beziehen sich auf die Zeitzone des übergebenen Kalenders (= Gerät).
     private struct Kontext {
         let kal: Calendar
         let heute: Date
@@ -180,16 +185,17 @@ struct ZyklusRechner {
 
         init(kal: Calendar, heute: Date) {
             self.kal = kal
-            self.heute = kal.startOfDay(for: heute)
-            self.heuteNr = kal.ordinality(of: .day, in: .era, for: self.heute) ?? 0
+            let key = DayKey(heute, zeitzone: kal.timeZone)
+            self.heuteNr = key.laufendeNummer
+            self.heute = key.beginn(in: kal.timeZone)
         }
 
-        func nr(_ datum: Date) -> Int {
-            kal.ordinality(of: .day, in: .era, for: datum) ?? 0
+        func nr(_ eintrag: ZyklusEintrag) -> Int {
+            eintrag.tag.laufendeNummer
         }
 
         func datum(_ nr: Int) -> Date {
-            kal.date(byAdding: .day, value: nr - heuteNr, to: heute) ?? heute
+            DayKey(laufendeNummer: nr).beginn(in: kal.timeZone)
         }
     }
 
@@ -225,7 +231,7 @@ struct ZyklusRechner {
     private static func tagesDaten(aus eintraege: [ZyklusEintrag], ctx: Kontext) -> [Int: TagesDaten] {
         var map: [Int: TagesDaten] = [:]
         for e in eintraege.sorted(by: { $0.datum < $1.datum }) {
-            let nr = ctx.nr(e.datum)
+            let nr = ctx.nr(e)
             var t = map[nr] ?? TagesDaten(nr: nr)
             if e.hatBlutung {
                 t.blutung = true
@@ -691,7 +697,8 @@ struct ZyklusRechner {
 
     static func perimenstruelleAnfaelle(anfaelle: [MigraeneEintrag], analyse: ZyklusAnalyse) -> (imFenster: Int, gesamt: Int) {
         guard !analyse.zyklusStarts.isEmpty else { return (0, 0) }
-        let treffer = anfaelle.filter { istPerimenstruell($0.datum, analyse: analyse) }.count
+        let kal = Calendar.current
+        let treffer = anfaelle.filter { istPerimenstruell($0.tag.beginn(in: kal.timeZone), analyse: analyse, kalender: kal) }.count
         return (treffer, anfaelle.count)
     }
 
@@ -707,7 +714,7 @@ struct ZyklusRechner {
         let kal = Calendar.current
         var proTag: [Date: [Int]] = [:]
         for e in painEntries where e.schmerzstaerke > 0 {
-            proTag[kal.startOfDay(for: e.datum), default: []].append(e.schmerzstaerke)
+            proTag[e.tag.beginn(in: kal.timeZone), default: []].append(e.schmerzstaerke)
         }
         var map: [Zyklusphase: [Double]] = [:]
         for (tag, werte) in proTag {
@@ -728,7 +735,7 @@ struct ZyklusRechner {
         let kal = Calendar.current
         var map: [Zyklusphase: [Int]] = [:]
         for anfall in anfaelle {
-            guard let p = phase(for: anfall.datum, analyse: analyse, kalender: kal) else { continue }
+            guard let p = phase(for: anfall.tag.beginn(in: kal.timeZone), analyse: analyse, kalender: kal) else { continue }
             map[p, default: []].append(anfall.staerke)
         }
         return Zyklusphase.allCases.compactMap { p in

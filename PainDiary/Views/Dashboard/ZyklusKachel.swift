@@ -58,8 +58,8 @@ struct ZyklusKachel: View {
         return (-7..<7).map { offset in
             let tag = cal.date(byAdding: .day, value: offset, to: heute) ?? heute
             let start = cal.startOfDay(for: tag)
-            let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
-            let eintrag = eintraege.first { $0.datum >= start && $0.datum < end }
+            let tagKey = DayKey(start, zeitzone: cal.timeZone)
+            let eintrag = eintraege.first { $0.tag == tagKey }
 
             return ChartPunkt(
                 datum: start,
@@ -227,7 +227,7 @@ struct ZyklusKachel: View {
             // Bestehenden Tageseintrag übergeben — sonst entsteht ein Duplikat für heute.
             ZyklusEintragSheet(
                 datum: Calendar.current.startOfDay(for: Date()),
-                bestehend: eintraege.first { Calendar.current.isDateInToday($0.datum) }
+                bestehend: eintraege.first { $0.tag == DayKey.heute() }
             )
         }
     }

@@ -28,7 +28,7 @@ struct ZyklusView: View {
     private var kal: Calendar { Calendar.current }
 
     private var eintraegeProTag: [Date: ZyklusEintrag] {
-        Dictionary(eintraege.map { (kal.startOfDay(for: $0.datum), $0) },
+        Dictionary(eintraege.map { ($0.tag.beginn(in: kal.timeZone), $0) },
                    uniquingKeysWith: { erster, _ in erster })
     }
 
@@ -73,7 +73,7 @@ struct ZyklusView: View {
         .sheet(item: $ausgewaehlterTag) { auswahl in
             ZyklusEintragSheet(
                 datum: auswahl.datum,
-                bestehend: eintraege.first { kal.isDate($0.datum, inSameDayAs: auswahl.datum) }
+                bestehend: eintraege.first { $0.tag == DayKey(auswahl.datum, zeitzone: kal.timeZone) }
             )
         }
         .sheet(isPresented: $zeigeAnalyse) { ZyklusAnalyseView() }
