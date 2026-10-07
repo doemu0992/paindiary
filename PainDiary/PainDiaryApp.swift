@@ -4,6 +4,7 @@ import os
 
 @main
 struct PainDiaryApp: App {
+    @UIApplicationDelegateAdaptor(PartnerAppDelegate.self) private var partnerDelegate
     @State private var ergebnis: PersistenceResult? = nil
     @State private var zeigeDatenbankHilfe = false
     // Initialize early so UNUserNotificationCenter.delegate is set before iOS delivers

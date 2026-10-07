@@ -8,6 +8,7 @@ struct ZyklusView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var schmerzEintraege: [PainEntry]
     @Query private var profile: [Benutzerprofil]
+    @State private var zeigePartner = false
     @State private var berichtURL: URL? = nil
     @State private var zeigeBericht = false
     @State private var berichtLaeuft = false
@@ -84,6 +85,7 @@ struct ZyklusView: View {
             )
         }
         .sheet(isPresented: $zeigeAnalyse) { ZyklusAnalyseView() }
+        .sheet(isPresented: $zeigePartner) { ZyklusPartnerTeilenSheet(eintraege: Array(eintraege)) }
 #if os(iOS)
         .sheet(isPresented: $zeigeBericht) {
             if let url = berichtURL { PDFPreviewView(url: url) }
@@ -111,6 +113,10 @@ struct ZyklusView: View {
                 Label("Mit Apple Health abgleichen", systemImage: "heart.text.square")
             }
             .disabled(healthLaeuft || !ZyklusHealthKitService.shared.istVerfuegbar)
+
+            Button { zeigePartner = true } label: {
+                Label("Mit Partner:in teilen", systemImage: "person.2")
+            }
 
             Toggle(isOn: $pausiert) {
                 Label("Prognosen pausieren", systemImage: "pause.circle")
@@ -172,6 +178,7 @@ struct ZyklusView: View {
     private func planeZyklusNotifs() {
         NotificationManager.shared.planeZyklusErinnerungen(eintraege: Array(eintraege))
         ZyklusWidgetService.aktualisieren(eintraege: Array(eintraege), pausiert: pausiert)
+        ZyklusPartnerService.shared.synchronisieren(eintraege: Array(eintraege))
     }
 
     private func oeffneHeuteSheet() {
