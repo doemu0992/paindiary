@@ -525,7 +525,7 @@ struct ZyklusRechner {
             let periodLen = max(Int(adaptPeriod.rounded()), 3)
             for k in 0..<2 {
                 let start = anker + k * zyklusLenInt
-                let ov = start + zyklusLenInt - (luteal + 1)
+                let ov = max(start + zyklusLenInt - (luteal + 1), start + 5)
                 ovNrs.insert(ov)
                 for t in fenster(start: start, ov: ov, eng: false) { fruchtbarNrs.insert(t) }
                 for d in 0..<periodLen { vorhergesagtePeriodeNrs.insert(start + d) }

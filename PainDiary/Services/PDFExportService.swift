@@ -1084,11 +1084,8 @@ class PDFExportService: @unchecked Sendable {
         let predRows: [(String, String)] = [
             analyse.naechstePeriodeStart.map { ("Nächste Periode (erwartet)", fmt($0)) },
             analyse.vorhergesagteOvulation.map { ("Nächster Eisprung (erwartet)", fmt($0)) },
-            analyse.vorhergesagteOvulation.flatMap { ov -> (String, String)? in
-                let kal = Calendar.current
-                guard let start = kal.date(byAdding: .day, value: -5, to: ov),
-                      let end   = kal.date(byAdding: .day, value: 1, to: ov) else { return nil }
-                return ("Fruchtbares Fenster", "\(fmt(start)) – \(fmt(end))")
+            analyse.naechstesFruchtbaresFenster.map {
+                ("Fruchtbares Fenster", "\(fmt($0.lowerBound)) – \(fmt($0.upperBound))")
             }
         ].compactMap { $0 }
 

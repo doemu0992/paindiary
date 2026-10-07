@@ -7,7 +7,7 @@ import Charts
 struct ZyklusEintragSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \ZyklusEintrag.datum, order: .forward) private var alleEintraege: [ZyklusEintrag]
+    @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var alleEintraege: [ZyklusEintrag]
 
     let datum: Date
     let bestehend: ZyklusEintrag?

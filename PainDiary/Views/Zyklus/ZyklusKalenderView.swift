@@ -61,7 +61,7 @@ struct ZyklusKalenderView: View {
             .foregroundStyle(Color.pink)
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 2) {
-                ForEach(wochentage, id: \.self) { tag in
+                ForEach(Array(wochentage.enumerated()), id: \.offset) { _, tag in
                     Text(tag)
                         .font(.caption2.bold())
                         .foregroundStyle(.secondary)

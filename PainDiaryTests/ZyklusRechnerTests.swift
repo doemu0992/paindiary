@@ -153,11 +153,16 @@ struct ZyklusRechnerTests {
 
     @Test func unplausibleTemperaturenWerdenIgnoriert() {
         var e = zyklen(start: d(2026, 1, 1), laengen: [28], laufenderZyklusBis: d(2026, 1, 31))
-        let m = ZyklusEintrag(datum: d(2026, 1, 10))
-        m.basaltemperatur = 3.65   // Tippfehler
-        e.append(m)
+        // 20 gültige Werte mit klarem Anstieg ab Tag 15 → würde bestätigen …
+        for i in 0..<20 {
+            let g = ZyklusEintrag(datum: tag(d(2026, 1, 1), plus: i))
+            g.basaltemperatur = i < 14 ? 36.3 : 36.7
+            if i == 9 { g.basaltemperatur = 3.65 }   // … Tippfehler wird ignoriert, Anstieg bleibt erkannt
+            e.append(g)
+        }
         let a = analyse(e, heute: d(2026, 1, 31))
-        #expect(a.zyklen.first?.eisprungQuelle == .kalender)
+        #expect(a.zyklen.first?.eisprungQuelle == .temperatur)
+        #expect(a.zyklen.first?.eisprung == d(2026, 1, 14))
     }
 
     @Test func eisprungKannAuchFruehererAlsKalenderPrognoseSein() {

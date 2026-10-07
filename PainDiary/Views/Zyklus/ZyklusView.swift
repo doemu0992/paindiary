@@ -234,7 +234,7 @@ struct ZyklusView: View {
         case .ueberfaellig(let tage):
             return tage == 1 ? "Periode 1 Tag überfällig" : "Periode \(tage) Tage überfällig"
         case .normal:
-            if let ov = a.vorhergesagteOvulation {
+            if let ov = a.vorhergesagteOvulation, a.naechstePeriodeStart.map({ ov < $0 }) ?? true {
                 let t = tageBis(ov)
                 if t <= 0 { return "Eisprung heute erwartet" }
                 if t == 1 { return "Eisprung morgen erwartet" }

@@ -259,6 +259,9 @@ struct PainEntryListView: View {
                                 ZyklusTagesbuchZeile(eintrag: eintrag)
                                     .swipeActions(edge: .trailing) {
                                         Button(role: .destructive) {
+                                            // Zyklus-Erinnerungen sind global → nach dem Löschen neu planen
+                                            NotificationManager.shared.planeZyklusErinnerungen(
+                                                eintraege: zyklusEintraege.filter { $0 !== eintrag })
                                             modelContext.delete(eintrag)
                                         } label: {
                                             Label("Löschen", systemImage: "trash")
