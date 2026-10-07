@@ -219,6 +219,7 @@ struct ZyklusKachel: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: ausgewaehltDatum)
+        .environment(\.locale, ZyklusLocale.de)
         .padding()
         .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))

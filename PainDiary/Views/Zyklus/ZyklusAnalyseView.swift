@@ -133,6 +133,7 @@ struct ZyklusAnalyseView: View {
                     .background { ZyklusHintergrund() }
                 }
             }
+            .environment(\.locale, ZyklusLocale.de)
             .navigationTitle("Zyklus-Analyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -572,7 +573,7 @@ struct ZyklusAnalyseView: View {
                     ForEach(Array(tests.suffix(10).enumerated()), id: \.offset) { _, test in
                         HStack(spacing: 12) {
                             Circle().fill(ovuFarbe(test.ergebnis)).frame(width: 12, height: 12)
-                            Text(test.datum.formatted(.dateTime.day().month(.abbreviated).year()))
+                            Text(test.datum.formatted(.dateTime.day().month(.abbreviated).year().locale(ZyklusLocale.de)))
                                 .font(.caption).foregroundStyle(.secondary)
                                 .frame(width: 80, alignment: .leading)
                             Text(test.ergebnis.capitalized).font(.subheadline)

@@ -81,10 +81,13 @@ struct ZyklusVerlaufView: View {
                            text: "Länge deiner letzten Zyklen in Tagen (Beginn einer Periode bis zum Tag vor der nächsten). Die gestrichelte Linie ist der Median. Graue Balken zählen nicht in die Statistik (unplausible Länge unter 15 oder über 90 Tage, oder starker Ausreißer). Als normal gilt eine Länge von 24–38 Tagen; eine Schwankung von bis zu 9 Tagen gilt als regelmäßig.")
             }
             Chart {
-                ForEach(daten) { info in
+                ForEach(Array(daten.enumerated()), id: \.element.id) { index, info in
+                    // yStart statt Baseline 0: Balken bleiben innerhalb der Y-Achse (kein Überlaufen in die nächste Karte)
                     BarMark(
-                        x: .value("Start", info.start.formatted(.dateTime.day().month(.abbreviated))),
-                        y: .value("Tage", info.laenge ?? 0)
+                        x: .value("Zyklus", index),
+                        yStart: .value("Min", minY),
+                        yEnd: .value("Tage", info.laenge ?? 0),
+                        width: .ratio(0.7)
                     )
                     .foregroundStyle(info.fuerStatistikGueltig ? Color.pink.gradient : Color.secondary.opacity(0.4).gradient)
                     .cornerRadius(4)
@@ -99,7 +102,19 @@ struct ZyklusVerlaufView: View {
                 }
             }
             .chartYScale(domain: minY...maxY)
-            .frame(height: 160)
+            .chartXScale(domain: -1...daten.count)
+            .chartXAxis {
+                AxisMarks(values: Array(0..<daten.count)) { value in
+                    AxisValueLabel {
+                        if let i = value.as(Int.self), daten.indices.contains(i) {
+                            Text(daten[i].start.formatted(.dateTime.day().month(.defaultDigits).locale(ZyklusLocale.de)))
+                                .font(.caption2)
+                        }
+                    }
+                }
+            }
+            .frame(height: 170)
+            .clipped()
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,10 +170,10 @@ struct ZyklusVerlaufView: View {
     }
 
     private func zeitraum(_ info: ZyklusInfo) -> String {
-        let von = info.start.formatted(.dateTime.day().month(.abbreviated))
+        let von = info.start.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de))
         if let ende = info.naechsterStart,
            let letzter = Calendar.current.date(byAdding: .day, value: -1, to: ende) {
-            return "\(von) – \(letzter.formatted(.dateTime.day().month(.abbreviated)))"
+            return "\(von) – \(letzter.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de)))"
         }
         return "seit \(von)"
     }
@@ -166,7 +181,7 @@ struct ZyklusVerlaufView: View {
     private func details(_ info: ZyklusInfo) -> String {
         var teile = ["Periode \(info.periodenTage) T"]
         if let ov = info.eisprung {
-            teile.append("Eisprung \(ov.formatted(.dateTime.day().month(.abbreviated))) (\(info.eisprungQuelle.titel))")
+            teile.append("Eisprung \(ov.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de))) (\(info.eisprungQuelle.titel))")
         }
         if let l = info.lutealLaenge, info.eisprungQuelle != .kalender {
             teile.append("Lutealphase \(l) T")

@@ -14,12 +14,14 @@ struct ZyklusKalenderView: View {
     private var kal: Calendar { Calendar.current }
 
     private var monatsTitel: String {
-        monat.formatted(.dateTime.month(.wide).year())
+        monat.formatted(.dateTime.month(.wide).year().locale(ZyklusLocale.de))
     }
 
     /// Wochentags-Kürzel, beginnend mit `firstWeekday` der Region.
     private var wochentage: [String] {
-        let symbole = kal.shortWeekdaySymbols
+        var deutsch = kal
+        deutsch.locale = ZyklusLocale.de
+        let symbole = deutsch.shortWeekdaySymbols
         let erster = kal.firstWeekday - 1
         return Array(symbole[erster...] + symbole[..<erster])
     }
@@ -231,12 +233,12 @@ private struct ZyklusTagZelle: View {
         if eisprung { return .white }
         if periode { return periodeDeckkraft >= 0.6 ? .white : ZyklusFarbe.periode }
         if vorhergesagt { return ZyklusFarbe.periode }
-        if fruchtbar { return Color(red: 0.04, green: 0.49, blue: 0.44) }
+        if fruchtbar { return .primary }   // lesbar in Hell- und Dunkelmodus (Band ist nur ein heller Teal-Hauch)
         return .primary
     }
 
     private var beschreibung: String {
-        var teile: [String] = [datum.formatted(.dateTime.weekday(.wide).day().month(.wide))]
+        var teile: [String] = [datum.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(ZyklusLocale.de))]
         if istHeute { teile.append("heute") }
         if ausgewaehlt { teile.append("ausgewählt") }
         if periode { teile.append("Periode\(eintrag.map { $0.fluss == .keine ? "" : ", " + $0.fluss.titel } ?? "")") }

@@ -1,5 +1,15 @@
 import SwiftUI
 
+// MARK: - Sprache
+
+/// Das Zyklus-Modul ist deutschsprachig. Ohne Vorgabe formatiert SwiftUI Datumsangaben in der Sprache der
+/// App-Lokalisierung (hier Englisch: „October 2026", „Mon"). `ZyklusLocale.de` erzwingt Deutsch:
+/// per `.environment(\.locale, ZyklusLocale.de)` für `Text(_, format:)` und per `.locale(ZyklusLocale.de)`
+/// an jedem `formatted(...)`-Aufruf.
+enum ZyklusLocale {
+    static let de = Locale(identifier: "de_CH")
+}
+
 // MARK: - Farben
 
 /// Zyklus-Modul: Tint `.pink`. Phasenfarben sind semantisch (Periode rot, Eisprung orange, fruchtbar teal).

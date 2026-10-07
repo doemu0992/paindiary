@@ -142,7 +142,7 @@ struct ZyklusEintragSheet: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background { ZyklusHintergrund() }
-            .navigationTitle(datum.formatted(.dateTime.weekday(.abbreviated).day().month(.wide).year()))
+            .navigationTitle(datum.formatted(.dateTime.weekday(.abbreviated).day().month(.wide).year().locale(ZyklusLocale.de)))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -159,6 +159,7 @@ struct ZyklusEintragSheet: View {
                 Button("Abbrechen", role: .cancel) {}
             }
         }
+        .environment(\.locale, ZyklusLocale.de)
         .presentationDragIndicator(.visible)
         .onAppear(perform: ladeCustomSymptome)
     }

@@ -61,6 +61,7 @@ struct ZyklusView: View {
             .padding(.bottom, 24)
         }
         .background { ZyklusHintergrund() }
+        .environment(\.locale, ZyklusLocale.de)
         .navigationTitle("Zyklus")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -340,10 +341,10 @@ struct ZyklusView: View {
     private func fensterText(_ f: ClosedRange<Date>) -> String {
         let von = f.lowerBound, bis = f.upperBound
         if kal.isDate(von, equalTo: bis, toGranularity: .month) {
-            let tagVon = von.formatted(.dateTime.day())
-            return "\(tagVon)–\(bis.formatted(.dateTime.day().month(.abbreviated)))"
+            let tagVon = von.formatted(.dateTime.day().locale(ZyklusLocale.de))
+            return "\(tagVon)–\(bis.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de)))"
         }
-        return "\(von.formatted(.dateTime.day().month(.abbreviated))) – \(bis.formatted(.dateTime.day().month(.abbreviated)))"
+        return "\(von.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de))) – \(bis.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de)))"
     }
 
     private func konfidenz(_ a: ZyklusAnalyse) -> (text: String, farbe: Color) {

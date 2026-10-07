@@ -462,7 +462,8 @@ struct ZyklusRechner {
                 let bis = max(start + k.lang - 11 - 1, ov)
                 return von...bis
             }
-            let d = (regel == .regelmaessig && qualitaet >= .gut) ? 1 : 2
+            // Regelmäßig + gute Datenbasis: genau 6 Tage bis Eisprung; sonst ± 2 Tage Unsicherheit
+            let d = (regel == .regelmaessig && qualitaet >= .gut) ? 0 : 2
             return (ov - 5 - d)...(ov + d)
         }
 

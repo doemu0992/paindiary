@@ -1013,6 +1013,7 @@ Gilt nur für `Views/Zyklus/` — Kachel im Dashboard folgt weiterhin dem Kachel
 | Farben/Phasen | `ZyklusFarbe` — nie Farbliterale in Zyklus-Views |
 
 **Engine (`Services/ZyklusRechner.swift`) — Konventionen:**
+- **Sprache:** Datumsausgaben im Zyklus-Modul immer deutsch: `.environment(\.locale, ZyklusLocale.de)` am View-Root und `.locale(ZyklusLocale.de)` an jedem `formatted(...)`.
 - **Tage** werden über `DayKey` zugeordnet (`eintrag.tag`, Erfassungs-Zeitzone), Tagesarithmetik über `DayKey.laufendeNummer` — nie über `Date`/`Calendar.current` der Geräte-Zeitzone. Views suchen Tageseinträge per `$0.tag == DayKey(...)`.
 - **Zyklustag** ist 1-basiert (Tag 1 = erster Tag der Blutung); **Eisprung** ist ein Datum.
   `Lutealphase = nächsterStart − Eisprung − 1` (28-Tage-Zyklus, Lutealphase 14 → Eisprung = Zyklustag 14).
