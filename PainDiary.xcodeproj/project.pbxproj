@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B5BB99FD30764A87007B211B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B5BB99FC30764A87007B211B /* WidgetKit.framework */; };
+		B5BB99FF30764A87007B211B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B5BB99FE30764A87007B211B /* SwiftUI.framework */; };
+		B5BB9A1030764A8A007B211B /* PainDiary_Live_WidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B5BB99FA30764A87007B211B /* PainDiary_Live_WidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		B581A8FB2FCD567300E82648 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,15 +27,46 @@
 			remoteGlobalIDString = B581A8EA2FCD567100E82648;
 			remoteInfo = PainDiary;
 		};
+		B5BB9A0E30764A8A007B211B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B581A8E32FCD567100E82648 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B5BB99F930764A87007B211B;
+			remoteInfo = PainDiary_Live_WidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B5BB9A1530764A8A007B211B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B5BB9A1030764A8A007B211B /* PainDiary_Live_WidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		B581A8EB2FCD567100E82648 /* PainDiary.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PainDiary.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B581A8FA2FCD567300E82648 /* PainDiaryTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PainDiaryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B581A9042FCD567300E82648 /* PainDiaryUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PainDiaryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B5BB99FA30764A87007B211B /* PainDiary_Live_WidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PainDiary_Live_WidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B5BB99FC30764A87007B211B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		B5BB99FE30764A87007B211B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B5BB9A1430764A8A007B211B /* Exceptions for "PainDiary_Live_Widget" folder in "PainDiary_Live_WidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B5BB99F930764A87007B211B /* PainDiary_Live_WidgetExtension */;
+		};
 		CD17BF8D344A414BAEC793C7 /* Exceptions for "PainDiary" folder in "PainDiary" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -58,6 +95,14 @@
 			path = PainDiaryUITests;
 			sourceTree = "<group>";
 		};
+		B5BB9A0030764A87007B211B /* PainDiary_Live_Widget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B5BB9A1430764A8A007B211B /* Exceptions for "PainDiary_Live_Widget" folder in "PainDiary_Live_WidgetExtension" target */,
+			);
+			path = PainDiary_Live_Widget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -82,6 +127,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B5BB99F730764A87007B211B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B5BB99FF30764A87007B211B /* SwiftUI.framework in Frameworks */,
+				B5BB99FD30764A87007B211B /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -91,6 +145,8 @@
 				B581A8ED2FCD567100E82648 /* PainDiary */,
 				B581A8FD2FCD567300E82648 /* PainDiaryTests */,
 				B581A9072FCD567300E82648 /* PainDiaryUITests */,
+				B5BB9A0030764A87007B211B /* PainDiary_Live_Widget */,
+				B5BB99FB30764A87007B211B /* Frameworks */,
 				B581A8EC2FCD567100E82648 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,8 +157,18 @@
 				B581A8EB2FCD567100E82648 /* PainDiary.app */,
 				B581A8FA2FCD567300E82648 /* PainDiaryTests.xctest */,
 				B581A9042FCD567300E82648 /* PainDiaryUITests.xctest */,
+				B5BB99FA30764A87007B211B /* PainDiary_Live_WidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B5BB99FB30764A87007B211B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B5BB99FC30764A87007B211B /* WidgetKit.framework */,
+				B5BB99FE30764A87007B211B /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -115,10 +181,12 @@
 				B581A8E72FCD567100E82648 /* Sources */,
 				B581A8E82FCD567100E82648 /* Frameworks */,
 				B581A8E92FCD567100E82648 /* Resources */,
+				B5BB9A1530764A8A007B211B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B5BB9A0F30764A8A007B211B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				B581A8ED2FCD567100E82648 /* PainDiary */,
@@ -176,6 +244,28 @@
 			productReference = B581A9042FCD567300E82648 /* PainDiaryUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		B5BB99F930764A87007B211B /* PainDiary_Live_WidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B5BB9A1130764A8A007B211B /* Build configuration list for PBXNativeTarget "PainDiary_Live_WidgetExtension" */;
+			buildPhases = (
+				B5BB99F630764A87007B211B /* Sources */,
+				B5BB99F730764A87007B211B /* Frameworks */,
+				B5BB99F830764A87007B211B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B5BB9A0030764A87007B211B /* PainDiary_Live_Widget */,
+			);
+			name = PainDiary_Live_WidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = PainDiary_Live_WidgetExtension;
+			productReference = B5BB99FA30764A87007B211B /* PainDiary_Live_WidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -183,8 +273,8 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2650;
-				LastUpgradeCheck = 2650;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					B581A8EA2FCD567100E82648 = {
 						CreatedOnToolsVersion = 26.5;
@@ -196,6 +286,9 @@
 					B581A9032FCD567300E82648 = {
 						CreatedOnToolsVersion = 26.5;
 						TestTargetID = B581A8EA2FCD567100E82648;
+					};
+					B5BB99F930764A87007B211B = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -216,6 +309,7 @@
 				B581A8EA2FCD567100E82648 /* PainDiary */,
 				B581A8F92FCD567300E82648 /* PainDiaryTests */,
 				B581A9032FCD567300E82648 /* PainDiaryUITests */,
+				B5BB99F930764A87007B211B /* PainDiary_Live_WidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -236,6 +330,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B581A9022FCD567300E82648 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B5BB99F830764A87007B211B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -266,6 +367,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B5BB99F630764A87007B211B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -278,6 +386,11 @@
 			isa = PBXTargetDependency;
 			target = B581A8EA2FCD567100E82648 /* PainDiary */;
 			targetProxy = B581A9052FCD567300E82648 /* PBXContainerItemProxy */;
+		};
+		B5BB9A0F30764A8A007B211B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B5BB99F930764A87007B211B /* PainDiary_Live_WidgetExtension */;
+			targetProxy = B5BB9A0E30764A8A007B211B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -316,6 +429,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = D3T76Z6967;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -339,6 +453,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -378,6 +493,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = D3T76Z6967;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -394,6 +510,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -406,7 +523,8 @@
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = PainDiary/PainDiary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 38;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = D3T76Z6967;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -440,7 +558,7 @@
 				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "DG-Software-Solution.PainDiary";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = NO;
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
@@ -464,7 +582,8 @@
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = PainDiary/PainDiary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 38;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = D3T76Z6967;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -498,7 +617,7 @@
 				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "DG-Software-Solution.PainDiary";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = NO;
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
@@ -521,6 +640,7 @@
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = D3T76Z6967;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -548,6 +668,7 @@
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = D3T76Z6967;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -574,6 +695,7 @@
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = D3T76Z6967;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -600,6 +722,7 @@
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 30;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = D3T76Z6967;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -617,6 +740,71 @@
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_TARGET_NAME = PainDiary;
 				XROS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
+		B5BB9A1230764A8A007B211B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D3T76Z6967;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PainDiary_Live_Widget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PainDiary_Live_Widget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "DG-Software-Solution.PainDiary.PainDiary-Live-Widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B5BB9A1330764A8A007B211B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D3T76Z6967;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PainDiary_Live_Widget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PainDiary_Live_Widget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "DG-Software-Solution.PainDiary.PainDiary-Live-Widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -655,6 +843,15 @@
 			buildConfigurations = (
 				B581A9152FCD567300E82648 /* Debug */,
 				B581A9162FCD567300E82648 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B5BB9A1130764A8A007B211B /* Build configuration list for PBXNativeTarget "PainDiary_Live_WidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5BB9A1230764A8A007B211B /* Debug */,
+				B5BB9A1330764A8A007B211B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
