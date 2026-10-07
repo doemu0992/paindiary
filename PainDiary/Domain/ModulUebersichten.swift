@@ -138,3 +138,60 @@ nonisolated struct DiabetesUebersicht: Equatable, Sendable {
         return u
     }
 }
+
+// MARK: - Migräne
+
+nonisolated struct MigraeneMesspunkt: Equatable, Sendable {
+    let datum: Date
+    let tag: DayKey
+    let staerke: Int
+    /// Minuten, 0 = nicht erfasst
+    let dauerMinuten: Int
+    let ausloeser: [String]
+    let nahmAkutmedikament: Bool
+}
+
+/// Kennzahlen für das Migräne-Dashboard (Anfalls-Ring, Kacheln).
+nonisolated struct MigraeneUebersicht: Equatable, Sendable {
+    struct Ausloeser: Equatable, Sendable {
+        let name: String
+        let anzahl: Int
+    }
+
+    var anzahl30 = 0
+    /// Tage mit mindestens einem Anfall in den letzten 30 Tagen.
+    var anfallstage30 = 0
+    var staerkeSchnitt30: Double?
+    /// Ø Dauer in Minuten (nur Anfälle mit erfasster Dauer).
+    var dauerSchnittMinuten30: Double?
+    var haeufigsterAusloeser: Ausloeser?
+    /// Tage mit Akutmedikament in den letzten 30 Tagen.
+    var akuttage30 = 0
+    var letzterAnfall: Date?
+    var letzterVorTagen: Int?
+
+    static func berechne(punkte: [MigraeneMesspunkt], heute: DayKey) -> MigraeneUebersicht {
+        var u = MigraeneUebersicht()
+        let monat = punkte.filter { $0.tag >= heute.addiere(tage: -29) && $0.tag <= heute }
+        u.anzahl30 = monat.count
+        u.anfallstage30 = Set(monat.map(\.tag)).count
+        if !monat.isEmpty {
+            u.staerkeSchnitt30 = Double(monat.map(\.staerke).reduce(0, +)) / Double(monat.count)
+        }
+        let dauern = monat.map(\.dauerMinuten).filter { $0 > 0 }
+        if !dauern.isEmpty { u.dauerSchnittMinuten30 = Double(dauern.reduce(0, +)) / Double(dauern.count) }
+
+        var zaehler: [String: Int] = [:]
+        for p in monat { for a in Set(p.ausloeser) where !a.isEmpty { zaehler[a, default: 0] += 1 } }
+        if let top = zaehler.sorted(by: { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }).first {
+            u.haeufigsterAusloeser = Ausloeser(name: top.key, anzahl: top.value)
+        }
+        u.akuttage30 = Set(monat.filter(\.nahmAkutmedikament).map(\.tag)).count
+
+        if let letzter = punkte.max(by: { $0.datum < $1.datum }) {
+            u.letzterAnfall = letzter.datum
+            u.letzterVorTagen = max(0, letzter.tag.tage(bis: heute))
+        }
+        return u
+    }
+}

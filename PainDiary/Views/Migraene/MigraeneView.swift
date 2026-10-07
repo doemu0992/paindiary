@@ -2,244 +2,207 @@ import SwiftUI
 import SwiftData
 import Charts
 
+/// Migräne-Dashboard im Bento-Aufbau: Anfalls-Ring (30 Tage), Kacheln, Zyklus-Korrelation, Anfalls-Chips.
 struct MigraeneView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var anfaelle: [MigraeneEintrag]
     @Query(sort: \MIDASBewertung.datum, order: .reverse) private var midas: [MIDASBewertung]
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var zyklusEintraege: [ZyklusEintrag]
     @AppStorage("zyklusModulAktiv") private var zyklusModulAktiv = false
 
+    @State private var vm = MigraeneDashboardViewModel()
+    @State private var ansicht: ModulAnsicht = .heute
     @State private var zeigeForm = false
     @State private var bearbeitet: MigraeneEintrag? = nil
     @State private var zeigeAnalyse = false
+
+    private let tint = Color.purple
+    private let spalten = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    private var u: MigraeneUebersicht { vm.uebersicht }
 
     private var zyklusAnalyse: ZyklusAnalyse {
         ZyklusRechner.analyse(eintraege: Array(zyklusEintraege))
     }
 
-    private var anfaelle30: [MigraeneEintrag] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        return anfaelle.filter { $0.datum >= cutoff }
-    }
-
-    private var gruppiertNachDatum: [(tag: Date, items: [MigraeneEintrag])] {
-        let cal = Calendar.current
-        let grouped = Dictionary(grouping: anfaelle) { cal.startOfDay(for: $0.datum) }
-        return grouped.sorted { $0.key > $1.key }
-            .map { (tag: $0.key, items: $0.value.sorted { $0.datum > $1.datum }) }
-    }
-
-    private func tagLabel(_ datum: Date) -> String {
-        let cal = Calendar.current
-        if cal.isDateInToday(datum)     { return "Heute" }
-        if cal.isDateInYesterday(datum) { return "Gestern" }
-        return datum.formatted(.dateTime.weekday(.abbreviated).day().month())
-    }
-
     var body: some View {
-        List {
-            statistikSektion
+        ScrollView {
+            VStack(spacing: 12) {
+                GlassSegmentPicker(auswahl: $ansicht, optionen: ModulAnsicht.allCases, titel: { $0.rawValue })
 
-            Section("Fragebögen & Scores") {
-                NavigationLink(destination: MIDASView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("MIDAS-Score")
-                            if let letzter = midas.first {
-                                Text("Score \(letzter.score) – \(letzter.gradText)")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            } else {
-                                Text("Noch keine Bewertung")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    } icon: {
-                        Image(systemName: "list.clipboard.fill").foregroundStyle(.purple)
+                switch ansicht {
+                case .heute:
+                    heroKarte
+                    bentoRaster
+                    zyklusKorrelationKarte
+                    zuletztBereich
+                case .verlauf:
+                    ChipTageskarten(elemente: anfaelle, tag: { $0.tag }, datum: { $0.datum }, leerText: "Noch keine Anfälle erfasst") {
+                        anfallChip($0, volleBreite: true)
                     }
                 }
             }
-            .listRowBackground(GlassRowBackground())
-
-            if anfaelle.isEmpty {
-                Section {
-                    ContentUnavailableView(
-                        "Keine Anfälle erfasst",
-                        systemImage: "brain.head.profile",
-                        description: Text("Tippe auf + um einen Migräne-Anfall einzutragen.")
-                    )
-                    .listRowSeparator(.hidden)
-                }
-                .listRowBackground(GlassRowBackground())
-            } else {
-                zyklusKorrelationSektion
-
-                ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
-                    Section {
-                        ForEach(gruppe.items) { anfall in
-                            NavigationLink(destination: MigraeneAnfallDetailView(anfall: anfall)) {
-                                MigraeneZeile(anfall: anfall)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    EintragLoeschService(context: modelContext).loesche(anfall)
-                                } label: { Label("Löschen", systemImage: "trash") }
-                                Button { bearbeitet = anfall } label: { Label("Bearbeiten", systemImage: "pencil") }
-                                    .tint(.blue)
-                            }
-                        }
-                    } header: {
-                        Text(tagLabel(gruppe.tag))
-                            .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
-                    }
-                    .listRowBackground(GlassRowBackground())
-                }
-            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
-        .glassList(.migraene)
+        .auroraScreen(.migraene)
         .navigationTitle("Migräne")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Anfall erfassen")
             }
         }
         .sheet(isPresented: $zeigeForm) { MigraeneAnfallForm() }
         .sheet(item: $bearbeitet) { MigraeneAnfallForm(anfall: $0) }
-        .sheet(isPresented: $zeigeAnalyse) {
-            MigraeneAnalyseView()
-        }
+        .sheet(isPresented: $zeigeAnalyse) { MigraeneAnalyseView() }
+        .onAppear { vm.aktualisiere(anfaelle: anfaelle) }
+        .onChange(of: anfaelle) { _, neu in vm.aktualisiere(anfaelle: neu) }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { vm.aktualisiere(anfaelle: anfaelle) } }
     }
 
-    // MARK: - Sections
+    // MARK: - Hero
 
-    private var avgStaerke30: Double {
-        anfaelle30.isEmpty ? 0 : Double(anfaelle30.map(\.staerke).reduce(0, +)) / Double(anfaelle30.count)
-    }
+    private var heroKarte: some View {
+        VStack(spacing: 12) {
+            GlassSectionLabel("Anfälle · 30 Tage")
 
-    private var statistikSektion: some View {
-        Section {
-            VStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
-                        .font(.headline).foregroundStyle(.purple)
-                    Divider()
-                    HStack(spacing: 0) {
-                        statPill(
-                            "\(anfaelle30.count)",
-                            label: "Anfälle",
-                            farbe: anfaelle30.count == 0 ? .green : anfaelle30.count <= 4 ? .orange : .red
-                        )
-                        Divider().frame(height: 40)
-                        statPill(
-                            anfaelle30.isEmpty ? "–" : String(format: "%.1f", avgStaerke30),
-                            label: "Ø Schmerzstärke",
-                            farbe: anfaelle30.isEmpty ? .secondary : avgStaerke30 <= 4 ? .orange : .red
-                        )
-                        Divider().frame(height: 40)
-                        statPill(
-                            midas.first.map { "\($0.score)" } ?? "–",
-                            label: "MIDAS Score",
-                            farbe: midas.first.map { $0.score <= 5 ? Color.green : $0.score <= 20 ? .orange : .red } ?? .secondary
-                        )
-                    }
-                }
-                .padding()
-                .glassCard(radius: 24, padding: 0)
+            GlassRing(
+                fortschritt: Double(u.anfallstage30) / 30,
+                farbe: ringFarbe,
+                mitte: "\(u.anzahl30)",
+                unterzeile: u.anfallstage30 == 1 ? "an 1 Tag" : "an \(u.anfallstage30) Tagen",
+                beschreibung: "\(u.anzahl30) Migräne-Anfälle an \(u.anfallstage30) Tagen in den letzten 30 Tagen"
+            )
 
-                if !anfaelle.isEmpty {
-                    Button { zeigeAnalyse = true } label: {
-                        Label("Migräne-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .glassTintButton(Color.purple)
-                    }
-                    .buttonStyle(.plain)
-                }
+            Text(letzterAnfallText)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button { zeigeForm = true } label: {
+                Label("Anfall erfassen", systemImage: "plus")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .glassTintButton(tint, radius: 22)
             }
-            .padding(.vertical, 4)
-        }
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        .listRowBackground(Color.clear)
-    }
-
-    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
-            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
+        .glassCard(radius: 28, padding: 20)
     }
 
-    @ViewBuilder
-    private var ausloeserSektion: some View {
-        let alle = anfaelle30.flatMap(\.ausloeserListe)
-        let map = alle.reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
-        let sortiert = map.sorted { $0.value > $1.value }.prefix(5)
+    private var ringFarbe: Color {
+        u.anzahl30 == 0 ? .green : (u.anzahl30 <= 4 ? .orange : .red)
+    }
 
-        if !sortiert.isEmpty {
-            Section("Häufige Auslöser (30 Tage)") {
-                ForEach(Array(sortiert), id: \.key) { key, count in
-                    HStack {
-                        Text(key)
-                        Spacer()
-                        Text("\(count)×").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .listRowBackground(GlassRowBackground())
+    private var letzterAnfallText: String {
+        guard let tage = u.letzterVorTagen else { return "Noch kein Anfall erfasst" }
+        switch tage {
+        case 0:  return "Letzter Anfall: heute"
+        case 1:  return "Letzter Anfall: gestern"
+        default: return "Letzter Anfall: vor \(tage) Tagen"
         }
     }
 
+    // MARK: - Bento-Raster
+
+    private var bentoRaster: some View {
+        LazyVGrid(columns: spalten, spacing: 12) {
+            BentoKachel(
+                symbol: "waveform.path.ecg", label: "Ø Schmerzstärke", tint: tint,
+                leuchtet: (u.staerkeSchnitt30 ?? 0) >= 7,
+                wert: u.staerkeSchnitt30.map { String(format: "%.1f", $0) } ?? "–",
+                einheit: u.staerkeSchnitt30.map { SchmerzSkala.wort(Int($0.rounded())) }
+            )
+
+            BentoKachel(
+                symbol: "clock", label: "Ø Dauer", tint: tint,
+                wert: u.dauerSchnittMinuten30.map { dauerText(Int($0.rounded())) } ?? "–", klein: true
+            )
+
+            BentoKachel(
+                symbol: "bolt.fill",
+                label: u.haeufigsterAusloeser.map { "Häufigster Auslöser · \($0.anzahl)×" } ?? "Häufigster Auslöser",
+                tint: tint, wert: u.haeufigsterAusloeser?.name ?? "–", klein: true
+            )
+
+            BentoKachel(
+                symbol: "pills.fill", label: "Tage mit Akutmedikament", tint: tint,
+                leuchtet: u.akuttage30 >= 10, wert: "\(u.akuttage30)", einheit: "von 30"
+            )
+
+            NavigationLink(destination: MIDASView()) {
+                BentoKachel(
+                    symbol: "list.clipboard.fill",
+                    label: midas.first.map { "MIDAS · \($0.gradText)" } ?? "MIDAS-Score",
+                    tint: tint, wert: midas.first.map { "\($0.score)" } ?? "–"
+                )
+            }
+            .buttonStyle(.plain)
+
+            BentoKachel(
+                symbol: "calendar", label: "Migränetage · 30 Tage", tint: tint,
+                wert: "\(u.anfallstage30)"
+            )
+        }
+    }
+
+    private func dauerText(_ minuten: Int) -> String {
+        minuten < 60 ? "\(minuten) Min" : "\(minuten / 60) h \(minuten % 60) Min"
+    }
+
+    // MARK: - Zyklus-Korrelation
+
     @ViewBuilder
-    private var zyklusKorrelationSektion: some View {
+    private var zyklusKorrelationKarte: some View {
         let daten = ZyklusRechner.migraeneJePhase(anfaelle: anfaelle, analyse: zyklusAnalyse)
         if zyklusModulAktiv && !daten.isEmpty {
-            Section("Migräne & Zyklus") {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Anfälle je Zyklusphase (gesamt)")
-                        .font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                GlassSectionLabel("Migräne & Zyklus")
+                Text("Anfälle je Zyklusphase (gesamt)")
+                    .font(.caption).foregroundStyle(.secondary)
 
-                    Chart(daten, id: \.phase.rawValue) { d in
-                        BarMark(
-                            x: .value("Phase", d.phase.rawValue),
-                            y: .value("Anfälle", d.anzahl)
-                        )
-                        .foregroundStyle(phaseFarbe(d.phase).gradient)
-                        .cornerRadius(6)
-                        .annotation(position: .top) {
-                            Text("\(d.anzahl)")
-                                .font(.caption2.bold())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .chartYScale(domain: 0...(daten.map(\.anzahl).max().map { $0 + 1 } ?? 5))
-                    .frame(height: 140)
-
-                    VStack(spacing: 4) {
-                        ForEach(daten, id: \.phase.rawValue) { d in
-                            HStack {
-                                Circle().fill(phaseFarbe(d.phase)).frame(width: 8, height: 8)
-                                Text(d.phase.rawValue).font(.caption)
-                                Spacer()
-                                Text("\(d.anzahl) Anfälle")
-                                    .font(.caption2).foregroundStyle(.secondary)
-                                Text(String(format: "Ø %.1f", d.avgStaerke))
-                                    .font(.caption.bold())
-                            }
-                        }
-                    }
-
-                    if let top = daten.max(by: { $0.anzahl < $1.anzahl }) {
-                        Label("Häufigste Phase: \(top.phase.rawValue)", systemImage: "exclamationmark.circle.fill")
-                            .font(.caption)
-                            .foregroundStyle(phaseFarbe(top.phase))
+                Chart(daten, id: \.phase.rawValue) { d in
+                    BarMark(
+                        x: .value("Phase", d.phase.rawValue),
+                        y: .value("Anfälle", d.anzahl)
+                    )
+                    .foregroundStyle(phaseFarbe(d.phase).gradient)
+                    .cornerRadius(6)
+                    .annotation(position: .top) {
+                        Text("\(d.anzahl)")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .padding(.vertical, 4)
+                .chartYScale(domain: 0...(daten.map(\.anzahl).max().map { $0 + 1 } ?? 5))
+                .frame(height: 140)
+
+                VStack(spacing: 4) {
+                    ForEach(daten, id: \.phase.rawValue) { d in
+                        HStack {
+                            Circle().fill(phaseFarbe(d.phase)).frame(width: 8, height: 8)
+                            Text(d.phase.rawValue).font(.caption)
+                            Spacer()
+                            Text("\(d.anzahl) Anfälle")
+                                .font(.caption2).foregroundStyle(.secondary)
+                            Text(String(format: "Ø %.1f", d.avgStaerke))
+                                .font(.caption.bold())
+                        }
+                    }
+                }
+
+                if let top = daten.max(by: { $0.anzahl < $1.anzahl }) {
+                    Label("Häufigste Phase: \(top.phase.rawValue)", systemImage: "exclamationmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(phaseFarbe(top.phase))
+                }
             }
-            .listRowBackground(GlassRowBackground())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard(radius: 24, padding: 16)
         }
     }
 
@@ -250,6 +213,57 @@ struct MigraeneView: View {
         case .ovulation: return .orange
         case .lutealphase: return .purple
         case .praemenstruell: return .pink
+        }
+    }
+
+    // MARK: - Zuletzt
+
+    private var zuletztBereich: some View {
+        VStack(spacing: 8) {
+            ZuletztKopf { withAnimation { ansicht = .verlauf } }
+
+            if anfaelle.isEmpty {
+                Text("Tippe auf „Anfall erfassen“, um deinen ersten Migräne-Anfall einzutragen.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .glassCard(radius: 22, padding: 16)
+            } else {
+                ChipStreifen(elemente: anfaelle) { anfallChip($0, volleBreite: false) }
+
+                Button { zeigeAnalyse = true } label: {
+                    Label("Migräne-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .glassTintButton(tint, radius: 20)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func anfallChip(_ anfall: MigraeneEintrag, volleBreite: Bool) -> some View {
+        var untertitel = TagBeschriftung.tagUndZeit(tag: anfall.tag, datum: anfall.datum)
+        if anfall.hatAura { untertitel += " · Aura" }
+        if anfall.dauer > 0 { untertitel += " · \(dauerText(anfall.dauer))" }
+        return NavigationLink(destination: MigraeneAnfallDetailView(anfall: anfall)) {
+            GlassEintragChip(
+                zahl: anfall.staerke,
+                titel: anfall.kopfschmerzTyp.isEmpty ? "Migräne" : anfall.kopfschmerzTyp,
+                untertitel: untertitel,
+                tint: tint,
+                hervorgehoben: anfall.staerke >= 7,
+                volleBreite: volleBreite
+            )
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button { bearbeitet = anfall } label: { Label("Bearbeiten", systemImage: "pencil") }
+            Button(role: .destructive) {
+                EintragLoeschService(context: modelContext).loesche(anfall)
+            } label: { Label("Löschen", systemImage: "trash") }
         }
     }
 }

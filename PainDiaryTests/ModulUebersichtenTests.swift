@@ -114,3 +114,34 @@ struct DiabetesUebersichtTests {
         #expect(u.verlauf7 == [8, 5.5])
     }
 }
+
+struct MigraeneUebersichtTests {
+    let heute = tag(2026, 10, 7)
+
+    private func punkt(_ t: DayKey, _ s: Int, dauer: Int = 0, ausloeser: [String] = [], akut: Bool = false) -> MigraeneMesspunkt {
+        MigraeneMesspunkt(datum: datum(t), tag: t, staerke: s, dauerMinuten: dauer, ausloeser: ausloeser, nahmAkutmedikament: akut)
+    }
+
+    @Test func leer() {
+        let u = MigraeneUebersicht.berechne(punkte: [], heute: heute)
+        #expect(u.anzahl30 == 0)
+        #expect(u.staerkeSchnitt30 == nil)
+        #expect(u.letzterVorTagen == nil)
+    }
+
+    @Test func anfallstageSchnittDauerUndAusloeser() {
+        let u = MigraeneUebersicht.berechne(punkte: [
+            punkt(heute, 8, dauer: 120, ausloeser: ["Stress", "Wetter"], akut: true),
+            punkt(heute, 6, dauer: 60, ausloeser: ["Stress"], akut: true),
+            punkt(tag(2026, 10, 3), 4, ausloeser: ["Wetter"]),
+            punkt(tag(2026, 7, 1), 10, ausloeser: ["Alkohol"])   // außerhalb 30 Tage
+        ], heute: heute)
+        #expect(u.anzahl30 == 3)
+        #expect(u.anfallstage30 == 2)
+        #expect(u.staerkeSchnitt30 == 6.0)
+        #expect(u.dauerSchnittMinuten30 == 90.0)
+        #expect(u.haeufigsterAusloeser == MigraeneUebersicht.Ausloeser(name: "Stress", anzahl: 2))
+        #expect(u.akuttage30 == 1)   // zwei Einnahmen am selben Tag zählen einmal
+        #expect(u.letzterVorTagen == 0)
+    }
+}
