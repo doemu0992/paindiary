@@ -46,7 +46,7 @@ struct ZyklusVerlaufView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .zyklusGlas()
+        .glassCard(padding: 0)
     }
 
     private var prognoseText: String {
@@ -75,7 +75,7 @@ struct ZyklusVerlaufView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .zyklusGlas()
+        .glassCard(padding: 0)
     }
 
     // MARK: - Zykluslängen-Diagramm
@@ -137,7 +137,7 @@ struct ZyklusVerlaufView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .zyklusGlas()
+        .glassCard(padding: 0)
     }
 
     // MARK: - Zyklen
@@ -155,7 +155,7 @@ struct ZyklusVerlaufView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .zyklusGlas()
+        .glassCard(padding: 0)
     }
 
     private func zeile(_ info: ZyklusInfo) -> some View {

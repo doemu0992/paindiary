@@ -24,6 +24,8 @@ Der Design-Layer liegt in `PainDiary/Design/GlassTheme.swift`. **Nie** eigene Ka
 
 **Regeln:** Eckenradius `.continuous` (Karten 22–28, Chips/Rows 12–20). Touch-Targets ≥ 56 pt (Haupt-Aktionen 72 pt). Schmerzstufen nie nur farbig — immer Zahl + Wort (`SchmerzSkala.wort`). Reduce Transparency → opake Karte, Reduce Motion → statischer Hintergrund (bereits im Layer). Modul-Tintfarben (Tabelle unten) bleiben, erscheinen aber nur als **Akzent** (Icon-Glow, Chart, Capsule-Tönung).
 
+**Themen-Hintergründe (bindend):** `.auroraScreen(_ theme: AuroraTheme)` / `.glassList(_ theme:)` — `.schmerz` (Blau/Mint), `.medikamente` (Pfirsich/Butter), `.statistik` (Indigo/Violett), `.migraene` (gedämpft, **statisch**), `.zyklus` (Rosé/Pfirsich/Lavendel), `.rheuma`, `.haut`, `.diabetes`, `.wellness`, `.neutral` (Profil/Einstellungen). Das Thema setzt auch die Akzentfarbe des Karten-Schattens (`glasAkzent`). Ein Modul-Screen nutzt immer das Thema seines Moduls; neue Themen in `AuroraTheme` ergänzen.
+
 **Navigation:** Tabs `Heute` (`HeuteView`) · `Verlauf` (`VerlaufContainerView`: Segment Liste | Einblicke; Einblicke = frühere Dashboard-Kacheln, `DashboardView(segment:)`) · `＋` · `Wohlbefinden` · `Profil`.
 **Erfassung:** „+" öffnet `QuickCaptureSheet` (1 Screen: Slider, Körperstellen-Chips, Speichern; „Mehr…" = `SchmerzForm`-Wizard). Mit aktiven Zusatzmodulen zuerst `EintragAuswahlView` (mit „Schnell erfassen").
 **Heute-Screen:** Hero-Gauge, eine Hauptaktion, 3 Info-Chips, 2-spaltiges Modul-Grid (Modul-Mini-Kacheln: 1 Kennwert + Sparkline), Einblick-Zeile. Keine langen Kachel-Stapel mehr.
@@ -1001,13 +1003,13 @@ Enthält `SubRegionen.map["Unterschenkel links"]` und `SubRegionen.map["Untersch
 
 ## Zyklus-Modul (Glas-Design, bindend)
 
-**Ausnahme vom Card-/Wizard-Standard:** Das Zyklus-Modul nutzt ein eigenes Frosted-Glass-Design (vom Nutzer freigegeben).
+**Das Zyklus-Glas ist seit der Vereinheitlichung der App-weite Standard** (`glassCard`: `.ultraThinMaterial`, 1-pt-Kontur, Akzent-Schatten). Ausnahme nur noch beim Wizard-/Segment-Aufbau.
 Gilt nur für `Views/Zyklus/` — Kachel im Dashboard folgt weiterhin dem Kachel-Template.
 
 | Element | Standard |
 |---|---|
-| Hintergrund | `ZyklusHintergrund()` (Rosé/Pfirsich/Lavendel-Verlauf) via `.background { }` |
-| Karten | `.zyklusGlas()` (`.ultraThinMaterial`, Radius 24/20/18, weiße 1-pt-Kontur) — nicht `secondarySystemGroupedBackground` |
+| Hintergrund | `.auroraScreen(.zyklus)` (Rosé/Pfirsich/Lavendel) |
+| Karten | `.glassCard(radius:, padding: 0)` — es gibt nur noch **ein** Glas-Design |
 | Hauptseite | `ScrollView` mit Segment-Picker Heute / Monat / Verlauf (statt `List`) |
 | Eintrags-Sheet | Ein Bildschirm mit Glas-Karten (`ZyklusEintragSheet`), Toolbar „Abbrechen" / „Sichern" |
 | Farben/Phasen | `ZyklusFarbe` — nie Farbliterale in Zyklus-Views |

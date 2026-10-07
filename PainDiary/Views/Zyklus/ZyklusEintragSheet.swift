@@ -138,14 +138,14 @@ struct ZyklusEintragSheet: View {
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(.red)
-                        .zyklusGlas(radius: 16)
+                        .glassCard(radius: 16, padding: 0)
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background { ZyklusHintergrund() }
+            .auroraScreen(.zyklus)
             .navigationTitle(datum.formatted(.dateTime.weekday(.abbreviated).day().month(.wide).year().locale(ZyklusLocale.de)))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -184,7 +184,7 @@ struct ZyklusEintragSheet: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .zyklusGlas(radius: 20)
+        .glassCard(radius: 20, padding: 0)
     }
 
     private var blutungKarte: some View {

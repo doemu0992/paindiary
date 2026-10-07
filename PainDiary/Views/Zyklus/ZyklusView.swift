@@ -66,7 +66,7 @@ struct ZyklusView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
         }
-        .background { ZyklusHintergrund() }
+        .auroraScreen(.zyklus)
         .environment(\.locale, ZyklusLocale.de)
         .navigationTitle("Zyklus")
         .navigationBarTitleDisplayMode(.large)
@@ -228,7 +228,7 @@ struct ZyklusView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity)
-        .zyklusGlas()
+        .glassCard(padding: 0)
     }
 
     private var pausiertKarte: some View {
@@ -244,7 +244,7 @@ struct ZyklusView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity)
-        .zyklusGlas()
+        .glassCard(padding: 0)
     }
 
     private func ringKarte(_ analyse: ZyklusAnalyse) -> some View {
@@ -263,7 +263,7 @@ struct ZyklusView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity)
-        .zyklusGlas()
+        .glassCard(padding: 0)
     }
 
     private func legendenPunkt(_ farbe: Color, _ text: String) -> some View {
@@ -314,7 +314,7 @@ struct ZyklusView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .zyklusGlas(radius: 18)
+        .glassCard(radius: 18, padding: 0)
     }
 
     // MARK: Prognose-Karten
@@ -349,7 +349,7 @@ struct ZyklusView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
-        .zyklusGlas(radius: 20)
+        .glassCard(radius: 20, padding: 0)
         .accessibilityElement(children: .combine)
     }
 
@@ -379,7 +379,7 @@ struct ZyklusView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
-        .zyklusGlas(radius: 20)
+        .glassCard(radius: 20, padding: 0)
     }
 
     private func fensterText(_ f: ClosedRange<Date>) -> String {
@@ -422,7 +422,7 @@ struct ZyklusView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .zyklusGlas(radius: 20)
+        .glassCard(radius: 20, padding: 0)
     }
 
     private func chip(_ titel: String, _ symbol: String, aktiv: Bool) -> some View {
@@ -457,7 +457,7 @@ struct ZyklusView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .zyklusGlas()
+        .glassCard(padding: 0)
     }
 
     private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
@@ -513,7 +513,7 @@ struct ZyklusView: View {
                 monatsAuswahl = (monatsAuswahl.map { kal.isDate($0, inSameDayAs: tag) } ?? false) ? nil : tag
             }
         }
-        .zyklusGlas()
+        .glassCard(padding: 0)
 
         if let tag = monatsAuswahl {
             tagesKarte(tag, analyse, proTag)
@@ -617,7 +617,7 @@ struct ZyklusView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .zyklusGlas(radius: 20)
+        .glassCard(radius: 20, padding: 0)
     }
 
     /// Setzt/entfernt die manuelle Eisprung-Bestätigung am Tag; der Eisprung ist ein Datum je Zyklus,
@@ -688,7 +688,7 @@ struct ZyklusView: View {
         .font(.caption2)
         .foregroundStyle(.secondary)
         .padding(14)
-        .zyklusGlas(radius: 18)
+        .glassCard(radius: 18, padding: 0)
     }
 
     private func legendeItem(_ farbe: Color, gestrichelt: Bool, text: String, info: (String, String)) -> some View {
@@ -741,7 +741,7 @@ struct ZyklusView: View {
                     .buttonStyle(.borderedProminent).controlSize(.small).tint(.pink)
                 }
                 .padding(14)
-                .zyklusGlas(radius: 18)
+                .glassCard(radius: 18, padding: 0)
             } else if notifManager.status == .denied {
                 HStack(spacing: 12) {
                     Image(systemName: "bell.slash.fill").font(.title3).foregroundStyle(.secondary)
@@ -761,7 +761,7 @@ struct ZyklusView: View {
 #endif
                 }
                 .padding(14)
-                .zyklusGlas(radius: 18)
+                .glassCard(radius: 18, padding: 0)
             }
         }
     }

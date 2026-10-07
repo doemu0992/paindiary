@@ -137,7 +137,7 @@ struct ZyklusKurveKarte: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .zyklusGlas()
+            .glassCard(padding: 0)
         }
     }
 

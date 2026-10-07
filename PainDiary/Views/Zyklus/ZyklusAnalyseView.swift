@@ -130,7 +130,7 @@ struct ZyklusAnalyseView: View {
                             .padding(.bottom, 24)
                         }
                     }
-                    .background { ZyklusHintergrund() }
+                    .auroraScreen(.zyklus)
                 }
             }
             .environment(\.locale, ZyklusLocale.de)
@@ -816,7 +816,7 @@ struct ZyklusAnalyseView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .zyklusGlas(radius: 20)
+        .glassCard(radius: 20, padding: 0)
     }
 
     private func statCell(_ titel: String, _ wert: String, _ farbe: Color) -> some View {
@@ -866,7 +866,7 @@ private struct ZyklusAnalyseAnpassenView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background { ZyklusHintergrund() }
+            .auroraScreen(.zyklus)
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

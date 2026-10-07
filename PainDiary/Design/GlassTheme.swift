@@ -13,7 +13,19 @@ extension Color {
 
 // MARK: - GlassCard
 
-/// Frosted-Glass-Hintergrund mit Gradient-Rand und mehrstufigem Schatten.
+/// Akzentfarbe des aktuellen Screens (kommt aus `auroraScreen(_:)`), färbt den Karten-Schatten.
+private struct GlasAkzentKey: EnvironmentKey {
+    static let defaultValue: Color = .black
+}
+
+extension EnvironmentValues {
+    var glasAkzent: Color {
+        get { self[GlasAkzentKey.self] }
+        set { self[GlasAkzentKey.self] = newValue }
+    }
+}
+
+/// Der eine Glas-Stil der App („Zyklus-Glas"): `.ultraThinMaterial`, 1-pt-Kontur, weicher Akzent-Schatten.
 struct GlassCardModifier: ViewModifier {
     var radius: CGFloat = 24
     var tint: Color? = nil
@@ -22,6 +34,7 @@ struct GlassCardModifier: ViewModifier {
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.glasAkzent) private var akzent
 
     func body(content: Content) -> some View {
         let form = RoundedRectangle(cornerRadius: radius, style: .continuous)
@@ -33,36 +46,15 @@ struct GlassCardModifier: ViewModifier {
                         form.fill(Color(.secondarySystemGroupedBackground))
                     } else {
                         form.fill(.ultraThinMaterial)
-                        form.fill(Color.white.opacity(scheme == .dark ? 0.04 : 0.28))
                     }
                     if let tint { form.fill(tint.opacity(scheme == .dark ? 0.12 : 0.08)) }
                 }
             }
             .overlay {
-                form.strokeBorder(
-                    LinearGradient(
-                        colors: [.white.opacity(scheme == .dark ? 0.35 : 0.75), .white.opacity(0.05)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
+                form.strokeBorder(Color.white.opacity(scheme == .dark ? 0.22 : 0.35), lineWidth: 1)
             }
             .clipShape(form)
-            .modifier(GlassShadow(aktiv: schatten))
-    }
-}
-
-private struct GlassShadow: ViewModifier {
-    let aktiv: Bool
-    func body(content: Content) -> some View {
-        if aktiv {
-            content
-                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
-                .shadow(color: .black.opacity(0.05), radius: 16, x: 0, y: 8)
-                .shadow(color: .black.opacity(0.05), radius: 40, x: 0, y: 20)
-        } else {
-            content
-        }
+            .shadow(color: schatten ? akzent.opacity(akzent == .black ? 0.06 : 0.10) : .clear, radius: 14, x: 0, y: 6)
     }
 }
 
@@ -83,15 +75,17 @@ extension View {
     }
 
     /// Aurora-Hintergrund für Screens (ScrollView/List/VStack).
-    func auroraScreen(schmerzLevel: Int? = nil) -> some View {
-        background(AuroraBackground(schmerzLevel: schmerzLevel).ignoresSafeArea())
+    func auroraScreen(_ theme: AuroraTheme = .neutral, schmerzLevel: Int? = nil) -> some View {
+        environment(\.glasAkzent, theme.akzent)
+            .background(AuroraBackground(theme: theme, schmerzLevel: schmerzLevel).ignoresSafeArea())
     }
 
     /// Liste auf Aurora-Hintergrund mit Glas-Zeilen.
-    func glassList(schmerzLevel: Int? = nil) -> some View {
+    func glassList(_ theme: AuroraTheme = .neutral, schmerzLevel: Int? = nil) -> some View {
         self
             .scrollContentBackground(.hidden)
-            .background(AuroraBackground(schmerzLevel: schmerzLevel).ignoresSafeArea())
+            .environment(\.glasAkzent, theme.akzent)
+            .background(AuroraBackground(theme: theme, schmerzLevel: schmerzLevel).ignoresSafeArea())
     }
 
     /// Glas-Leisten für Navigation und Tab-Bar.
@@ -104,7 +98,69 @@ extension View {
 
 // MARK: - Aurora-Hintergrund
 
+/// Thematische Hintergründe pro Bereich. `.neutral` ist der ursprüngliche Aurora-Verlauf.
+enum AuroraTheme {
+    case neutral, schmerz, medikamente, statistik, migraene, zyklus, rheuma, haut, diabetes, wellness
+
+    /// Akzent für Karten-Schatten.
+    var akzent: Color {
+        switch self {
+        case .neutral:     return .teal
+        case .schmerz:     return .blue
+        case .medikamente: return .orange
+        case .statistik:   return .indigo
+        case .migraene:    return .purple
+        case .zyklus:      return .pink
+        case .rheuma:      return .teal
+        case .haut:        return .orange
+        case .diabetes:    return .blue
+        case .wellness:    return .mint
+        }
+    }
+
+    /// Migräne ist reizempfindlich: kein bewegter Hintergrund.
+    var animiert: Bool { self != .migraene }
+
+    /// Fünf Farbtöne (Ecken oben links/rechts, unten links/rechts, Mitte) und Stärke im hellen Modus.
+    fileprivate var farbtoene: (a: RGB, b: RGB, c: RGB, d: RGB, m: RGB, staerke: Double)? {
+        switch self {
+        case .neutral:     return nil
+        case .schmerz:     return (RGB(0.30, 0.62, 0.95), RGB(0.35, 0.85, 0.75), RGB(0.40, 0.50, 0.95), RGB(0.45, 0.85, 0.80), RGB(0.35, 0.75, 0.90), 0.22)
+        case .medikamente: return (RGB(1.00, 0.72, 0.50), RGB(1.00, 0.85, 0.45), RGB(1.00, 0.62, 0.45), RGB(1.00, 0.80, 0.55), RGB(1.00, 0.76, 0.52), 0.30)
+        case .statistik:   return (RGB(0.45, 0.45, 0.95), RGB(0.65, 0.45, 0.95), RGB(0.55, 0.55, 1.00), RGB(0.75, 0.55, 0.95), RGB(0.58, 0.50, 0.95), 0.24)
+        case .migraene:    return (RGB(0.55, 0.50, 0.75), RGB(0.45, 0.50, 0.65), RGB(0.50, 0.45, 0.70), RGB(0.55, 0.55, 0.70), RGB(0.50, 0.50, 0.70), 0.18)
+        case .zyklus:      return (RGB(1.00, 0.55, 0.69), RGB(1.00, 0.75, 0.55), RGB(0.74, 0.65, 1.00), RGB(1.00, 0.60, 0.75), RGB(0.95, 0.65, 0.80), 0.30)
+        case .rheuma:      return (RGB(0.20, 0.75, 0.75), RGB(0.55, 0.80, 1.00), RGB(0.30, 0.70, 0.85), RGB(0.50, 0.85, 0.90), RGB(0.40, 0.78, 0.85), 0.24)
+        case .haut:        return (RGB(1.00, 0.70, 0.45), RGB(0.95, 0.80, 0.60), RGB(0.90, 0.72, 0.55), RGB(1.00, 0.78, 0.60), RGB(0.97, 0.75, 0.55), 0.26)
+        case .diabetes:    return (RGB(0.35, 0.65, 1.00), RGB(0.30, 0.85, 0.95), RGB(0.45, 0.70, 1.00), RGB(0.40, 0.80, 0.95), RGB(0.38, 0.75, 1.00), 0.24)
+        case .wellness:    return (RGB(0.40, 0.85, 0.70), RGB(0.65, 0.85, 0.60), RGB(0.45, 0.80, 0.65), RGB(0.60, 0.85, 0.70), RGB(0.50, 0.85, 0.68), 0.26)
+        }
+    }
+
+    /// 3×3-Mesh-Farben für den Modus.
+    fileprivate func mesh(dunkel: Bool, warm: Bool) -> [Color]? {
+        guard let t = farbtoene else { return nil }
+        let basis = dunkel ? RGB(0.06, 0.07, 0.12) : RGB(1, 1, 1)
+        let anteil = dunkel ? 0.26 : t.staerke
+        func f(_ x: RGB) -> RGB { basis.mischen(x, anteil) }
+        let a = f(t.a), b = f(t.b), c = f(t.c), d = f(t.d)
+        var m = f(t.m)
+        if warm { m = dunkel ? RGB(0.30, 0.16, 0.20) : RGB(1.00, 0.89, 0.84) }
+        return [a, a.mischen(b, 0.5), b,
+                a.mischen(c, 0.5), m, b.mischen(d, 0.5),
+                c, c.mischen(d, 0.5), d].map(\.color)
+    }
+}
+
+fileprivate struct RGB {
+    let r: Double, g: Double, b: Double
+    init(_ r: Double, _ g: Double, _ b: Double) { self.r = r; self.g = g; self.b = b }
+    func mischen(_ o: RGB, _ t: Double) -> RGB { RGB(r + (o.r - r) * t, g + (o.g - g) * t, b + (o.b - b) * t) }
+    var color: Color { Color(red: r, green: g, blue: b) }
+}
+
 struct AuroraBackground: View {
+    var theme: AuroraTheme = .neutral
     /// 0–10; ab 7 wandert ein Punkt zu einem warmen Pfirsich-Ton (kein Alarm-Rot).
     var schmerzLevel: Int? = nil
 
@@ -114,6 +170,7 @@ struct AuroraBackground: View {
     private var warm: Bool { (schmerzLevel ?? 0) >= 7 }
 
     private var farben: [Color] {
+        if let themed = theme.mesh(dunkel: scheme == .dark, warm: warm) { return themed }
         if scheme == .dark {
             let c = warm ? Color(red: 0.30, green: 0.16, blue: 0.20) : Color(red: 0.12, green: 0.21, blue: 0.24)
             return [
@@ -133,7 +190,7 @@ struct AuroraBackground: View {
 
     var body: some View {
         if #available(iOS 18.0, *) {
-            if reduceMotion {
+            if reduceMotion || !theme.animiert {
                 mesh(phase: 0)
             } else {
                 TimelineView(.animation(minimumInterval: 1.0 / 15.0)) { ctx in
@@ -141,7 +198,7 @@ struct AuroraBackground: View {
                 }
             }
         } else {
-            LinearGradient(colors: [farben[0], farben[1], farben[2]], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [farben[0], farben[4], farben[8]], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
 
