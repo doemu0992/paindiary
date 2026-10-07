@@ -435,6 +435,6 @@ private struct MIDASFrageSektion: View {
         } header: {
             Text("Frage \(index + 1): \(titel)")
         }
-    }
         .listRowBackground(Color.glassFill)
+    }
 }

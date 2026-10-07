@@ -417,8 +417,8 @@ private struct ProfilInhaltView: View {
         } footer: {
             Text("Aktivierte Module erscheinen bei der Eintragserfassung als Auswahlmöglichkeit.")
         }
-    }
         .listRowBackground(Color.glassFill)
+    }
 
     // MARK: - Kontakte
 

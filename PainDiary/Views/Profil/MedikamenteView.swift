@@ -339,8 +339,8 @@ struct MedikamenteView: View {
                 Label("Achtung", systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
             }
-        }
             .listRowBackground(Color.glassFill)
+        }
     }
 
     @ViewBuilder
