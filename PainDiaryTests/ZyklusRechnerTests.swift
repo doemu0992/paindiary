@@ -204,6 +204,24 @@ struct ZyklusRechnerTests {
         #expect(!ZyklusRechner.istPerimenstruell(d(2025, 12, 28), analyse: a, kalender: kal))
     }
 
+    @Test func prognoseLaengeNutztGewichtetenMedianDerLetztenSechs() {
+        #expect(ZyklusRechner.prognoseLaenge(aus: []) == 28)
+        #expect(ZyklusRechner.prognoseLaenge(aus: [30]) == 30)
+        #expect(ZyklusRechner.prognoseLaenge(aus: [26, 30]) == 26 * 0.4 + 30 * 0.6)
+        #expect(ZyklusRechner.prognoseLaenge(aus: [28, 28, 28, 28, 28, 28]) == 28)
+        // Jüngere Zyklen zählen stärker: Trend nach oben → Prognose über dem einfachen Median
+        #expect(ZyklusRechner.prognoseLaenge(aus: [26, 26, 26, 30, 30, 30]) > 28)
+    }
+
+    @Test func kuenftigeZyklenReichenWeitInDieZukunft() {
+        let e = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 28, 28], laufenderZyklusBis: d(2026, 5, 21))
+        let a = analyse(e, heute: d(2026, 5, 21))
+        // Letzter Start 23.4., erwartet ab 21.5.; vier künftige Zyklen à 28 Tage → letzte vorhergesagte Periode 13.–17.8.
+        let letzteVorhersage = a.vorhergesagtePeriodeTageSet.max()
+        #expect(letzteVorhersage != nil)
+        #expect(letzteVorhersage! >= d(2026, 8, 17))
+    }
+
     // MARK: - Typen
 
     @Test func enumsNormalisierenAltdaten() {

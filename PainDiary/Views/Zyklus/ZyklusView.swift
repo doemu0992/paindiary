@@ -20,6 +20,7 @@ struct ZyklusView: View {
     @State private var ausgewaehlterTag: ZyklusTagAuswahl? = nil
     @State private var zeigeAnalyse = false
     @State private var ringAuswahl: Int? = nil
+    @State private var monatsAuswahl: Date? = nil
     @State private var notifManager = NotificationManager.shared
     @State private var healthLaeuft = false
     @State private var healthMeldung: String? = nil
@@ -438,19 +439,123 @@ struct ZyklusView: View {
 
     @ViewBuilder
     private func monatsInhalt(_ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusEintrag]) -> some View {
+        if !kal.isDate(anzeigeMonat, equalTo: Date(), toGranularity: .month) || monatsAuswahl != nil {
+            HStack {
+                Spacer()
+                Button {
+                    withAnimation {
+                        anzeigeMonat = Date()
+                        monatsAuswahl = nil
+                    }
+                } label: {
+                    Label("Heute", systemImage: "arrow.uturn.backward.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundStyle(.pink)
+            }
+        }
+
         ZyklusKalenderView(
             monat: anzeigeMonat,
             eintraegeProTag: proTag,
             analyse: analyse,
             zeigePrognosen: !pausiert,
+            ausgewaehlterTag: monatsAuswahl,
             onVorheriger: { wechselMonat(-1) },
             onNaechster: { wechselMonat(1) }
         ) { tag in
-            ausgewaehlterTag = ZyklusTagAuswahl(datum: tag)
+            withAnimation(.easeInOut(duration: 0.15)) {
+                monatsAuswahl = (monatsAuswahl.map { kal.isDate($0, inSameDayAs: tag) } ?? false) ? nil : tag
+            }
         }
         .zyklusGlas()
 
+        if let tag = monatsAuswahl {
+            tagesKarte(tag, analyse, proTag)
+                .transition(.opacity)
+        }
+
         kalenderLegende
+    }
+
+    /// Detailkarte zum angetippten Kalendertag: Zyklustag, Phase, Status und erfasste Werte.
+    private func tagesKarte(_ tag: Date, _ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusEintrag]) -> some View {
+        let start = kal.startOfDay(for: tag)
+        let heute = kal.startOfDay(for: Date())
+        let eintrag = proTag[start]
+        let zustand = ZyklusRechner.tagZustand(datum: start, analyse: analyse, kalender: kal)
+        let prognosenAn = !pausiert
+
+        // Phase nur innerhalb des bekannten Zyklus — für Tage nach der erwarteten nächsten Periode wäre sie falsch.
+        let imBekanntenZyklus = start <= heute || (analyse.naechstePeriodeStart.map { start < $0 } ?? false)
+        let phase: ZyklusRechner.Zyklusphase? = imBekanntenZyklus
+            ? ZyklusRechner.phase(for: start, analyse: analyse, kalender: kal) : nil
+        let zyklusTag: Int? = phase == nil ? nil : analyse.zyklusStarts.last(where: { $0 <= start })
+            .map { (kal.dateComponents([.day], from: $0, to: start).day ?? 0) + 1 }
+
+        var badges: [(String, Color)] = []
+        if zustand.periode {
+            let fluss = eintrag?.fluss ?? .keine
+            badges.append((fluss == .keine ? "Periode" : "Periode · \(fluss.titel)", ZyklusFarbe.periode))
+        }
+        if prognosenAn && zustand.vorhergesagtePeriode { badges.append(("Periode erwartet", ZyklusFarbe.periode)) }
+        if prognosenAn && zustand.ovulation { badges.append(("Eisprung", ZyklusFarbe.eisprung)) }
+        if prognosenAn && zustand.fruchtbar { badges.append(("Fruchtbar", ZyklusFarbe.fruchtbar)) }
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(start, format: .dateTime.weekday(.wide).day().month(.wide))
+                        .font(.subheadline.bold())
+                    if let n = zyklusTag, let p = phase {
+                        Text("Zyklustag \(n) · \(p.rawValue)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(ZyklusFarbe.farbe(p))
+                    } else {
+                        Text(start > heute ? "Prognose" : "Außerhalb eines Zyklus")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Button { ausgewaehlterTag = ZyklusTagAuswahl(datum: start) } label: {
+                    Text(eintrag == nil ? "Erfassen" : "Bearbeiten")
+                        .font(.caption.bold()).foregroundStyle(.white)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Color.pink, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            if !badges.isEmpty {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 6)], alignment: .leading, spacing: 6) {
+                    ForEach(Array(badges.enumerated()), id: \.offset) { _, b in
+                        Text(b.0)
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .background(b.1.opacity(0.18), in: Capsule())
+                            .foregroundStyle(b.1)
+                    }
+                }
+            }
+
+            if let e = eintrag {
+                VStack(alignment: .leading, spacing: 3) {
+                    if e.schleim != .keine { Text("Zervixschleim: \(e.schleim.titel)") }
+                    if e.lhTest != .keine { Text("Ovulationstest: \(e.lhTest.titel)") }
+                    if e.basaltemperatur > 0 { Text("Basaltemperatur: \(String(format: "%.2f", e.basaltemperatur)) °C") }
+                    if !e.symptome.isEmpty { Text("Symptome: \(ListenFeld.parse(e.symptome).joined(separator: ", "))") }
+                    if e.sexAktivitaet != .keine { Text("Sexuelle Aktivität: \(e.sexAktivitaet.titel)") }
+                    if !e.notizen.isEmpty { Text(e.notizen).lineLimit(2) }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } else if badges.isEmpty {
+                Text("Kein Eintrag").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .zyklusGlas(radius: 20)
     }
 
     private var kalenderLegende: some View {

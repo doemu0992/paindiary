@@ -6,6 +6,7 @@ struct ZyklusKalenderView: View {
     let eintraegeProTag: [Date: ZyklusEintrag]
     let analyse: ZyklusAnalyse
     let zeigePrognosen: Bool
+    let ausgewaehlterTag: Date?
     var onVorheriger: () -> Void
     var onNaechster: () -> Void
     let onTap: (Date) -> Void
@@ -107,6 +108,7 @@ struct ZyklusKalenderView: View {
             fruchtbarRechts: fruchtbar && folgeZustand.fruchtbar && rechtsVerbunden,
             vorhergesagt: vorhergesagt,
             eisprung: eisprung,
+            ausgewaehlt: ausgewaehlterTag.map { kal.isDate($0, inSameDayAs: datum) } ?? false,
             eintrag: eintrag
         ) {
             onTap(datum)
@@ -126,6 +128,7 @@ private struct ZyklusTagZelle: View {
     let fruchtbarRechts: Bool
     let vorhergesagt: Bool
     let eisprung: Bool
+    let ausgewaehlt: Bool
     let eintrag: ZyklusEintrag?
     let action: () -> Void
 
@@ -191,6 +194,12 @@ private struct ZyklusTagZelle: View {
                         .frame(width: 34, height: 34)
                 }
 
+                if ausgewaehlt {
+                    Circle()
+                        .strokeBorder(Color.pink, lineWidth: 2.5)
+                        .frame(width: 40, height: 40)
+                }
+
                 Text(tagNummer)
                     .font(.system(.callout, design: .default).weight(periode || istHeute || eisprung ? .bold : .regular))
                     .foregroundStyle(textFarbe)
@@ -229,6 +238,7 @@ private struct ZyklusTagZelle: View {
     private var beschreibung: String {
         var teile: [String] = [datum.formatted(.dateTime.weekday(.wide).day().month(.wide))]
         if istHeute { teile.append("heute") }
+        if ausgewaehlt { teile.append("ausgewählt") }
         if periode { teile.append("Periode\(eintrag.map { $0.fluss == .keine ? "" : ", " + $0.fluss.titel } ?? "")") }
         if vorhergesagt { teile.append("Periode vorhergesagt") }
         if eisprung { teile.append("Eisprung") }

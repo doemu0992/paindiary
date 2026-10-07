@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 /// „Verlauf"-Tab: Kennzahlen, Hinweise und die Liste aller erkannten Zyklen.
 struct ZyklusVerlaufView: View {
@@ -8,6 +9,7 @@ struct ZyklusVerlaufView: View {
         VStack(spacing: 16) {
             statistikKarte
             if !analyse.hinweise.isEmpty { hinweiseKarte }
+            if laengenDaten.count >= 2 { laengenKarte }
             zyklenKarte
         }
     }
@@ -52,6 +54,52 @@ struct ZyklusVerlaufView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .zyklusGlas()
+    }
+
+    // MARK: - Zykluslängen-Diagramm
+
+    private var laengenDaten: [ZyklusInfo] {
+        Array(analyse.zyklen.filter { $0.laenge != nil }.suffix(12))
+    }
+
+    private var laengenKarte: some View {
+        let daten = laengenDaten
+        let werte = daten.compactMap { $0.laenge }
+        let minY = max((werte.min() ?? 21) - 4, 0)
+        let maxY = (werte.max() ?? 35) + 4
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Zykluslänge", systemImage: "chart.bar.fill")
+                    .font(.headline).foregroundStyle(.pink)
+                Spacer()
+                InfoButton(titel: "Zykluslänge",
+                           text: "Länge deiner letzten Zyklen in Tagen (Beginn einer Periode bis zum Tag vor der nächsten). Die gestrichelte Linie ist der Median. Graue Balken zählen nicht in die Statistik (unplausible Länge unter 15 oder über 90 Tage, oder starker Ausreißer). Als normal gilt eine Länge von 24–38 Tagen; eine Schwankung von bis zu 9 Tagen gilt als regelmäßig.")
+            }
+            Chart {
+                ForEach(daten) { info in
+                    BarMark(
+                        x: .value("Start", info.start.formatted(.dateTime.day().month(.abbreviated))),
+                        y: .value("Tage", info.laenge ?? 0)
+                    )
+                    .foregroundStyle(info.fuerStatistikGueltig ? Color.pink.gradient : Color.secondary.opacity(0.4).gradient)
+                    .cornerRadius(4)
+                    .annotation(position: .top) {
+                        Text("\(info.laenge ?? 0)").font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                if analyse.gueltigeZyklen > 0 {
+                    RuleMark(y: .value("Median", analyse.medianZykluslaenge))
+                        .foregroundStyle(Color.secondary.opacity(0.6))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4]))
+                }
+            }
+            .chartYScale(domain: minY...maxY)
+            .frame(height: 160)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

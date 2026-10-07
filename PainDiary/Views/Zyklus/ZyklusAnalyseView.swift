@@ -130,7 +130,7 @@ struct ZyklusAnalyseView: View {
                             .padding(.bottom, 24)
                         }
                     }
-                    .auroraScreen()
+                    .background { ZyklusHintergrund() }
                 }
             }
             .navigationTitle("Zyklus-Analyse")
@@ -215,7 +215,7 @@ struct ZyklusAnalyseView: View {
     // MARK: - KI Prompt
 
     private var kiPrompt: String {
-        let zyklen = max(analyse.zyklusStarts.count - 1, 0)
+        let zyklen = analyse.gueltigeZyklen
         var zeilen: [String] = [
             "Zyklus-Analyse (\(zeitraum.rawValue)):",
             "- \(zyklen) vollständige Zyklen erfasst",
@@ -306,10 +306,10 @@ struct ZyklusAnalyseView: View {
         karte(titel: "Übersicht", symbol: "drop.fill", farbe: .pink,
       info: "Überblick über deine Zyklusdaten im gewählten Zeitraum. Zeigt durchschnittliche Zykluslänge, Periodendauer und Periodenfluss. Ein normaler Zyklus dauert 21–35 Tage, eine Periode 3–7 Tage.") {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                statCell("Ø Zykluslänge", String(format: "%.0f Tage", analyse.zykluslaenge), .pink)
+                statCell("Zykluslänge (Median)", analyse.gueltigeZyklen > 0 ? "\(Int(analyse.medianZykluslaenge.rounded())) Tage" : "–", .pink)
                 statCell("Ø Periode", String(format: "%.0f Tage", analyse.periodendauer), .red)
                 statCell("Variation", String(format: "±%.1f Tage", analyse.variation), .orange)
-                statCell("Zyklen erfasst", "\(max(analyse.zyklusStarts.count - 1, 0))", .purple)
+                statCell("Gültige Zyklen", "\(analyse.gueltigeZyklen)", .purple)
             }
         }
     }
@@ -703,26 +703,15 @@ struct ZyklusAnalyseView: View {
         guard laengen.count >= 2 else { return [] }
         return (1..<laengen.count).map { i in
             let vorherige = Array(laengen[0..<i])
-            return FehlerPunkt(zyklusNr: i + 1, fehler: laengen[i] - rollingAdaptiv(vorherige))
+            return FehlerPunkt(zyklusNr: i + 1, fehler: laengen[i] - ZyklusRechner.prognoseLaenge(aus: vorherige))
         }
     }
 
-    private func rollingAdaptiv(_ laengen: [Double]) -> Double {
-        let r = Array(laengen.suffix(3))
-        switch r.count {
-        case 0:    return 28.0
-        case 1:    return r[0]
-        case 2:    return r[0] * 0.4 + r[1] * 0.6
-        default:   return r[0] * 0.2 + r[1] * 0.3 + r[2] * 0.5
-        }
-    }
 
+    /// Nur gültige Zyklen der Engine (15–90 Tage, ohne Ausreißer) — identisch zur Statistik im Verlauf-Tab.
     private func berechneLaengen() -> [Double] {
-        let kal    = Calendar.current
-        let starts = analyse.zyklusStarts
-        guard starts.count >= 2 else { return [] }
-        return (1..<starts.count).map { i in
-            Double(kal.dateComponents([.day], from: starts[i - 1], to: starts[i]).day ?? 28)
+        analyse.zyklen.compactMap { info in
+            info.fuerStatistikGueltig ? info.laenge.map { Double($0) } : nil
         }
     }
 
@@ -824,9 +813,9 @@ struct ZyklusAnalyseView: View {
             Divider()
             content()
         }
-        .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .zyklusGlas(radius: 20)
     }
 
     private func statCell(_ titel: String, _ wert: String, _ farbe: Color) -> some View {
@@ -875,7 +864,8 @@ private struct ZyklusAnalyseAnpassenView: View {
                     zyklusSektionenSpeichern(sektionen)
                 }
             }
-            .glassList()
+            .scrollContentBackground(.hidden)
+            .background { ZyklusHintergrund() }
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

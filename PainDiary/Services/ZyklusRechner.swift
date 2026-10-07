@@ -267,6 +267,18 @@ struct ZyklusRechner {
         return paare.last?.wert ?? 28
     }
 
+    /// Prognostizierte Zykluslänge aus den bisherigen (gültigen) Längen, chronologisch.
+    /// Wird von der Engine *und* von der Genauigkeits-Auswertung genutzt — eine Quelle der Wahrheit.
+    static func prognoseLaenge(aus laengen: [Double]) -> Double {
+        let r = Array(laengen.suffix(6))
+        switch r.count {
+        case 0:  return 28
+        case 1:  return r[0]
+        case 2:  return r[0] * 0.4 + r[1] * 0.6
+        default: return gewichteterMedian(r)
+        }
+    }
+
     // MARK: Eisprung-Evidenz
 
     /// BBT-Verschiebung nach der 3-über-6-Regel: drei aufeinanderfolgende Tage über der höchsten der
@@ -352,15 +364,7 @@ struct ZyklusRechner {
         let regel: Regelmaessigkeit = n < 3 ? .unbekannt : (spanneWert <= 9 ? .regelmaessig : .unregelmaessig)
         let qualitaet: DatenQualitaet = n == 0 ? .standardwert : (n < 3 ? .wenigDaten : (n < 6 ? .gut : .sehrGut))
 
-        let adaptZyklus: Double = {
-            let r = Array(laengen.suffix(6))
-            switch r.count {
-            case 0:  return 28
-            case 1:  return r[0]
-            case 2:  return r[0] * 0.4 + r[1] * 0.6
-            default: return gewichteterMedian(r)
-            }
-        }()
+        let adaptZyklus = prognoseLaenge(aus: laengen)
         let zyklusLenInt = max(Int(adaptZyklus.rounded()), ZyklusGrenzen.gueltigeZyklusLaenge.lowerBound)
 
         // 3) Periodendauer: laufende (unvollständige) Periode zählt nicht in die Statistik.
@@ -523,7 +527,7 @@ struct ZyklusRechner {
         if hatPrognose {
             let anker = max(naechstePeriodeNr, heuteNr)
             let periodLen = max(Int(adaptPeriod.rounded()), 3)
-            for k in 0..<2 {
+            for k in 0..<4 {   // 4 künftige Zyklen → Kalender bleibt ~4 Monate voraus befüllt
                 let start = anker + k * zyklusLenInt
                 let ov = max(start + zyklusLenInt - (luteal + 1), start + 5)
                 ovNrs.insert(ov)
