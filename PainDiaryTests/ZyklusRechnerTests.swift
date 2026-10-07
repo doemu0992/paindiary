@@ -396,3 +396,15 @@ private extension ZyklusEintrag {
         return self
     }
 }
+
+@MainActor
+struct LHTestParsingTests {
+    @Test func tolerantesParsen() {
+        #expect(LHTest(roh: "") == .keine)
+        #expect(LHTest(roh: "positiv") == .positiv)
+        #expect(LHTest(roh: "Positiv (LH-Anstieg)") == .positiv)
+        #expect(LHTest(roh: "+") == .positiv)
+        #expect(LHTest(roh: "Negativ") == .negativ)
+        #expect(LHTest(roh: "irgendwas") == .unklar)
+    }
+}

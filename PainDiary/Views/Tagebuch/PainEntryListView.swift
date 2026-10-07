@@ -685,32 +685,50 @@ struct ZyklusTagesbuchZeile: View {
     let eintrag: ZyklusEintrag
     @State private var zeigeBearbeiten = false
 
+    private var symbol: String {
+        if eintrag.istPeriode { return "drop.fill" }
+        if eintrag.lhTest == .positiv { return "star.fill" }
+        if eintrag.lhTest != .keine { return "testtube.2" }
+        return "circle.dotted"
+    }
+
+    private var titel: String {
+        if eintrag.istPeriode { return "Periode" }
+        switch eintrag.lhTest {
+        case .positiv: return "Ovulationstest positiv"
+        case .keine:   return "Zyklus-Eintrag"
+        default:       return "Ovulationstest \(eintrag.lhTest.titel.lowercased())"
+        }
+    }
+
+    private var untertitel: String {
+        var teile = [eintrag.datum.formatted(date: .omitted, time: .shortened)]
+        if eintrag.istPeriode, eintrag.fluss != .keine { teile.append(eintrag.fluss.titel) }
+        if eintrag.istPeriode, eintrag.lhTest != .keine { teile.append("Test \(eintrag.lhTest.titel.lowercased())") }
+        if eintrag.schleim != .keine { teile.append("Schleim \(eintrag.schleim.titel.lowercased())") }
+        if eintrag.basaltemperatur > 0 { teile.append(String(format: "%.2f °C", eintrag.basaltemperatur)) }
+        let sympt = ListenFeld.parse(eintrag.symptome)
+        if !sympt.isEmpty { teile.append(sympt.prefix(2).joined(separator: ", ")) }
+        return teile.joined(separator: " · ")
+    }
+
     var body: some View {
         Button { zeigeBearbeiten = true } label: {
             HStack(spacing: 12) {
                 ModulKreis(
                     farbe: .pink,
-                    symbol: eintrag.istPeriode ? "drop.fill" : "circle.dotted",
+                    symbol: symbol,
                     zahl: nil
                 )
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(eintrag.istPeriode ? "Periode" : "Zyklus-Eintrag")
+                    Text(titel)
                         .font(.headline)
                         .lineLimit(1)
-                    HStack(spacing: 4) {
-                        Text(eintrag.datum, style: .time)
-                        if !eintrag.blutungsfluss.isEmpty && eintrag.istPeriode {
-                            Text("·").foregroundStyle(.secondary)
-                            Text(eintrag.blutungsfluss.capitalized)
-                        } else if !eintrag.symptome.isEmpty {
-                            Text("·").foregroundStyle(.secondary)
-                            Text(eintrag.symptome.components(separatedBy: ", ").prefix(2).joined(separator: ", "))
-                                .lineLimit(1)
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text(untertitel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
                 Spacer()
             }

@@ -86,7 +86,18 @@ enum LHTest: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     init(roh: String) {
-        self = LHTest(rawValue: normalisiert(roh)) ?? .keine
+        let n = normalisiert(roh)
+        if n.isEmpty { self = .keine; return }
+        if let exakt = LHTest(rawValue: n) { self = exakt; return }
+        // Tolerant: ältere/importierte Werte ("Positiv (LH-Anstieg)", "+", "peak" …) nie als „kein Test“ verwerfen
+        if n.contains("neg") || n.contains("niedrig") || n == "-" {
+            self = .negativ
+        } else if n.contains("pos") || n.contains("+") || n.contains("surge")
+                    || n.contains("anstieg") || n.contains("peak") || n.contains("hoch") {
+            self = .positiv
+        } else {
+            self = .unklar
+        }
     }
 
     var titel: String {
