@@ -980,7 +980,6 @@ struct KorrelationsView: View {
         guard !analyse.zyklusStarts.isEmpty else { return [] }
         let kal = Calendar.current
         let fruchtbareSet = analyse.fruchtbareTageSet
-        let zyklusStarts  = analyse.zyklusStarts.sorted()
 
         var phasen: [String: [Double]] = [
             "Menstruation": [], "Follikelphase": [], "Fruchtbar": [], "Lutealphase": []
