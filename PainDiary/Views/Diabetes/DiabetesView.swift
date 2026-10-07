@@ -1,202 +1,218 @@
 import SwiftUI
 import SwiftData
+import Charts
 
+/// Diabetes-Dashboard im Bento-Aufbau: Zielbereich-Ring (30 Tage), Kacheln, Messungs-Chips.
 struct DiabetesView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var messungen: [BlutzuckerEintrag]
 
+    @State private var vm = DiabetesDashboardViewModel()
+    @State private var ansicht: ModulAnsicht = .heute
     @State private var zeigeForm = false
     @State private var bearbeitet: BlutzuckerEintrag? = nil
     @State private var zeigeAnalyse = false
 
-    private var messungen30: [BlutzuckerEintrag] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        return messungen.filter { $0.datum >= cutoff }
-    }
+    private let tint = Color.blue
+    private let spalten = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    private var u: DiabetesUebersicht { vm.uebersicht }
 
     var body: some View {
-        List {
-            statistikSektion
+        ScrollView {
+            VStack(spacing: 12) {
+                GlassSegmentPicker(auswahl: $ansicht, optionen: ModulAnsicht.allCases, titel: { $0.rawValue })
 
-            Section("Weiterführend") {
-                NavigationLink(destination: LaborwerteView()) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Laborwerte")
-                            Text("HbA1c, Nierenwerte, Blutbild")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                    } icon: {
-                        Image(systemName: "testtube.2").foregroundStyle(.blue)
+                switch ansicht {
+                case .heute:
+                    heroKarte
+                    bentoRaster
+                    GlassLinkZeile(symbol: "testtube.2", titel: "Laborwerte", untertitel: "HbA1c, Nierenwerte, Blutbild", tint: tint) {
+                        LaborwerteView()
+                    }
+                    zuletztBereich
+                case .verlauf:
+                    ChipTageskarten(elemente: messungen, tag: { $0.tag }, datum: { $0.datum }, leerText: "Noch keine Messungen") {
+                        messungChip($0, volleBreite: true)
                     }
                 }
             }
-            .listRowBackground(GlassRowBackground())
-
-            if messungen.isEmpty {
-                Section {
-                    ContentUnavailableView(
-                        "Keine Messungen",
-                        systemImage: "drop.fill",
-                        description: Text("Tippe auf + um eine Blutzuckermessung einzutragen.")
-                    )
-                    .listRowSeparator(.hidden)
-                }
-                .listRowBackground(GlassRowBackground())
-            } else {
-                Section("Messungen") {
-                    ForEach(messungen) { m in
-                        BlutzuckerZeile(messung: m)
-                            .contentShape(Rectangle())
-                            .onTapGesture { bearbeitet = m }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    modelContext.delete(m)
-                                } label: { Label("Löschen", systemImage: "trash") }
-                                Button { bearbeitet = m } label: { Label("Bearbeiten", systemImage: "pencil") }
-                                    .tint(.blue)
-                            }
-                    }
-                    .onDelete { idx in idx.forEach { modelContext.delete(messungen[$0]) } }
-                }
-                .listRowBackground(GlassRowBackground())
-            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
-        .glassList(.diabetes)
+        .auroraScreen(.diabetes)
         .navigationTitle("Diabetes")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { zeigeForm = true } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Messung erfassen")
             }
         }
         .sheet(isPresented: $zeigeForm) { BlutzuckerForm() }
         .sheet(item: $bearbeitet) { BlutzuckerForm(messung: $0) }
         .sheet(isPresented: $zeigeAnalyse) { DiabetesAnalyseView() }
+        .onAppear { vm.aktualisiere(messungen: messungen) }
+        .onChange(of: messungen) { _, neu in vm.aktualisiere(messungen: neu) }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { vm.aktualisiere(messungen: messungen) } }
     }
 
-    // MARK: - Stats
+    // MARK: - Hero
 
-    private var statistikSektion: some View {
-        Section {
-            let nuechtern = messungen30.filter { $0.messZeitpunkt == "Nüchtern" && $0.wert > 0 }
-            let avgNuechtern: Double? = nuechtern.isEmpty ? nil
-                : nuechtern.map(\.wert).reduce(0, +) / Double(nuechtern.count)
-            let imZiel = messungen30.filter(\.zielbereich).count
-            let pctZiel = messungen30.isEmpty ? 0
-                : Int(Double(imZiel) / Double(messungen30.count) * 100)
+    private var heroKarte: some View {
+        VStack(spacing: 12) {
+            GlassSectionLabel("Im Zielbereich · 30 Tage")
 
-            VStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("30-Tage-Überblick", systemImage: "chart.bar.fill")
-                        .font(.headline).foregroundStyle(.blue)
-                    Divider()
-                    HStack(spacing: 0) {
-                        statPill(
-                            avgNuechtern.map { String(format: "%.1f", $0) } ?? "–",
-                            label: "Ø Nüchtern",
-                            farbe: nuechternFarbe(avgNuechtern)
-                        )
-                        Divider().frame(height: 40)
-                        statPill(
-                            messungen.first.map { String(format: "%.1f", $0.wert) } ?? "–",
-                            label: "Letzte Messung",
-                            farbe: messungen.first.map { wertFarbe($0.wert) } ?? .secondary
-                        )
-                        Divider().frame(height: 40)
-                        statPill(
-                            messungen30.isEmpty ? "–" : "\(pctZiel)%",
-                            label: "Im Zielbereich",
-                            farbe: pctZiel >= 70 ? .green : .orange
-                        )
-                    }
-                }
-                .padding()
-                .glassCard(radius: 24, padding: 0)
+            GlassRing(
+                fortschritt: u.zielAnteil30 ?? 0,
+                farbe: zielFarbe,
+                mitte: "\(Int(((u.zielAnteil30 ?? 0) * 100).rounded())) %",
+                unterzeile: "3,9–7,8 mmol/L",
+                platzhalter: u.zielAnteil30 == nil,
+                beschreibung: u.zielAnteil30.map { "\(Int(($0 * 100).rounded())) Prozent der Messungen im Zielbereich" } ?? "Noch keine Messungen"
+            )
+
+            Text(letzteMessungText)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button { zeigeForm = true } label: {
+                Label("Messung erfassen", systemImage: "plus")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .glassTintButton(tint, radius: 22)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .glassCard(radius: 28, padding: 20)
+    }
+
+    private var zielFarbe: Color { (u.zielAnteil30 ?? 0) >= 0.7 ? .green : .orange }
+
+    private var letzteMessungText: String {
+        guard let m = u.letzteMessung else { return "Noch keine Messung erfasst" }
+        let zeit = TagBeschriftung.tagUndZeit(tag: m.tag, datum: m.datum)
+        return "Letzte Messung \(String(format: "%.1f", m.wert)) mmol/L · \(m.bewertung) · \(zeit)"
+    }
+
+    // MARK: - Bento-Raster
+
+    private var bentoRaster: some View {
+        LazyVGrid(columns: spalten, spacing: 12) {
+            BentoKachel(symbol: "chart.line.uptrend.xyaxis", label: "7-Tage-Verlauf", tint: tint, leuchtet: true) {
+                sparkline
+            }
+            .onTapGesture { zeigeAnalyse = true }
+
+            BentoKachel(
+                symbol: "drop.fill", label: u.letzteMessung.map { "Letzte Messung · \($0.bewertung)" } ?? "Letzte Messung",
+                tint: tint,
+                wert: u.letzteMessung.map { String(format: "%.1f", $0.wert) } ?? "–",
+                einheit: u.letzteMessung == nil ? nil : "mmol/L"
+            )
+
+            BentoKachel(
+                symbol: "sunrise.fill", label: "Ø Nüchtern · 30 Tage", tint: tint,
+                wert: u.nuechternSchnitt30.map { String(format: "%.1f", $0) } ?? "–",
+                einheit: u.nuechternSchnitt30 == nil ? nil : "mmol/L"
+            )
+
+            BentoKachel(
+                symbol: "exclamationmark.triangle.fill", label: "Unterzuckerungen · 30 Tage", tint: tint,
+                leuchtet: u.hypos30 > 0, wert: "\(u.hypos30)"
+            )
+
+            BentoKachel(
+                symbol: "syringe.fill", label: "Insulin heute", tint: tint,
+                wert: String(format: "%.0f", u.insulinHeute), einheit: "IE"
+            )
+
+            BentoKachel(
+                symbol: "checkmark.circle", label: "Messungen · 30 Tage", tint: tint,
+                wert: "\(u.anzahl30)"
+            )
+        }
+    }
+
+    private var sparkline: some View {
+        let werte = Array(u.verlauf7.enumerated())
+        return Chart(werte, id: \.offset) { index, wert in
+            AreaMark(x: .value("Tag", index), y: .value("mmol/L", wert))
+                .foregroundStyle(LinearGradient(colors: [tint.opacity(0.45), tint.opacity(0)], startPoint: .top, endPoint: .bottom))
+                .interpolationMethod(.catmullRom)
+            LineMark(x: .value("Tag", index), y: .value("mmol/L", wert))
+                .foregroundStyle(tint)
+                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .interpolationMethod(.catmullRom)
+            if index == werte.count - 1 {
+                PointMark(x: .value("Tag", index), y: .value("mmol/L", wert))
+                    .foregroundStyle(Color.white)
+                    .symbolSize(50)
+            }
+        }
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .chartYScale(domain: 2...14)
+        .frame(height: 48)
+        .overlay {
+            if werte.isEmpty { Text("Noch keine Messungen").font(.caption2).foregroundStyle(.secondary) }
+        }
+        .accessibilityLabel("Blutzucker der letzten 7 Tage")
+    }
+
+    // MARK: - Zuletzt
+
+    private var zuletztBereich: some View {
+        VStack(spacing: 8) {
+            ZuletztKopf { withAnimation { ansicht = .verlauf } }
+
+            if messungen.isEmpty {
+                Text("Tippe auf „Messung erfassen“, um deine erste Blutzuckermessung einzutragen.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .glassCard(radius: 22, padding: 16)
+            } else {
+                ChipStreifen(elemente: messungen) { messungChip($0, volleBreite: false) }
 
                 Button { zeigeAnalyse = true } label: {
                     Label("Diabetes-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                        .font(.subheadline.bold()).foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .glassTintButton(Color.blue)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .glassTintButton(tint, radius: 20)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.vertical, 4)
         }
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        .listRowBackground(Color.clear)
     }
 
-    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
-            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+    private func messungChip(_ m: BlutzuckerEintrag, volleBreite: Bool) -> some View {
+        var untertitel = "\(TagBeschriftung.tagUndZeit(tag: m.tag, datum: m.datum)) · \(m.messZeitpunkt)"
+        if m.insulinEinheiten > 0 { untertitel += String(format: " · %.0f IE", m.insulinEinheiten) }
+        return Button { bearbeitet = m } label: {
+            GlassEintragChip(
+                kennwert: String(format: "%.1f", m.wert),
+                titel: "\(String(format: "%.1f", m.wert)) mmol/L · \(m.bewertung)",
+                untertitel: untertitel,
+                tint: wertFarbe(m.wert),
+                hervorgehoben: m.wert < 3.9,
+                volleBreite: volleBreite
+            )
         }
-        .frame(maxWidth: .infinity)
-    }
-
-    private func nuechternFarbe(_ wert: Double?) -> Color {
-        guard let w = wert else { return .secondary }
-        switch w {
-        case ..<3.9:    return .red
-        case 3.9..<6.0: return .green
-        case 6.0..<7.0: return .orange
-        default:        return .red
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button { bearbeitet = m } label: { Label("Bearbeiten", systemImage: "pencil") }
+            Button(role: .destructive) { modelContext.delete(m) } label: { Label("Löschen", systemImage: "trash") }
         }
     }
 
     private func wertFarbe(_ wert: Double) -> Color {
         switch wert {
-        case ..<3.9:   return .red
-        case 3.9..<7.8: return .green
-        default:        return .orange
-        }
-    }
-}
-
-// MARK: - Zeile
-
-private struct BlutzuckerZeile: View {
-    let messung: BlutzuckerEintrag
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(farbe.opacity(0.15)).frame(width: 46, height: 46)
-                VStack(spacing: 1) {
-                    Text(String(format: "%.1f", messung.wert))
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(farbe)
-                    Text("mmol").font(.system(size: 8)).foregroundStyle(farbe.opacity(0.7))
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(messung.datum, style: .date).font(.subheadline.bold())
-                    Text(messung.datum, style: .time).font(.caption).foregroundStyle(.secondary)
-                }
-                HStack(spacing: 8) {
-                    Text(messung.messZeitpunkt).font(.caption).foregroundStyle(.secondary)
-                    Text(messung.bewertung)
-                        .font(.caption2.bold())
-                        .foregroundStyle(farbe)
-                        .padding(.horizontal, 5).padding(.vertical, 1)
-                        .background(farbe.opacity(0.12)).clipShape(Capsule())
-                }
-                if messung.insulinEinheiten > 0 {
-                    Text(String(format: "%.0f IE Insulin (%@)", messung.insulinEinheiten, messung.insulinTyp))
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-        }
-        .padding(.vertical, 2)
-    }
-
-    private var farbe: Color {
-        switch messung.wert {
         case ..<3.9:    return .red
         case 3.9..<7.8: return .green
         default:        return .orange

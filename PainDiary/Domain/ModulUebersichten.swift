@@ -89,3 +89,52 @@ nonisolated struct RheumaUebersicht: Equatable, Sendable {
         return u
     }
 }
+
+// MARK: - Diabetes
+
+nonisolated struct BlutzuckerMesspunkt: Equatable, Sendable {
+    let datum: Date
+    let tag: DayKey
+    /// mmol/L
+    let wert: Double
+    let messZeitpunkt: String
+    let insulinEinheiten: Double
+    let bewertung: String
+}
+
+/// Kennzahlen für das Diabetes-Dashboard (Zielbereich-Ring, Kacheln).
+nonisolated struct DiabetesUebersicht: Equatable, Sendable {
+    /// Zielbereich in mmol/L (wie `BlutzuckerEintrag.zielbereich`).
+    static let zielUntergrenze = 3.9
+    static let zielObergrenze = 7.8
+
+    var anzahl30 = 0
+    /// Anteil der Messungen (30 Tage) im Zielbereich, 0…1.
+    var zielAnteil30: Double?
+    var nuechternSchnitt30: Double?
+    var hypos30 = 0
+    var letzteMessung: BlutzuckerMesspunkt?
+    var insulinHeute: Double = 0
+    /// Tagesschnitte der letzten 7 Tage (chronologisch, nur Tage mit Messungen).
+    var verlauf7: [Double] = []
+
+    static func berechne(punkte: [BlutzuckerMesspunkt], heute: DayKey) -> DiabetesUebersicht {
+        var u = DiabetesUebersicht()
+        let monat = punkte.filter { $0.tag >= heute.addiere(tage: -29) && $0.tag <= heute }
+        u.anzahl30 = monat.count
+        if !monat.isEmpty {
+            let imZiel = monat.filter { $0.wert >= zielUntergrenze && $0.wert <= zielObergrenze }.count
+            u.zielAnteil30 = Double(imZiel) / Double(monat.count)
+        }
+        let nuechtern = monat.filter { $0.messZeitpunkt == "Nüchtern" && $0.wert > 0 }.map(\.wert)
+        if !nuechtern.isEmpty { u.nuechternSchnitt30 = nuechtern.reduce(0, +) / Double(nuechtern.count) }
+        u.hypos30 = monat.filter { $0.wert < zielUntergrenze }.count
+        u.letzteMessung = punkte.max { $0.datum < $1.datum }
+        u.insulinHeute = punkte.filter { $0.tag == heute }.map(\.insulinEinheiten).reduce(0, +)
+
+        let reihe = Statistik.tagesDurchschnitte(punkte.map { (tag: $0.tag, wert: $0.wert) })
+        let von = heute.addiere(tage: -6)
+        u.verlauf7 = reihe.filter { $0.tag >= von && $0.tag <= heute }.map(\.wert)
+        return u
+    }
+}

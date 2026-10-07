@@ -180,6 +180,8 @@ struct KennwertInhalt: View {
 struct GlassEintragChip: View {
     var zahl: Int? = nil
     var symbol: String? = nil
+    /// Freier Kurztext im Kreis (z. B. „5.8" für Blutzucker); hat Vorrang vor `zahl`/`symbol`.
+    var kennwert: String? = nil
     let titel: String
     let untertitel: String
     var tint: Color = .red
@@ -190,7 +192,9 @@ struct GlassEintragChip: View {
     var body: some View {
         HStack(spacing: 10) {
             Group {
-                if let zahl {
+                if let kennwert {
+                    Text(kennwert).font(.system(.caption, design: .rounded).bold()).minimumScaleFactor(0.6).lineLimit(1)
+                } else if let zahl {
                     Text("\(zahl)").font(.system(.subheadline, design: .rounded).bold())
                 } else if let symbol {
                     Image(systemName: symbol).font(.system(size: 16, weight: .semibold))
@@ -220,6 +224,50 @@ struct GlassEintragChip: View {
         .overlay(Capsule().strokeBorder(Color.white.opacity(0.4), lineWidth: 1))
         .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(zahl.map { "\(titel), Stärke \($0) von 10, \(SchmerzSkala.wort($0)). \(untertitel)" } ?? "\(titel). \(untertitel)")
+        .accessibilityLabel(kennwert != nil ? "\(titel). \(untertitel)" : zahl.map { "\(titel), Stärke \($0) von 10, \(SchmerzSkala.wort($0)). \(untertitel)" } ?? "\(titel). \(untertitel)")
+    }
+}
+
+// MARK: - Ring (Hero)
+
+/// Großer Glas-Ring für Fortschritts-/Anteilswerte (0…1) mit Zahl in der Mitte.
+struct GlassRing: View {
+    let fortschritt: Double
+    var farbe: Color
+    var groesse: CGFloat = 196
+    var linie: CGFloat = 16
+    let mitte: String
+    var unterzeile: String? = nil
+    var platzhalter = false
+    let beschreibung: String
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Color.primary.opacity(0.08), lineWidth: linie)
+            Circle()
+                .trim(from: 0, to: platzhalter ? 0 : max(0.02, min(fortschritt, 1)))
+                .stroke(
+                    AngularGradient(colors: [farbe.opacity(0.5), farbe], center: .center, startAngle: .degrees(0), endAngle: .degrees(360 * max(fortschritt, 0.02))),
+                    style: StrokeStyle(lineWidth: linie, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .shadow(color: farbe.opacity(0.35), radius: 8)
+                .animation(.spring(duration: 0.5), value: fortschritt)
+            VStack(spacing: 2) {
+                Text(platzhalter ? "–" : mitte)
+                    .font(.system(size: groesse * 0.33, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                    .foregroundStyle(platzhalter ? Color.secondary : farbe)
+                    .contentTransition(.numericText())
+                if let unterzeile {
+                    Text(unterzeile).font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            .padding(linie + 8)
+        }
+        .frame(width: groesse, height: groesse)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(beschreibung)
     }
 }

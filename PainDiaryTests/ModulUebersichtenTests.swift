@@ -70,3 +70,47 @@ struct RheumaUebersichtTests {
         #expect(u.steifigkeitSchnitt30 == 45.0)
     }
 }
+
+struct DiabetesUebersichtTests {
+    let heute = tag(2026, 10, 7)
+
+    private func punkt(_ t: DayKey, _ w: Double, _ zeit: String = "Nüchtern", ie: Double = 0) -> BlutzuckerMesspunkt {
+        BlutzuckerMesspunkt(datum: datum(t), tag: t, wert: w, messZeitpunkt: zeit, insulinEinheiten: ie, bewertung: "")
+    }
+
+    @Test func leer() {
+        let u = DiabetesUebersicht.berechne(punkte: [], heute: heute)
+        #expect(u.zielAnteil30 == nil)
+        #expect(u.letzteMessung == nil)
+        #expect(u.insulinHeute == 0)
+    }
+
+    @Test func zielanteilHyposUndNuechternSchnitt() {
+        let u = DiabetesUebersicht.berechne(punkte: [
+            punkt(heute, 5.0),                        // Ziel
+            punkt(heute, 3.5, "Vor dem Essen"),        // Hypo
+            punkt(tag(2026, 10, 5), 9.0, "Nach dem Essen"),   // zu hoch
+            punkt(tag(2026, 10, 4), 7.0),              // Ziel, nüchtern
+            punkt(tag(2026, 7, 1), 12.0)               // außerhalb 30 Tage
+        ], heute: heute)
+        #expect(u.anzahl30 == 4)
+        #expect(u.zielAnteil30 == 0.5)
+        #expect(u.hypos30 == 1)
+        #expect(u.nuechternSchnitt30 == 6.0)
+    }
+
+    @Test func grenzwerteGehoerenZumZielbereich() {
+        let u = DiabetesUebersicht.berechne(punkte: [punkt(heute, 3.9), punkt(heute, 7.8)], heute: heute)
+        #expect(u.zielAnteil30 == 1.0)
+        #expect(u.hypos30 == 0)
+    }
+
+    @Test func insulinNurHeuteUndVerlaufSieben() {
+        let u = DiabetesUebersicht.berechne(punkte: [
+            punkt(heute, 5, ie: 4), punkt(heute, 6, ie: 2), punkt(tag(2026, 10, 6), 8, ie: 10),
+            punkt(tag(2026, 9, 20), 5)
+        ], heute: heute)
+        #expect(u.insulinHeute == 6)
+        #expect(u.verlauf7 == [8, 5.5])
+    }
+}

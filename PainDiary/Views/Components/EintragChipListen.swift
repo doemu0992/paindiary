@@ -26,7 +26,11 @@ enum TagBeschriftung {
 
     /// „Heute 08:12" / „Gestern 21:40" — Tag und Uhrzeit eines Eintrags.
     static func tagUndZeit(_ eintrag: PainEntry) -> String {
-        "\(kurz(eintrag.tag)) \(eintrag.datum.formatted(date: .omitted, time: .shortened))"
+        tagUndZeit(tag: eintrag.tag, datum: eintrag.datum)
+    }
+
+    static func tagUndZeit(tag: DayKey, datum: Date) -> String {
+        "\(kurz(tag)) \(datum.formatted(date: .omitted, time: .shortened))"
     }
 }
 
@@ -132,5 +136,60 @@ struct ZuletztKopf: View {
         }
         .padding(.horizontal, 4)
         .padding(.top, 4)
+    }
+}
+
+// MARK: - Generische Varianten (für Modelle ohne `PainEntry`)
+
+/// Horizontaler Chip-Streifen für beliebige Elemente; der Aufrufer liefert die fertige Chip-Zeile.
+struct ChipStreifen<Element: Identifiable, Zeile: View>: View {
+    let elemente: [Element]
+    var maximal = 8
+    @ViewBuilder let zeile: (Element) -> Zeile
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(elemente.prefix(maximal)) { zeile($0) }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+        }
+        .padding(.horizontal, -16)
+    }
+}
+
+/// Verlauf als Tageskarten für beliebige Elemente.
+struct ChipTageskarten<Element: Identifiable, Zeile: View>: View {
+    let elemente: [Element]
+    let tag: (Element) -> DayKey
+    let datum: (Element) -> Date
+    var leerText = "Noch keine Einträge"
+    @ViewBuilder let zeile: (Element) -> Zeile
+
+    private var gruppiert: [(tag: DayKey, items: [Element])] {
+        Dictionary(grouping: elemente, by: tag)
+            .sorted { $0.key > $1.key }
+            .map { (tag: $0.key, items: $0.value.sorted { datum($0) > datum($1) }) }
+    }
+
+    var body: some View {
+        LazyVStack(spacing: 12) {
+            if elemente.isEmpty {
+                Text(leerText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .glassCard(radius: 22, padding: 20)
+            }
+            ForEach(gruppiert, id: \.tag) { gruppe in
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(TagBeschriftung.lang(gruppe.tag)).font(.headline)
+                    ForEach(gruppe.items) { zeile($0) }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glassCard(radius: 24, padding: 16)
+            }
+        }
     }
 }
