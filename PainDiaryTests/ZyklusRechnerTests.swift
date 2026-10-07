@@ -408,3 +408,23 @@ struct LHTestParsingTests {
         #expect(LHTest(roh: "irgendwas") == .unklar)
     }
 }
+
+@MainActor
+struct EisprungBestaetigungTests {
+    @Test func manuelleBestaetigungHatVorrang() {
+        var kal = Calendar(identifier: .gregorian)
+        kal.timeZone = TimeZone(identifier: "UTC")!
+        let start = kal.date(from: DateComponents(year: 2026, month: 9, day: 1))!
+        func eintrag(_ tag: Int) -> ZyklusEintrag {
+            let e = ZyklusEintrag(datum: kal.date(byAdding: .day, value: tag, to: start)!)
+            e.timeZoneID = "UTC"
+            return e
+        }
+        let blutung = eintrag(0); blutung.istPeriode = true; blutung.fluss = .mittel
+        let bestaetigt = eintrag(15); bestaetigt.eisprungBestaetigt = true
+        let heute = kal.date(byAdding: .day, value: 20, to: start)!
+        let a = ZyklusRechner.analyse(eintraege: [blutung, bestaetigt], heute: heute, kalender: kal)
+        #expect(a.zyklen.last?.eisprungQuelle == .manuell)
+        #expect(a.zyklen.last?.eisprung == kal.date(byAdding: .day, value: 15, to: start))
+    }
+}

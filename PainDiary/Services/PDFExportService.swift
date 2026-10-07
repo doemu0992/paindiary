@@ -1103,7 +1103,7 @@ class PDFExportService: @unchecked Sendable {
         y += 20
 
         let cols: [CGFloat] = [rand, rand + 140, rand + 240, rand + 340]
-        tabellenKopf(ctx: ctx, y: y, cols: cols, headers: ["Zyklusbeginn", "Länge", "Periodendauer", "Eis. Vorhersage"])
+        tabellenKopf(ctx: ctx, y: y, cols: cols, headers: ["Zyklusbeginn", "Länge", "Periodendauer", "Eisprung (Beleg)"])
         y += 26
 
         let kal = Calendar.current
@@ -1126,11 +1126,12 @@ class PDFExportService: @unchecked Sendable {
                 return n
             }()
             // Eisprung aus der Zyklus-Engine (bestätigt/LH/Schleim oder Schätzung), nicht pauschal Länge − 14
-            let eisprung = analyse.zyklen.first(where: { kal.isDate($0.start, inSameDayAs: start) })?.eisprung
+            let zInfo = analyse.zyklen.first(where: { kal.isDate($0.start, inSameDayAs: start) })
+            let eisprung = zInfo?.eisprung
             tabellenZeile(ctx: ctx, y: y, cols: cols,
                           werte: [fmt(start), laenge,
                                   periodDauer > 0 ? "\(periodDauer) Tage" : "–",
-                                  eisprung.map { fmt($0) } ?? "–"],
+                                  eisprung.map { "\(fmt($0)) (\(zInfo?.eisprungQuelle.istBestaetigt == true ? "bestätigt" : "geschätzt"))" } ?? "–"],
                           fett: [true, false, false, false])
             y += 20
             trennlinie(ctx: ctx, y: y - 1, alpha: 0.1)

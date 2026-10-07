@@ -6,6 +6,11 @@ import SwiftData
 struct ZyklusView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var eintraege: [ZyklusEintrag]
     @Environment(\.modelContext) private var modelContext
+    @Query private var schmerzEintraege: [PainEntry]
+    @Query private var profile: [Benutzerprofil]
+    @State private var berichtURL: URL? = nil
+    @State private var zeigeBericht = false
+    @State private var berichtLaeuft = false
     @AppStorage("zyklusPrognosenPausiert") private var pausiert = false
 
     enum Ansicht: String, CaseIterable, Identifiable {
@@ -79,6 +84,11 @@ struct ZyklusView: View {
             )
         }
         .sheet(isPresented: $zeigeAnalyse) { ZyklusAnalyseView() }
+#if os(iOS)
+        .sheet(isPresented: $zeigeBericht) {
+            if let url = berichtURL { PDFPreviewView(url: url) }
+        }
+#endif
         .alert("Apple Health",
                isPresented: Binding(get: { healthMeldung != nil },
                                     set: { if !$0 { healthMeldung = nil } })) {
@@ -107,6 +117,10 @@ struct ZyklusView: View {
             }
 
             if !analyse.zyklusStarts.isEmpty {
+                Button { erstelleZyklusBericht() } label: {
+                    Label("Zyklus-Arztbericht (PDF)", systemImage: "doc.text")
+                }
+                .disabled(berichtLaeuft)
                 Button { zeigeAnalyse = true } label: {
                     Label("Zyklusanalyse", systemImage: "chart.bar.xaxis.ascending")
                 }
@@ -115,6 +129,34 @@ struct ZyklusView: View {
             Image(systemName: "ellipsis.circle")
         }
         .accessibilityLabel("Weitere Optionen")
+    }
+
+    /// Arztbericht nur mit dem Zyklus-Teil (Statistik, Vorhersagen, Zyklushistorie, Symptome, Schmerz je Phase).
+    private func erstelleZyklusBericht() {
+#if os(iOS)
+        berichtLaeuft = true
+        var optionen = ExportOptionen()
+        optionen.zeitraum = .alles
+        optionen.mitZusammenfassung = false
+        optionen.mitMedikamente = false
+        optionen.mitMedikamentDossier = false
+        optionen.mitEintraege = false
+        optionen.mitErnaehrung = false
+        optionen.mitRheuma = false
+        optionen.mitMigraene = false
+        optionen.mitZyklus = true
+        PDFExportService.shared.erstellePDFAsync(
+            eintraege: Array(schmerzEintraege),
+            medikamente: [],
+            midasBewertungen: [],
+            zyklusEintraege: Array(eintraege),
+            profil: profile.first,
+            optionen: optionen
+        ) { @MainActor url in
+            berichtLaeuft = false
+            if let url { berichtURL = url; zeigeBericht = true }
+        }
+#endif
     }
 
     private func healthAbgleich() async {
@@ -501,7 +543,11 @@ struct ZyklusView: View {
             badges.append((fluss == .keine ? "Periode" : "Periode · \(fluss.titel)", ZyklusFarbe.periode))
         }
         if prognosenAn && zustand.vorhergesagtePeriode { badges.append(("Periode erwartet", ZyklusFarbe.periode)) }
-        if prognosenAn && zustand.ovulation { badges.append(("Eisprung", ZyklusFarbe.eisprung)) }
+        if prognosenAn && zustand.ovulation {
+            let q = analyse.zyklen.first(where: { $0.eisprung.map { kal.isDate($0, inSameDayAs: start) } ?? false })?.eisprungQuelle
+            let zusatz = q.map { $0.istBestaetigt ? " · bestätigt" : ($0 == .kalender ? " · geschätzt" : " · \($0.titel)") } ?? ""
+            badges.append(("Eisprung\(zusatz)", ZyklusFarbe.eisprung))
+        }
         if prognosenAn && zustand.fruchtbar { badges.append(("Fruchtbar", ZyklusFarbe.fruchtbar)) }
 
         return VStack(alignment: .leading, spacing: 10) {
@@ -524,6 +570,19 @@ struct ZyklusView: View {
                         .font(.caption.bold()).foregroundStyle(.white)
                         .padding(.horizontal, 14).padding(.vertical, 8)
                         .background(Color.pink, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            if start <= heute && (zustand.ovulation || zustand.fruchtbar) {
+                let bestaetigt = eintrag?.eisprungBestaetigt ?? false
+                Button { eisprungUmschalten(an: start) } label: {
+                    Label(bestaetigt ? "Eisprung-Bestätigung entfernen" : "Eisprung an diesem Tag bestätigen",
+                          systemImage: bestaetigt ? "xmark.circle" : "checkmark.seal.fill")
+                        .font(.caption.bold())
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(ZyklusFarbe.eisprung.opacity(0.18), in: Capsule())
+                        .foregroundStyle(ZyklusFarbe.eisprung)
                 }
                 .buttonStyle(.plain)
             }
@@ -558,6 +617,33 @@ struct ZyklusView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .zyklusGlas(radius: 20)
+    }
+
+    /// Setzt/entfernt die manuelle Eisprung-Bestätigung am Tag; der Eisprung ist ein Datum je Zyklus,
+    /// daher wird eine Bestätigung im selben Zyklus vorher entfernt.
+    private func eisprungUmschalten(an tag: Date) {
+        let key = DayKey(tag, zeitzone: kal.timeZone)
+        let bestehend = eintraege.first { $0.tag == key }
+        if let e = bestehend, e.eisprungBestaetigt {
+            e.eisprungBestaetigt = false
+            if e.istLeerNachBestaetigung { NotificationManager.shared.planeZyklusErinnerungen(eintraege: eintraege.filter { $0 !== e }); modelContext.delete(e); return }
+        } else {
+            let analyse = ZyklusRechner.analyse(eintraege: Array(eintraege))
+            let start = analyse.zyklusStarts.last(where: { $0 <= tag })
+            let ende = analyse.zyklusStarts.first(where: { $0 > tag })
+            for e in eintraege where e.eisprungBestaetigt {
+                let d = kal.startOfDay(for: e.tag.beginn(in: kal.timeZone))
+                if let start, d >= start, ende.map({ d < $0 }) ?? true { e.eisprungBestaetigt = false }
+            }
+            if let e = bestehend {
+                e.eisprungBestaetigt = true
+            } else {
+                let neu = ZyklusEintrag(datum: tag)
+                neu.eisprungBestaetigt = true
+                modelContext.insert(neu)
+            }
+        }
+        planeZyklusNotifs()
     }
 
     private var kalenderLegende: some View {
@@ -626,7 +712,7 @@ struct ZyklusView: View {
         if analyse.zyklusStarts.isEmpty {
             leerKarte
         } else {
-            ZyklusVerlaufView(analyse: analyse)
+            ZyklusVerlaufView(analyse: analyse, proTag: eintraegeProTag)
             analyseButton
         }
     }

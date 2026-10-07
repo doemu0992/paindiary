@@ -25,6 +25,7 @@ struct ZyklusEintragSheet: View {
     @State private var basaltemperatur: String
     @State private var sexAktivitaet: SexAktivitaet
     @State private var notizen: String
+    @State private var eisprungBestaetigt: Bool
 
     private static let chipSchluessel = "zyklusCustomSymptome"
 
@@ -47,6 +48,7 @@ struct ZyklusEintragSheet: View {
             _basaltemperatur = State(initialValue: e.basaltemperatur > 0 ? String(format: "%.2f", e.basaltemperatur) : "")
             _sexAktivitaet = State(initialValue: e.sexAktivitaet)
             _notizen = State(initialValue: e.notizen)
+            _eisprungBestaetigt = State(initialValue: e.eisprungBestaetigt)
         } else {
             _fluss = State(initialValue: .keine)
             _nurHalberTag = State(initialValue: false)
@@ -56,6 +58,7 @@ struct ZyklusEintragSheet: View {
             _basaltemperatur = State(initialValue: "")
             _sexAktivitaet = State(initialValue: .keine)
             _notizen = State(initialValue: "")
+            _eisprungBestaetigt = State(initialValue: false)
         }
     }
 
@@ -84,6 +87,7 @@ struct ZyklusEintragSheet: View {
         schleim == .keine &&
         bbtWert == nil &&
         sexAktivitaet == .keine &&
+        !eisprungBestaetigt &&
         notizen.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
@@ -232,6 +236,14 @@ struct ZyklusEintragSheet: View {
                 auswahl: $lhTest, farbe: ZyklusFarbe.eisprung,
                 titel: { $0.titel }
             )
+            Toggle(isOn: $eisprungBestaetigt) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Eisprung an diesem Tag bestätigt").font(.subheadline.weight(.semibold))
+                    Text("Du weißt es sicher (z. B. Ultraschall, Schmerz, Temperatur). Die App richtet Fruchtbarkeit und nächste Periode danach aus.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            .tint(ZyklusFarbe.eisprung)
         }
     }
 
@@ -381,6 +393,7 @@ struct ZyklusEintragSheet: View {
         eintrag.basaltemperatur = bbtWert ?? 0
         eintrag.sexAktivitaet = sexAktivitaet
         eintrag.notizen = notizen
+        eintrag.eisprungBestaetigt = eisprungBestaetigt
         erinnerungenNeuPlanen(entfernt: nil, neu: eintrag)
         dismiss()
     }

@@ -310,6 +310,7 @@ extension BackupService {
         var nurHalberTag: Bool; var symptome: String; var ovulationstest: String; var zervixschleim: String
         var basaltemperatur: Double; var sexuelleAktivitaet: String; var timeZoneID: String
         var quelle: String? = nil   // optional: ältere Backups kennen das Feld nicht
+        var eisprungBestaetigt: Bool? = nil
 
         init(_ z: ZyklusEintrag) {
             datum = z.datum; typ = z.typ; notizen = z.notizen; istPeriode = z.istPeriode
@@ -317,6 +318,7 @@ extension BackupService {
             ovulationstest = z.ovulationstest; zervixschleim = z.zervixschleim
             basaltemperatur = z.basaltemperatur; sexuelleAktivitaet = z.sexuelleAktivitaet; timeZoneID = z.timeZoneID
             quelle = z.quelle
+            eisprungBestaetigt = z.eisprungBestaetigt
         }
 
         func modell() -> ZyklusEintrag {
@@ -326,6 +328,7 @@ extension BackupService {
             z.zervixschleim = zervixschleim; z.basaltemperatur = basaltemperatur
             z.sexuelleAktivitaet = sexuelleAktivitaet
             z.quelle = quelle ?? ""
+            z.eisprungBestaetigt = eisprungBestaetigt ?? false
             z.timeZoneID = timeZoneID.isEmpty ? TimeZone.current.identifier : timeZoneID
             return z
         }

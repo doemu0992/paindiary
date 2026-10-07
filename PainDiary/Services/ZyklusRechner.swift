@@ -40,9 +40,11 @@ enum EisprungQuelle {
     case lhTest       // positiver LH-Test, Eisprung ≈ 1 Tag danach
     case schleim      // Peak-Tag des fruchtbaren Zervixschleims
     case kalender     // Schätzung: nächste Periode − Lutealphase
+    case manuell      // von der Nutzerin selbst bestätigt (Tageseintrag „Eisprung bestätigt“)
 
     var titel: String {
         switch self {
+        case .manuell:    return "von dir bestätigt"
         case .temperatur: return "Temperatur bestätigt"
         case .lhTest:     return "LH-Test"
         case .schleim:    return "Zervixschleim"
@@ -50,7 +52,10 @@ enum EisprungQuelle {
         }
     }
 
-    var istBestaetigt: Bool { self == .temperatur }
+    var istBestaetigt: Bool { self == .temperatur || self == .manuell }
+
+    /// Verlässlicher Beleg (lernt die Lutealphase, verankert die nächste Periode, enges Fenster).
+    var istVerlaesslich: Bool { self == .temperatur || self == .lhTest || self == .manuell }
 }
 
 enum ZyklusStatus: Equatable {
@@ -187,6 +192,7 @@ struct ZyklusRechner {
             h.combine(e.zervixschleim)
             h.combine(e.ovulationstest)
             h.combine(e.basaltemperatur)
+            h.combine(e.eisprungBestaetigt)
         }
         return h.finalize()
     }
@@ -224,6 +230,7 @@ struct ZyklusRechner {
         var schleim: Zervixschleim = .keine
         var lh: LHTest = .keine
         var bbt: Double = 0
+        var eisprungManuell = false
     }
 
     // MARK: - Main analysis
@@ -259,6 +266,7 @@ struct ZyklusRechner {
             let l = e.lhTest
             if l == .positiv || t.lh != .positiv { t.lh = l == .keine ? t.lh : l }
             if ZyklusGrenzen.bbtBereich.contains(e.basaltemperatur) { t.bbt = e.basaltemperatur }
+            if e.eisprungBestaetigt { t.eisprungManuell = true }
             map[nr] = t
         }
         return map
@@ -470,6 +478,7 @@ struct ZyklusRechner {
         func evidenz(start: Int, bisExklusiv: Int, periodenEnde: Int, naechsterStart: Int?)
             -> (nr: Int, quelle: EisprungQuelle)? {
             let imZyklus = alleNrs.filter { $0 >= start && $0 < bisExklusiv }.compactMap { tage[$0] }
+            if let man = imZyklus.last(where: { $0.eisprungManuell }) { return (man.nr, .manuell) }
             if let bbt = bbtEisprung(imZyklus) { return (bbt, .temperatur) }
             if let lh = imZyklus.first(where: { $0.lh == .positiv && $0.nr >= start + 3 }) {
                 return (lh.nr + 1, .lhTest)
@@ -498,7 +507,7 @@ struct ZyklusRechner {
                 guard ZyklusGrenzen.gueltigeLutealphase.contains(l) else { continue }
                 // Lernen nur aus verlässlichen Belegen (Temperatur, LH-Test). Der Schleim-Peak liegt oft vor dem
                 // Eisprung und würde die Lutealphase zu lang schätzen.
-                if e.quelle == .temperatur || e.quelle == .lhTest { lutealWerte.append(l) }
+                if e.quelle.istVerlaesslich { lutealWerte.append(l) }
             }
             evid[i] = e
         }
@@ -518,7 +527,7 @@ struct ZyklusRechner {
         //    Die Lutealphase ist stabiler als die Follikelphase — der Beleg verschiebt die Periode also dynamisch.
         var naechstePeriodeNr = letzterStart + zyklusLenInt
         var evidenzVerankert = false
-        if let e = evid[starts.count - 1], e.quelle == .temperatur || e.quelle == .lhTest {
+        if let e = evid[starts.count - 1], e.quelle.istVerlaesslich {
             let ausEisprung = e.nr + luteal + 1
             naechstePeriodeNr = Int(((Double(naechstePeriodeNr) + Double(ausEisprung)) / 2).rounded())
             evidenzVerankert = true
@@ -603,7 +612,7 @@ struct ZyklusRechner {
             if let e = evid[i] {
                 ov = e.nr
                 quelle = e.quelle
-                eng = e.quelle == .temperatur || e.quelle == .lhTest || naechster != nil
+                eng = e.quelle.istVerlaesslich || naechster != nil
             } else if let ns = naechster {
                 ov = ns - (luteal + 1)
                 quelle = .kalender

@@ -32,6 +32,9 @@ import SwiftData
     // Importierte Einträge werden nicht zurück nach Health geschrieben (kein Echo).
     var quelle: String = ""
 
+    // Eisprung an diesem Tag von der Nutzerin bestätigt (höchste Priorität in der Engine)
+    var eisprungBestaetigt: Bool = false
+
     var timeZoneID: String = ""         // IANA-Zeitzone bei Erfassung
 
     init(datum: Date = .now) {
@@ -75,4 +78,12 @@ extension ZyklusEintrag {
     var istSpotting: Bool { hatBlutung && fluss.istSpotting }
 
     var kommtAusHealth: Bool { quelle == "health" }
+}
+
+extension ZyklusEintrag {
+    /// Eintrag ohne jeden Inhalt (nur für das Aufräumen nach dem Entfernen einer Eisprung-Bestätigung).
+    var istLeerNachBestaetigung: Bool {
+        !hatBlutung && symptome.isEmpty && ovulationstest.isEmpty && zervixschleim.isEmpty
+            && basaltemperatur == 0 && sexuelleAktivitaet.isEmpty && notizen.isEmpty && !eisprungBestaetigt
+    }
 }

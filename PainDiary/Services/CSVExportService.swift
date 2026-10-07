@@ -160,13 +160,14 @@ enum CSVExportService {
 
     static func zyklusCSV(_ eintraege: [ZyklusEintrag]) -> String {
         let kopf = ["Zeitpunkt", "Tag", "Zeitzone", "Periode", "Blutungsfluss", "Symptome", "Ovulationstest",
-                    "Zervixschleim", "Basaltemperatur (°C)", "Notizen"]
+                    "Zervixschleim", "Basaltemperatur (°C)", "Notizen", "Eisprung bestätigt"]
         let zeilen = eintraege.map { z -> [String] in
             [
                 iso(z.datum, z.zeitzone), tagText(z.tag), z.zeitzone.identifier,
                 (z.istPeriode || z.typ == "Periode") ? "ja" : "", escape(z.blutungsfluss), escape(z.symptome),
                 escape(z.ovulationstest), escape(z.zervixschleim),
-                z.basaltemperatur > 0 ? dezimal(z.basaltemperatur, stellen: 2) : "", escape(z.notizen)
+                z.basaltemperatur > 0 ? dezimal(z.basaltemperatur, stellen: 2) : "", escape(z.notizen),
+                z.eisprungBestaetigt ? "ja" : ""
             ]
         }
         return tabelle(kopf, zeilen)

@@ -4,11 +4,13 @@ import Charts
 /// „Verlauf"-Tab: Kennzahlen, Hinweise und die Liste aller erkannten Zyklen.
 struct ZyklusVerlaufView: View {
     let analyse: ZyklusAnalyse
+    var proTag: [Date: ZyklusTagesSicht] = [:]
 
     var body: some View {
         VStack(spacing: 16) {
             statistikKarte
             if !analyse.hinweise.isEmpty { hinweiseKarte }
+            ZyklusKurveKarte(analyse: analyse, proTag: proTag)
             if laengenDaten.count >= 2 { laengenKarte }
             zyklenKarte
         }
