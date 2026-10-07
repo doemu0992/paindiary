@@ -69,7 +69,7 @@ struct MIDASView: View {
             }
             .listRowBackground(Color.glassFill)
         }
-        .glassList()
+        .glassList(.migraene)
         .navigationTitle("MIDAS-Score")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -330,7 +330,7 @@ struct MIDASFragebogenView: View {
                     .padding(.horizontal).padding(.vertical, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .auroraScreen()
+                .auroraScreen(.migraene)
 
                 // Save button
                 HStack {

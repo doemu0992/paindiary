@@ -60,7 +60,7 @@ struct NotfallkontakteView: View {
             }
             .listRowBackground(Color.glassFill)
         }
-        .glassList()
+        .glassList(.neutral)
         .navigationTitle("Notfallkontakte")
         .navigationBarTitleDisplayMode(.large)
         .sheet(item: $bearbeitet) { kontakt in
@@ -187,7 +187,7 @@ struct NotfallKontaktFormView: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.neutral)
     }
 
     private var speichernLeiste: some View {

@@ -84,7 +84,7 @@ struct KonsultationsGuideView: View {
                 .padding(.top, 16)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.rheuma)
             .navigationTitle("Termin vorbereiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

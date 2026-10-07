@@ -737,7 +737,7 @@ struct DiabetesAnalyseAnpassenView: View {
                     sektionen.move(fromOffsets: from, toOffset: to)
                 }
             }
-            .glassList()
+            .glassList(.diabetes)
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

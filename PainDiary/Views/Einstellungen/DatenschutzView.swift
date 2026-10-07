@@ -93,6 +93,7 @@ E-Mail: doemugerber@gmail.com
             }
             .padding()
         }
+        .auroraScreen(.neutral)
         .navigationTitle("Datenschutz")
         .navigationBarTitleDisplayMode(.large)
     }

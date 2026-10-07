@@ -77,7 +77,7 @@ struct ImpfpassView: View {
                 }
             }
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Impfpass")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -233,7 +233,7 @@ struct ImpfForm: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var speichernLeiste: some View {

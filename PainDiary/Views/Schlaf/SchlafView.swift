@@ -68,7 +68,7 @@ struct SchlafView: View {
                 .listRowBackground(Color.glassFill)
             }
         }
-        .glassList()
+        .glassList(.wellness)
         .navigationTitle("Schlaf")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

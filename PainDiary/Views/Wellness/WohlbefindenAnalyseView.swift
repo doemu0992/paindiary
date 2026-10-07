@@ -627,7 +627,7 @@ private struct WohlbefindenAnalyseAnpassenView: View {
                     wohlbefindenSektionenSpeichern(sektionen)
                 }
             }
-            .glassList()
+            .glassList(.wellness)
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

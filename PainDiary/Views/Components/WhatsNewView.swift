@@ -26,7 +26,7 @@ struct WhatsNewView: View {
             }
             footer
         }
-        .auroraScreen()
+        .auroraScreen(.neutral)
         .ignoresSafeArea(edges: .bottom)
     }
 
@@ -93,6 +93,6 @@ struct WhatsNewView: View {
             .padding(.top, 16)
             .padding(.bottom, 32)
         }
-        .auroraScreen()
+        .auroraScreen(.neutral)
     }
 }

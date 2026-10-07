@@ -53,6 +53,7 @@ struct MigraeneAnfallDetailView: View {
             }
             .padding()
         }
+        .auroraScreen(.migraene)
         .navigationTitle(anfall.kopfschmerzTyp.isEmpty ? "Migräne" : anfall.kopfschmerzTyp)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -115,17 +115,17 @@ struct RheumaSchnellForm: View {
                     .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.rheuma)
         case 1:
             ScrollView {
                 schmerzMorgenSchritt
                     .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.rheuma)
         case 2:
             GelenkStepView(gelenkStatus: $gelenkStatus)
-                .auroraScreen()
+                .auroraScreen(.rheuma)
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -139,7 +139,7 @@ struct RheumaSchnellForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.rheuma)
         }
     }
 

@@ -692,7 +692,7 @@ struct AnalyseAnpassenView: View {
                     sektionenSpeichern(sektionen)
                 }
             }
-            .glassList()
+            .glassList(.migraene)
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

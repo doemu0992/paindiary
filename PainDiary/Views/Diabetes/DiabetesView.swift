@@ -62,7 +62,7 @@ struct DiabetesView: View {
                 .listRowBackground(Color.glassFill)
             }
         }
-        .glassList()
+        .glassList(.diabetes)
         .navigationTitle("Diabetes")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -327,19 +327,19 @@ struct BlutzuckerForm: View {
                 messungSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.diabetes)
         case 1:
             ScrollView {
                 insulinMahlzeitSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.diabetes)
         default:
             ScrollView {
                 notizenSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.diabetes)
         }
     }
 

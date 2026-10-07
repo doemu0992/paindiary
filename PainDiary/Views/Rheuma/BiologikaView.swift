@@ -125,7 +125,7 @@ struct BiologikaView: View {
                 .listRowBackground(Color.glassFill)
             }
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Biologika / Injektionen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -370,7 +370,7 @@ struct BiologikaForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.rheuma)
             .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
 
         default:
@@ -421,7 +421,7 @@ struct BiologikaForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.rheuma)
             .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
         }
     }

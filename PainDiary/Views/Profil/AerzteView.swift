@@ -64,7 +64,7 @@ struct AerzteView: View {
             }
             .listRowBackground(Color.glassFill)
         }
-        .glassList()
+        .glassList(.neutral)
         .navigationTitle("Ärzte")
         .navigationBarTitleDisplayMode(.large)
         .sheet(item: $bearbeitet) { arzt in
@@ -249,7 +249,7 @@ struct ArztFormView: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.neutral)
             .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
 
         default:
@@ -297,7 +297,7 @@ struct ArztFormView: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.neutral)
             .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
         }
     }

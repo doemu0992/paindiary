@@ -80,7 +80,7 @@ struct HAQView: View {
             }
             .listRowBackground(Color.glassFill)
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("HAQ & DAS28")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -365,7 +365,7 @@ struct HAQFormView: View {
                     .padding(.horizontal).padding(.vertical, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .auroraScreen()
+                .auroraScreen(.rheuma)
 
                 // Save button
                 HStack {

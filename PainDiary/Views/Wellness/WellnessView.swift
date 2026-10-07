@@ -69,7 +69,7 @@ struct WellnessView: View {
             .padding()
             .padding(.bottom, 30)
         }
-        .auroraScreen()
+        .auroraScreen(.wellness)
         .navigationTitle("Wohlbefinden")
         .navigationBarTitleDisplayMode(.large)
         .onAppear {

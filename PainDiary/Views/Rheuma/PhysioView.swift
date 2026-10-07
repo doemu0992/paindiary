@@ -40,7 +40,7 @@ struct PhysioView: View {
             }
             .listRowBackground(Color.glassFill)
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Physiotherapie")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -210,7 +210,7 @@ struct PhysioFormView: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var schritt1: some View {
@@ -251,7 +251,7 @@ struct PhysioFormView: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var navigationsLeiste: some View {

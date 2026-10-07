@@ -59,7 +59,7 @@ struct ArztbriefView: View {
             }
             .listRowBackground(Color.glassFill)
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Arztbrief")
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $zeigeTeilen) {

@@ -60,7 +60,7 @@ struct ArztSucheSheet: View {
                     }
                 }
             }
-            .glassList()
+            .glassList(.neutral)
             .searchable(text: $suchtext, placement: .navigationBarDrawer(displayMode: .always), prompt: "Arztname, Praxis, Fachgebiet…")
             .onSubmit(of: .search) { suchen() }
             .onChange(of: suchtext) { _, neu in

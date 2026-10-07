@@ -150,7 +150,7 @@ struct EinstellungenView: View {
             }
             .listRowBackground(Color.glassFill)
         }
-        .glassList()
+        .glassList(.neutral)
         .navigationTitle("Einstellungen")
         .sheet(isPresented: $zeigeShareSheet) {
             ShareSheet(urls: exportURLs)

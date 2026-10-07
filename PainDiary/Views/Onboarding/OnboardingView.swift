@@ -61,7 +61,7 @@ struct OnboardingView: View {
                 .padding(.bottom, 40)
             }
         }
-        .auroraScreen()
+        .auroraScreen(.neutral)
         .sheet(isPresented: $datenschutzAnzeigen) {
             DatenschutzVollTextView()
         }

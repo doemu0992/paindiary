@@ -65,7 +65,7 @@ struct HautView: View {
                 }
             }
         }
-        .glassList()
+        .glassList(.haut)
         .navigationTitle("Hautveränderungen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

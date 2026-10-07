@@ -128,7 +128,7 @@ struct RheumaView: View {
                 .listRowBackground(Color.glassFill)
             }
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Rheuma & Gelenke")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

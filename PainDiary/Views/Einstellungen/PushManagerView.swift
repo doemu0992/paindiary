@@ -268,7 +268,7 @@ struct PushManagerView: View {
             }
             .listRowBackground(Color.glassFill)
         }
-        .glassList()
+        .glassList(.neutral)
         .navigationTitle("Benachrichtigungen")
         .navigationBarTitleDisplayMode(.large)
         .sheet(item: $bearbeitetMedikament) { med in

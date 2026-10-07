@@ -90,7 +90,7 @@ struct KortisonView: View {
                 .listRowBackground(Color.glassFill)
             }
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Kortison-Tagebuch")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -292,7 +292,7 @@ struct KortisonForm: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var speichernLeiste: some View {

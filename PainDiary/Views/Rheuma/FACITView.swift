@@ -76,7 +76,7 @@ struct FACITView: View {
             }
             .listRowBackground(Color.glassFill)
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("FACIT-Erschöpfung")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -275,7 +275,7 @@ struct FACITFormView: View {
                     .padding(.horizontal).padding(.vertical, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .auroraScreen()
+                .auroraScreen(.rheuma)
 
                 // Save button
                 HStack {

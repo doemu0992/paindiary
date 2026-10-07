@@ -95,7 +95,7 @@ struct MigraeneView: View {
                 }
             }
         }
-        .glassList()
+        .glassList(.migraene)
         .navigationTitle("Migräne")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -430,31 +430,31 @@ struct MigraeneAnfallForm: View {
                 intensitaetSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.migraene)
         case 1:
             ScrollView {
                 prodromSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.migraene)
         case 2:
             ScrollView {
                 charakterSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.migraene)
         case 3:
             ScrollView {
                 symptomeSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.migraene)
         case 4:
             ScrollView {
                 medikamentSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.migraene)
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -467,7 +467,7 @@ struct MigraeneAnfallForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.migraene)
         }
     }
 

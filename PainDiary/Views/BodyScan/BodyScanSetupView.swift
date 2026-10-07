@@ -60,6 +60,7 @@ struct BodyScanSetupView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 8)
             }
+            .auroraScreen(.neutral)
             .navigationTitle(scanService.hatScan ? "Neu scannen" : "Körper scannen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

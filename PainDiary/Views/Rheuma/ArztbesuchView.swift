@@ -72,7 +72,7 @@ struct ArztbesuchView: View {
                 .listRowBackground(Color.glassFill)
             }
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Arztbesuche")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -236,7 +236,7 @@ struct ArztbesuchForm: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var schritt1: some View {
@@ -275,7 +275,7 @@ struct ArztbesuchForm: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var navigationsLeiste: some View {

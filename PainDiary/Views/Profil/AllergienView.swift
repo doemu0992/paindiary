@@ -43,7 +43,7 @@ struct AllergienView: View {
                 }
             }
         }
-        .glassList()
+        .glassList(.neutral)
         .navigationTitle("Allergien & Unverträglichkeiten")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -200,7 +200,7 @@ struct AllergieForm: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.neutral)
     }
 
     private var speichernLeiste: some View {

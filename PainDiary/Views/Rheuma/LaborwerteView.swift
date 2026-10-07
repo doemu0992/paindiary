@@ -97,7 +97,7 @@ struct LaborwerteView: View {
                 .onDelete(perform: loeschen)
             }
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Laborwerte")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -216,7 +216,7 @@ struct LaborwertForm: View {
                             }
                         }
                     }
-                    .glassList()
+                    .glassList(.rheuma)
                     .navigationTitle("Labortyp wählen")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Schliessen") { zeigePicker = false } } }
@@ -262,7 +262,7 @@ struct LaborwertForm: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var schritt1: some View {
@@ -288,7 +288,7 @@ struct LaborwertForm: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var navigationsLeiste: some View {

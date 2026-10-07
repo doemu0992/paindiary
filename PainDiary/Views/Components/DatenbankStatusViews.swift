@@ -83,7 +83,7 @@ struct DatenbankHilfeSheet: View {
                 }
                 .padding(20)
             }
-            .auroraScreen()
+            .auroraScreen(.neutral)
             .navigationTitle("Datenbank")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Schließen") { dismiss() } } }

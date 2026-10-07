@@ -130,7 +130,7 @@ struct SchlafAnalyseView: View {
                 }
                 .padding(.vertical)
             }
-            .auroraScreen()
+            .auroraScreen(.wellness)
             .navigationTitle("Schlaf-Analyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -448,7 +448,7 @@ private struct SchlafAnalyseAnpassenView: View {
                     sektionenSpeichern(sektionen)
                 }
             }
-            .glassList()
+            .glassList(.wellness)
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

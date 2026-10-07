@@ -77,7 +77,7 @@ struct DiagnoseView: View {
                 }
             }
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Diagnosen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -211,7 +211,7 @@ struct DiagnoseForm: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var schritt1: some View {
@@ -251,7 +251,7 @@ struct DiagnoseForm: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var navigationsLeiste: some View {

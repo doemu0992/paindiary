@@ -53,7 +53,7 @@ private struct ProfilInhaltView: View {
             notfallSektion
             einstellungen
         }
-        .glassList()
+        .glassList(.neutral)
         .navigationTitle("Profil")
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $stammdatenAnzeigen) {
@@ -546,7 +546,7 @@ private struct StammdatenSheet: View {
                 }
                 .listRowBackground(Color.glassFill)
             }
-            .glassList()
+            .glassList(.neutral)
             .navigationTitle("Stammdaten")
             .navigationBarTitleDisplayMode(.inline)
             .scrollDismissesKeyboard(.interactively)

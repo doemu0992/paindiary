@@ -77,7 +77,7 @@ struct NotfallausweisView: View {
                 }
             }
         }
-        .auroraScreen()
+        .auroraScreen(.rheuma)
 #if os(iOS)
         .sheet(isPresented: $zeigePDFVorschau) {
             if let url = pdfURL {

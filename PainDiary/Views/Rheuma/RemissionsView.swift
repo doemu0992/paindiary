@@ -60,7 +60,7 @@ struct RemissionsView: View {
                 }
             }
         }
-        .glassList()
+        .glassList(.rheuma)
         .navigationTitle("Remissionsphasen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -193,7 +193,7 @@ struct RemissionsFormView: View {
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.rheuma)
     }
 
     private var speichernLeiste: some View {

@@ -130,6 +130,7 @@ struct SubRegionenSheet: View {
                 }
                 .padding()
             }
+            .auroraScreen(.neutral)
             .navigationTitle(region)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

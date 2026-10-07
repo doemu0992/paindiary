@@ -79,7 +79,7 @@ struct PostdromErfassungView: View {
                 }
                 .padding()
             }
-            .auroraScreen()
+            .auroraScreen(.migraene)
             .navigationTitle("Nachklang erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

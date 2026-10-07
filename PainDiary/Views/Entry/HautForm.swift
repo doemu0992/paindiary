@@ -136,7 +136,7 @@ struct HautForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.haut)
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -149,7 +149,7 @@ struct HautForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.haut)
         }
     }
 
