@@ -168,7 +168,10 @@ struct ZyklusAnalyseView: View {
         case .ovulationstests:     ovulationstestKarte
         case .schmerzKorrelation:  schmerzKorrelationKarte
         case .migraeneKorrelation: migraeneKorrelationKarte
-        case .kiInsicht:           KIAnalyseKarte(prompt: kiPrompt, modulTint: .pink).id(zeitraum)
+        case .kiInsicht:           KIAnalyseKarte(prompt: kiPrompt, modulTint: .pink,
+                           systemPrompt: ZyklusKISicherheit.systemPrompt,
+                           nachbearbeitung: ZyklusKISicherheit.pruefe)
+                .id(zeitraum)
         }
     }
 
@@ -219,6 +222,9 @@ struct ZyklusAnalyseView: View {
         let zyklen = analyse.gueltigeZyklen
         var zeilen: [String] = [
             "Zyklus-Analyse (\(zeitraum.rawValue)):",
+            ZyklusKISicherheit.datenlage(gueltigeZyklen: zyklen, datenQualitaet: analyse.datenQualitaet.titel,
+                                         regelmaessig: analyse.regelmaessigkeit == .regelmaessig,
+                                         eisprungBestaetigt: analyse.eisprungQuelle?.istBestaetigt ?? false),
             "- \(zyklen) vollständige Zyklen erfasst",
             "- Ø Zykluslänge: \(Int(analyse.zykluslaenge.rounded())) Tage, Variation: ±\(String(format: "%.1f", analyse.variation)) Tage",
             "- Ø Periodendauer: \(Int(analyse.periodendauer.rounded())) Tage",

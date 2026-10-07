@@ -722,6 +722,18 @@ struct ZyklusRechner {
                 hinweise.append("Deine Zykluslänge schwankt um mehr als 9 Tage. Prognosen sind dadurch ungenauer; das fruchtbare Fenster wird breiter angezeigt.")
             }
         }
+        // Mögliche Anovulation: konsequent gemessen (≥ 12 Temperaturen), aber kein Anstieg nach der 3-über-6-Regel.
+        // Einzelne Zyklen sind normal (Stress, Krankheit, Messfehler) — Hinweis erst ab 2 betroffenen Zyklen.
+        var ohneAnstieg = 0
+        for i in starts.indices {
+            guard i + 1 < starts.count else { continue }
+            let imZyklus = alleNrs.filter { $0 >= starts[i] && $0 < starts[i + 1] }.compactMap { tage[$0] }
+            if imZyklus.filter({ $0.bbt > 0 }).count >= 12, bbtEisprung(imZyklus) == nil,
+               !imZyklus.contains(where: { $0.eisprungManuell }) { ohneAnstieg += 1 }
+        }
+        if ohneAnstieg >= 2 {
+            hinweise.append("In \(ohneAnstieg) Zyklen mit regelmäßiger Temperaturmessung ist kein Temperaturanstieg erkennbar. Das kann an Messfehlern, Stress oder Krankheit liegen, aber auch an Zyklen ohne Eisprung – bitte ärztlich abklären lassen.")
+        }
         if periodDauern.count >= 2 && avgPeriod > 8 {
             hinweise.append("Deine Periode dauert im Schnitt länger als 8 Tage. Bei starken Blutungen oder Beschwerden bitte ärztlich abklären.")
         }
