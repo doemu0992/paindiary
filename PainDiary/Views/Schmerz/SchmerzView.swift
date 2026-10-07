@@ -131,8 +131,8 @@ struct SchmerzView: View {
                 BentoKachel(
                     symbol: "flame.fill", label: "Stärkster Schmerz · 7 Tage",
                     tint: tint, leuchtet: (u.staerkster7Tage ?? 0) >= 7,
-                    wert: u.staerkster7Tage.map(String.init) ?? "–",
-                    einheit: u.staerkster7Tage.map(SchmerzSkala.wort)
+                    wert: u.staerkster7Tage.map { String($0) } ?? "–",
+                    einheit: u.staerkster7Tage.map { SchmerzSkala.wort($0) }
                 )
 
                 BentoKachel(
