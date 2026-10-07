@@ -171,6 +171,7 @@ struct ZyklusView: View {
 
     private func planeZyklusNotifs() {
         NotificationManager.shared.planeZyklusErinnerungen(eintraege: Array(eintraege))
+        ZyklusWidgetService.aktualisieren(eintraege: Array(eintraege), pausiert: pausiert)
     }
 
     private func oeffneHeuteSheet() {
