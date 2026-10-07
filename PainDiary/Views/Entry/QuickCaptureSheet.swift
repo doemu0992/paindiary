@@ -51,7 +51,7 @@ struct QuickCaptureSheet: View {
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: gespeicherterEintrag == nil)
-            .auroraScreen(schmerzLevel: staerke)
+            .auroraScreen(.schmerz, schmerzLevel: staerke)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if gespeicherterEintrag == nil {

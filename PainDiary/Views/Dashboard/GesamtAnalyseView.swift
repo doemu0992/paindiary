@@ -171,7 +171,7 @@ struct GesamtAnalyseView: View {
                     Spacer(minLength: 24)
                 }
             }
-            .auroraScreen()
+            .auroraScreen(.statistik)
             .navigationTitle("Gesamtanalyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1075,7 +1075,7 @@ private struct GesamtAnalyseAnpassenView: View {
                     sektionenSpeichern(sektionen)
                 }
             }
-            .glassList()
+            .glassList(.statistik)
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

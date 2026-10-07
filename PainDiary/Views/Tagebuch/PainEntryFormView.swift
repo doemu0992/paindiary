@@ -90,7 +90,7 @@ struct PainEntryFormView: View {
                 }
                 .listRowBackground(Color.glassFill)
             }
-            .glassList()
+            .glassList(.schmerz)
             .navigationTitle(eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

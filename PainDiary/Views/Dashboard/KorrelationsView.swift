@@ -66,6 +66,7 @@ struct KorrelationsView: View {
                 .padding(.bottom, 20)
             }
         }
+        .auroraScreen(.statistik)
         .navigationTitle("Analysen")
         .navigationBarTitleDisplayMode(.large)
     }

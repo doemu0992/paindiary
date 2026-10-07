@@ -21,6 +21,13 @@ struct PainEntryDetailView: View {
             case .haut:    return .orange
             }
         }
+        var theme: AuroraTheme {
+            switch self {
+            case .schmerz: return .schmerz
+            case .rheuma:  return .rheuma
+            case .haut:    return .haut
+            }
+        }
         var symbol: String {
             switch self {
             case .schmerz: return "waveform.path.ecg"
@@ -74,6 +81,7 @@ struct PainEntryDetailView: View {
             }
             .padding()
         }
+        .auroraScreen(modulTyp.theme)
         .navigationTitle(displayTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

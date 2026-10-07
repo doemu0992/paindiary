@@ -49,7 +49,7 @@ struct DashboardView: View {
             }
             .padding()
         }
-        .auroraScreen()
+        .auroraScreen(.statistik)
         .glassBars()
         .navigationTitle(segment == nil ? "Übersicht" : "Verlauf")
         .navigationBarTitleDisplayMode(.large)
@@ -589,7 +589,7 @@ private struct ExportOptionsSheet: View {
                 }
                 .listRowBackground(Color.glassFill)
             }
-            .glassList()
+            .glassList(.statistik)
             .navigationTitle("PDF exportieren")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

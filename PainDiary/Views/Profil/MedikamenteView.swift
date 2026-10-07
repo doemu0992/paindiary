@@ -92,7 +92,7 @@ struct MedikamenteView: View {
             heuteSektion
             if !inaktive.isEmpty { inaktiveSektion }
         }
-        .glassList()
+        .glassList(.medikamente)
         .navigationTitle("Medikamente")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -739,7 +739,7 @@ struct MedikamentFormView: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.medikamente)
     }
 
     // MARK: - Schritt 1: Einnahme
@@ -817,7 +817,7 @@ struct MedikamentFormView: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.medikamente)
     }
 
     // MARK: - Schritt 2: Extras
@@ -884,7 +884,7 @@ struct MedikamentFormView: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .auroraScreen()
+        .auroraScreen(.medikamente)
     }
 
     // MARK: - Navigation
@@ -1103,7 +1103,7 @@ struct EinnahmeLogSheet: View {
                     .listRowBackground(Color.glassFill)
                 }
             }
-            .glassList()
+            .glassList(.medikamente)
             .navigationTitle("Einnahme erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1232,7 +1232,7 @@ struct EinnahmeLogView: View {
                 }
             }
         }
-        .glassList()
+        .glassList(.medikamente)
         .navigationTitle("Einnahme-Verlauf")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

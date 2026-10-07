@@ -156,6 +156,7 @@ struct AddEntryView: View {
 
                 navigationsLeiste
             }
+            .auroraScreen(eintragTyp == .haut ? .haut : .schmerz)
             .navigationTitle(eintrag == nil ? "Neuer Eintrag" : "Eintrag bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

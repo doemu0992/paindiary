@@ -220,7 +220,7 @@ struct MedikamenteAnalyseView: View {
                     .padding(.bottom, 24)
                 }
             }
-            .auroraScreen()
+            .auroraScreen(.medikamente)
             .navigationTitle("Medikamenten-Analyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -577,7 +577,7 @@ struct MedAnalyseAnpassenView: View {
                 }
                 .onMove { sektionen.move(fromOffsets: $0, toOffset: $1) }
             }
-            .glassList()
+            .glassList(.medikamente)
             .environment(\.editMode, .constant(.active))
             .navigationTitle("Sektionen anpassen")
             .navigationBarTitleDisplayMode(.inline)

@@ -78,7 +78,7 @@ struct SchmerzView: View {
                 }
             }
         }
-        .glassList()
+        .glassList(.schmerz)
         .navigationTitle("Schmerztagebuch")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

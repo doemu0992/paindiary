@@ -117,7 +117,7 @@ struct EintragAuswahlView: View {
                     .transition(.opacity)
                 }
             }
-            .auroraScreen()
+            .auroraScreen(.schmerz)
             .navigationTitle("Was erfassen?")
             .navigationBarTitleDisplayMode(.inline)
             .animation(.easeInOut(duration: 0.15), value: auswahl)

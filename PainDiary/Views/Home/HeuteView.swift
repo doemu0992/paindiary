@@ -71,7 +71,7 @@ struct HeuteView: View {
             .padding(.bottom, 40)
         }
         .scrollIndicators(.hidden)
-        .auroraScreen(schmerzLevel: vm.heuteSchnitt.map { Int($0.rounded()) })
+        .auroraScreen(.schmerz, schmerzLevel: vm.heuteSchnitt.map { Int($0.rounded()) })
         .navigationTitle(gruss)
         .navigationBarTitleDisplayMode(.large)
         .glassBars()

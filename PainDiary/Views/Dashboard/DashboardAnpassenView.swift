@@ -141,7 +141,7 @@ struct DashboardAnpassenView: View {
                 }
                 .listRowBackground(Color.glassFill)
             }
-            .glassList()
+            .glassList(.statistik)
             .environment(\.editMode, $editMode)
             .navigationTitle("Dashboard anpassen")
             .navigationBarTitleDisplayMode(.inline)
@@ -457,7 +457,7 @@ struct KorrelationsPickerView: View {
                 }
                 .listRowBackground(Color.glassFill)
             }
-            .glassList()
+            .glassList(.statistik)
             .navigationTitle(existierend == nil ? "Neue Korrelation" : "Korrelation bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

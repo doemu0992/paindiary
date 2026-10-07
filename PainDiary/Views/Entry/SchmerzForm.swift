@@ -191,19 +191,19 @@ struct SchmerzForm: View {
                 intensitaetSchritt
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.schmerz)
         case 2:
             ScrollView {
                 wieWarumSchritt
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.schmerz)
         case 3:
             ScrollView {
                 wasNochSchritt
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.schmerz)
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -216,7 +216,7 @@ struct SchmerzForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .auroraScreen()
+            .auroraScreen(.schmerz)
         }
     }
 

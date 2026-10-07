@@ -608,7 +608,7 @@ struct SchmerzAnalyseAnpassenView: View {
                 }
                 .onMove { sektionen.move(fromOffsets: $0, toOffset: $1) }
             }
-            .glassList()
+            .glassList(.schmerz)
             .environment(\.editMode, .constant(.active))
             .navigationTitle("Sektionen anpassen")
             .navigationBarTitleDisplayMode(.inline)

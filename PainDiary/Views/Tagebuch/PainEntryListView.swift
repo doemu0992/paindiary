@@ -296,7 +296,7 @@ struct PainEntryListView: View {
                 }
             }
         }
-        .glassList()
+        .glassList(.statistik)
         .glassBars()
         .navigationTitle("Verlauf")
         .navigationBarTitleDisplayMode(.large)
