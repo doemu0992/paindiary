@@ -20,17 +20,37 @@ enum SubRegionen {
         "Gesäss": ["Steissbein", "Gesäss links", "Gesäss rechts"],
         "Schulter links":  ["Schultergelenk links",  "Schulterblatt links",  "Schlüsselbein links"],
         "Schulter rechts": ["Schultergelenk rechts", "Schulterblatt rechts", "Schlüsselbein rechts"],
+        // Vorder-/Rückseite von Arm und Bein (Seitenbezeichner zwingend, siehe CLAUDE.md)
+        "Oberarm links":  ["Bizeps links",  "Trizeps links"],
+        "Oberarm rechts": ["Bizeps rechts", "Trizeps rechts"],
+        "Oberschenkel links":  ["Oberschenkel vorne links",  "Oberschenkel hinten links"],
+        "Oberschenkel rechts": ["Oberschenkel vorne rechts", "Oberschenkel hinten rechts"],
+        "Knie links":  ["Kniescheibe links",  "Kniekehle links"],
+        "Knie rechts": ["Kniescheibe rechts", "Kniekehle rechts"],
         "Unterschenkel links":  ["Wade links",  "Schienbein links"],
         "Unterschenkel rechts": ["Wade rechts", "Schienbein rechts"],
+        // Knöchel hat im 3D-Körper kein eigenes Teil → Ferse + Fußspann leuchten (u. a. für die Rheuma-Heatmap)
+        "Knöchel links":  ["Ferse links",  "Fußspann links"],
+        "Knöchel rechts": ["Ferse rechts", "Fußspann rechts"],
         "Hand links":  ["Daumen links",  "Zeigefinger links",  "Mittelfinger links",  "Ringfinger links",  "Kleiner Finger links",
-                        "Handfläche links",  "Handgelenk links"],
+                        "Handfläche links",  "Handrücken links",  "Handgelenk links"],
         "Hand rechts": ["Daumen rechts", "Zeigefinger rechts", "Mittelfinger rechts", "Ringfinger rechts", "Kleiner Finger rechts",
-                        "Handfläche rechts", "Handgelenk rechts"],
+                        "Handfläche rechts", "Handrücken rechts", "Handgelenk rechts"],
         "Fuss links":  ["Großzehe links",  "2. Zehe links",  "3. Zehe links",  "4. Zehe links",  "Kleiner Zehe links",
                         "Fußsohle links",  "Ferse links",  "Fußspann links"],
         "Fuss rechts": ["Großzehe rechts", "2. Zehe rechts", "3. Zehe rechts", "4. Zehe rechts", "Kleiner Zehe rechts",
                         "Fußsohle rechts", "Ferse rechts", "Fußspann rechts"]
     ]
+
+    /// Umkehrung von `map`: Teilregion → übergeordnete Regionen (z. B. „Wade links" → „Unterschenkel links").
+    /// Damit leuchten fein aufgelöste Körperteile auch, wenn nur die Oberregion gespeichert wurde (Altdaten).
+    static let elternIndex: [String: [String]] = {
+        var index: [String: [String]] = [:]
+        for (eltern, kinder) in map {
+            for kind in kinder { index[kind, default: []].append(eltern) }
+        }
+        return index
+    }()
 
     /// Skin-surface-only sub-regions (no internal anatomy, no bones)
     static let hautMap: [String: [String]] = [

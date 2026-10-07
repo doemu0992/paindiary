@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
+import os
 
 @main
 struct PainDiaryApp: App {
-    @State private var container: ModelContainer? = nil
+    @State private var ergebnis: PersistenceResult? = nil
+    @State private var zeigeDatenbankHilfe = false
     // Initialize early so UNUserNotificationCenter.delegate is set before iOS delivers
     // the pending notification response on cold launch.
     private let _notif = NotificationManager.shared
@@ -11,19 +13,49 @@ struct PainDiaryApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if let container {
-                    ContentView()
-                        .modelContainer(container)
+                if let ergebnis {
+                    if let container = ergebnis.container {
+                        ContentView()
+                            .modelContainer(container)
+                            .overlay(alignment: .top) {
+                                StoreStatusBanner(status: ergebnis.status) { zeigeDatenbankHilfe = true }
+                            }
+                    } else {
+                        DatenbankFehlerView(status: ergebnis.status) { neustart() }
+                    }
                 } else {
                     Color.clear
                 }
             }
-            .task {
-                guard container == nil else { return }
-                let c = makeContainer()
-                container = c
-                await berechtigungenAnfordern()
-                await planeAlleErinnerungen(container: c)
+            .sheet(isPresented: $zeigeDatenbankHilfe) {
+                if let status = ergebnis?.status {
+                    DatenbankHilfeSheet(status: status) { neustart() }
+                }
+            }
+            .task { await starten(erneut: false) }
+        }
+    }
+
+    /// Öffnet den Store, führt die Datenpflege aus und plant Erinnerungen.
+    @MainActor
+    private func neustart() {
+        Task { await starten(erneut: true) }
+    }
+
+    @MainActor
+    private func starten(erneut: Bool) async {
+        guard erneut || ergebnis == nil else { return }
+        let r = PersistenceController.oeffne()
+        ergebnis = r
+        guard let c = r.container else { return }
+        if !r.status.istNotfall {
+            DatenPflege.run(context: ModelContext(c))
+        }
+        await berechtigungenAnfordern()
+        if !r.status.istNotfall {
+            await planeAlleErinnerungen(container: c)
+            if await NotificationManager.shared.budgetKnapp() {
+                PersistenceController.logger.warning("Benachrichtigungs-Budget fast erschöpft (Limit 64)")
             }
         }
     }
@@ -63,64 +95,4 @@ struct PainDiaryApp: App {
             notif.planeWasserErinnerung(stunde: dc.hour ?? 15, minute: dc.minute ?? 0)
         }
     }
-}
-
-@MainActor
-private func makeContainer() -> ModelContainer {
-    let alleTypen: [any PersistentModel.Type] = [
-        PainEntry.self,
-        Dauermedikation.self,
-        EinnahmeLog.self,
-        MIDASBewertung.self,
-        ZyklusEintrag.self,
-        Benutzerprofil.self,
-        Diagnose.self,
-        Allergie.self,
-        ArztKontakt.self,
-        NotfallKontakt.self,
-        Laborwert.self,
-        Arztbesuch.self,
-        HAQEintrag.self,
-        Impftermin.self,
-        BiologikaInjektion.self,
-        KortisonEintrag.self,
-        FACITEintrag.self,
-        PhysioSession.self,
-        Remissionsphase.self,
-        MigraeneEintrag.self,
-        BlutzuckerEintrag.self,
-        WellnessEintrag.self,
-    ]
-    let schema = Schema(alleTypen)
-
-    guard let appSupport = FileManager.default
-        .urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-        return try! ModelContainer(for: schema, configurations: [
-            ModelConfiguration("hauptdaten", schema: schema,
-                               isStoredInMemoryOnly: true, cloudKitDatabase: .none)
-        ])
-    }
-
-    let storeURL = appSupport.appendingPathComponent("default.store")
-
-    let configCloud = ModelConfiguration(
-        "hauptdaten", schema: schema, url: storeURL, cloudKitDatabase: .automatic)
-    if let c = try? ModelContainer(for: schema, configurations: [configCloud]) { return c }
-
-    let configLokal = ModelConfiguration(
-        "hauptdaten", schema: schema, url: storeURL, cloudKitDatabase: .none)
-    if let c = try? ModelContainer(for: schema, configurations: [configLokal]) { return c }
-
-    // Fallback: Alte Stores löschen + neu starten
-    for name in ["default.store", "default.store-shm", "default.store-wal"] {
-        try? FileManager.default.removeItem(at: appSupport.appendingPathComponent(name))
-    }
-    if let c = try? ModelContainer(for: schema, configurations: [configCloud]) { return c }
-    if let c = try? ModelContainer(for: schema, configurations: [configLokal]) { return c }
-
-    // In-Memory — App startet immer
-    return try! ModelContainer(for: schema, configurations: [
-        ModelConfiguration("hauptdaten", schema: schema,
-                           isStoredInMemoryOnly: true, cloudKitDatabase: .none)
-    ])
 }

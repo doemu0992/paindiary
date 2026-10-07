@@ -83,7 +83,7 @@ struct MedikamenteAnalyseView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 erwartet += n
                 let taken = logs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 eingenommen += min(taken, n)
@@ -137,7 +137,7 @@ struct MedikamenteAnalyseView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 erwartet += n
                 let taken = logs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 eingenommen += min(taken, n)
@@ -220,7 +220,7 @@ struct MedikamenteAnalyseView: View {
                     .padding(.bottom, 24)
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .navigationTitle("Medikamenten-Analyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -274,7 +274,7 @@ struct MedikamenteAnalyseView: View {
             content()
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -577,6 +577,7 @@ struct MedAnalyseAnpassenView: View {
                 }
                 .onMove { sektionen.move(fromOffsets: $0, toOffset: $1) }
             }
+            .glassList()
             .environment(\.editMode, .constant(.active))
             .navigationTitle("Sektionen anpassen")
             .navigationBarTitleDisplayMode(.inline)

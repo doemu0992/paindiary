@@ -188,6 +188,6 @@ struct SchmerzHeatmapKachel: View {
             }
         }
         .padding(10)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
+        .glassBackground(radius: 10)
     }
 }

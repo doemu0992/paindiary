@@ -26,7 +26,7 @@ struct WhatsNewView: View {
             }
             footer
         }
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
         .ignoresSafeArea(edges: .bottom)
     }
 
@@ -87,12 +87,12 @@ struct WhatsNewView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 14))
+                    .glassTintBackground(Color.accentColor, radius: 14)
             }
             .padding(.horizontal, 28)
             .padding(.top, 16)
             .padding(.bottom, 32)
         }
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 }

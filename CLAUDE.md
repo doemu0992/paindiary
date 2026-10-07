@@ -5,6 +5,72 @@ Every new screen, module, and edit must follow these rules.
 
 ---
 
+## Glass-Design-System „Calm Glass" (bindend, ersetzt alle älteren Karten-/Hintergrund-Vorgaben)
+
+Der Design-Layer liegt in `PainDiary/Design/GlassTheme.swift`. **Nie** eigene Karten-/Button-Styles bauen.
+
+| Zweck | API |
+|---|---|
+| Screen-Hintergrund (ScrollView/VStack/Wizard-Schritt) | `.auroraScreen(schmerzLevel:)` (statt `Color(.systemGroupedBackground)`) |
+| `List` | `.glassList()` + auf jeder `Section`/`ForEach` `.listRowBackground(Color.glassFill)` |
+| Vollständige Karte (Padding, Material, Gradient-Rand, 3-stufiger Schatten) | `.glassCard(radius: 24, tint:, padding: 20)` |
+| Nur Hintergrund (Padding beim Aufrufer) | `.glassBackground(radius:)` (statt `.background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(...))`) |
+| Füllung vor `.clipShape` | `.glassFill()` ; als Farbe in Ternaries `Color.glassFill` |
+| Nav-/Tab-Bar | `.glassBars()` (`.ultraThinMaterial`) |
+| Buttons | `.buttonStyle(.glassPrimary(tint:, hoehe:))` (64–72 pt) / `.buttonStyle(.glassSecondary)` (56 pt) |
+| Auswahl-Chips | `GlassChip` (min. 48 pt) |
+| Section-Label | `GlassSectionLabel("TEXT")` |
+| Schmerz-Eingabe | `SchmerzSlider` (64 pt Track, 48 pt Perle, Haptik) + `SchmerzGauge` — nie `Slider` für Schmerzstärke |
+
+**Regeln:** Eckenradius `.continuous` (Karten 22–28, Chips/Rows 12–20). Touch-Targets ≥ 56 pt (Haupt-Aktionen 72 pt). Schmerzstufen nie nur farbig — immer Zahl + Wort (`SchmerzSkala.wort`). Reduce Transparency → opake Karte, Reduce Motion → statischer Hintergrund (bereits im Layer). Modul-Tintfarben (Tabelle unten) bleiben, erscheinen aber nur als **Akzent** (Icon-Glow, Chart, Capsule-Tönung).
+
+**Navigation:** Tabs `Heute` (`HeuteView`) · `Verlauf` (`VerlaufContainerView`: Segment Liste | Einblicke; Einblicke = frühere Dashboard-Kacheln, `DashboardView(segment:)`) · `＋` · `Wohlbefinden` · `Profil`.
+**Erfassung:** „+" öffnet `QuickCaptureSheet` (1 Screen: Slider, Körperstellen-Chips, Speichern; „Mehr…" = `SchmerzForm`-Wizard). Mit aktiven Zusatzmodulen zuerst `EintragAuswahlView` (mit „Schnell erfassen").
+**Heute-Screen:** Hero-Gauge, eine Hauptaktion, 3 Info-Chips, 2-spaltiges Modul-Grid (Modul-Mini-Kacheln: 1 Kennwert + Sparkline), Einblick-Zeile. Keine langen Kachel-Stapel mehr.
+
+> Hinweis: Die Code-Beispiele weiter unten zeigen teils noch `secondarySystemGroupedBackground` / `systemGroupedBackground` — sie sind durch die obige Tabelle ersetzt. Alle sonstigen Standards (Wizard-Struktur, Löschen, KI, Zeitraum 7 T, InfoButton, Heatmap, SubRegionen) bleiben unverändert.
+
+---
+
+## Daten- & Logik-Architektur (bindend)
+
+```
+Views (SwiftUI)        keine Berechnungs-/Fetch-Logik; nur Darstellung + ViewModel-Aufrufe
+ViewModels             @Observable @MainActor (z. B. HeuteViewModel) — rechnen über Domain
+Domain/                reine Typen/Funktionen, KEIN SwiftData/UI: DayKey, EintragArt, ListenFeld, Validierung,
+                       Statistik, TriggerAnalyse, Gesundheitsregeln (MOH, Wirksamkeit, Schub, Schlaf), ArztZusammenfassung
+Services/Repository/   PainRepository (Predicates statt „alles laden"), EintragLoeschService, Normalisierung
+Services/Persistence/  PersistenceController (sicherer Store), DatenPflege (Backfill/Dedupe)
+Services/              Export (CSV v2), BackupService (JSON), HealthKit, Wetter, Notifications
+```
+
+**Regeln:**
+- **Store nie löschen.** Öffnen läuft über `PersistenceController.oeffne()`; bei Fehler Notfall-Modus mit sichtbarem Banner, Store-Dateien bleiben unangetastet. Vor jedem neuen Build wird ein Snapshot angelegt.
+- **Einfügen:** `modelContext.einfuegenValidiert(...)` statt `insert` für `PainEntry`/`MigraeneEintrag`/`BlutzuckerEintrag` (Wertebereiche in `Wertebereich`).
+- **Löschen:** ausschließlich über `EintragLoeschService` (räumt Benachrichtigungen/Fotos auf).
+- **Eintragstyp:** `eintrag.eintragsArt` (`.schmerz/.rheuma/.haut`) — nie `koerperstelle == "Rheuma"`.
+- **Listenfelder** (`"a, b"`): lesen mit `ListenFeld.parse`, Freitext vor dem Speichern mit `ListenFeld.bereinige` (Kommas im Element zerstören sonst das Format).
+- **Tage:** `entry.tag` (`DayKey`, nutzt die Erfassungs-Zeitzone `timeZoneID`) statt `Calendar.current` für Tageszuordnung/Statistik. Neue Modelle mit Datum erhalten `timeZoneID` + `tag`.
+- **„Nicht erfasst" = 0** (Stimmung, Stress, Energie, Fatigue). Keine Fake-Defaults wie 3. Auswertungen filtern `> 0`.
+- **Medikament↔Einnahme:** `EinnahmeLog.medikamentID` (= `Dauermedikation.notifID`), Abgleich über `log.gehoertZu(med)`.
+- **Neue Statistik/Regel** gehört nach `Domain/` und bekommt Tests in `PainDiaryTests/` (Swift Testing). Domain-Typen sind `nonisolated`.
+- **Neue Felder** in `@Model`: immer mit Default (lightweight Migration, CloudKit-tauglich), Backfill in `DatenPflege`, in `BackupService`-DTO und `CSVExportService` aufnehmen.
+- **Export/Backup:** CSV ISO 8601 mit Offset, UTF-8-BOM, Formel-Injection-Schutz; JSON-Backup idempotent (Import überspringt Vorhandenes).
+
+---
+
+## 3D-Körper (USDZ, bindend)
+
+- Der Körper in Picker und Heatmap ist `PainDiary/Resources/KoerperGlas.usdz`, erzeugt aus `tools/source/body.obj` mit `python3 tools/segment_body_obj.py` (`pip install bpy numpy usd-core`). **Nie von Hand ändern.** Dasselbe Skript schreibt `tools/export/body_segmented.fbx` (gleiche Teile/Hierarchie).
+- 42 Teile mit englischen IDs (`head_front`, `thigh_front_l`, …). Das Skript schneidet mit Ebenen (saubere Kanten), schließt die Schnittflächen, rundet die Schnittkanten leicht ab und skaliert jedes Teil auf 99 % (Mikro-Spalt für Trennlinien). `BodySceneBuilder.usdzRegionen` ordnet die IDs den Knotennamen aus `SubRegionen` zu. Konvention: **`_l` = links im Bild bei Frontansicht (x < 0)**.
+- Das Skript prüft die Abdeckung (Summe der Teilflächen ≈ 100 % des Originals); bei Änderungen an Ebenen/Landmarken diese Zahl und `--preview` prüfen.
+- Fehlt die Datei oder sind < 35 Teile ladbar, fällt `BodySceneBuilder` auf den prozeduralen Körper zurück. Die Gelenk-Ansicht (`GelenkKoerperView`) nutzt bewusst immer den prozeduralen Körper (`build(_, mitUSDZ: false)`).
+- Fein aufgelöste Regionen leuchten auch, wenn nur die Oberregion gespeichert ist: `SubRegionen.elternIndex`. Neue Teilregionen immer in `SubRegionen.map` eintragen (Seitenbezeichner!).
+- Glas-Material: PBR (roughness 0.35, metalness 0.1), Stile über `BodySceneBuilder.stileNormal/stileAktiv` — nie Materialien direkt setzen.
+- Lizenz/Herkunft von `body.obj` ist zu klären (siehe Projekt-README/Einstellungen → Lizenzen), bevor die App veröffentlicht wird.
+
+---
+
 ## Module-Tint Colors
 
 | Modul | Primärfarbe | `progressTint` |
@@ -200,10 +266,10 @@ content()
     .clipShape(RoundedRectangle(cornerRadius: 16))
 ```
 
-- **Hintergrund**: immer `Color(.secondarySystemGroupedBackground)` — nie `.secondarySystemBackground`
+- **Hintergrund**: `.glassCard()` / `.glassBackground()` (siehe Glass-Design-System)
 - **Eckenradius**: 16 pt
 - **Padding**: 16 pt innen
-- **Screen-Hintergrund**: `Color(.systemGroupedBackground)`
+- **Screen-Hintergrund**: `.auroraScreen()`
 
 ---
 
@@ -972,7 +1038,7 @@ Gilt nur für `Views/Zyklus/` — Kachel im Dashboard folgt weiterhin dem Kachel
 Vor dem Merge eines neuen Moduls prüfen:
 - [ ] Neue Modul-Farbe gewählt (noch nicht vergeben) und in Farbtabelle eingetragen
 - [ ] **Modul-Tintfarbe durch alle Views gezogen** (Kachel / Hauptseite / AnalyseView / alle Sub-Views)
-- [ ] Card-Hintergrund `secondarySystemGroupedBackground`
+- [ ] Karten via `.glassCard()`/`.glassBackground()`, Screens via `.auroraScreen()`/`.glassList()`
 - [ ] Wohlbefinden-Schritt via `WohlbefindenStepView` (kein Inline-Code)
 - [ ] Wizard-Navigationsmuster identisch zu bestehenden Wizards
 - [ ] Keine doppelten `fatigueFarbe`, `stressLabel`, `stimmungFarben` etc.

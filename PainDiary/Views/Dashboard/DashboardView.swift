@@ -3,6 +3,7 @@ import SwiftData
 import Charts
 
 struct DashboardView: View {
+    var segment: Binding<VerlaufSegment>? = nil
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query private var profile: [Benutzerprofil]
     @Query private var medikamente: [Dauermedikation]
@@ -35,7 +36,12 @@ struct DashboardView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                begrüssungsHeader
+                if let segment {
+                    VerlaufSegmentPicker(auswahl: segment)
+                    ArztZusammenfassungKarte()
+                } else {
+                    begrüssungsHeader
+                }
 
                 ForEach(sichtbareKacheln, id: \.id) { kachel in
                     kachelView(kachel)
@@ -43,7 +49,9 @@ struct DashboardView: View {
             }
             .padding()
         }
-        .navigationTitle("Übersicht")
+        .auroraScreen()
+        .glassBars()
+        .navigationTitle(segment == nil ? "Übersicht" : "Verlauf")
         .navigationBarTitleDisplayMode(.large)
         .onChange(of: eintraege)    { _, neu in viewModel.eintraege = neu }
         .onChange(of: scenePhase)   { _, phase in if phase == .active { tagesstart = Calendar.current.startOfDay(for: Date()); schlafNächte = SleepNightSummary.laden() } }
@@ -114,13 +122,13 @@ struct DashboardView: View {
         case .zyklus:              ZyklusKachel(eintraege: Array(zyklusEintraege))
         case .hautveraenderung:    HautKachel(eintraege: Array(eintraege.filter { $0.istHautEintrag }))
         case .schnellLinks:        schnellLinks
-        case .wetterSchmerz:       WetterSchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }))
-        case .stressSchmerz:       StressSchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }))
-        case .schlafSchmerz:       SchlafSchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }))
+        case .wetterSchmerz:       WetterSchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma }))
+        case .stressSchmerz:       StressSchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma }))
+        case .schlafSchmerz:       SchlafSchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma }))
         case .midasKachel:         MidasKachel(bewertungen: Array(midasBewertungen))
-        case .schmerzKachel:       SchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" }))
+        case .schmerzKachel:       SchmerzKachel(eintraege: Array(eintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma }))
         case .migraeneKachel:      MigraeneKachel(anfaelle: Array(migraeneAnfaelle))
-        case .rheumaKachel:        RheumaKachel(eintraege: Array(eintraege.filter { $0.koerperstelle == "Rheuma" }), haqEintraege: Array(haqEintraege))
+        case .rheumaKachel:        RheumaKachel(eintraege: Array(eintraege.filter { $0.eintragsArt == .rheuma }), haqEintraege: Array(haqEintraege))
         case .diabetesKachel:      DiabetesKachel(messungen: Array(blutzuckerMessungen))
         case .wellnessKachel:      WellnessKachel(eintraege: Array(eintraege), wellnessEintraege: Array(wellnessEintraege))
         case .schlafKachel:        SchlafKachel(nächte: schlafNächte)
@@ -228,7 +236,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -250,7 +258,7 @@ struct DashboardView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 erwartet += n
                 let g = einnahmeLogs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 eingenommen += min(g, n)
@@ -271,7 +279,7 @@ struct DashboardView: View {
         return medikamente.filter(\.aktiv).map { med in
             let n = notif.anzahlDosen(med.frequenz)
             guard n > 0 else { return 0 }
-            return min(n, heuteLogs.filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung }.count)
+            return min(n, heuteLogs.filter { $0.gehoertZu(med) }.count)
         }.reduce(0, +)
     }
 
@@ -287,7 +295,7 @@ struct DashboardView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 erw += n
                 let g = einnahmeLogs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 ein += min(g, n)
@@ -376,7 +384,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
@@ -459,7 +467,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -475,7 +483,7 @@ struct DashboardView: View {
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .buttonStyle(.plain)
@@ -487,7 +495,7 @@ struct DashboardView: View {
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .buttonStyle(.plain)
@@ -569,6 +577,7 @@ private struct ExportOptionsSheet: View {
                     }
                     .pickerStyle(.inline).labelsHidden()
                 }
+                .listRowBackground(Color.glassFill)
                 Section("Abschnitte") {
                     Toggle("Zusammenfassung",      isOn: $optionen.mitZusammenfassung)
                     Toggle("Medikamente",          isOn: $optionen.mitMedikamente)
@@ -578,7 +587,9 @@ private struct ExportOptionsSheet: View {
                     if hatMigraeneDaten { Toggle("Migräne", isOn: $optionen.mitMigraene) }
                     Toggle("Alle Einträge",        isOn: $optionen.mitEintraege)
                 }
+                .listRowBackground(Color.glassFill)
             }
+            .glassList()
             .navigationTitle("PDF exportieren")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

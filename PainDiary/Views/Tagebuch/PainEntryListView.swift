@@ -28,6 +28,7 @@ enum ModulFilter: String, CaseIterable {
 // MARK: - Main View
 
 struct PainEntryListView: View {
+    var segment: Binding<VerlaufSegment>? = nil
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \PainEntry.datum, order: .reverse) private var eintraege: [PainEntry]
     @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
@@ -137,12 +138,12 @@ struct PainEntryListView: View {
             return alle
         case .schmerz:
             return alle.filter {
-                if case .schmerz(let e) = $0 { return !e.istHautEintrag && e.koerperstelle != "Rheuma" }
+                if case .schmerz(let e) = $0 { return !e.istHautEintrag && e.eintragsArt != .rheuma }
                 return false
             }
         case .rheuma:
             return alle.filter {
-                if case .schmerz(let e) = $0 { return e.koerperstelle == "Rheuma" }
+                if case .schmerz(let e) = $0 { return e.eintragsArt == .rheuma }
                 return false
             }
         case .migraene:
@@ -192,6 +193,16 @@ struct PainEntryListView: View {
 
     var body: some View {
         List {
+            // 0. Segment: Liste | Einblicke
+            if let segment {
+                Section {
+                    VerlaufSegmentPicker(auswahl: segment)
+                }
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
+
             // 1. Sparkline-Header (letzte 7 Tage)
             Section {
                 sparklineHeader
@@ -235,10 +246,7 @@ struct PainEntryListView: View {
                                 }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
-                                        if eintrag.istHautEintrag {
-                                            FotoManager.loeschen(dateiname: eintrag.fotoDateiname)
-                                        }
-                                        modelContext.delete(eintrag)
+                                        EintragLoeschService(context: modelContext).loesche(eintrag)
                                     } label: {
                                         Label("Löschen", systemImage: "trash")
                                     }
@@ -249,8 +257,7 @@ struct PainEntryListView: View {
                                 }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
-                                        NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfall.datum)
-                                        modelContext.delete(anfall)
+                                        EintragLoeschService(context: modelContext).loesche(anfall)
                                     } label: {
                                         Label("Löschen", systemImage: "trash")
                                     }
@@ -278,16 +285,20 @@ struct PainEntryListView: View {
                                     }
                             }
                         }
+                        .listRowBackground(Color.glassFill)
                     } header: {
                         Text(tagLabel(gruppe.tag))
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.primary)
-                            .textCase(nil)
+                            .font(.footnote.weight(.semibold))
+                            .tracking(0.6)
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
                     }
                 }
             }
         }
-        .navigationTitle("Schmerztagebuch")
+        .glassList()
+        .glassBars()
+        .navigationTitle("Verlauf")
         .navigationBarTitleDisplayMode(.large)
         .searchable(text: $suchtext, prompt: "Körperstelle, Schmerzart, Auslöser…")
         .toolbar {
@@ -359,18 +370,19 @@ struct PainEntryListView: View {
                             .font(.system(size: 10, weight: isAusgewaehlt || isHeute ? .bold : .regular))
                             .foregroundStyle(isAusgewaehlt ? .primary : isHeute ? .primary : .secondary)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, minHeight: 56)
                     .background(
                         isAusgewaehlt
                             ? Color.accentColor.opacity(0.18)
                             : isHeute ? Color.secondary.opacity(0.08) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 8)
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                     )
                 }
                 .buttonStyle(.plain)
             }
         }
+        .padding(8)
+        .glassBackground(radius: 22)
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
     }
@@ -381,7 +393,7 @@ struct PainEntryListView: View {
         for item in items {
             let (farbe, key): (Color, String)
             switch item {
-            case .schmerz(let e) where e.koerperstelle == "Rheuma":
+            case .schmerz(let e) where e.eintragsArt == .rheuma:
                 (farbe, key) = (.teal, "rheuma")
             case .schmerz(let e) where e.istHautEintrag:
                 (farbe, key) = (.orange, "haut")
@@ -537,7 +549,7 @@ struct ModulKreis: View {
 struct SchmerzZeile: View {
     let eintrag: PainEntry
 
-    private var isRheuma: Bool { eintrag.koerperstelle == "Rheuma" }
+    private var isRheuma: Bool { eintrag.eintragsArt == .rheuma }
     private var isHaut: Bool   { eintrag.istHautEintrag }
 
     private var modulFarbe: Color {

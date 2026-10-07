@@ -32,7 +32,7 @@ enum RheumaAnalyseSektion: String, CaseIterable, Codable, Identifiable {
 
 struct RheumaAnalyseView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
-    private var eintraege: [PainEntry] { alleEintraege.filter { $0.koerperstelle == "Rheuma" } }
+    private var eintraege: [PainEntry] { alleEintraege.filter { $0.eintragsArt == .rheuma } }
     @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
 
     @StateObject private var scanService = BodyScanService.shared
@@ -321,7 +321,7 @@ struct RheumaAnalyseView: View {
             content()
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -642,6 +642,7 @@ struct RheumaAnalyseAnpassenView: View {
                     sektionen.move(fromOffsets: from, toOffset: to)
                 }
             }
+            .glassList()
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

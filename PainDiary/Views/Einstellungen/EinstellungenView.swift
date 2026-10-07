@@ -1,14 +1,20 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct EinstellungenView: View {
     @AppStorage("akzentFarbe") private var akzentFarbe = "blau"
+    @AppStorage("iCloudSyncAktiv") private var iCloudSync = true
 
     @Environment(\.modelContext) private var modelContext
     @Query private var profile: [Benutzerprofil]
     @Query private var eintraege: [PainEntry]
     @Query private var medikamente: [Dauermedikation]
     @Query private var logs: [EinnahmeLog]
+    @Query private var migraeneAnfaelle: [MigraeneEintrag]
+    @Query private var blutzucker: [BlutzuckerEintrag]
+    @Query private var wellness: [WellnessEintrag]
+    @Query private var zyklus: [ZyklusEintrag]
 
     @State private var exportURLs: [URL] = []
     @State private var zeigeShareSheet = false
@@ -16,6 +22,9 @@ struct EinstellungenView: View {
     @State private var zeigeExportFehler = false
     @State private var zeigeLoeschenBestaetigung = false
     @State private var zeigeWhatsNew = false
+    @State private var zeigeImporter = false
+    @State private var importBericht: String?
+    @State private var zeigeImportBericht = false
 
     private let farben: [(name: String, farbe: Color)] = [
         ("blau",   .blue),
@@ -56,18 +65,32 @@ struct EinstellungenView: View {
                     .padding(.vertical, 4)
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             Section("Erinnerungen") {
                 NavigationLink(destination: PushManagerView()) {
                     Label("Benachrichtigungen verwalten", systemImage: "bell.badge")
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             Section {
                 Button {
                     exportieren()
                 } label: {
                     Label("Als CSV exportieren", systemImage: "square.and.arrow.up")
+                }
+
+                Button {
+                    backupErstellen()
+                } label: {
+                    Label("Backup erstellen (JSON)", systemImage: "externaldrive.badge.plus")
+                }
+
+                Button {
+                    zeigeImporter = true
+                } label: {
+                    Label("Backup wiederherstellen", systemImage: "externaldrive.badge.checkmark")
                 }
 
                 Button(role: .destructive) {
@@ -78,8 +101,20 @@ struct EinstellungenView: View {
             } header: {
                 Text("Daten")
             } footer: {
-                Text("CSV-Dateien enthalten Schmerzeinträge, Medikamente und Einnahme-Logs.")
+                Text("CSV enthält alle Module (Zeitpunkte als ISO 8601, mit Zeitzone). Das JSON-Backup sichert Schmerz, Migräne, Medikation, Einnahmen, Blutzucker, Wellness und Zyklus; beim Wiederherstellen werden vorhandene Einträge nicht doppelt angelegt. Fotos sind nicht enthalten.")
             }
+            .listRowBackground(Color.glassFill)
+
+            Section {
+                Toggle(isOn: $iCloudSync) {
+                    Label("iCloud-Synchronisierung", systemImage: "icloud")
+                }
+            } header: {
+                Text("Synchronisierung")
+            } footer: {
+                Text("Wenn aktiv, werden deine Gesundheitsdaten über deine iCloud auf deine Geräte synchronisiert. Wenn aus, bleiben sie nur auf diesem Gerät. Eine Änderung gilt nach einem Neustart der App.")
+            }
+            .listRowBackground(Color.glassFill)
 
             Section("Sicherheit") {
                 if let profil = profile.first {
@@ -89,6 +124,7 @@ struct EinstellungenView: View {
                         }
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             Section("App") {
                 NavigationLink(destination: DatenschutzView()) {
@@ -112,13 +148,23 @@ struct EinstellungenView: View {
                 }
                 .foregroundStyle(.orange)
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("Einstellungen")
         .sheet(isPresented: $zeigeShareSheet) {
             ShareSheet(urls: exportURLs)
         }
         .sheet(isPresented: $zeigeWhatsNew) {
             WhatsNewView { zeigeWhatsNew = false }
+        }
+        .fileImporter(isPresented: $zeigeImporter, allowedContentTypes: [.json]) { ergebnis in
+            backupImportieren(ergebnis)
+        }
+        .alert("Backup", isPresented: $zeigeImportBericht) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(importBericht ?? "")
         }
         .alert("Export fehlgeschlagen", isPresented: $zeigeExportFehler) {
             Button("OK", role: .cancel) {}
@@ -133,7 +179,7 @@ struct EinstellungenView: View {
             Button("Löschen", role: .destructive) { alleDatenLoeschen() }
             Button("Abbrechen", role: .cancel) {}
         } message: {
-            Text("Schmerzeinträge, Medikamente und Einnahme-Logs werden permanent gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.")
+            Text("Alle erfassten Gesundheitsdaten werden permanent gelöscht. Erstelle vorher ein Backup – dieser Vorgang kann nicht rückgängig gemacht werden.")
         }
     }
 
@@ -141,14 +187,45 @@ struct EinstellungenView: View {
 
     private func exportieren() {
         do {
-            exportURLs = try CSVExportService.erstelleExport(
+            exportURLs = try CSVExportService.erstelleVollExport(quellen: .init(
                 eintraege: eintraege,
                 medikamente: medikamente,
-                logs: logs
-            )
+                logs: logs,
+                migraene: migraeneAnfaelle,
+                blutzucker: blutzucker,
+                wellness: wellness,
+                zyklus: zyklus
+            ))
             zeigeShareSheet = true
         } catch {
             exportFehler = error.localizedDescription
+            zeigeExportFehler = true
+        }
+    }
+
+    private func backupErstellen() {
+        do {
+            exportURLs = [try BackupService.erstelleBackup(context: modelContext)]
+            zeigeShareSheet = true
+        } catch {
+            exportFehler = error.localizedDescription
+            zeigeExportFehler = true
+        }
+    }
+
+    private func backupImportieren(_ ergebnis: Result<URL, Error>) {
+        switch ergebnis {
+        case .success(let url):
+            do {
+                let bericht = try BackupService.importiere(url: url, context: modelContext)
+                importBericht = "\(bericht.hinzugefuegt) Einträge wiederhergestellt, \(bericht.uebersprungen) bereits vorhanden oder ungültig."
+                zeigeImportBericht = true
+            } catch {
+                exportFehler = error.localizedDescription
+                zeigeExportFehler = true
+            }
+        case .failure(let fehler):
+            exportFehler = fehler.localizedDescription
             zeigeExportFehler = true
         }
     }
@@ -175,6 +252,7 @@ struct EinstellungenView: View {
             try modelContext.delete(model: Remissionsphase.self)
             try modelContext.delete(model: Impftermin.self)
             try modelContext.delete(model: FACITEintrag.self)
+            try modelContext.delete(model: WellnessEintrag.self)
         } catch {
             exportFehler = error.localizedDescription
             zeigeExportFehler = true

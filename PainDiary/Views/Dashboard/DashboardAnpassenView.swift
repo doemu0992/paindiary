@@ -68,6 +68,7 @@ struct DashboardAnpassenView: View {
                     Text("Tippe auf das Auge zum Ein-/Ausblenden. Stift-Icon: Korrelation bearbeiten. Im Bearbeiten-Modus: verschieben oder löschen.")
                         .font(.caption2)
                 }
+                .listRowBackground(Color.glassFill)
 
                 if !moduleHinzufuegbar.isEmpty {
                     Section("Module hinzufügen") {
@@ -88,6 +89,7 @@ struct DashboardAnpassenView: View {
                             }
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 if !analyseHinzufuegbar.isEmpty {
@@ -109,6 +111,7 @@ struct DashboardAnpassenView: View {
                             }
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 Section("Eigene Korrelation") {
@@ -129,13 +132,16 @@ struct DashboardAnpassenView: View {
                         }
                     }
                 }
+                .listRowBackground(Color.glassFill)
 
                 Section {
                     Button("Standard wiederherstellen", role: .destructive) {
                         withAnimation { kacheln = KachelKonfiguration.standard }
                     }
                 }
+                .listRowBackground(Color.glassFill)
             }
+            .glassList()
             .environment(\.editMode, $editMode)
             .navigationTitle("Dashboard anpassen")
             .navigationBarTitleDisplayMode(.inline)
@@ -294,6 +300,7 @@ struct KorrelationsPickerView: View {
                         }
                     }
                 }
+                .listRowBackground(Color.glassFill)
 
                 // Y-Achse
                 Section("Ergebnis (Y-Achse)") {
@@ -310,6 +317,7 @@ struct KorrelationsPickerView: View {
                         }
                     }
                 }
+                .listRowBackground(Color.glassFill)
 
                 // Filter: Körperregion
                 if !alleRegionen.isEmpty {
@@ -332,6 +340,7 @@ struct KorrelationsPickerView: View {
                         Text(filterRegionen.isEmpty ? "Alle Körperstellen" : "\(filterRegionen.count) ausgewählt — nur diese Einträge fliessen in die Analyse ein.")
                             .font(.caption2)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 // Filter: Schmerzart
@@ -355,6 +364,7 @@ struct KorrelationsPickerView: View {
                         Text(filterSchmerzarten.isEmpty ? "Alle Schmerzarten" : "\(filterSchmerzarten.count) ausgewählt")
                             .font(.caption2)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 // Filter: Medikament
@@ -387,6 +397,7 @@ struct KorrelationsPickerView: View {
                         Text("Nur Einträge von Tagen, an denen dieses Medikament eingenommen wurde.")
                             .font(.caption2)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 // Filter: Zeitraum
@@ -399,6 +410,7 @@ struct KorrelationsPickerView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 }
+                .listRowBackground(Color.glassFill)
 
                 // Filter: Mindest-Stärke
                 Section {
@@ -416,6 +428,7 @@ struct KorrelationsPickerView: View {
                     Text("Nur Einträge ab dieser Intensität berücksichtigen.")
                         .font(.caption2)
                 }
+                .listRowBackground(Color.glassFill)
 
                 // Diagrammtyp
                 Section {
@@ -432,6 +445,7 @@ struct KorrelationsPickerView: View {
                     Text("Auto: Balken für Kategorien (Wetter, Tageszeit…), Streuung für Schlaf.")
                         .font(.caption2)
                 }
+                .listRowBackground(Color.glassFill)
 
                 // Vorschau-Titel
                 Section("Titel (Vorschau)") {
@@ -441,7 +455,9 @@ struct KorrelationsPickerView: View {
                     }
                     .padding(.vertical, 4)
                 }
+                .listRowBackground(Color.glassFill)
             }
+            .glassList()
             .navigationTitle(existierend == nil ? "Neue Korrelation" : "Korrelation bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

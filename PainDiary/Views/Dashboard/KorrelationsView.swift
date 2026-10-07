@@ -165,8 +165,8 @@ struct KorrelationsView: View {
         let kal = Calendar.current
         let grenze30 = kal.date(byAdding: .day, value: -30, to: Date()) ?? Date()
 
-        let schmerzEintraege = alleEintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && $0.datum >= grenze30 }
-        let rheumaEintraege  = alleEintraege.filter { $0.koerperstelle == "Rheuma" && $0.datum >= grenze30 }
+        let schmerzEintraege = alleEintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma && $0.datum >= grenze30 }
+        let rheumaEintraege  = alleEintraege.filter { $0.eintragsArt == .rheuma && $0.datum >= grenze30 }
         let alleLetzte30     = alleEintraege.filter { $0.datum >= grenze30 }
         let migraeneLetzte30 = migraeneEintraege.filter { $0.datum >= grenze30 }
 
@@ -218,7 +218,7 @@ struct KorrelationsView: View {
             summaryPill("\(tage)",           label: "Tage erfasst", symbol: "calendar",                    farbe: .teal)
         }
         .padding(.vertical, 10)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -1372,7 +1372,7 @@ struct KorrelationsView: View {
                 let treue = Double(geloggteTage.count) / Double(fensterTage)
 
                 let logTage = Set(einnahmeLogs
-                    .filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
+                    .filter { $0.gehoertZu(med) && $0.eingenommen }
                     .map { kal.startOfDay(for: $0.datum) })
                 var mitMed: [Double] = []; var ohneMed: [Double] = []
                 for e in alleEintraege where e.schmerzstaerke > 0 {
@@ -1698,7 +1698,7 @@ struct KorrelationsView: View {
             content()
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 

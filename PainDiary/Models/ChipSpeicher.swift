@@ -6,7 +6,7 @@ enum ChipSpeicher {
     }
 
     static func hinzufuegen(_ wert: String, schluessel: String, max: Int = 15) {
-        let bereinigt = wert.trimmingCharacters(in: .whitespaces)
+        let bereinigt = ListenFeld.bereinige(wert)
         guard !bereinigt.isEmpty else { return }
         var liste = laden(schluessel: schluessel)
         guard !liste.contains(bereinigt) else { return }

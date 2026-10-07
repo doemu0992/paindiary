@@ -12,7 +12,7 @@ struct RheumaView: View {
     @State private var zeigeForm = false
     @State private var zeigeAnalyse = false
 
-    private var rheumaEintraege: [PainEntry] { eintraege.filter { $0.koerperstelle == "Rheuma" } }
+    private var rheumaEintraege: [PainEntry] { eintraege.filter { $0.eintragsArt == .rheuma } }
 
     private var gruppiertNachDatum: [(tag: Date, items: [PainEntry])] {
         let cal = Calendar.current
@@ -79,6 +79,7 @@ struct RheumaView: View {
                     }
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             Section("Medikamente & Therapie") {
                 NavigationLink(destination: BiologikaView()) {
@@ -106,6 +107,7 @@ struct RheumaView: View {
                         .foregroundStyle(.primary)
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
                 Section {
@@ -115,7 +117,7 @@ struct RheumaView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
-                                modelContext.delete(eintrag)
+                                EintragLoeschService(context: modelContext).loesche(eintrag)
                             } label: { Label("Löschen", systemImage: "trash") }
                         }
                     }
@@ -123,8 +125,10 @@ struct RheumaView: View {
                     Text(tagLabel(gruppe.tag))
                         .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                 }
+                .listRowBackground(Color.glassFill)
             }
         }
+        .glassList()
         .navigationTitle("Rheuma & Gelenke")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -170,7 +174,7 @@ struct RheumaView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
             Button { zeigeAnalyse = true } label: {
@@ -179,7 +183,7 @@ struct RheumaView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                    .glassTintBackground(Color.teal, radius: 12)
             }
             .buttonStyle(.plain)
         }

@@ -2,13 +2,14 @@ import Foundation
 import SwiftData
 
 @Model final class BlutzuckerEintrag {
-    var datum: Date
-    var wert: Double         // in mmol/L
-    var messZeitpunkt: String
-    var insulinEinheiten: Double
-    var insulinTyp: String   // "Kurzzeit", "Langzeit", "Mischung"
-    var kohlenhydrate: Int   // in Gramm, 0 = nicht erfasst
-    var notizen: String
+    var datum: Date = Date()
+    var wert: Double = 5.5        // in mmol/L
+    var messZeitpunkt: String = "Nüchtern"
+    var insulinEinheiten: Double = 0
+    var insulinTyp: String = ""   // "Kurzzeit", "Langzeit", "Mischung"
+    var kohlenhydrate: Int = 0    // in Gramm, 0 = nicht erfasst
+    var notizen: String = ""
+    var timeZoneID: String = ""   // IANA-Zeitzone bei Erfassung
 
     init(datum: Date = Date(), wert: Double = 5.5,
          messZeitpunkt: String = "Nüchtern",
@@ -21,7 +22,11 @@ import SwiftData
         self.insulinTyp = insulinTyp
         self.kohlenhydrate = kohlenhydrate
         self.notizen = notizen
+        self.timeZoneID = TimeZone.current.identifier
     }
+
+    var zeitzone: TimeZone { TimeZone(identifier: timeZoneID) ?? .current }
+    var tag: DayKey { DayKey(datum, zeitzone: zeitzone) }
 
     var wertText: String { String(format: "%.1f mmol/L", wert) }
 

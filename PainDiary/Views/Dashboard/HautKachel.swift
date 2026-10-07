@@ -13,7 +13,7 @@ struct HautKachel: View {
     }
 
     private var haeufigsteArt: String {
-        let alle = eintraege.flatMap { $0.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty } }
+        let alle = eintraege.flatMap { ListenFeld.parse($0.hautArt) }
         return Dictionary(grouping: alle, by: { $0 })
             .max(by: { $0.value.count < $1.value.count })?.key ?? "–"
     }
@@ -116,7 +116,7 @@ struct HautKachel: View {
         }
         .animation(.easeInOut(duration: 0.2), value: ausgewaehltTag)
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .sheet(isPresented: $zeigeForm) { HautForm() }

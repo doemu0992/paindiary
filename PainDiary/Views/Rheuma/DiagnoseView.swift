@@ -22,6 +22,7 @@ struct DiagnoseView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 if !aktive.isEmpty {
                     Section("Aktive Diagnosen") {
@@ -46,6 +47,7 @@ struct DiagnoseView: View {
                             for i in indexSet { modelContext.delete(aktive[i]) }
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 if !fruehereD.isEmpty {
@@ -71,9 +73,11 @@ struct DiagnoseView: View {
                             for i in indexSet { modelContext.delete(fruehereD[i]) }
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
         }
+        .glassList()
         .navigationTitle("Diagnosen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -148,14 +152,7 @@ struct DiagnoseForm: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.teal.opacity(0.15)).frame(height: 3)
-                        Capsule().fill(Color.teal)
-                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
-                            .animation(.easeInOut(duration: 0.3), value: schritt)
-                    }
-                }
+                GlassProgressBar(tint: Color.teal, fortschritt: CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), schritt: schritt)
                 .frame(height: 3).padding(.horizontal).padding(.top, 10)
 
                 Group {
@@ -209,12 +206,12 @@ struct DiagnoseForm: View {
                     }
                     .font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var schritt1: some View {
@@ -249,12 +246,12 @@ struct DiagnoseForm: View {
                     TextField("Hinweise, Verlauf…", text: $notizen, axis: .vertical)
                         .lineLimit(2...5).font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var navigationsLeiste: some View {
@@ -262,7 +259,7 @@ struct DiagnoseForm: View {
             if schritt > 0 {
                 Button { withAnimation { schritt -= 1 } } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
@@ -274,13 +271,13 @@ struct DiagnoseForm: View {
                 Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
                     Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(kannWeiter ? Color.teal : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(kannWeiter ? Color.teal : Color.secondary, radius: 12)
                 }.buttonStyle(.plain).disabled(!kannWeiter)
             } else {
                 Button { speichern() } label: {
                     Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(Color.teal, radius: 12)
                 }.buttonStyle(.plain)
             }
         }

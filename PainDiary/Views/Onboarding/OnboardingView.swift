@@ -60,14 +60,8 @@ struct OnboardingView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)
             }
-            .background(
-                LinearGradient(
-                    colors: [Color(.systemGroupedBackground).opacity(0), Color(.systemGroupedBackground)],
-                    startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3)
-                )
-            )
         }
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
         .sheet(isPresented: $datenschutzAnzeigen) {
             DatenschutzVollTextView()
         }
@@ -199,7 +193,7 @@ private struct NameSchritt: View {
                         .font(.title3)
                         .multilineTextAlignment(.center)
                         .padding()
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+                        .glassBackground(radius: 14)
                         .focused($fokus)
                         .submitLabel(.done)
                         .onSubmit { fokus = false }
@@ -321,7 +315,7 @@ private struct SchmerzTypSchritt: View {
                         .padding(.vertical, 16)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(aktiv ? typ.farbe.opacity(0.1) : Color(.secondarySystemGroupedBackground))
+                                .fill(aktiv ? typ.farbe.opacity(0.1) : Color.glassFill)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16)
                                         .stroke(aktiv ? typ.farbe : Color.clear, lineWidth: 2)
@@ -393,7 +387,7 @@ private struct DashboardVorschauSchritt: View {
                         Spacer()
                     }
                     .padding(12)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
                 }
             }
             .padding(.horizontal, 24)
@@ -478,7 +472,7 @@ private struct DatenschutzSchritt: View {
                         Spacer()
                     }
                     .padding()
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+                    .glassBackground(radius: 14)
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 24)

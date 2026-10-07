@@ -7,7 +7,7 @@ struct PainEntryDetailView: View {
     @State private var zeigeHautBearbeiten = false
 
     private var modulTyp: ModulTyp {
-        if eintrag.koerperstelle == "Rheuma" { return .rheuma }
+        if eintrag.eintragsArt == .rheuma { return .rheuma }
         if eintrag.istHautEintrag { return .haut }
         return .schmerz
     }
@@ -44,7 +44,7 @@ struct PainEntryDetailView: View {
         case .rheuma:
             return "Rheuma & Gelenke"
         case .haut:
-            let stellen = eintrag.hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty }
+            let stellen = ListenFeld.parse(eintrag.hautStellen)
             return stellen.isEmpty ? "Hautveränderung" : stellen.prefix(2).joined(separator: ", ")
         case .schmerz:
             return eintrag.koerperstelle.isEmpty ? "Schmerzeintrag" : eintrag.koerperstelle
@@ -174,7 +174,7 @@ struct PainEntryDetailView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -325,8 +325,8 @@ struct PainEntryDetailView: View {
 
     @ViewBuilder
     private var hautInhalt: some View {
-        let stellen = eintrag.hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty }
-        let arten = eintrag.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty }
+        let stellen = ListenFeld.parse(eintrag.hautStellen)
+        let arten = ListenFeld.parse(eintrag.hautArt)
 
         VStack(alignment: .leading, spacing: 12) {
             Label("Hautbild", systemImage: "bandage")
@@ -356,7 +356,7 @@ struct PainEntryDetailView: View {
                             .font(.caption.bold())
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
-                            .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
+                            .background(Color.glassFill, in: Capsule())
                             .foregroundStyle(.primary)
                     }
                 }
@@ -649,7 +649,7 @@ private extension View {
     func karte() -> some View {
         self
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
             .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 }

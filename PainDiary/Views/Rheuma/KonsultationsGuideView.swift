@@ -12,7 +12,7 @@ struct KonsultationsGuideView: View {
 
     private var letzteVierwochenEintraege: [PainEntry] {
         let grenze = Calendar.current.date(byAdding: .day, value: -28, to: Date()) ?? Date()
-        return alleEintraege.filter { $0.datum >= grenze && $0.koerperstelle == "Rheuma" }
+        return alleEintraege.filter { $0.datum >= grenze && $0.eintragsArt == .rheuma }
     }
 
     private var avgSchmerz: Double {
@@ -74,7 +74,7 @@ struct KonsultationsGuideView: View {
                             .font(.subheadline.bold())
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 14))
+                            .glassTintBackground(Color.blue, radius: 14)
                             .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
@@ -84,7 +84,7 @@ struct KonsultationsGuideView: View {
                 .padding(.top, 16)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .navigationTitle("Termin vorbereiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -133,7 +133,7 @@ struct KonsultationsGuideView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -173,7 +173,7 @@ struct KonsultationsGuideView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 

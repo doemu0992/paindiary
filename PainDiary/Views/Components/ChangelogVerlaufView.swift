@@ -39,8 +39,10 @@ struct ChangelogVerlaufView: View {
                             .textCase(nil)
                     }
                 }
+                .listRowBackground(Color.glassFill)
             }
         }
+        .glassList()
         .listStyle(.insetGrouped)
         .navigationTitle("Versionsverlauf")
         .navigationBarTitleDisplayMode(.large)

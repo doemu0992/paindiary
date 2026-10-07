@@ -33,7 +33,7 @@ struct HautStepView: View {
                 KoerperPickerView(auswahl: $hautStellen, tintColor: .systemOrange, frameHeight: 300, subRegionenMap: SubRegionen.hautMap)
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Art der Veränderung")
@@ -50,7 +50,7 @@ struct HautStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !eigenerText.isEmpty {
                         Button {
-                            let t = eigenerText.trimmingCharacters(in: .whitespaces)
+                            let t = ListenFeld.bereinige(eigenerText)
                             guard !t.isEmpty else { return }
                             artAusgewaehlt.insert(t); eigenerText = ""
                             hautArt = artAusgewaehlt.sorted().joined(separator: ", ")
@@ -63,7 +63,7 @@ struct HautStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Foto-Anhang")
@@ -99,7 +99,7 @@ struct HautStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             Text("Optional – du kannst diesen Schritt überspringen.")
                 .font(.caption)
@@ -108,7 +108,7 @@ struct HautStepView: View {
         }
         .padding(.horizontal)
         .onAppear {
-            artAusgewaehlt = Set(hautArt.components(separatedBy: ", ").filter { !$0.isEmpty })
+            artAusgewaehlt = Set(ListenFeld.parse(hautArt))
             fotoBild = FotoManager.laden(dateiname: fotoDateiname)
             customArt = ChipSpeicher.laden(schluessel: "hautCustomArt")
         }

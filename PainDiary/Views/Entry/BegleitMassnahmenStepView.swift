@@ -79,7 +79,7 @@ struct BegleitMassnahmenStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !begleitFreitext.isEmpty {
                         Button {
-                            let term = begleitFreitext.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(begleitFreitext)
                             guard !term.isEmpty else { return }
                             begleitAusgewaehlt.insert(term)
                             begleitFreitext = ""
@@ -96,7 +96,7 @@ struct BegleitMassnahmenStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             // Card 2: Massnahmen
             VStack(alignment: .leading, spacing: 12) {
@@ -129,7 +129,7 @@ struct BegleitMassnahmenStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !massnahmenFreitext.isEmpty {
                         Button {
-                            let term = massnahmenFreitext.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(massnahmenFreitext)
                             guard !term.isEmpty else { return }
                             massnahmenAusgewaehlt.insert(term)
                             massnahmenFreitext = ""
@@ -146,7 +146,7 @@ struct BegleitMassnahmenStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
         }
         .padding(.horizontal)
         .onAppear { ladeWerte() }

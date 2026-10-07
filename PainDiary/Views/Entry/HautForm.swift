@@ -93,14 +93,7 @@ struct HautForm: View {
     // MARK: - Progress bar
 
     private var progressBar: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(progressTint.opacity(0.15)).frame(height: 3)
-                Capsule().fill(progressTint)
-                    .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
-                    .animation(.easeInOut(duration: 0.3), value: schritt)
-            }
-        }
+        GlassProgressBar(tint: progressTint, fortschritt: CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), schritt: schritt)
         .frame(height: 3)
     }
 
@@ -143,7 +136,7 @@ struct HautForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -156,7 +149,7 @@ struct HautForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         }
     }
 
@@ -190,7 +183,7 @@ struct HautForm: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            let ausgewaehlt = Set(hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let ausgewaehlt = Set(ListenFeld.parse(hautStellen))
             if ausgewaehlt.isEmpty {
                 Text("Tippe auf das Modell um eine Stelle auszuwählen.")
                     .font(.caption)
@@ -234,7 +227,7 @@ struct HautForm: View {
                     withAnimation { schritt -= 1 }
                 } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
@@ -252,13 +245,13 @@ struct HautForm: View {
                 } label: {
                     Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(progressTint, radius: 12)
                 }.buttonStyle(.plain)
             } else {
                 Button { speichern() } label: {
                     Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(progressTint, radius: 12)
                 }.buttonStyle(.plain)
             }
         }
@@ -273,7 +266,7 @@ struct HautForm: View {
         content()
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
+            .glassFill()
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -370,7 +363,7 @@ struct HautForm: View {
                 verlauf: verlauf
             )
             neu.istHautEintrag = true
-            modelContext.insert(neu)
+            modelContext.einfuegenValidiert(neu)
         }
 
 #if os(iOS)

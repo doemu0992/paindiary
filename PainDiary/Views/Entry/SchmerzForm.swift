@@ -175,14 +175,7 @@ struct SchmerzForm: View {
     // MARK: - Progress bar
 
     private var progressBar: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(progressTint.opacity(0.15)).frame(height: 3)
-                Capsule().fill(progressTint)
-                    .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
-                    .animation(.easeInOut(duration: 0.3), value: schritt)
-            }
-        }
+        GlassProgressBar(tint: progressTint, fortschritt: CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), schritt: schritt)
         .frame(height: 3)
     }
 
@@ -198,19 +191,19 @@ struct SchmerzForm: View {
                 intensitaetSchritt
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 2:
             ScrollView {
                 wieWarumSchritt
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 3:
             ScrollView {
                 wasNochSchritt
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -223,7 +216,7 @@ struct SchmerzForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         }
     }
 
@@ -274,7 +267,7 @@ struct SchmerzForm: View {
             KoerperPickerView(auswahl: $koerperstelle, tintColor: .systemRed)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            let ausgewaehlt = Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let ausgewaehlt = Set(ListenFeld.parse(koerperstelle))
             if ausgewaehlt.isEmpty {
                 Text("Tippe auf das Modell um eine Stelle auszuwählen.")
                     .font(.caption)
@@ -318,27 +311,8 @@ struct SchmerzForm: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Schmerzstärke").font(.headline)
 
-                    HStack {
-                        Spacer()
-                        ZStack {
-                            Circle()
-                                .fill(staerkeFarbe.opacity(0.15))
-                                .frame(width: 104, height: 104)
-                            Circle()
-                                .strokeBorder(staerkeFarbe, lineWidth: 5)
-                                .frame(width: 104, height: 104)
-                            VStack(spacing: 1) {
-                                Text("\(schmerzstaerke)")
-                                    .font(.system(size: 44, weight: .bold, design: .rounded))
-                                    .foregroundStyle(staerkeFarbe)
-                                Text("/ 10")
-                                    .font(.caption2.bold())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: schmerzstaerke)
-                        Spacer()
-                    }
+                    SchmerzGauge(wert: Double(schmerzstaerke), groesse: 150, zahlGroesse: 64)
+                        .frame(maxWidth: .infinity)
 
                     Text(staerkeLabel)
                         .font(.subheadline.bold())
@@ -346,10 +320,7 @@ struct SchmerzForm: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .animation(.easeInOut(duration: 0.2), value: staerkeLabel)
 
-                    Slider(
-                        value: Binding(get: { Double(schmerzstaerke) }, set: { schmerzstaerke = Int($0) }),
-                        in: 0...10, step: 1
-                    ).tint(staerkeFarbe)
+                    SchmerzSlider(wert: $schmerzstaerke)
 
                     HStack {
                         Text("Kein Schmerz").font(.caption).foregroundStyle(.secondary)
@@ -461,7 +432,7 @@ struct SchmerzForm: View {
                     withAnimation { schritt -= 1 }
                 } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
@@ -479,13 +450,13 @@ struct SchmerzForm: View {
                 } label: {
                     Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(progressTint, radius: 12)
                 }.buttonStyle(.plain)
             } else {
                 Button { speichern() } label: {
                     Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(progressTint, radius: 12)
                 }.buttonStyle(.plain)
             }
         }
@@ -500,7 +471,7 @@ struct SchmerzForm: View {
         content()
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
+            .glassFill()
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -540,7 +511,7 @@ struct SchmerzForm: View {
                         }
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
-                            sel ? farbe.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                            sel ? farbe.opacity(0.12) : Color.glassFill,
                             in: RoundedRectangle(cornerRadius: 10)
                         )
                     }
@@ -552,7 +523,7 @@ struct SchmerzForm: View {
                 TextField(ph, text: ft)
                     .font(.subheadline)
                     .padding(14)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
             }
         }
     }
@@ -596,13 +567,13 @@ struct SchmerzForm: View {
             schmerzstaerke = e.schmerzstaerke
             dauerStunden = e.dauerMinuten / 60
             dauerMinuten = e.dauerMinuten % 60
-            ausgewaehlterCharakter = Set(e.schmerzart.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlterCharakter = Set(ListenFeld.parse(e.schmerzart))
                 .intersection(Set(charakterOptionen))
-            ausgewaehlteAusloeser  = Set(e.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlteAusloeser  = Set(ListenFeld.parse(e.ausloeser))
                 .intersection(Set(ausloeserOptionen))
-            ausgewaehlteBegleit    = Set(e.begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlteBegleit    = Set(ListenFeld.parse(e.begleiterscheinungen))
                 .intersection(Set(begleitOptionen))
-            ausgewaehlteMassnahmen = Set(e.massnahmen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlteMassnahmen = Set(ListenFeld.parse(e.massnahmen))
                 .intersection(Set(massnahmenOptionen))
             stimmung = e.stimmung
             stressLevel = e.stressLevel
@@ -621,10 +592,10 @@ struct SchmerzForm: View {
             dauerStunden = e.dauerMinuten / 60
             dauerMinuten = e.dauerMinuten % 60
 
-            let alleChar  = Set(e.schmerzart.components(separatedBy: ", ").filter { !$0.isEmpty })
-            let alleAusl  = Set(e.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty })
-            let alleBegl  = Set(e.begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty })
-            let alleMass  = Set(e.massnahmen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let alleChar  = Set(ListenFeld.parse(e.schmerzart))
+            let alleAusl  = Set(ListenFeld.parse(e.ausloeser))
+            let alleBegl  = Set(ListenFeld.parse(e.begleiterscheinungen))
+            let alleMass  = Set(ListenFeld.parse(e.massnahmen))
 
             ausgewaehlterCharakter = alleChar.intersection(Set(charakterOptionen))
             charakterFreitext      = alleChar.subtracting(Set(charakterOptionen)).sorted().joined(separator: ", ")
@@ -676,7 +647,7 @@ struct SchmerzForm: View {
     private func speichern() {
         func merge(_ set: Set<String>, _ text: String) -> String {
             var s = set
-            let t = text.trimmingCharacters(in: .whitespaces)
+            let t = ListenFeld.bereinige(text)
             if !t.isEmpty { s.insert(t) }
             return s.sorted().joined(separator: ", ")
         }
@@ -713,12 +684,17 @@ struct SchmerzForm: View {
                 wetterTemperatur: finalTemp, wetterCode: finalCode,
                 wetterWind: finalWind
             )
-            modelContext.insert(neu)
+            modelContext.einfuegenValidiert(neu)
+            // Nachträglich erfasster Eintrag: Wetter zum Eintragszeitpunkt statt aktuellem Wetter
+            if abs(datum.timeIntervalSinceNow) > 90 * 60, wetterTemperatur == nil {
+                neu.wetterTemperatur = nil; neu.wetterCode = nil; neu.wetterWind = nil
+                Task { await wetter.historischeWerteSetzen(fuer: neu) }
+            }
         }
         // Migräne-Erkennung bei Kopfschmerz mit Migräne-Symptomen
         if eintrag == nil, migraeneModulAktiv, koerperstelle.contains("Kopf") {
             let migraeneSym: Set<String> = ["Lichtempfindlichkeit", "Lärmempfindlichkeit", "Übelkeit", "Sehstörungen (Aura)"]
-            let symptomListe = Set(beglStr.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let symptomListe = Set(ListenFeld.parse(beglStr))
             if !symptomListe.isDisjoint(with: migraeneSym) {
                 migraeneVorDatum = datum
                 migraeneVorStaerke = min(10, max(1, schmerzstaerke))

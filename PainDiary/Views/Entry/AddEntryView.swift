@@ -295,7 +295,7 @@ struct AddEntryView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+            .background(Color.glassFill, in: Capsule())
         }
     }
 
@@ -394,7 +394,7 @@ struct AddEntryView: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .semibold))
                         .frame(width: 46, height: 46)
-                        .background(Color(.secondarySystemGroupedBackground), in: Circle())
+                        .background(Color.glassFill, in: Circle())
                 }
                 .buttonStyle(.plain)
             } else {
@@ -595,7 +595,7 @@ struct AddEntryView: View {
                 verlauf: verlauf
             )
             neu.istHautEintrag = (eintragTyp == .haut)
-            modelContext.insert(neu)
+            modelContext.einfuegenValidiert(neu)
         }
 
         // Detect migraine-like entry for cross-module suggestion
@@ -603,7 +603,7 @@ struct AddEntryView: View {
             "Lichtempfindlichkeit", "Lärmempfindlichkeit", "Übelkeit", "Sehstörungen (Aura)"
         ]
         if eintrag == nil, eintragTyp == .schmerz, koerperstelle.contains("Kopf") {
-            let symptomListe = Set(begleiterscheinungen.components(separatedBy: ", ").filter { !$0.isEmpty })
+            let symptomListe = Set(ListenFeld.parse(begleiterscheinungen))
             if !symptomListe.isDisjoint(with: migraeneSym) {
                 migraeneVorDatum = datum
                 migraeneVorStaerke = min(10, max(1, schmerzstaerke))
@@ -633,7 +633,7 @@ private struct OrtTypStepView: View {
     @State private var scanSetupAnzeigen = false
 
     private var ausgewaehlt: Set<String> {
-        Set(koerperstelle.components(separatedBy: ", ").filter { !$0.isEmpty })
+        Set(ListenFeld.parse(koerperstelle))
     }
 
     var body: some View {
@@ -706,7 +706,7 @@ private struct OrtTypStepView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
             .padding(.horizontal)
             .frame(maxHeight: .infinity)
             .layoutPriority(1)

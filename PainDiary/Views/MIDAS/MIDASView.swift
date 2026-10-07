@@ -43,6 +43,7 @@ struct MIDASView: View {
                     .frame(height: 140)
                     .padding(.vertical, 4)
                 }
+                .listRowBackground(Color.glassFill)
             }
 
             Section {
@@ -66,7 +67,9 @@ struct MIDASView: View {
                     .onDelete { idx in idx.forEach { modelContext.delete(bewertungen[$0]) } }
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("MIDAS-Score")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -108,7 +111,7 @@ struct MIDASView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func gradFarbe(_ score: Int) -> Color {
@@ -137,7 +140,7 @@ struct MIDASView: View {
                 .font(.subheadline).foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func infoPill(_ wert: String, label: String, farbe: Color) -> some View {
@@ -266,7 +269,7 @@ struct MIDASFragebogenView: View {
                             }
                         }
                         .padding(16)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
 
                         // Questions
                         ForEach(fragen.indices, id: \.self) { i in
@@ -310,7 +313,7 @@ struct MIDASFragebogenView: View {
                                 .padding(.vertical, 4)
                             }
                             .padding(16)
-                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                            .glassBackground(radius: 12)
                         }
 
                         // Notes
@@ -321,13 +324,13 @@ struct MIDASFragebogenView: View {
                                     .font(.subheadline).padding(16)
                                     .lineLimit(3...6)
                             }
-                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                            .glassBackground(radius: 12)
                         }
                     }
                     .padding(.horizontal).padding(.vertical, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .background(Color(.systemGroupedBackground))
+                .auroraScreen()
 
                 // Save button
                 HStack {
@@ -335,7 +338,7 @@ struct MIDASFragebogenView: View {
                         Label("Speichern", systemImage: "checkmark")
                             .font(.subheadline.bold()).foregroundStyle(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(Color.purple, in: RoundedRectangle(cornerRadius: 12))
+                            .glassTintBackground(Color.purple, radius: 12)
                     }
                     .buttonStyle(.plain)
                 }

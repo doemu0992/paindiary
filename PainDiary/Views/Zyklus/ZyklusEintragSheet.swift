@@ -41,7 +41,7 @@ struct ZyklusEintragSheet: View {
         if let e = bestehend {
             _fluss = State(initialValue: e.hatBlutung ? (e.fluss == .keine ? .mittel : e.fluss) : .keine)
             _nurHalberTag = State(initialValue: e.nurHalberTag)
-            _symptome = State(initialValue: Set(e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty }))
+            _symptome = State(initialValue: Set(ListenFeld.parse(e.symptome)))
             _lhTest = State(initialValue: e.lhTest)
             _schleim = State(initialValue: e.schleim)
             _basaltemperatur = State(initialValue: e.basaltemperatur > 0 ? String(format: "%.2f", e.basaltemperatur) : "")
@@ -337,10 +337,7 @@ struct ZyklusEintragSheet: View {
     }
 
     private func symptomHinzufuegen() {
-        // Komma ist das Trennzeichen im gespeicherten Feld → nicht erlaubt
-        let s = neuesSymptom
-            .replacingOccurrences(of: ",", with: " ")
-            .trimmingCharacters(in: .whitespaces)
+        let s = ListenFeld.bereinige(neuesSymptom)
         neuesSymptom = ""
         guard !s.isEmpty else { return }
         ChipSpeicher.hinzufuegen(s, schluessel: Self.chipSchluessel)
@@ -377,7 +374,7 @@ struct ZyklusEintragSheet: View {
         eintrag.istPeriode = fluss != .keine
         eintrag.fluss = fluss
         eintrag.nurHalberTag = fluss != .keine ? nurHalberTag : false
-        eintrag.symptome = symptome.sorted().joined(separator: ", ")
+        eintrag.symptome = ListenFeld.join(symptome.sorted())
         eintrag.lhTest = lhTest
         eintrag.schleim = schleim
         eintrag.basaltemperatur = bbtWert ?? 0

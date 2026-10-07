@@ -36,7 +36,7 @@ struct MedikamenteView: View {
                 guard n > 0 else { continue }
                 erwartet += n
                 let genommen = logs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count
                 eingenommen += min(genommen, n)
@@ -54,7 +54,7 @@ struct MedikamenteView: View {
             let n = notif.anzahlDosen(med.frequenz)
             guard n > 0 else { return 0 }
             return min(n, heutigeLogs.filter {
-                $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen
+                $0.gehoertZu(med) && $0.eingenommen
             }.count)
         }.reduce(0, +)
     }
@@ -68,7 +68,7 @@ struct MedikamenteView: View {
                 let n = notif.anzahlDosen(med.frequenz)
                 guard n > 0 else { return true }
                 return logs.filter {
-                    $0.medikamentName == med.name && $0.dosierung == med.dosierung &&
+                    $0.gehoertZu(med) &&
                     $0.eingenommen && $0.datum >= tag && $0.datum < tagEnde
                 }.count >= n
             }
@@ -92,6 +92,7 @@ struct MedikamenteView: View {
             heuteSektion
             if !inaktive.isEmpty { inaktiveSektion }
         }
+        .glassList()
         .navigationTitle("Medikamente")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -116,7 +117,7 @@ struct MedikamenteView: View {
         )) {
             Button("Löschen", role: .destructive) {
                 if let z = loeschenZiel {
-                    z.offsets.forEach { notif.loescheErinnerungen(fuer: z.liste[$0]); modelContext.delete(z.liste[$0]) }
+                    z.offsets.forEach { EintragLoeschService(context: modelContext).loesche(z.liste[$0]) }
                 }
                 loeschenZiel = nil
             }
@@ -147,7 +148,7 @@ struct MedikamenteView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 if !logs.isEmpty {
@@ -155,7 +156,7 @@ struct MedikamenteView: View {
                         Label("Medikamenten-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
                             .font(.subheadline.bold()).foregroundStyle(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
+                            .glassTintBackground(Color.blue, radius: 12)
                     }
                     .buttonStyle(.plain)
                 }
@@ -453,7 +454,7 @@ struct MedikamenteView: View {
     private func einnahmeKontrolle(med: Dauermedikation) -> some View {
         if med.frequenz == "Wöchentlich" || med.frequenz == "Monatlich" {
             let intervall = med.frequenz == "Monatlich" ? 30 : 7
-            let letzteEinnahme = logs.first { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
+            let letzteEinnahme = logs.first { $0.gehoertZu(med) && $0.eingenommen }
             let tageSeit: Int? = letzteEinnahme.map {
                 max(0, Calendar.current.dateComponents([.day], from: $0.datum, to: Date()).day ?? 0)
             }
@@ -483,7 +484,7 @@ struct MedikamenteView: View {
         } else {
             let anzahlErwartet = notif.anzahlDosen(med.frequenz)
             let anzahlHeute = heutigeLogs.filter {
-                $0.medikamentName == med.name && $0.dosierung == med.dosierung
+                $0.gehoertZu(med)
             }.count
 
             if anzahlErwartet == 0 {
@@ -516,7 +517,7 @@ struct MedikamenteView: View {
     }
 
     private func loggeMedikament(_ med: Dauermedikation) {
-        let log = EinnahmeLog(medikamentName: med.name, dosierung: med.dosierung, eingenommen: true)
+        let log = EinnahmeLog(medikamentName: med.name, dosierung: med.dosierung, eingenommen: true, medikamentID: med.notifID)
         modelContext.insert(log)
         notif.planeWirkungsAbfrage(fuer: log, stunden: med.wirkungsAbfrageStunden)
         if let vorrat = med.vorrat, vorrat > 0 {
@@ -634,14 +635,7 @@ struct MedikamentFormView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.blue.opacity(0.15)).frame(height: 3)
-                        Capsule().fill(Color.blue)
-                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
-                            .animation(.easeInOut(duration: 0.3), value: schritt)
-                    }
-                }
+                GlassProgressBar(tint: Color.blue, fortschritt: CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), schritt: schritt)
                 .frame(height: 3)
                 .padding(.horizontal)
                 .padding(.top, 10)
@@ -684,7 +678,7 @@ struct MedikamentFormView: View {
                     TextField("Dosierung (z.B. 400 mg)", text: $dosierung)
                         .font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Art").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
@@ -708,7 +702,7 @@ struct MedikamentFormView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
-                                .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                                 .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
                             }
@@ -729,7 +723,7 @@ struct MedikamentFormView: View {
                                     Text(opt.isEmpty ? "Kein Hinweis" : opt)
                                         .font(.caption.bold())
                                         .padding(.horizontal, 12).padding(.vertical, 7)
-                                        .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                        .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                         .foregroundStyle(ausgewaehlt ? .white : .primary)
                                         .clipShape(Capsule())
                                         .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
@@ -745,7 +739,7 @@ struct MedikamentFormView: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     // MARK: - Schritt 1: Einnahme
@@ -770,7 +764,7 @@ struct MedikamentFormView: View {
                                     .multilineTextAlignment(.center)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 11)
-                                    .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                    .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                     .foregroundStyle(ausgewaehlt ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                                     .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
@@ -795,7 +789,7 @@ struct MedikamentFormView: View {
                             .font(.subheadline).padding(16)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 if !frequenz.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -808,7 +802,7 @@ struct MedikamentFormView: View {
                                         .font(.caption.bold())
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 10)
-                                        .background(ausgewaehlt ? Color.blue : Color(.secondarySystemGroupedBackground))
+                                        .background(ausgewaehlt ? Color.blue : Color.glassFill)
                                         .foregroundStyle(ausgewaehlt ? .white : .primary)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                         .animation(.easeInOut(duration: 0.15), value: ausgewaehlt)
@@ -823,7 +817,7 @@ struct MedikamentFormView: View {
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     // MARK: - Schritt 2: Extras
@@ -858,7 +852,7 @@ struct MedikamentFormView: View {
                             }
                         }
                     }
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
                 }
 
                 VStack(spacing: 0) {
@@ -873,7 +867,7 @@ struct MedikamentFormView: View {
                             .font(.subheadline).padding(16)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 VStack(spacing: 0) {
                     Toggle("Ablaufdatum setzen", isOn: $ablaufAktiv)
@@ -884,13 +878,13 @@ struct MedikamentFormView: View {
                             .font(.subheadline).padding(16)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal)
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     // MARK: - Navigation
@@ -904,7 +898,7 @@ struct MedikamentFormView: View {
                     Text("Zurück")
                         .font(.subheadline.bold())
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }
                 .buttonStyle(.plain)
             }
@@ -924,7 +918,7 @@ struct MedikamentFormView: View {
                     Text("Weiter ›")
                         .font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(kannWeiter ? Color.blue : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(kannWeiter ? Color.blue : Color.secondary, radius: 12)
                 }
                 .buttonStyle(.plain)
                 .disabled(!kannWeiter)
@@ -933,7 +927,7 @@ struct MedikamentFormView: View {
                     Label("Speichern", systemImage: "checkmark")
                         .font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color.blue, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(Color.blue, radius: 12)
                 }
                 .buttonStyle(.plain)
                 .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || frequenz.isEmpty)
@@ -1067,6 +1061,7 @@ struct EinnahmeLogSheet: View {
                         Text("Einzelne Einnahme zu einem bestimmten Zeitpunkt erfassen.")
                     }
                 }
+                .listRowBackground(Color.glassFill)
 
                 if !med.dosierung.isEmpty {
                     Section {
@@ -1076,12 +1071,14 @@ struct EinnahmeLogSheet: View {
                             Text(med.dosierung).foregroundStyle(.secondary)
                         }
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 Section("Notizen") {
                     TextField("Besonderheiten, Nebenwirkungen…", text: $notizen, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
                 }
+                .listRowBackground(Color.glassFill)
 
                 // Rückwirkend nacherfassen (nur für Dauermedikamente mit fixer Einnahmezeit)
                 if !istBeiBedarfs && !istWöchentlich && !istMonatlich && !fehlende.isEmpty {
@@ -1103,8 +1100,10 @@ struct EinnahmeLogSheet: View {
                         let zeitText = zeiten.map(\.anzeigeText).joined(separator: ", ")
                         Text("Erstellt Einträge ab \(med.startDatum, format: .dateTime.day().month(.abbreviated).year()) bis heute zu den Zeiten \(zeitText). Bereits vorhandene Einnahmen werden übersprungen.")
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
+            .glassList()
             .navigationTitle("Einnahme erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1123,7 +1122,7 @@ struct EinnahmeLogSheet: View {
 
     private func speichereEinzelLog() {
         let log = EinnahmeLog(datum: logDatum, medikamentName: med.name,
-                              dosierung: med.dosierung, eingenommen: true, notizen: notizen)
+                              dosierung: med.dosierung, eingenommen: true, notizen: notizen, medikamentID: med.notifID)
         modelContext.insert(log)
         let stundenBisJetzt = max(0, Date().timeIntervalSince(logDatum)) / 3600
         let verbleibend = Double(med.wirkungsAbfrageStunden) - stundenBisJetzt
@@ -1157,8 +1156,7 @@ struct EinnahmeLogSheet: View {
                 dc.hour = zeit.stunde; dc.minute = zeit.minute
                 guard let datum = kal.date(from: dc), datum <= heute else { continue }
                 let schonVorhanden = logs.contains { log in
-                    log.medikamentName == med.name &&
-                    log.dosierung == med.dosierung &&
+                    log.gehoertZu(med) &&
                     log.eingenommen &&
                     kal.isDate(log.datum, inSameDayAs: tag) &&
                     abs(log.datum.timeIntervalSince(datum)) < 7200
@@ -1174,7 +1172,7 @@ struct EinnahmeLogSheet: View {
     private func erstelleFehlendeLogs() {
         for datum in fehlende {
             let log = EinnahmeLog(datum: datum, medikamentName: med.name,
-                                  dosierung: med.dosierung, eingenommen: true)
+                                  dosierung: med.dosierung, eingenommen: true, medikamentID: med.notifID)
             modelContext.insert(log)
         }
     }
@@ -1230,11 +1228,11 @@ struct EinnahmeLogView: View {
             }
             .onDelete { idx in
                 idx.forEach {
-                    NotificationManager.shared.loescheWirkungsAbfrage(fuer: logs[$0])
-                    modelContext.delete(logs[$0])
+                    EintragLoeschService(context: modelContext).loesche(logs[$0])
                 }
             }
         }
+        .glassList()
         .navigationTitle("Einnahme-Verlauf")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
