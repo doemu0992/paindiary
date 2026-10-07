@@ -39,6 +39,8 @@
 	<string>Wetterbedingungen zum Zeitpunkt deines Schmerzeintrags erfassen</string>
 
 	<!-- Background Modes -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

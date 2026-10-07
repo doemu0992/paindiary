@@ -1,80 +1,55 @@
-//
-//  PainDiary_Live_WidgetLiveActivity.swift
-//  PainDiary_Live_Widget
-//
-//  Created by Dominik Gerber on 07.10.2026.
-//
-
 import ActivityKit
 import WidgetKit
 import SwiftUI
 
-struct PainDiary_Live_WidgetAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
-        // Dynamic stateful properties about your activity go here!
-        var emoji: String
-    }
-
-    // Fixed non-changing properties about your activity go here!
-    var name: String
-}
-
 struct PainDiary_Live_WidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
-        ActivityConfiguration(for: PainDiary_Live_WidgetAttributes.self) { context in
-            // Lock screen/banner UI goes here
-            VStack {
-                Text("Hello \(context.state.emoji)")
+        ActivityConfiguration(for: ZyklusLiveAttributes.self) { context in
+            HStack(spacing: 14) {
+                Image(systemName: context.state.symbol)
+                    .font(.title)
+                    .foregroundStyle(farbe(context.attributes.art))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(context.state.titel).font(.headline)
+                    Text(context.state.detail).font(.subheadline).foregroundStyle(.secondary)
+                }
+                Spacer()
+                VStack(spacing: 0) {
+                    Text("TAG").font(.caption2).foregroundStyle(.secondary)
+                    Text("\(context.state.zyklustag)")
+                        .font(.system(.title, design: .rounded).bold())
+                        .foregroundStyle(farbe(context.attributes.art))
+                }
             }
-            .activityBackgroundTint(Color.cyan)
-            .activitySystemActionForegroundColor(Color.black)
-
+            .padding()
+            .activityBackgroundTint(Color.black.opacity(0.35))
+            .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
-                // Expanded UI goes here.  Compose the expanded UI through
-                // various regions, like leading/trailing/center/bottom
                 DynamicIslandExpandedRegion(.leading) {
-                    Text("Leading")
+                    Image(systemName: context.state.symbol).foregroundStyle(farbe(context.attributes.art))
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text("Trailing")
+                    Text("Tag \(context.state.zyklustag)").font(.headline)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text("Bottom \(context.state.emoji)")
-                    // more content
+                    VStack(alignment: .leading) {
+                        Text(context.state.titel).font(.headline)
+                        Text(context.state.detail).font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             } compactLeading: {
-                Text("L")
+                Image(systemName: context.state.symbol).foregroundStyle(farbe(context.attributes.art))
             } compactTrailing: {
-                Text("T \(context.state.emoji)")
+                Text("\(context.state.zyklustag)")
             } minimal: {
-                Text(context.state.emoji)
+                Image(systemName: context.state.symbol).foregroundStyle(farbe(context.attributes.art))
             }
-            .widgetURL(URL(string: "http://www.apple.com"))
-            .keylineTint(Color.red)
+            .keylineTint(farbe(context.attributes.art))
         }
     }
-}
 
-extension PainDiary_Live_WidgetAttributes {
-    fileprivate static var preview: PainDiary_Live_WidgetAttributes {
-        PainDiary_Live_WidgetAttributes(name: "World")
+    private func farbe(_ art: String) -> Color {
+        art == "fruchtbar" ? .teal : Color(red: 0.90, green: 0.25, blue: 0.40)
     }
-}
-
-extension PainDiary_Live_WidgetAttributes.ContentState {
-    fileprivate static var smiley: PainDiary_Live_WidgetAttributes.ContentState {
-        PainDiary_Live_WidgetAttributes.ContentState(emoji: "😀")
-     }
-     
-     fileprivate static var starEyes: PainDiary_Live_WidgetAttributes.ContentState {
-         PainDiary_Live_WidgetAttributes.ContentState(emoji: "🤩")
-     }
-}
-
-#Preview("Notification", as: .content, using: PainDiary_Live_WidgetAttributes.preview) {
-   PainDiary_Live_WidgetLiveActivity()
-} contentStates: {
-    PainDiary_Live_WidgetAttributes.ContentState.smiley
-    PainDiary_Live_WidgetAttributes.ContentState.starEyes
 }
