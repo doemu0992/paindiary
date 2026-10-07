@@ -99,11 +99,12 @@ struct ZyklusVerlaufView: View {
             Chart {
                 ForEach(Array(daten.enumerated()), id: \.element.id) { index, info in
                     // yStart statt Baseline 0: Balken bleiben innerhalb der Y-Achse (kein Überlaufen in die nächste Karte)
-                    BarMark(
-                        x: .value("Zyklus", index),
+                    // RectangleMark mit expliziten Grenzen: BarMark(.ratio) hat auf numerischer X-Achse Breite 0
+                    RectangleMark(
+                        xStart: .value("Von", Double(index) - 0.35),
+                        xEnd: .value("Bis", Double(index) + 0.35),
                         yStart: .value("Min", minY),
-                        yEnd: .value("Tage", info.laenge ?? 0),
-                        width: .ratio(0.7)
+                        yEnd: .value("Tage", info.laenge ?? 0)
                     )
                     .foregroundStyle(info.fuerStatistikGueltig ? Color.pink.gradient : Color.secondary.opacity(0.4).gradient)
                     .cornerRadius(4)
