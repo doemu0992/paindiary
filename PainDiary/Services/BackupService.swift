@@ -309,12 +309,14 @@ extension BackupService {
         var datum: Date; var typ: String; var notizen: String; var istPeriode: Bool; var blutungsfluss: String
         var nurHalberTag: Bool; var symptome: String; var ovulationstest: String; var zervixschleim: String
         var basaltemperatur: Double; var sexuelleAktivitaet: String; var timeZoneID: String
+        var quelle: String? = nil   // optional: ältere Backups kennen das Feld nicht
 
         init(_ z: ZyklusEintrag) {
             datum = z.datum; typ = z.typ; notizen = z.notizen; istPeriode = z.istPeriode
             blutungsfluss = z.blutungsfluss; nurHalberTag = z.nurHalberTag; symptome = z.symptome
             ovulationstest = z.ovulationstest; zervixschleim = z.zervixschleim
             basaltemperatur = z.basaltemperatur; sexuelleAktivitaet = z.sexuelleAktivitaet; timeZoneID = z.timeZoneID
+            quelle = z.quelle
         }
 
         func modell() -> ZyklusEintrag {
@@ -323,6 +325,7 @@ extension BackupService {
             z.nurHalberTag = nurHalberTag; z.symptome = symptome; z.ovulationstest = ovulationstest
             z.zervixschleim = zervixschleim; z.basaltemperatur = basaltemperatur
             z.sexuelleAktivitaet = sexuelleAktivitaet
+            z.quelle = quelle ?? ""
             z.timeZoneID = timeZoneID.isEmpty ? TimeZone.current.identifier : timeZoneID
             return z
         }
