@@ -428,3 +428,36 @@ struct EisprungBestaetigungTests {
         #expect(a.zyklen.last?.eisprung == kal.date(byAdding: .day, value: 15, to: start))
     }
 }
+
+struct ZyklusKISicherheitTests {
+    @Test func diagnoseWirdAbgefangen() {
+        let a = ZyklusKISicherheit.pruefe("Das spricht für PCOS bei dir.")
+        #expect(a.hasPrefix(ZyklusKISicherheit.ersatztext))
+        #expect(!a.localizedCaseInsensitiveContains("pcos"))
+    }
+
+    @Test func verhuetungsAussageWirdAbgefangen() {
+        let a = ZyklusKISicherheit.pruefe("An diesen Tagen besteht kein Risiko für eine Schwangerschaft.")
+        #expect(a.hasPrefix(ZyklusKISicherheit.ersatztext))
+    }
+
+    @Test func harmloseAntwortBleibtMitHinweis() {
+        let text = "In deinen Daten sind Schmerzen tendenziell in der Lutealphase höher."
+        let a = ZyklusKISicherheit.pruefe(text)
+        #expect(a.hasPrefix(text))
+        #expect(a.hasSuffix(ZyklusKISicherheit.hinweis))
+    }
+
+    @Test func leereAntwortUnveraendert() {
+        #expect(ZyklusKISicherheit.pruefe("  ") == "  ")
+    }
+
+    @Test func datenlageMarkiertDuenneDaten() {
+        let d = ZyklusKISicherheit.datenlage(gueltigeZyklen: 2, datenQualitaet: "Wenig Daten", regelmaessig: false, eisprungBestaetigt: false)
+        #expect(d.contains("DÜNN"))
+        #expect(d.contains("nur geschätzt"))
+        let ok = ZyklusKISicherheit.datenlage(gueltigeZyklen: 5, datenQualitaet: "Gut", regelmaessig: true, eisprungBestaetigt: true)
+        #expect(ok.contains("ausreichend"))
+        #expect(ok.contains("bestätigt"))
+    }
+}

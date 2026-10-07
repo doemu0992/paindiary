@@ -168,6 +168,7 @@ struct ZyklusTagesSicht {
     private(set) var sexAktivitaet: SexAktivitaet = .keine
     private(set) var notizen = ""
     private(set) var anzahl = 0
+    private(set) var eisprungBestaetigt = false
 
     private static func rang(_ f: Blutungsfluss) -> Int {
         switch f {
@@ -184,6 +185,7 @@ struct ZyklusTagesSicht {
         var notizListe: [String] = []
         for e in eintraege.sorted(by: { $0.datum < $1.datum }) {
             anzahl += 1
+            if e.eisprungBestaetigt { eisprungBestaetigt = true }
             if e.hatBlutung {
                 hatBlutung = true
                 if Self.rang(e.fluss) > Self.rang(fluss) { fluss = e.fluss }

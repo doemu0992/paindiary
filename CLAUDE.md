@@ -1033,6 +1033,10 @@ Gilt nur für `Views/Zyklus/` — Kachel im Dashboard folgt weiterhin dem Kachel
 - Pro Kalendertag **ein** `ZyklusEintrag`. Sheets immer mit dem bestehenden Tageseintrag öffnen (`bestehend:`).
 - Prognosen sind Schätzungen: Disclaimer („keine Verhütung") und „Prognosen pausieren" (`zyklusPrognosenPausiert`) bleiben erhalten.
 
+**Widget & Live Activity:** Target `PainDiary_Live_Widget` (Home/Lockscreen + Live Activity). Daten über App Group `group.com.doemu0992.sleepbuddy`: `ZyklusWidgetService` schreibt `ZyklusWidgetSnapshot` (JSON in UserDefaults der Gruppe). `Shared/ZyklusWidgetSnapshot.swift` existiert **identisch** in App und Widget-Ordner — Änderungen immer in beiden Kopien.
+
+**Partner-Sharing (`Services/ZyklusPartnerService.swift`):** CloudKit-Sharing (CKShare) mit einem Snapshot-Record (`ZyklusSnapshot`, JSON im Backup-Format) in der Zone `ZyklusPartner`; Partner:in sieht alles, aber nur lesend (`ZyklusPartnerView`, transiente Modelle, nie in den ModelContext einfügen). Neue Zyklus-Felder → automatisch über `BackupService.ZyklusDTO`. Einladung wird per `PartnerSceneDelegate` angenommen. CloudKit-Schema (Record-Typ `ZyklusSnapshot`) muss vor Release im CloudKit-Dashboard nach Production deployt werden.
+
 **Apple Health (`Services/ZyklusHealthKitService.swift`):** Mapping 1:1 auf `menstrualFlow` / `intermenstrualBleeding` / `cervicalMucusQuality` / `ovulationTestResult` / `basalBodyTemperature` / `sexualActivity`. Import füllt nur leere Felder, Export per Sync-Identifier (kein Duplizieren), eigene Samples werden nicht reimportiert.
 
 ---

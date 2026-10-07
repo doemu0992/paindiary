@@ -1,5 +1,6 @@
 import Foundation
 import WidgetKit
+import ActivityKit
 
 /// Schreibt den aktuellen Zyklusstand in die App Group und stößt Widgets an.
 enum ZyklusWidgetService {
@@ -29,6 +30,46 @@ enum ZyklusWidgetService {
         }
         snapshot.speichern()
         WidgetCenter.shared.reloadAllTimelines()
+        liveActivityAktualisieren(snapshot)
+    }
+
+    // MARK: - Live Activity (Sperrbildschirm / Dynamic Island)
+
+    /// Läuft nur an Tagen mit Anlass: fruchtbares Fenster oder Periode heute/morgen erwartet.
+    /// ActivityKit erlaubt das Starten nur im Vordergrund — daher beim Öffnen/Ändern in der App.
+    private static func liveActivityAktualisieren(_ s: ZyklusWidgetSnapshot) {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        var art: String? = nil
+        var inhalt: ZyklusLiveAttributes.ContentState? = nil
+        if let tag = s.zyklustag, !s.prognosenPausiert {
+            if s.fruchtbar {
+                art = "fruchtbar"
+                inhalt = .init(titel: "Fruchtbares Fenster",
+                               detail: s.eisprungBestaetigt ? "Eisprung bestätigt" : "Eisprung geschätzt",
+                               symbol: "sparkles", zyklustag: tag)
+            } else if let t = s.tageBisPeriode, t >= 0, t <= 1 {
+                art = "periode"
+                inhalt = .init(titel: t == 0 ? "Periode heute erwartet" : "Periode morgen erwartet",
+                               detail: "Prognose, kann abweichen", symbol: "drop.fill", zyklustag: tag)
+            }
+        }
+
+        let laufende = Activity<ZyklusLiveAttributes>.activities
+        guard let art, let inhalt else {
+            for a in laufende { Task { await a.end(nil, dismissalPolicy: .immediate) } }
+            return
+        }
+        let ende = Calendar.current.startOfDay(for: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date())
+        let inhaltMitAblauf = ActivityContent(state: inhalt, staleDate: ende)
+
+        if let vorhanden = laufende.first(where: { $0.attributes.art == art }) {
+            Task { await vorhanden.update(inhaltMitAblauf) }
+            for a in laufende where a.id != vorhanden.id { Task { await a.end(nil, dismissalPolicy: .immediate) } }
+        } else {
+            for a in laufende { Task { await a.end(nil, dismissalPolicy: .immediate) } }
+            _ = try? Activity.request(attributes: ZyklusLiveAttributes(art: art), content: inhaltMitAblauf)
+        }
     }
 
     private static func symbol(_ phase: ZyklusRechner.Zyklusphase?) -> String {

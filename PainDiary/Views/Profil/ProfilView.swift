@@ -307,6 +307,11 @@ private struct ProfilInhaltView: View {
                     Image(systemName: "drop.fill").foregroundStyle(.pink)
                 }
             }
+            NavigationLink(destination: ZyklusPartnerView()) {
+                Label { Text("Geteilter Zyklus (Partner:in)") } icon: {
+                    Image(systemName: "person.2.fill").foregroundStyle(.pink)
+                }
+            }
             NavigationLink(destination: HautView()) {
                 Label { Text("Hautveränderungen") } icon: {
                     Image(systemName: "bandage.fill").foregroundStyle(.orange)

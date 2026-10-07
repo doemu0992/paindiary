@@ -9,11 +9,16 @@ import FoundationModels
 struct KIAnalyseKarte: View {
     let prompt: String
     let modulTint: Color
+    /// Modul-spezifische Instruktionen (ersetzt den allgemeinen System-Prompt).
+    var systemPrompt: String? = nil
+    /// Prüft/bereinigt die fertige Antwort (z. B. Guardrails gegen Diagnosen).
+    var nachbearbeitung: ((String) -> String)? = nil
 
     var body: some View {
 #if canImport(FoundationModels)
         if #available(iOS 26, *) {
-            KIInsightContent(prompt: prompt, modulTint: modulTint)
+            KIInsightContent(prompt: prompt, modulTint: modulTint,
+                             systemPromptOverride: systemPrompt, nachbearbeitung: nachbearbeitung)
                 .id(prompt)
         }
 #endif
@@ -25,6 +30,8 @@ struct KIAnalyseKarte: View {
 private struct KIInsightContent: View {
     let prompt: String
     let modulTint: Color
+    var systemPromptOverride: String? = nil
+    var nachbearbeitung: ((String) -> String)? = nil
 
     @State private var session: LanguageModelSession? = nil
     @State private var antwort = ""
@@ -105,7 +112,7 @@ private struct KIInsightContent: View {
 
     private func generieren() async {
         if session == nil {
-            session = LanguageModelSession(instructions: systemPrompt)
+            session = LanguageModelSession(instructions: systemPromptOverride ?? systemPrompt)
         }
         guard let session else { return }
         isGenerating = true
@@ -117,6 +124,7 @@ private struct KIInsightContent: View {
             for try await partial in stream {
                 antwort = partial.content
             }
+            if let nachbearbeitung { antwort = nachbearbeitung(antwort) }
         } catch {
             fehler = "Apple Intelligence nicht verfügbar. Stelle sicher, dass es in den Einstellungen aktiviert ist."
             hatGeneriert = false
