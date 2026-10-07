@@ -1,74 +1,45 @@
 import SwiftUI
 import SwiftData
 
+/// Schlaf-Dashboard im Bento-Aufbau: Qualitäts-Ring (30 Tage), Kacheln, Nacht-Chips, Verlauf als Tageskarten.
 struct SchlafView: View {
     @State private var nächte: [SleepNightSummary]
+    @State private var vm = SchlafDashboardViewModel()
+    @State private var ansicht: ModulAnsicht = .heute
     @State private var zeigeAnalyse = false
+
+    private let tint = Color.indigo
+    private let spalten = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    private var u: SchlafUebersicht { vm.uebersicht }
 
     init(nächte: [SleepNightSummary] = SleepNightSummary.laden()) {
         _nächte = State(initialValue: nächte)
     }
 
-    private var avg30Qualitaet: String {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        let gefiltert = nächte.filter { $0.date >= cutoff }
-        guard !gefiltert.isEmpty else { return "–" }
-        let avg = gefiltert.map(\.qualitaet).reduce(0, +) / Double(gefiltert.count)
-        return String(format: "%.0f", avg)
-    }
-
-    private var avgDauer30: String {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        let gefiltert = nächte.filter { $0.date >= cutoff }
-        guard !gefiltert.isEmpty else { return "–" }
-        let avg = gefiltert.map(\.dauerStunden).reduce(0, +) / Double(gefiltert.count)
-        return String(format: "%.1f h", avg)
-    }
-
-    private var anzahl30: Int {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        return nächte.filter { $0.date >= cutoff }.count
-    }
-
     var body: some View {
-        List {
-            statistikSektion
+        ScrollView {
+            VStack(spacing: 12) {
+                GlassSegmentPicker(auswahl: $ansicht, optionen: ModulAnsicht.allCases, titel: { $0.rawValue })
 
-            if nächte.isEmpty {
-                Section {
-                    VStack(spacing: 16) {
-                        Image(systemName: "moon.zzz.fill")
-                            .font(.system(size: 40))
-                            .foregroundStyle(.indigo.opacity(0.4))
-                        Text("Noch keine Schlafdaten")
-                            .font(.headline)
-                        Text("Starte eine Schlafaufzeichnung in SleepBuddy. Die Daten erscheinen hier automatisch nach der nächsten Nacht.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 24)
-                }
-                .listRowBackground(Color.clear)
-            } else {
-                Section("Schlafnächte") {
-                    ForEach(nächte) { nacht in
-                        SchlafNachtZeile(nacht: nacht)
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    SleepNightSummary.loeschen(nacht)
-                                    nächte = SleepNightSummary.laden()
-                                } label: {
-                                    Label("Löschen", systemImage: "trash")
-                                }
-                            }
+                if nächte.isEmpty {
+                    leerKarte
+                } else {
+                    switch ansicht {
+                    case .heute:
+                        heroKarte
+                        bentoRaster
+                        zuletztBereich
+                    case .verlauf:
+                        ChipTageskarten(elemente: nächte, tag: { DayKey($0.date) }, datum: { $0.date }) {
+                            nachtChip($0, volleBreite: true)
+                        }
                     }
                 }
-                .listRowBackground(GlassRowBackground())
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
-        .glassList(.wellness)
+        .auroraScreen(.wellness)
         .navigationTitle("Schlaf")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -80,54 +51,123 @@ struct SchlafView: View {
                 }
             }
         }
-        .sheet(isPresented: $zeigeAnalyse) {
-            SchlafAnalyseView(nächte: nächte)
-        }
+        .sheet(isPresented: $zeigeAnalyse) { SchlafAnalyseView(nächte: nächte) }
+        .onAppear { vm.aktualisiere(naechte: nächte) }
+        .onChange(of: nächte.count) { _, _ in vm.aktualisiere(naechte: nächte) }
     }
 
-    private var statistikSektion: some View {
-        Section {
-            VStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("30-Tage-Überblick", systemImage: "moon.stars.fill")
-                        .font(.headline)
-                        .foregroundStyle(.indigo)
-                    Divider()
-                    HStack(spacing: 0) {
-                        statPill(avg30Qualitaet, label: "Ø Qualität", farbe: avg30Qualitaet == "–" ? .secondary : .indigo)
-                        Divider().frame(height: 40)
-                        statPill(avgDauer30, label: "Ø Dauer", farbe: .secondary)
-                        Divider().frame(height: 40)
-                        statPill("\(anzahl30)", label: "Nächte", farbe: .secondary)
-                    }
-                }
-                .padding()
-                .glassCard(radius: 24, padding: 0)
+    // MARK: - Leer
 
-                if !nächte.isEmpty {
-                    Button { zeigeAnalyse = true } label: {
-                        Label("Schlaf-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .glassTintButton(Color.indigo)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.vertical, 4)
-        }
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        .listRowBackground(Color.clear)
-    }
-
-    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
-            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+    private var leerKarte: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "moon.zzz.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(tint.opacity(0.6))
+            Text("Noch keine Schlafdaten").font(.headline)
+            Text("Starte eine Schlafaufzeichnung in SleepBuddy. Die Daten erscheinen hier automatisch nach der nächsten Nacht.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
+        .glassCard(radius: 28, padding: 24)
+    }
+
+    // MARK: - Hero
+
+    private var heroKarte: some View {
+        VStack(spacing: 12) {
+            GlassSectionLabel("Ø Schlafqualität · 30 Tage")
+
+            GlassRing(
+                fortschritt: (u.qualitaetSchnitt30 ?? 0) / 100,
+                farbe: qualitaetsFarbe(u.qualitaetSchnitt30 ?? 0),
+                mitte: String(format: "%.0f", u.qualitaetSchnitt30 ?? 0),
+                unterzeile: "von 100",
+                platzhalter: u.qualitaetSchnitt30 == nil,
+                beschreibung: u.qualitaetSchnitt30.map { "Durchschnittliche Schlafqualität \(Int($0.rounded())) von 100" } ?? "Keine Schlafdaten"
+            )
+
+            Text(letzteNachtText)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button { zeigeAnalyse = true } label: {
+                Label("Schlaf-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .glassTintButton(tint, radius: 22)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .glassCard(radius: 28, padding: 20)
+    }
+
+    private var letzteNachtText: String {
+        guard let n = u.letzteNacht else { return "" }
+        return "Letzte Nacht: \(String(format: "%.1f", n.dauerStunden)) h · Qualität \(Int(n.qualitaet.rounded()))"
+    }
+
+    private func qualitaetsFarbe(_ q: Double) -> Color {
+        q >= 70 ? .green : (q >= 45 ? .orange : .red)
+    }
+
+    // MARK: - Bento-Raster
+
+    private var bentoRaster: some View {
+        LazyVGrid(columns: spalten, spacing: 12) {
+            BentoKachel(
+                symbol: "bed.double.fill", label: "Ø Schlafdauer", tint: tint,
+                wert: u.dauerSchnitt30.map { String(format: "%.1f", $0) } ?? "–",
+                einheit: u.dauerSchnitt30 == nil ? nil : "h"
+            )
+            BentoKachel(
+                symbol: "moon.stars.fill", label: "Nächte · 30 Tage", tint: tint,
+                wert: "\(u.anzahl30)"
+            )
+            BentoKachel(
+                symbol: "waveform.path", label: "Ø Tiefschlaf", tint: tint,
+                wert: u.tiefSchnitt30.map { String(format: "%.0f", $0 * 100) } ?? "–",
+                einheit: u.tiefSchnitt30 == nil ? nil : "%"
+            )
+            BentoKachel(
+                symbol: "brain.head.profile", label: "Ø REM-Schlaf", tint: tint,
+                wert: u.remSchnitt30.map { String(format: "%.0f", $0 * 100) } ?? "–",
+                einheit: u.remSchnitt30 == nil ? nil : "%"
+            )
+        }
+    }
+
+    // MARK: - Zuletzt
+
+    private var zuletztBereich: some View {
+        VStack(spacing: 8) {
+            ZuletztKopf(titel: "Letzte Nächte") { withAnimation { ansicht = .verlauf } }
+            ChipStreifen(elemente: nächte) { nachtChip($0, volleBreite: false) }
+        }
+    }
+
+    private func nachtChip(_ nacht: SleepNightSummary, volleBreite: Bool) -> some View {
+        var untertitel = "\(String(format: "%.1f", nacht.dauerStunden)) h · Tief \(Int(nacht.tiefPct * 100)) % · REM \(Int(nacht.remPct * 100)) %"
+        if nacht.schnarchenAnzahl > 0 { untertitel += " · \(nacht.schnarchenAnzahl)× Schnarchen" }
+        return GlassEintragChip(
+            kennwert: String(format: "%.0f", nacht.qualitaet),
+            titel: TagBeschriftung.kurz(DayKey(nacht.date)),
+            untertitel: untertitel,
+            tint: qualitaetsFarbe(nacht.qualitaet),
+            hervorgehoben: nacht.qualitaet < 45,
+            volleBreite: volleBreite
+        )
+        .contextMenu {
+            Button(role: .destructive) {
+                SleepNightSummary.loeschen(nacht)
+                nächte = SleepNightSummary.laden()
+                vm.aktualisiere(naechte: nächte)
+            } label: { Label("Löschen", systemImage: "trash") }
+        }
     }
 }
 

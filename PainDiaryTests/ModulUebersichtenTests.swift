@@ -203,3 +203,37 @@ struct MedikationsUebersichtTests {
         #expect(abs(u.adherenz7T - 300.0 / 7.0) < 0.0001)
     }
 }
+
+struct SchlafUndWellnessTests {
+    let heute = tag(2026, 10, 7)
+
+    private func nacht(_ t: DayKey, q: Double, h: Double, tief: Double = 0.2, rem: Double = 0.2) -> SchlafMesspunkt {
+        SchlafMesspunkt(datum: datum(t), tag: t, qualitaet: q, dauerStunden: h, tiefAnteil: tief, remAnteil: rem)
+    }
+
+    @Test func schlafLeer() {
+        let u = SchlafUebersicht.berechne(punkte: [], heute: heute)
+        #expect(u.qualitaetSchnitt30 == nil)
+        #expect(u.letzteNacht == nil)
+    }
+
+    @Test func schlafSchnittNurImMonat() {
+        let u = SchlafUebersicht.berechne(punkte: [
+            nacht(heute, q: 80, h: 8, tief: 0.25, rem: 0.2),
+            nacht(tag(2026, 10, 6), q: 60, h: 6, tief: 0.15, rem: 0.1),
+            nacht(tag(2026, 7, 1), q: 10, h: 2)   // außerhalb 30 Tage
+        ], heute: heute)
+        #expect(u.anzahl30 == 2)
+        #expect(u.qualitaetSchnitt30 == 70)
+        #expect(u.dauerSchnitt30 == 7)
+        #expect(u.tiefSchnitt30 == 0.2)
+        #expect(u.remSchnitt30 == 0.15)
+    }
+
+    @Test func wellnessTagesfortschritt() {
+        #expect(WellnessTagesfortschritt.erledigt(stimmung: 0, stress: 0, energie: 0, wasserMl: 0, wasserZielMl: 2000, mahlzeiten: 0) == 0)
+        #expect(WellnessTagesfortschritt.erledigt(stimmung: 3, stress: 2, energie: 4, wasserMl: 2000, wasserZielMl: 2000, mahlzeiten: 2) == 5)
+        #expect(WellnessTagesfortschritt.erledigt(stimmung: 3, stress: 0, energie: 0, wasserMl: 1500, wasserZielMl: 2000, mahlzeiten: 0) == 1)
+        #expect(WellnessTagesfortschritt.erledigt(stimmung: 0, stress: 0, energie: 0, wasserMl: 100, wasserZielMl: 0, mahlzeiten: 0) == 0)
+    }
+}

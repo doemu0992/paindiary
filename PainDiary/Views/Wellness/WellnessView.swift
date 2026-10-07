@@ -88,31 +88,39 @@ struct WellnessView: View {
     // MARK: - Tages-Header
 
     private var tagesHeaderKarte: some View {
-        VStack(spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(Date(), style: .date)
-                        .font(.headline)
-                    Text("Erfasse dein tägliches Wohlbefinden")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Image(systemName: "heart.text.square.fill")
-                    .font(.title2).foregroundStyle(.mint)
-            }
+        let mahlzeiten = [fruehstueck, mittag, abend].filter { $0 }.count
+        let erledigt = WellnessTagesfortschritt.erledigt(
+            stimmung: stimmung, stress: stressLevel, energie: energielevel,
+            wasserMl: wasserMl, wasserZielMl: wasserZielMl, mahlzeiten: mahlzeiten
+        )
+        return VStack(spacing: 12) {
+            GlassSectionLabel(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)))
 
-            Divider()
+            GlassRing(
+                fortschritt: Double(erledigt) / Double(WellnessTagesfortschritt.anzahlZiele),
+                farbe: .mint,
+                mitte: "\(erledigt)/\(WellnessTagesfortschritt.anzahlZiele)",
+                unterzeile: "Tagesziele",
+                beschreibung: "\(erledigt) von \(WellnessTagesfortschritt.anzahlZiele) Tageszielen erledigt"
+            )
+
+            HStack(spacing: 8) {
+                GlassPille(text: "\(wasserMl) ml Wasser", tint: .teal)
+                if let schlaf = hkSchlaf { GlassPille(text: String(format: "%.1f h Schlaf", schlaf), tint: .indigo) }
+                if let schritte = hkSchritte { GlassPille(text: "\(schritte) Schritte") }
+            }
 
             Button { zeigeAnalyse = true } label: {
                 Label("Wohlbefinden-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                    .font(.subheadline.bold()).foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity).padding(.vertical, 12)
-                    .glassTintButton(Color.mint)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .glassTintButton(Color.mint, radius: 20)
             }
             .buttonStyle(.plain)
         }
-        .padding()
-        .glassBackground(radius: 16)
+        .frame(maxWidth: .infinity)
+        .glassCard(radius: 28, padding: 20)
     }
 
     // MARK: - Stimmung
@@ -162,7 +170,7 @@ struct WellnessView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: stimmung)
         .padding()
-        .glassBackground(radius: 16)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Stress
@@ -212,7 +220,7 @@ struct WellnessView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: stressLevel)
         .padding()
-        .glassBackground(radius: 16)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Energie
@@ -261,7 +269,7 @@ struct WellnessView: View {
         }
         .animation(.easeInOut(duration: 0.15), value: energielevel)
         .padding()
-        .glassBackground(radius: 16)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - HealthKit Karte
@@ -320,7 +328,7 @@ struct WellnessView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Wasser-Tracker
@@ -424,7 +432,7 @@ struct WellnessView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Ernährung
@@ -460,7 +468,7 @@ struct WellnessView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private func zaehlerZeile(symbol: String, farbe: Color, label: String, einheit: String,
@@ -549,7 +557,7 @@ struct WellnessView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private func streakInfo(symbol: String, farbe: Color, text: String) -> some View {

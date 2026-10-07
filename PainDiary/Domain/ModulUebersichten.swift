@@ -263,3 +263,56 @@ nonisolated struct MedikationsUebersicht: Equatable, Sendable {
         return u
     }
 }
+
+// MARK: - Schlaf
+
+nonisolated struct SchlafMesspunkt: Equatable, Sendable {
+    let datum: Date
+    let tag: DayKey
+    /// 0–100
+    let qualitaet: Double
+    let dauerStunden: Double
+    /// Anteile 0…1
+    let tiefAnteil: Double
+    let remAnteil: Double
+}
+
+/// Kennzahlen für das Schlaf-Dashboard (Qualitäts-Ring, Kacheln).
+nonisolated struct SchlafUebersicht: Equatable, Sendable {
+    var anzahl30 = 0
+    var qualitaetSchnitt30: Double?
+    var dauerSchnitt30: Double?
+    var tiefSchnitt30: Double?
+    var remSchnitt30: Double?
+    var letzteNacht: SchlafMesspunkt?
+
+    static func berechne(punkte: [SchlafMesspunkt], heute: DayKey) -> SchlafUebersicht {
+        var u = SchlafUebersicht()
+        let monat = punkte.filter { $0.tag >= heute.addiere(tage: -29) && $0.tag <= heute }
+        u.anzahl30 = monat.count
+        func mittel(_ werte: [Double]) -> Double? { werte.isEmpty ? nil : werte.reduce(0, +) / Double(werte.count) }
+        u.qualitaetSchnitt30 = mittel(monat.map(\.qualitaet))
+        u.dauerSchnitt30 = mittel(monat.map(\.dauerStunden))
+        u.tiefSchnitt30 = mittel(monat.map(\.tiefAnteil))
+        u.remSchnitt30 = mittel(monat.map(\.remAnteil))
+        u.letzteNacht = punkte.max { $0.datum < $1.datum }
+        return u
+    }
+}
+
+// MARK: - Wellness (Tagesfortschritt)
+
+/// Wie viele der fünf Tagesziele sind heute erledigt (Stimmung, Stress, Energie erfasst, Wasserziel, Mahlzeit)?
+nonisolated enum WellnessTagesfortschritt {
+    static let anzahlZiele = 5
+
+    static func erledigt(stimmung: Int, stress: Int, energie: Int, wasserMl: Int, wasserZielMl: Int, mahlzeiten: Int) -> Int {
+        var n = 0
+        if stimmung > 0 { n += 1 }
+        if stress > 0 { n += 1 }
+        if energie > 0 { n += 1 }
+        if wasserZielMl > 0 && wasserMl >= wasserZielMl { n += 1 }
+        if mahlzeiten > 0 { n += 1 }
+        return n
+    }
+}
