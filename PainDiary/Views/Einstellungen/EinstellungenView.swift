@@ -65,14 +65,14 @@ struct EinstellungenView: View {
                     .padding(.vertical, 4)
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             Section("Erinnerungen") {
                 NavigationLink(destination: PushManagerView()) {
                     Label("Benachrichtigungen verwalten", systemImage: "bell.badge")
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             Section {
                 Button {
@@ -103,7 +103,7 @@ struct EinstellungenView: View {
             } footer: {
                 Text("CSV enthält alle Module (Zeitpunkte als ISO 8601, mit Zeitzone). Das JSON-Backup sichert Schmerz, Migräne, Medikation, Einnahmen, Blutzucker, Wellness und Zyklus; beim Wiederherstellen werden vorhandene Einträge nicht doppelt angelegt. Fotos sind nicht enthalten.")
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             Section {
                 Toggle(isOn: $iCloudSync) {
@@ -114,7 +114,7 @@ struct EinstellungenView: View {
             } footer: {
                 Text("Wenn aktiv, werden deine Gesundheitsdaten über deine iCloud auf deine Geräte synchronisiert. Wenn aus, bleiben sie nur auf diesem Gerät. Eine Änderung gilt nach einem Neustart der App.")
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             Section("Sicherheit") {
                 if let profil = profile.first {
@@ -124,7 +124,7 @@ struct EinstellungenView: View {
                         }
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             Section("App") {
                 NavigationLink(destination: DatenschutzView()) {
@@ -148,7 +148,7 @@ struct EinstellungenView: View {
                 }
                 .foregroundStyle(.orange)
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
         .glassList(.neutral)
         .navigationTitle("Einstellungen")

@@ -182,8 +182,7 @@ struct PainEntryDetailView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Schmerz
@@ -657,8 +656,7 @@ private extension View {
     func karte() -> some View {
         self
             .padding()
-            .glassBackground(radius: 16)
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+            .glassCard(radius: 24, padding: 0)
     }
 }
 

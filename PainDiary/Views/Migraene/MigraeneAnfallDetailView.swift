@@ -122,8 +122,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Anfall
@@ -147,8 +146,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Charakter
@@ -169,8 +167,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Medikament
@@ -203,8 +200,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Wetter
@@ -235,8 +231,7 @@ struct MigraeneAnfallDetailView: View {
                 }
             }
             .padding()
-            .glassBackground(radius: 16)
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+            .glassCard(radius: 24, padding: 0)
         }
     }
 
@@ -252,8 +247,7 @@ struct MigraeneAnfallDetailView: View {
             Spacer()
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Postdrom
@@ -289,8 +283,7 @@ struct MigraeneAnfallDetailView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Wohlbefinden
@@ -350,8 +343,7 @@ struct MigraeneAnfallDetailView: View {
                 }
             }
             .padding()
-            .glassBackground(radius: 16)
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+            .glassCard(radius: 24, padding: 0)
         }
     }
 
@@ -367,8 +359,7 @@ struct MigraeneAnfallDetailView: View {
                 chipReihe(chips, farbe: farbe)
             }
             .padding()
-            .glassBackground(radius: 16)
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+            .glassCard(radius: 24, padding: 0)
         }
     }
 
@@ -380,8 +371,7 @@ struct MigraeneAnfallDetailView: View {
             Text(text).font(.body).foregroundStyle(.primary.opacity(0.85))
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private func chipReihe(_ items: [String], farbe: Color) -> some View {

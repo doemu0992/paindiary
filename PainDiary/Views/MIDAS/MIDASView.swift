@@ -43,7 +43,7 @@ struct MIDASView: View {
                     .frame(height: 140)
                     .padding(.vertical, 4)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
 
             Section {
@@ -67,7 +67,7 @@ struct MIDASView: View {
                     .onDelete { idx in idx.forEach { modelContext.delete(bewertungen[$0]) } }
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
         .glassList(.migraene)
         .navigationTitle("MIDAS-Score")
@@ -435,6 +435,6 @@ private struct MIDASFrageSektion: View {
         } header: {
             Text("Frage \(index + 1): \(titel)")
         }
-        .listRowBackground(Color.glassFill)
+        .listRowBackground(GlassRowBackground())
     }
 }

@@ -219,8 +219,7 @@ struct KorrelationsView: View {
             summaryPill("\(tage)",           label: "Tage erfasst", symbol: "calendar",                    farbe: .teal)
         }
         .padding(.vertical, 10)
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private var zeitfilterPicker: some View {
@@ -1698,8 +1697,7 @@ struct KorrelationsView: View {
             content()
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private func karteHeader(titel: String, untertitel: String? = nil, info: String) -> some View {

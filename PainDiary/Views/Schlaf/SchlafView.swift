@@ -65,7 +65,7 @@ struct SchlafView: View {
                             }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
         }
         .glassList(.wellness)
@@ -102,17 +102,16 @@ struct SchlafView: View {
                     }
                 }
                 .padding()
-                .glassBackground(radius: 16)
-                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+                .glassCard(radius: 24, padding: 0)
 
                 if !nächte.isEmpty {
                     Button { zeigeAnalyse = true } label: {
                         Label("Schlaf-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
                             .font(.subheadline.bold())
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .glassTintBackground(Color.indigo, radius: 12)
+                            .glassTintButton(Color.indigo)
                     }
                     .buttonStyle(.plain)
                 }

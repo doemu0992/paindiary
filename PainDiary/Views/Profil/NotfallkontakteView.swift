@@ -23,7 +23,7 @@ struct NotfallkontakteView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 Section {
                     ForEach(kontakte) { k in
@@ -46,7 +46,7 @@ struct NotfallkontakteView: View {
                         indexSet.map { kontakte[$0] }.forEach { modelContext.delete($0) }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
             Section {
 #if os(iOS)
@@ -58,7 +58,7 @@ struct NotfallkontakteView: View {
                     Label("Manuell hinzufügen", systemImage: "plus")
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
         .glassList(.neutral)
         .navigationTitle("Notfallkontakte")

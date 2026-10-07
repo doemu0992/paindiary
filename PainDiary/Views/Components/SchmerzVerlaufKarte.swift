@@ -148,8 +148,7 @@ struct SchmerzVerlaufKarte: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
         .onAppear { resetScroll() }
         .onChange(of: zeitBereich) { ausgewaehlt = nil; resetScroll() }
         .sheet(isPresented: $zeigeTagesDetail) {

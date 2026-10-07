@@ -236,8 +236,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Medikamente
@@ -467,8 +466,7 @@ struct DashboardView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Schnelllinks
@@ -577,7 +575,7 @@ private struct ExportOptionsSheet: View {
                     }
                     .pickerStyle(.inline).labelsHidden()
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
                 Section("Abschnitte") {
                     Toggle("Zusammenfassung",      isOn: $optionen.mitZusammenfassung)
                     Toggle("Medikamente",          isOn: $optionen.mitMedikamente)
@@ -587,7 +585,7 @@ private struct ExportOptionsSheet: View {
                     if hatMigraeneDaten { Toggle("Migräne", isOn: $optionen.mitMigraene) }
                     Toggle("Alle Einträge",        isOn: $optionen.mitEintraege)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
             .glassList(.statistik)
             .navigationTitle("PDF exportieren")

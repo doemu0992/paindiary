@@ -68,7 +68,7 @@ struct DashboardAnpassenView: View {
                     Text("Tippe auf das Auge zum Ein-/Ausblenden. Stift-Icon: Korrelation bearbeiten. Im Bearbeiten-Modus: verschieben oder löschen.")
                         .font(.caption2)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 if !moduleHinzufuegbar.isEmpty {
                     Section("Module hinzufügen") {
@@ -89,7 +89,7 @@ struct DashboardAnpassenView: View {
                             }
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 if !analyseHinzufuegbar.isEmpty {
@@ -111,7 +111,7 @@ struct DashboardAnpassenView: View {
                             }
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 Section("Eigene Korrelation") {
@@ -132,14 +132,14 @@ struct DashboardAnpassenView: View {
                         }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 Section {
                     Button("Standard wiederherstellen", role: .destructive) {
                         withAnimation { kacheln = KachelKonfiguration.standard }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
             .glassList(.statistik)
             .environment(\.editMode, $editMode)
@@ -300,7 +300,7 @@ struct KorrelationsPickerView: View {
                         }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 // Y-Achse
                 Section("Ergebnis (Y-Achse)") {
@@ -317,7 +317,7 @@ struct KorrelationsPickerView: View {
                         }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 // Filter: Körperregion
                 if !alleRegionen.isEmpty {
@@ -340,7 +340,7 @@ struct KorrelationsPickerView: View {
                         Text(filterRegionen.isEmpty ? "Alle Körperstellen" : "\(filterRegionen.count) ausgewählt — nur diese Einträge fliessen in die Analyse ein.")
                             .font(.caption2)
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 // Filter: Schmerzart
@@ -364,7 +364,7 @@ struct KorrelationsPickerView: View {
                         Text(filterSchmerzarten.isEmpty ? "Alle Schmerzarten" : "\(filterSchmerzarten.count) ausgewählt")
                             .font(.caption2)
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 // Filter: Medikament
@@ -397,7 +397,7 @@ struct KorrelationsPickerView: View {
                         Text("Nur Einträge von Tagen, an denen dieses Medikament eingenommen wurde.")
                             .font(.caption2)
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 // Filter: Zeitraum
@@ -410,7 +410,7 @@ struct KorrelationsPickerView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 // Filter: Mindest-Stärke
                 Section {
@@ -428,7 +428,7 @@ struct KorrelationsPickerView: View {
                     Text("Nur Einträge ab dieser Intensität berücksichtigen.")
                         .font(.caption2)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 // Diagrammtyp
                 Section {
@@ -445,7 +445,7 @@ struct KorrelationsPickerView: View {
                     Text("Auto: Balken für Kategorien (Wetter, Tageszeit…), Streuung für Schlaf.")
                         .font(.caption2)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 // Vorschau-Titel
                 Section("Titel (Vorschau)") {
@@ -455,7 +455,7 @@ struct KorrelationsPickerView: View {
                     }
                     .padding(.vertical, 4)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
             .glassList(.statistik)
             .navigationTitle(existierend == nil ? "Neue Korrelation" : "Korrelation bearbeiten")

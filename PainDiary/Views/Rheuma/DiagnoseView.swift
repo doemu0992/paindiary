@@ -22,7 +22,7 @@ struct DiagnoseView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 if !aktive.isEmpty {
                     Section("Aktive Diagnosen") {
@@ -47,7 +47,7 @@ struct DiagnoseView: View {
                             for i in indexSet { modelContext.delete(aktive[i]) }
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 if !fruehereD.isEmpty {
@@ -73,7 +73,7 @@ struct DiagnoseView: View {
                             for i in indexSet { modelContext.delete(fruehereD[i]) }
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
             }
         }

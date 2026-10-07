@@ -410,8 +410,7 @@ struct MigraeneAnalyseView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
         .overlay(alignment: .topTrailing) {
             InfoButton(
                 titel: "Aura",
@@ -437,8 +436,7 @@ struct MigraeneAnalyseView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
         .overlay(alignment: .topTrailing) {
             InfoButton(
                 titel: "Anfallsdauer",
@@ -645,8 +643,7 @@ struct MigraeneAnalyseView: View {
             Spacer()
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private func karte<Content: View>(titel: String, symbol: String, farbe: Color, info: String = "", @ViewBuilder content: () -> Content) -> some View {
@@ -663,8 +660,7 @@ struct MigraeneAnalyseView: View {
             content()
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 }
 

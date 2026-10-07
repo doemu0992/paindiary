@@ -24,7 +24,7 @@ struct KortisonView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 statistikSektion
 
@@ -64,7 +64,7 @@ struct KortisonView: View {
                         .frame(height: 140)
                         .padding(.vertical, 4)
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 // Einträge
@@ -87,7 +87,7 @@ struct KortisonView: View {
                             }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
         }
         .glassList(.rheuma)
@@ -132,8 +132,7 @@ struct KortisonView: View {
                     }
                 }
                 .padding()
-                .glassBackground(radius: 16)
-                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+                .glassCard(radius: 24, padding: 0)
             }
             .padding(.vertical, 4)
         }

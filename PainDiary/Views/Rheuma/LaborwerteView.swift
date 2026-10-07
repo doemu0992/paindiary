@@ -53,7 +53,7 @@ struct LaborwerteView: View {
                             .padding(.vertical, 4)
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 }
 
@@ -83,7 +83,7 @@ struct LaborwerteView: View {
                             .frame(height: 140)
                             .padding(.vertical, 4)
                         }
-                        .listRowBackground(Color.glassFill)
+                        .listRowBackground(GlassRowBackground())
                     }
                 }
 

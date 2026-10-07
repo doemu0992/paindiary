@@ -354,8 +354,7 @@ struct WohlbefindenAnalyseView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
@@ -425,8 +424,7 @@ struct WohlbefindenAnalyseView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Schlaf
@@ -480,8 +478,7 @@ struct WohlbefindenAnalyseView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Wasser
@@ -537,8 +534,7 @@ struct WohlbefindenAnalyseView: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     // MARK: - Ernährung
@@ -601,8 +597,7 @@ struct WohlbefindenAnalyseView: View {
             .frame(height: 100)
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 }
 

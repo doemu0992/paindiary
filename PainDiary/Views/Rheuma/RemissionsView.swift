@@ -29,7 +29,7 @@ struct RemissionsView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 if aktivePhase != nil {
                     Section {
@@ -40,7 +40,7 @@ struct RemissionsView: View {
                                 .foregroundStyle(.red)
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 if !abgeschlossene.isEmpty {
@@ -56,7 +56,7 @@ struct RemissionsView: View {
                                 }
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
             }
         }

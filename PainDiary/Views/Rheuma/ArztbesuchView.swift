@@ -29,7 +29,7 @@ struct ArztbesuchView: View {
                     }
                     .padding(.vertical, 4)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
 
             if besuche.isEmpty {
@@ -57,7 +57,7 @@ struct ArztbesuchView: View {
                         }
                         .padding(.vertical, 4)
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 Section("Verlauf") {
@@ -69,7 +69,7 @@ struct ArztbesuchView: View {
                     }
                     .onDelete(perform: loeschen)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
         }
         .glassList(.rheuma)

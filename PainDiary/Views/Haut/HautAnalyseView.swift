@@ -262,8 +262,7 @@ struct HautAnalyseView: View {
             content()
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private func leerKarte(_ sektion: HautAnalyseSektion) -> some View {
@@ -279,8 +278,7 @@ struct HautAnalyseView: View {
             Spacer()
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private func statZelle(_ wert: String, label: String, farbe: Color = .orange) -> some View {

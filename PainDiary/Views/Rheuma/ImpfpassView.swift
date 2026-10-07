@@ -26,7 +26,7 @@ struct ImpfpassView: View {
                         Label("Standardimpfungen laden", systemImage: "wand.and.stars")
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 let faellig = impfungen.filter { $0.dringlichkeit == .ueberfaellig || $0.dringlichkeit == .bald }
                 if !faellig.isEmpty {
@@ -49,7 +49,7 @@ struct ImpfpassView: View {
                                 }
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 let aktuell = impfungen.filter { $0.dringlichkeit == .ok }
@@ -73,7 +73,7 @@ struct ImpfpassView: View {
                                 }
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
             }
         }

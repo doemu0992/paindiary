@@ -27,7 +27,7 @@ struct ArztbriefView: View {
                 }
                 .pickerStyle(.segmented)
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             Section {
                 Button {
@@ -42,7 +42,7 @@ struct ArztbriefView: View {
                     Label("In Zwischenablage kopieren", systemImage: "doc.on.doc")
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             Section("KI-Arztbrief") {
                 KIArztbriefKarte(rohdaten: erzeugeBrief(), patientenName: patientenName)
@@ -50,14 +50,14 @@ struct ArztbriefView: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                     .listRowBackground(Color.clear)
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             Section("Strukturierte Vorschau") {
                 Text(erzeugeBrief())
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
         .glassList(.rheuma)
         .navigationTitle("Arztbrief")
@@ -247,8 +247,7 @@ private struct KIArztbriefContent: View {
             }
         }
         .padding()
-        .glassBackground(radius: 16)
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .glassCard(radius: 24, padding: 0)
     }
 
     private func generieren() async {

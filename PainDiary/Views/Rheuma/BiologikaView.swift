@@ -39,7 +39,7 @@ struct BiologikaView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 statistikSektion
 
@@ -70,7 +70,7 @@ struct BiologikaView: View {
                         .padding(.vertical, 4)
                         .listRowBackground(Color.accentColor.opacity(0.08))
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 // Verlaufschart
@@ -99,7 +99,7 @@ struct BiologikaView: View {
                         .frame(height: 140)
                         .padding(.vertical, 4)
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 // Alle Einträge
@@ -122,7 +122,7 @@ struct BiologikaView: View {
                             }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
         }
         .glassList(.rheuma)
@@ -155,8 +155,7 @@ struct BiologikaView: View {
                     }
                 }
                 .padding()
-                .glassBackground(radius: 16)
-                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+                .glassCard(radius: 24, padding: 0)
             }
             .padding(.vertical, 4)
         }

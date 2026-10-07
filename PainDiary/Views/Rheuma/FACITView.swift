@@ -44,7 +44,7 @@ struct FACITView: View {
                     .frame(height: 140)
                     .padding(.vertical, 4)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
 
             Section {
@@ -74,7 +74,7 @@ struct FACITView: View {
                     }
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
         .glassList(.rheuma)
         .navigationTitle("FACIT-Erschöpfung")

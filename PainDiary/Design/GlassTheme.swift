@@ -7,8 +7,27 @@ extension Color {
     static let glassFill = Color(UIColor { trait in
         trait.userInterfaceStyle == .dark
             ? UIColor(white: 1, alpha: 0.08)
-            : UIColor(white: 1, alpha: 0.55)
+            : UIColor(white: 1, alpha: 0.22)
     })
+}
+
+// MARK: - Listen-Zeilen
+
+/// Echtes Milchglas für `List`-Zeilen (`.listRowBackground(GlassRowBackground())`): der Aurora-Hintergrund scheint durch.
+struct GlassRowBackground: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        if reduceTransparency {
+            Color(.secondarySystemGroupedBackground)
+        } else {
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(Color.white.opacity(scheme == .dark ? 0.03 : 0.08))
+            }
+        }
+    }
 }
 
 // MARK: - GlassCard
@@ -29,6 +48,7 @@ extension EnvironmentValues {
 struct GlassCardModifier: ViewModifier {
     var radius: CGFloat = 24
     var tint: Color? = nil
+    var tintStaerke: Double? = nil
     var padding: CGFloat? = nil
     var schatten: Bool = true
 
@@ -47,7 +67,7 @@ struct GlassCardModifier: ViewModifier {
                     } else {
                         form.fill(.ultraThinMaterial)
                     }
-                    if let tint { form.fill(tint.opacity(scheme == .dark ? 0.12 : 0.08)) }
+                    if let tint { form.fill(tint.opacity(tintStaerke ?? (scheme == .dark ? 0.12 : 0.08))) }
                 }
             }
             .overlay {
@@ -62,6 +82,11 @@ extension View {
     /// Komplette Glas-Karte (Padding + Material + Rand + Schatten).
     func glassCard(radius: CGFloat = 24, tint: Color? = nil, padding: CGFloat = 20) -> some View {
         modifier(GlassCardModifier(radius: radius, tint: tint, padding: padding))
+    }
+
+    /// Gläserner Button-Hintergrund: Milchglas mit kräftiger Tönung (Text bleibt `.primary`, Icon in `tint`).
+    func glassTintButton(_ tint: Color, radius: CGFloat = 18) -> some View {
+        modifier(GlassCardModifier(radius: radius, tint: tint, tintStaerke: 0.30, padding: nil, schatten: true))
     }
 
     /// Nur der Glas-Hintergrund (Padding bleibt beim Aufrufer) – Drop-in für `.background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(...))`.
@@ -125,15 +150,15 @@ enum AuroraTheme {
     fileprivate var farbtoene: (a: RGB, b: RGB, c: RGB, d: RGB, m: RGB, staerke: Double)? {
         switch self {
         case .neutral:     return nil
-        case .schmerz:     return (RGB(0.30, 0.62, 0.95), RGB(0.35, 0.85, 0.75), RGB(0.40, 0.50, 0.95), RGB(0.45, 0.85, 0.80), RGB(0.35, 0.75, 0.90), 0.22)
-        case .medikamente: return (RGB(1.00, 0.72, 0.50), RGB(1.00, 0.85, 0.45), RGB(1.00, 0.62, 0.45), RGB(1.00, 0.80, 0.55), RGB(1.00, 0.76, 0.52), 0.30)
-        case .statistik:   return (RGB(0.45, 0.45, 0.95), RGB(0.65, 0.45, 0.95), RGB(0.55, 0.55, 1.00), RGB(0.75, 0.55, 0.95), RGB(0.58, 0.50, 0.95), 0.24)
-        case .migraene:    return (RGB(0.55, 0.50, 0.75), RGB(0.45, 0.50, 0.65), RGB(0.50, 0.45, 0.70), RGB(0.55, 0.55, 0.70), RGB(0.50, 0.50, 0.70), 0.18)
+        case .schmerz:     return (RGB(0.10, 0.42, 0.98), RGB(0.05, 0.80, 0.68), RGB(0.28, 0.32, 0.96), RGB(0.12, 0.84, 0.74), RGB(0.15, 0.62, 0.97), 0.52)
+        case .medikamente: return (RGB(1.00, 0.62, 0.30), RGB(1.00, 0.82, 0.30), RGB(1.00, 0.50, 0.32), RGB(1.00, 0.74, 0.38), RGB(1.00, 0.68, 0.32), 0.46)
+        case .statistik:   return (RGB(0.36, 0.34, 0.98), RGB(0.62, 0.32, 0.96), RGB(0.46, 0.46, 1.00), RGB(0.72, 0.44, 0.96), RGB(0.50, 0.38, 0.97), 0.46)
+        case .migraene:    return (RGB(0.52, 0.46, 0.76), RGB(0.42, 0.46, 0.66), RGB(0.48, 0.42, 0.72), RGB(0.52, 0.52, 0.70), RGB(0.48, 0.46, 0.70), 0.24)
         case .zyklus:      return (RGB(1.00, 0.55, 0.69), RGB(1.00, 0.75, 0.55), RGB(0.74, 0.65, 1.00), RGB(1.00, 0.60, 0.75), RGB(0.95, 0.65, 0.80), 0.30)
-        case .rheuma:      return (RGB(0.20, 0.75, 0.75), RGB(0.55, 0.80, 1.00), RGB(0.30, 0.70, 0.85), RGB(0.50, 0.85, 0.90), RGB(0.40, 0.78, 0.85), 0.24)
-        case .haut:        return (RGB(1.00, 0.70, 0.45), RGB(0.95, 0.80, 0.60), RGB(0.90, 0.72, 0.55), RGB(1.00, 0.78, 0.60), RGB(0.97, 0.75, 0.55), 0.26)
-        case .diabetes:    return (RGB(0.35, 0.65, 1.00), RGB(0.30, 0.85, 0.95), RGB(0.45, 0.70, 1.00), RGB(0.40, 0.80, 0.95), RGB(0.38, 0.75, 1.00), 0.24)
-        case .wellness:    return (RGB(0.40, 0.85, 0.70), RGB(0.65, 0.85, 0.60), RGB(0.45, 0.80, 0.65), RGB(0.60, 0.85, 0.70), RGB(0.50, 0.85, 0.68), 0.26)
+        case .rheuma:      return (RGB(0.05, 0.72, 0.72), RGB(0.40, 0.76, 1.00), RGB(0.15, 0.64, 0.86), RGB(0.34, 0.84, 0.92), RGB(0.24, 0.74, 0.88), 0.46)
+        case .haut:        return (RGB(1.00, 0.62, 0.32), RGB(0.96, 0.76, 0.48), RGB(0.92, 0.64, 0.44), RGB(1.00, 0.72, 0.48), RGB(0.98, 0.68, 0.42), 0.44)
+        case .diabetes:    return (RGB(0.20, 0.58, 1.00), RGB(0.10, 0.82, 0.96), RGB(0.32, 0.66, 1.00), RGB(0.24, 0.78, 0.96), RGB(0.22, 0.70, 1.00), 0.46)
+        case .wellness:    return (RGB(0.20, 0.84, 0.64), RGB(0.55, 0.84, 0.46), RGB(0.28, 0.78, 0.60), RGB(0.50, 0.86, 0.62), RGB(0.36, 0.84, 0.60), 0.46)
         }
     }
 
@@ -141,7 +166,7 @@ enum AuroraTheme {
     fileprivate func mesh(dunkel: Bool, warm: Bool) -> [Color]? {
         guard let t = farbtoene else { return nil }
         let basis = dunkel ? RGB(0.06, 0.07, 0.12) : RGB(1, 1, 1)
-        let anteil = dunkel ? 0.26 : t.staerke
+        let anteil = dunkel ? min(0.45, max(0.26, t.staerke * 0.7)) : t.staerke
         func f(_ x: RGB) -> RGB { basis.mischen(x, anteil) }
         let a = f(t.a), b = f(t.b), c = f(t.c), d = f(t.d)
         var m = f(t.m)

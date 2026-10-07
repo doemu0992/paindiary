@@ -38,7 +38,7 @@ struct PhysioView: View {
                     }
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
         .glassList(.rheuma)
         .navigationTitle("Physiotherapie")

@@ -19,7 +19,7 @@ struct AllergienView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 ForEach(allergien) { a in
                     AllergieZeile(allergie: a)

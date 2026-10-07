@@ -104,7 +104,7 @@ private struct ProfilInhaltView: View {
                 notfallKurzInfo
             }
         }
-        .listRowBackground(Color.glassFill)
+        .listRowBackground(GlassRowBackground())
     }
 
     private var notfallKurzInfo: some View {
@@ -282,7 +282,7 @@ private struct ProfilInhaltView: View {
                 Label("Physiotherapie", systemImage: "figure.walk.motion")
             }
         }
-        .listRowBackground(Color.glassFill)
+        .listRowBackground(GlassRowBackground())
     }
 
     // MARK: - Erkrankungen
@@ -325,7 +325,7 @@ private struct ProfilInhaltView: View {
                 }
             }
         }
-        .listRowBackground(Color.glassFill)
+        .listRowBackground(GlassRowBackground())
     }
 
     // MARK: - Module
@@ -417,7 +417,7 @@ private struct ProfilInhaltView: View {
         } footer: {
             Text("Aktivierte Module erscheinen bei der Eintragserfassung als Auswahlmöglichkeit.")
         }
-        .listRowBackground(Color.glassFill)
+        .listRowBackground(GlassRowBackground())
     }
 
     // MARK: - Kontakte
@@ -453,7 +453,7 @@ private struct ProfilInhaltView: View {
                 }
             }
         }
-        .listRowBackground(Color.glassFill)
+        .listRowBackground(GlassRowBackground())
     }
 
     // MARK: - Einstellungen
@@ -464,7 +464,7 @@ private struct ProfilInhaltView: View {
                 Label("App-Einstellungen", systemImage: "gearshape")
             }
         }
-        .listRowBackground(Color.glassFill)
+        .listRowBackground(GlassRowBackground())
     }
 }
 
@@ -521,7 +521,7 @@ private struct StammdatenSheet: View {
                             .multilineTextAlignment(.trailing)
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
                 Section("Medizinisch") {
                     LabeledContent("Versicherung") {
                         TextField("Krankenversicherung", text: Bindable(profil).versicherung)
@@ -550,7 +550,7 @@ private struct StammdatenSheet: View {
                         LabeledContent("BMI", value: String(format: "%.1f – %@", bmi, profil.bmiKategorie ?? ""))
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
             .glassList(.neutral)
             .navigationTitle("Stammdaten")

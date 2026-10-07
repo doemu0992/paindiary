@@ -39,7 +39,7 @@ struct ChangelogVerlaufView: View {
                             .textCase(nil)
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
         }
         .glassList(.neutral)

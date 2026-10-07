@@ -22,7 +22,7 @@ struct HAQView: View {
                 Section {
                     das28Karte(letzterHAQ: letzterHAQ)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
 
             // HAQ Score History
@@ -52,7 +52,7 @@ struct HAQView: View {
                     .frame(height: 140)
                     .padding(.vertical, 4)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
 
             // Score explanation
@@ -78,7 +78,7 @@ struct HAQView: View {
                     .onDelete(perform: loeschen)
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
         .glassList(.rheuma)
         .navigationTitle("HAQ & DAS28")

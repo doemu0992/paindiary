@@ -24,7 +24,7 @@ struct AerzteView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 Section {
                     ForEach(aerzte) { a in
@@ -47,7 +47,7 @@ struct AerzteView: View {
                         indexSet.map { aerzte[$0] }.forEach { modelContext.delete($0) }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
             Section {
 #if os(iOS)
@@ -62,7 +62,7 @@ struct AerzteView: View {
                     Label("Manuell hinzufügen", systemImage: "plus")
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
         .glassList(.neutral)
         .navigationTitle("Ärzte")

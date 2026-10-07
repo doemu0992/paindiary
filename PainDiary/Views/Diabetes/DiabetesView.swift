@@ -31,7 +31,7 @@ struct DiabetesView: View {
                     }
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             if messungen.isEmpty {
                 Section {
@@ -42,7 +42,7 @@ struct DiabetesView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 Section("Messungen") {
                     ForEach(messungen) { m in
@@ -59,7 +59,7 @@ struct DiabetesView: View {
                     }
                     .onDelete { idx in idx.forEach { modelContext.delete(messungen[$0]) } }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             }
         }
         .glassList(.diabetes)
@@ -112,14 +112,13 @@ struct DiabetesView: View {
                     }
                 }
                 .padding()
-                .glassBackground(radius: 16)
-                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+                .glassCard(radius: 24, padding: 0)
 
                 Button { zeigeAnalyse = true } label: {
                     Label("Diabetes-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                        .font(.subheadline.bold()).foregroundStyle(.white)
+                        .font(.subheadline.bold()).foregroundStyle(.primary)
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .glassTintBackground(Color.blue, radius: 12)
+                        .glassTintButton(Color.blue)
                 }
                 .buttonStyle(.plain)
             }

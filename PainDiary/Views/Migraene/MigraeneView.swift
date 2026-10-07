@@ -58,7 +58,7 @@ struct MigraeneView: View {
                     }
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
 
             if anfaelle.isEmpty {
                 Section {
@@ -69,7 +69,7 @@ struct MigraeneView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 zyklusKorrelationSektion
 
@@ -91,7 +91,7 @@ struct MigraeneView: View {
                         Text(tagLabel(gruppe.tag))
                             .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
             }
         }
@@ -144,17 +144,16 @@ struct MigraeneView: View {
                     }
                 }
                 .padding()
-                .glassBackground(radius: 16)
-                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+                .glassCard(radius: 24, padding: 0)
 
                 if !anfaelle.isEmpty {
                     Button { zeigeAnalyse = true } label: {
                         Label("Migräne-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
                             .font(.subheadline.bold())
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .glassTintBackground(Color.purple, radius: 12)
+                            .glassTintButton(Color.purple)
                     }
                     .buttonStyle(.plain)
                 }
@@ -189,7 +188,7 @@ struct MigraeneView: View {
                     }
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
     }
 
@@ -240,7 +239,7 @@ struct MigraeneView: View {
                 }
                 .padding(.vertical, 4)
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
     }
 

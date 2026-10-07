@@ -148,15 +148,14 @@ struct MedikamenteView: View {
                     }
                 }
                 .padding()
-                .glassBackground(radius: 16)
-                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+                .glassCard(radius: 24, padding: 0)
 
                 if !logs.isEmpty {
                     Button { zeigeAnalyse = true } label: {
                         Label("Medikamenten-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .font(.subheadline.bold()).foregroundStyle(.primary)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .glassTintBackground(Color.blue, radius: 12)
+                            .glassTintButton(Color.blue)
                     }
                     .buttonStyle(.plain)
                 }
@@ -290,7 +289,7 @@ struct MedikamenteView: View {
             }
             .onDelete { loeschen(aus: inaktive, offsets: $0) }
         }
-        .listRowBackground(Color.glassFill)
+        .listRowBackground(GlassRowBackground())
     }
 
     // MARK: - Warnungen
@@ -339,7 +338,7 @@ struct MedikamenteView: View {
                 Label("Achtung", systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
     }
 
@@ -374,7 +373,7 @@ struct MedikamenteView: View {
                     .padding(.vertical, 4)
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
     }
 
@@ -424,7 +423,7 @@ struct MedikamenteView: View {
                 }
                 .padding(.vertical, 4)
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
     }
 
@@ -441,7 +440,7 @@ struct MedikamenteView: View {
                 }
                 .font(.caption)
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         } else if notif.status == .notDetermined {
             Section {
                 Button {
@@ -450,7 +449,7 @@ struct MedikamenteView: View {
                     Label("Benachrichtigungen aktivieren", systemImage: "bell.badge")
                 }
             }
-            .listRowBackground(Color.glassFill)
+            .listRowBackground(GlassRowBackground())
         }
     }
 
@@ -1067,7 +1066,7 @@ struct EinnahmeLogSheet: View {
                         Text("Einzelne Einnahme zu einem bestimmten Zeitpunkt erfassen.")
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 if !med.dosierung.isEmpty {
                     Section {
@@ -1077,14 +1076,14 @@ struct EinnahmeLogSheet: View {
                             Text(med.dosierung).foregroundStyle(.secondary)
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
 
                 Section("Notizen") {
                     TextField("Besonderheiten, Nebenwirkungen…", text: $notizen, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 // Rückwirkend nacherfassen (nur für Dauermedikamente mit fixer Einnahmezeit)
                 if !istBeiBedarfs && !istWöchentlich && !istMonatlich && !fehlende.isEmpty {
@@ -1106,7 +1105,7 @@ struct EinnahmeLogSheet: View {
                         let zeitText = zeiten.map(\.anzeigeText).joined(separator: ", ")
                         Text("Erstellt Einträge ab \(med.startDatum, format: .dateTime.day().month(.abbreviated).year()) bis heute zu den Zeiten \(zeitText). Bereits vorhandene Einnahmen werden übersprungen.")
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
             }
             .glassList(.medikamente)

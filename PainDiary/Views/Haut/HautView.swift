@@ -43,7 +43,7 @@ struct HautView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
             } else {
                 ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
                     Section {
@@ -61,7 +61,7 @@ struct HautView: View {
                         Text(tagLabel(gruppe.tag))
                             .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
             }
         }
@@ -109,16 +109,15 @@ struct HautView: View {
                     }
                 }
                 .padding()
-                .glassBackground(radius: 16)
-                .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+                .glassCard(radius: 24, padding: 0)
 
                 Button { zeigeAnalyse = true } label: {
                     Label("Haut-Analyse öffnen", systemImage: "chart.bar.xaxis.ascending")
                         .font(.subheadline.bold())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .glassTintBackground(Color.orange, radius: 12)
+                        .glassTintButton(Color.orange)
                 }
                 .buttonStyle(.plain)
             }

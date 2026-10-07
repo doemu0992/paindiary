@@ -285,7 +285,7 @@ struct PainEntryListView: View {
                                     }
                             }
                         }
-                        .listRowBackground(Color.glassFill)
+                        .listRowBackground(GlassRowBackground())
                     } header: {
                         Text(tagLabel(gruppe.tag))
                             .font(.footnote.weight(.semibold))
@@ -487,7 +487,7 @@ struct PainEntryListView: View {
                         }
                     }
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 Section("Zeitraum") {
                     Picker("Zeitraum", selection: $filterZeitraum) {
@@ -497,7 +497,7 @@ struct PainEntryListView: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                .listRowBackground(Color.glassFill)
+                .listRowBackground(GlassRowBackground())
 
                 if filterAktiv {
                     Section {
@@ -507,7 +507,7 @@ struct PainEntryListView: View {
                             filterZeitraum = .alle
                         }
                     }
-                    .listRowBackground(Color.glassFill)
+                    .listRowBackground(GlassRowBackground())
                 }
             }
             .navigationTitle("Filter")
