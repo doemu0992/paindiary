@@ -317,7 +317,7 @@ struct ZyklusView: View {
                     .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                     .lineLimit(2)
                 InfoButton(titel: "Fruchtbares Fenster",
-                           text: "Die 6 Tage bis einschließlich Eisprungtag (Spermien überleben bis zu 5 Tage, die Eizelle 12–24 Stunden). Die Prognose nutzt – in dieser Reihenfolge – BBT-Anstieg, positiven LH-Test, Schleim-Peak und zuletzt den Kalender (nächste Periode minus Lutealphase). Bei unregelmäßigen Zyklen wird das Fenster nach der Kalendermethode verbreitert. Keine Verhütungsmethode.")
+                           text: "Die 6 Tage bis einschließlich Eisprungtag (Spermien überleben bis zu 5 Tage, die Eizelle 12–24 Stunden). Die Prognose nutzt – in dieser Reihenfolge – BBT-Anstieg, positiven LH-Test, Schleim-Peak und zuletzt den Kalender (nächste Periode minus persönliche Lutealphase). Kommt die Periode früher oder später, verschiebt sich alles automatisch. Ohne Belege sind hellere Randtage um das Fenster möglich; so breit wie dein typischer Prognosefehler. Keine Verhütungsmethode.")
             }
             if let f = a.naechstesFruchtbaresFenster {
                 Text(fensterText(f))
@@ -572,7 +572,7 @@ struct ZyklusView: View {
                                "Geschätzter Periodenbeginn aus deinen bisherigen Zyklen (gewichteter Median der letzten 6). Die Abweichung ± Tage steht im Heute-Tab."))
             legendeItem(ZyklusFarbe.fruchtbar, gestrichelt: false, text: "Fruchtbar",
                         info: ("Fruchtbare Tage",
-                               "Die 6 Tage bis einschließlich Eisprungtag. Bei unregelmäßigen Zyklen oder wenig Daten wird das Fenster breiter geschätzt. Fruchtbarer Zervixschleim und positive LH-Tests markieren den Tag zusätzlich."))
+                               "Die 6 Tage bis einschließlich Eisprungtag (kräftig). Hellere Randtage zeigen die Unsicherheit der Prognose und sind bei bestätigtem Eisprung (Temperatur, LH-Test) verschwunden. Fruchtbarer Zervixschleim und positive LH-Tests markieren den Tag zusätzlich."))
             legendeItem(ZyklusFarbe.eisprung, gestrichelt: false, text: "Eisprung",
                         info: ("Eisprung (Ovulation)",
                                "Festgelegt per BBT-Anstieg (bestätigt), LH-Test oder Zervixschleim-Peak; sonst geschätzt als nächste Periode minus Lutealphase (Standard 14 Tage, persönlich gelernt ab 2 Zyklen mit Evidenz)."))

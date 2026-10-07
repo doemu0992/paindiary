@@ -125,13 +125,13 @@ struct ZyklusRechnerTests {
     @Test func kalenderEisprungIstLutealphaseVorNaechsterPeriode() {
         let e = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 28], laufenderZyklusBis: d(2026, 4, 25))
         let a = analyse(e, heute: d(2026, 4, 25))
-        // Zyklus 1: 1.1.–28.1., nächster Start 29.1. → Eisprung = 29.1. − 15 Tage = 14.1. (Zyklustag 14), Lutealphase 14 Tage
-        #expect(a.ovulationsTageSet.contains(d(2026, 1, 14)))
-        #expect(a.zyklen.first?.lutealLaenge == 14)
+        // Zyklus 1: 1.1.–28.1., nächster Start 29.1. → Standard-Lutealphase 13: Eisprung = 29.1. − 14 Tage = 15.1. (Zyklustag 15)
+        #expect(a.ovulationsTageSet.contains(d(2026, 1, 15)))
+        #expect(a.zyklen.first?.lutealLaenge == 13)
         // Fenster: 6 Tage bis einschließlich Eisprung
-        for t in 9...14 { #expect(a.fruchtbareTageSet.contains(d(2026, 1, t))) }
-        #expect(!a.fruchtbareTageSet.contains(d(2026, 1, 15)))
-        #expect(!a.fruchtbareTageSet.contains(d(2026, 1, 8)))
+        for t in 10...15 { #expect(a.fruchtbareTageSet.contains(d(2026, 1, t))) }
+        #expect(!a.fruchtbareTageSet.contains(d(2026, 1, 16)))
+        #expect(!a.fruchtbareTageSet.contains(d(2026, 1, 9)))
     }
 
     @Test func positiverLHTestLegtEisprungAufFolgetag() {
@@ -189,7 +189,8 @@ struct ZyklusRechnerTests {
         let a = analyse(e, heute: d(2026, 4, 25))
         #expect(ZyklusRechner.phase(for: d(2026, 1, 2), analyse: a, kalender: kal) == .menstruation)
         #expect(ZyklusRechner.phase(for: d(2026, 1, 8), analyse: a, kalender: kal) == .follikelphase)
-        #expect(ZyklusRechner.phase(for: d(2026, 1, 14), analyse: a, kalender: kal) == .ovulation)   // = Kalender-Eisprung
+        #expect(ZyklusRechner.phase(for: d(2026, 1, 13), analyse: a, kalender: kal) == .follikelphase)
+        #expect(ZyklusRechner.phase(for: d(2026, 1, 15), analyse: a, kalender: kal) == .ovulation)   // = Kalender-Eisprung
         #expect(ZyklusRechner.phase(for: d(2026, 1, 20), analyse: a, kalender: kal) == .lutealphase)
         #expect(ZyklusRechner.phase(for: d(2026, 1, 27), analyse: a, kalender: kal) == .praemenstruell)
         #expect(ZyklusRechner.phase(for: d(2025, 12, 1), analyse: a, kalender: kal) == nil)
@@ -227,6 +228,83 @@ struct ZyklusRechnerTests {
         let letzteVorhersage = a.vorhergesagtePeriodeTageSet.max()
         #expect(letzteVorhersage != nil)
         #expect(letzteVorhersage! >= d(2026, 8, 17))
+    }
+
+    // MARK: - Dynamik: Belege, verspätete Periode, Lernen
+
+    @Test func eisprungBelegVerankertNaechstePeriodeNeu() {
+        // Aktueller Zyklus ab 26.3.; positiver LH-Test am 5.4. → Eisprung 6.4.
+        var e = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 28], laufenderZyklusBis: d(2026, 4, 10))
+        let lh = neuerEintrag(d(2026, 4, 5))
+        lh.lhTest = .positiv
+        e.append(lh)
+        let a = analyse(e, heute: d(2026, 4, 10))
+        // Zyklus-basiert: 23.4.; Eisprung-basiert: 6.4. + 13 + 1 = 20.4. → Mittel 21,5 → 22.4.
+        #expect(a.evidenzVerankert)
+        #expect(a.naechstePeriodeStart == d(2026, 4, 22))
+        #expect(a.unsicherheitTage <= 2)
+    }
+
+    @Test func ueberfaelligePeriodeSchiebtEisprungDesLaufendenZyklusMit() {
+        let e = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 28], laufenderZyklusBis: d(2026, 4, 28))
+        // erwartet 23.4., heute 28.4. (5 Tage überfällig, nichts belegt) → Periode frühestens morgen (29.4.)
+        let a = analyse(e, heute: d(2026, 4, 28))
+        #expect(a.status == .ueberfaellig(tage: 5))
+        // Lutealphase 13 → Eisprung = 29.4. − 14 = 15.4. statt der ursprünglich erwarteten 9.4.
+        #expect(a.zyklen.last?.eisprung == d(2026, 4, 15))
+        #expect(a.zyklen.last?.erwarteteLaenge == 34)
+    }
+
+    @Test func periodeVorZeitSchliesstZyklusMitTatsaechlicherLaengeUndVerschiebtAlles() {
+        // Zyklus 4 beginnt schon nach 22 statt 28 Tagen → Eisprung/Fenster des Vorzyklus liegen jetzt früher,
+        // die Prognose für den Folgezyklus rechnet ab dem neuen Start.
+        var e = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 22], laufenderZyklusBis: d(2026, 3, 25))
+        let a1 = analyse(e, heute: d(2026, 3, 25))
+        let letzterStart = a1.zyklusStarts.last!
+        #expect(letzterStart == d(2026, 3, 20))                       // 1.1. + 28 + 28 + 22 Tage
+        #expect(a1.zyklen[2].laenge == 22)
+        #expect(a1.zyklen[2].eisprung == d(2026, 3, 20 - 14))         // 22 − 14 Tage vor dem neuen Start
+        e.removeAll()
+        #expect(analyse(e, heute: d(2026, 3, 25)).zyklusStarts.isEmpty)
+    }
+
+    @Test func lutealphaseWirdAusLHBelegGelerntUndSchleimPeakLerntNicht() {
+        // Zwei Zyklen mit LH-Beleg (Lutealphase 15) → persönliche Lutealphase rückt von 13 nach oben
+        var e = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 28], laufenderZyklusBis: d(2026, 4, 1))
+        for startTag in [0, 28] {
+            let lh = neuerEintrag(tag(d(2026, 1, 1), plus: startTag + 12))   // positiv Zyklustag 13 → Eisprung Zyklustag 14
+            lh.lhTest = .positiv
+            e.append(lh)
+        }
+        let a = analyse(e, heute: d(2026, 4, 1))
+        #expect(a.lutealphaseGelernt)
+        #expect(a.lutealphase >= 14)
+
+        // Schleim-Peak allein ändert die Lutealphase nicht
+        var f = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 28], laufenderZyklusBis: d(2026, 4, 1))
+        for startTag in [0, 28, 56] {
+            let m = neuerEintrag(tag(d(2026, 1, 1), plus: startTag + 12))
+            m.schleim = .eiweiss
+            f.append(m)
+        }
+        #expect(analyse(f, heute: d(2026, 4, 1)).lutealphase == ZyklusGrenzen.standardLutealphase)
+    }
+
+    @Test func prognoseWaehltDenGenauestenPraediktorUndMisstDenFehler() {
+        let e = zyklen(start: d(2026, 1, 1), laengen: [28, 28, 28, 28, 28, 28], laufenderZyklusBis: d(2026, 6, 20))
+        let a = analyse(e, heute: d(2026, 6, 20))
+        #expect(a.prognoseFehler == 0)
+        #expect(a.unsicherheitTage == 1)
+        #expect(a.fruchtbarRandTageSet.isEmpty)   // perfekt vorhersagbar → keine Randtage
+    }
+
+    @Test func schwankendeZyklenErzeugenFruchtbareRandtage() {
+        let laengen = [24, 31, 26, 29, 25, 30]
+        let e = zyklen(start: d(2026, 1, 1), laengen: laengen, laufenderZyklusBis: tag(d(2026, 1, 1), plus: 168))
+        let a = analyse(e, heute: tag(d(2026, 1, 1), plus: 168))
+        #expect(a.prognoseFehler != nil)
+        #expect(!a.fruchtbarRandTageSet.isEmpty)
+        #expect(a.fruchtbarRandTageSet.isDisjoint(with: a.fruchtbareTageSet))
     }
 
     // MARK: - DayKey / Zeitzonen

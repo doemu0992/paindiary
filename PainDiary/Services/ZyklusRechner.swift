@@ -70,6 +70,8 @@ struct ZyklusInfo: Identifiable {
     let lutealLaenge: Int?
     let abgeschlossen: Bool
     let fuerStatistikGueltig: Bool
+    /// Abgeschlossen: tatsächliche Länge. Laufend: erwartete Länge (verschiebt sich bei überfälliger Periode mit).
+    let erwarteteLaenge: Int
 }
 
 struct ZyklusAnalyse {
@@ -107,6 +109,13 @@ struct ZyklusAnalyse {
     let zyklen: [ZyklusInfo]
     let vorhergesagtePeriodeTageSet: Set<Date>
     let naechstesFruchtbaresFenster: ClosedRange<Date>?
+    /// Unsichere Randtage um das Kern-Fenster (nur Prognosen ohne Bestätigung); `fruchtbareTageSet` ist der Kern.
+    let fruchtbarRandTageSet: Set<Date>
+    /// Mittlerer Fehler der Perioden-Prognose in Tagen, gemessen an deinen eigenen vergangenen Zyklen (Backtest).
+    let prognoseFehler: Double?
+    let prognoseMethode: String
+    /// Periode und Eisprung wurden anhand von Temperatur/LH-Test im laufenden Zyklus neu verankert.
+    let evidenzVerankert: Bool
 
     static func leerMitPeriodeTagen(_ periodeTage: Set<Date>) -> ZyklusAnalyse {
         ZyklusAnalyse(
@@ -123,7 +132,9 @@ struct ZyklusAnalyse {
             lutealphase: ZyklusGrenzen.standardLutealphase, lutealphaseGelernt: false,
             eisprungQuelle: nil, eisprungBestaetigt: false,
             status: .normal, hinweise: [], zyklen: [],
-            vorhergesagtePeriodeTageSet: [], naechstesFruchtbaresFenster: nil
+            vorhergesagtePeriodeTageSet: [], naechstesFruchtbaresFenster: nil,
+            fruchtbarRandTageSet: [], prognoseFehler: nil, prognoseMethode: "Standardwert",
+            evidenzVerankert: false
         )
     }
 
@@ -134,6 +145,7 @@ struct ZyklusTagZustand {
     var periode: Bool = false
     var vorhergesagtePeriode: Bool = false
     var fruchtbar: Bool = false
+    var fruchtbarRand: Bool = false
     var ovulation: Bool = false
     var verbundenLinks: Bool = false
     var verbundenRechts: Bool = false
@@ -148,7 +160,8 @@ struct ZyklusTagZustand {
 /// - **Zyklustag** ist 1-basiert: Tag 1 = erster Tag der Menstruationsblutung.
 /// - **Eisprungtag** ist ein Datum. Die Lutealphase umfasst die Tage *nach* dem Eisprung bis zum Tag
 ///   vor der nächsten Periode: `Lutealphase = nächsterStart − Eisprung − 1`.
-///   Beispiel 28-Tage-Zyklus, Lutealphase 14: Eisprung = Zyklustag 14, Lutealphase = Tag 15–28.
+///   Beispiel 28-Tage-Zyklus, Lutealphase 14: Eisprung = Zyklustag 14, Lutealphase = Tag 15–28
+///   (Standard ist 13: Eisprung = Zyklustag 15).
 /// - Fruchtbares Fenster = 6 Tage bis einschließlich Eisprungtag (Wilcox et al., NEJM 1995).
 struct ZyklusRechner {
 
@@ -273,16 +286,74 @@ struct ZyklusRechner {
         return paare.last?.wert ?? 28
     }
 
+    /// Kandidaten zur Vorhersage der nächsten Zykluslänge. Die Engine misst (Backtest über die eigenen
+    /// letzten Zyklen), welcher Kandidat bei *dieser* Nutzerin am genauesten war, und nutzt ihn.
+    private enum LaengenPraediktor: CaseIterable {
+        case gewichteterMedian   // Standard: letzte 6, jüngere zählen stärker
+        case mittelLetzte3       // reagiert schnell auf Trends
+        case medianAlle          // robust bei stark schwankenden Zyklen
+        case exponentiell        // geglätteter Trend (α = 0,3)
+
+        var titel: String {
+            switch self {
+            case .gewichteterMedian: return "Gewichteter Median (6 Zyklen)"
+            case .mittelLetzte3:     return "Mittel der letzten 3 Zyklen"
+            case .medianAlle:        return "Median (bis 12 Zyklen)"
+            case .exponentiell:      return "Exponentielle Glättung"
+            }
+        }
+
+        func vorhersage(_ h: [Double]) -> Double {
+            guard !h.isEmpty else { return 28 }
+            switch self {
+            case .gewichteterMedian:
+                let r = Array(h.suffix(6))
+                switch r.count {
+                case 1:  return r[0]
+                case 2:  return r[0] * 0.4 + r[1] * 0.6
+                default: return ZyklusRechner.gewichteterMedian(r)
+                }
+            case .mittelLetzte3:
+                let r = h.suffix(3)
+                return r.reduce(0, +) / Double(r.count)
+            case .medianAlle:
+                return ZyklusRechner.median(Array(h.suffix(12)))
+            case .exponentiell:
+                var s = h[0]
+                for x in h.dropFirst() { s = 0.3 * x + 0.7 * s }
+                return s
+            }
+        }
+    }
+
+    /// Backtest: Wie genau hätte jeder Kandidat die letzten (bis zu 8) Zyklen vorhergesagt?
+    /// Ein anderer Kandidat als der Standard braucht ≥ 3 Testpunkte und muss klar besser sein.
+    private static func praediktorWahl(_ laengen: [Double]) -> (praediktor: LaengenPraediktor, mae: Double?, anzahl: Int) {
+        let n = laengen.count
+        guard n >= 4 else { return (.gewichteterMedian, nil, 0) }
+        let start = max(3, n - 8)
+        let punkte = n - start
+        var beste = LaengenPraediktor.gewichteterMedian
+        var besteMAE = Double.infinity
+        for p in LaengenPraediktor.allCases {
+            var summe = 0.0
+            for i in start..<n {
+                summe += abs(laengen[i] - p.vorhersage(Array(laengen[0..<i])))
+            }
+            let mae = summe / Double(punkte)
+            if mae < besteMAE - 0.05 {
+                besteMAE = mae
+                beste = p
+            }
+        }
+        return (beste, besteMAE, punkte)
+    }
+
     /// Prognostizierte Zykluslänge aus den bisherigen (gültigen) Längen, chronologisch.
     /// Wird von der Engine *und* von der Genauigkeits-Auswertung genutzt — eine Quelle der Wahrheit.
     static func prognoseLaenge(aus laengen: [Double]) -> Double {
-        let r = Array(laengen.suffix(6))
-        switch r.count {
-        case 0:  return 28
-        case 1:  return r[0]
-        case 2:  return r[0] * 0.4 + r[1] * 0.6
-        default: return gewichteterMedian(r)
-        }
+        guard !laengen.isEmpty else { return 28 }
+        return praediktorWahl(laengen).praediktor.vorhersage(laengen)
     }
 
     // MARK: Eisprung-Evidenz
@@ -370,7 +441,8 @@ struct ZyklusRechner {
         let regel: Regelmaessigkeit = n < 3 ? .unbekannt : (spanneWert <= 9 ? .regelmaessig : .unregelmaessig)
         let qualitaet: DatenQualitaet = n == 0 ? .standardwert : (n < 3 ? .wenigDaten : (n < 6 ? .gut : .sehrGut))
 
-        let adaptZyklus = prognoseLaenge(aus: laengen)
+        let wahl = praediktorWahl(laengen)
+        let adaptZyklus = laengen.isEmpty ? 28.0 : wahl.praediktor.vorhersage(laengen)
         let zyklusLenInt = max(Int(adaptZyklus.rounded()), ZyklusGrenzen.gueltigeZyklusLaenge.lowerBound)
 
         // 3) Periodendauer: laufende (unvollständige) Periode zählt nicht in die Statistik.
@@ -420,17 +492,33 @@ struct ZyklusRechner {
             if let ns = naechster {
                 let l = ns - e.nr - 1
                 guard ZyklusGrenzen.gueltigeLutealphase.contains(l) else { continue }
-                lutealWerte.append(l)
+                // Lernen nur aus verlässlichen Belegen (Temperatur, LH-Test). Der Schleim-Peak liegt oft vor dem
+                // Eisprung und würde die Lutealphase zu lang schätzen.
+                if e.quelle == .temperatur || e.quelle == .lhTest { lutealWerte.append(l) }
             }
             evid[i] = e
         }
         let lutealGelernt = lutealWerte.count >= 2
-        let luteal = lutealGelernt
-            ? Int(median(lutealWerte.map { Double($0) }).rounded())
-            : ZyklusGrenzen.standardLutealphase
+        // Bayes-artige Verankerung: Der Standardwert zählt wie 2 Beobachtungen. Schon der erste belegte Zyklus
+        // verschiebt die Lutealphase, mehr Belege (bis 6, jüngere stärker) übernehmen zunehmend die Führung.
+        let luteal: Int = {
+            guard !lutealWerte.isEmpty else { return ZyklusGrenzen.standardLutealphase }
+            let gelernt = gewichteterMedian(lutealWerte.suffix(6).map { Double($0) })
+            let nn = Double(min(lutealWerte.count, 6))
+            let standard = Double(ZyklusGrenzen.standardLutealphase)
+            return Int(((nn * gelernt + 2 * standard) / (nn + 2)).rounded())
+        }()
 
-        // 5) Status
-        let naechstePeriodeNr = letzterStart + zyklusLenInt
+        // 5) Nächste Periode. Liegt im laufenden Zyklus ein verlässlicher Eisprung-Beleg vor (Temperatur/LH),
+        //    wird die Prognose neu verankert: Mittel aus „Start + Zykluslänge" und „Eisprung + Lutealphase".
+        //    Die Lutealphase ist stabiler als die Follikelphase — der Beleg verschiebt die Periode also dynamisch.
+        var naechstePeriodeNr = letzterStart + zyklusLenInt
+        var evidenzVerankert = false
+        if let e = evid[starts.count - 1], e.quelle == .temperatur || e.quelle == .lhTest {
+            let ausEisprung = e.nr + luteal + 1
+            naechstePeriodeNr = Int(((Double(naechstePeriodeNr) + Double(ausEisprung)) / 2).rounded())
+            evidenzVerankert = true
+        }
         let zyklustagHeute = heuteNr - letzterStart + 1
         let status: ZyklusStatus
         if zyklustagHeute > 91 {
@@ -442,9 +530,25 @@ struct ZyklusRechner {
         }
         let hatPrognose = status != .keineAktuellenDaten && zyklustagHeute >= 1
 
-        let unsicherheit: Int = n >= 3
-            ? min(max(Int(sd.rounded(.up)), 1), 7)
-            : (n == 0 ? 4 : 3)
+        // Unsicherheit = typischer Fehler der Prognose bei dir (Backtest); ohne Backtest aus der Streuung.
+        let backtestFehler: Double? = wahl.anzahl >= 3 ? wahl.mae : nil
+        let unsicherheit: Int = {
+            var u: Int
+            if let mae = backtestFehler {
+                u = min(max(Int(mae.rounded(.up)), 1), 7)
+            } else {
+                u = n >= 3 ? min(max(Int(sd.rounded(.up)), 1), 7) : (n == 0 ? 4 : 3)
+            }
+            if evidenzVerankert { u = min(u, 2) }
+            return u
+        }()
+
+        // Späteste Periode für die Phasen des laufenden Zyklus: Ist die Periode überfällig (bis 14 Tage), liegt
+        // sie frühestens morgen — bei gleichbleibender Lutealphase war der Eisprung dann entsprechend später.
+        let periodeSpaetestensNr: Int = {
+            if case .ueberfaellig(let t) = status, t <= 14 { return heuteNr + 1 }
+            return naechstePeriodeNr
+        }()
 
         // Kalendermethode (nur bei unregelmäßigem Zyklus): frühester fertiler Tag = kürzester − 18,
         // spätester = längster − 11 (Zyklustage, 1-basiert).
@@ -455,21 +559,30 @@ struct ZyklusRechner {
             kalenderFenster = nil
         }
 
-        func fenster(start: Int, ov: Int, eng: Bool) -> ClosedRange<Int> {
-            if eng { return (ov - 5)...ov }
+        /// Kern = 6 Tage bis einschließlich Eisprungtag. Rand = zusätzliche unsichere Tage (nur unbestätigte
+        /// Prognosen): so groß wie der typische Prognosefehler bei dir, bei Unregelmäßigkeit Kalendermethode.
+        func fenster(start: Int, ov: Int, eng: Bool) -> (kern: ClosedRange<Int>, rand: [Int]) {
+            let kern = (ov - 5)...ov
+            if eng { return (kern, []) }
             if let k = kalenderFenster {
                 let von = min(start + k.kurz - 18 - 1, ov - 5)
                 let bis = max(start + k.lang - 11 - 1, ov)
-                return von...bis
+                return (kern, (von...bis).filter { !kern.contains($0) })
             }
-            // Regelmäßig + gute Datenbasis: genau 6 Tage bis Eisprung; sonst ± 2 Tage Unsicherheit
-            let d = (regel == .regelmaessig && qualitaet >= .gut) ? 0 : 2
-            return (ov - 5 - d)...(ov + d)
+            let d: Int
+            if let mae = backtestFehler {
+                d = mae <= 1.2 ? 0 : (mae <= 2.2 ? 1 : 2)
+            } else {
+                d = 2
+            }
+            if d == 0 { return (kern, []) }
+            return (kern, Array((ov - 5 - d)..<(ov - 5)) + Array((ov + 1)...(ov + d)))
         }
 
         // 6) Zyklen aufbauen
         var infos: [ZyklusInfo] = []
         var fruchtbarNrs = Set<Int>()
+        var randNrs = Set<Int>()
         var ovNrs = Set<Int>()
         var aktuellerEisprungNr: Int? = nil
         var aktuelleQuelle: EisprungQuelle? = nil
@@ -491,7 +604,7 @@ struct ZyklusRechner {
                 ov = ns - (luteal + 1)
                 quelle = .kalender
             } else {
-                ov = naechstePeriodeNr - (luteal + 1)
+                ov = periodeSpaetestensNr - (luteal + 1)
                 quelle = .kalender
                 eng = false
                 // Fertiler Schleim kurz vor/um den prognostizierten Eisprung: Eisprung nicht vor dem letzten feuchten Tag.
@@ -512,7 +625,9 @@ struct ZyklusRechner {
             let ueberspringen = istAktuell && !hatPrognose
             if !ueberspringen {
                 ovNrs.insert(ov)
-                for t in fenster(start: s, ov: ov, eng: eng) { fruchtbarNrs.insert(t) }
+                let f = fenster(start: s, ov: ov, eng: eng)
+                for t in f.kern { fruchtbarNrs.insert(t) }
+                for t in f.rand { randNrs.insert(t) }
             }
 
             infos.append(ZyklusInfo(
@@ -524,7 +639,8 @@ struct ZyklusRechner {
                 eisprungQuelle: quelle,
                 lutealLaenge: naechster.map { $0 - ov - 1 },
                 abgeschlossen: naechster != nil,
-                fuerStatistikGueltig: bereinigtIdx.contains(i)
+                fuerStatistikGueltig: bereinigtIdx.contains(i),
+                erwarteteLaenge: naechster.map { $0 - s } ?? (periodeSpaetestensNr - s)
             ))
         }
 
@@ -538,7 +654,9 @@ struct ZyklusRechner {
                 let start = anker + k * zyklusLenInt
                 let ov = max(start + zyklusLenInt - (luteal + 1), start + 5)
                 ovNrs.insert(ov)
-                for t in fenster(start: start, ov: ov, eng: false) { fruchtbarNrs.insert(t) }
+                let f = fenster(start: start, ov: ov, eng: false)
+                for t in f.kern { fruchtbarNrs.insert(t) }
+                for t in f.rand { randNrs.insert(t) }
                 for d in 0..<periodLen { vorhergesagtePeriodeNrs.insert(start + d) }
                 if k == 0 { naechsteOvNr = ov }
             }
@@ -557,6 +675,8 @@ struct ZyklusRechner {
                 fruchtbarNrs.insert(nr + 1)
             }
         }
+
+        randNrs.subtract(fruchtbarNrs)
 
         // 9) Anzeige-Größen
         let vorhergesagteOv: Date? = {
@@ -625,7 +745,11 @@ struct ZyklusRechner {
             hinweise: hinweise,
             zyklen: infos,
             vorhergesagtePeriodeTageSet: Set(vorhergesagtePeriodeNrs.map { ctx.datum($0) }),
-            naechstesFruchtbaresFenster: naechstesFenster
+            naechstesFruchtbaresFenster: naechstesFenster,
+            fruchtbarRandTageSet: Set(randNrs.map { ctx.datum($0) }),
+            prognoseFehler: backtestFehler,
+            prognoseMethode: wahl.praediktor.titel,
+            evidenzVerankert: evidenzVerankert
         )
     }
 
@@ -647,6 +771,7 @@ struct ZyklusRechner {
 
         if !z.periode && analyse.vorhergesagtePeriodeTageSet.contains(tag) { z.vorhergesagtePeriode = true }
         if !z.periode && analyse.fruchtbareTageSet.contains(tag) { z.fruchtbar = true }
+        if !z.periode && !z.fruchtbar && analyse.fruchtbarRandTageSet.contains(tag) { z.fruchtbarRand = true }
         if analyse.ovulationsTageSet.contains(tag) { z.ovulation = true }
 
         return z
@@ -670,7 +795,8 @@ struct ZyklusRechner {
         let tag = kal.startOfDay(for: date)
         guard let info = analyse.zyklen.last(where: { $0.start <= tag }) else { return nil }
         let zt = (kal.dateComponents([.day], from: info.start, to: tag).day ?? 0) + 1
-        let laenge = info.laenge ?? max(Int(analyse.adaptierteZykluslaenge.rounded()), 15)
+        // Laufender Zyklus: erwartete Länge verschiebt sich mit einer überfälligen Periode
+        let laenge = info.laenge ?? max(info.erwarteteLaenge, 15)
 
         if info.naechsterStart == nil && (zt > laenge + 14 || zt > 90) { return nil }
         if zt <= info.periodenTage { return .menstruation }

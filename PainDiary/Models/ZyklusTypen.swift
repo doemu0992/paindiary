@@ -133,8 +133,9 @@ enum ZyklusGrenzen {
     static let bbtBereich: ClosedRange<Double> = 34.0...42.0
     /// Zyklen außerhalb dieses Bereichs (Tage) fließen nicht in Statistik/Prognose ein.
     static let gueltigeZyklusLaenge: ClosedRange<Int> = 15...90
-    /// Standard-Lutealphase, solange keine persönliche gelernt werden konnte.
-    static let standardLutealphase = 14
+    /// Standard-Lutealphase (Tage nach dem Eisprung bis zum Tag vor der Periode), solange keine persönliche
+    /// gelernt werden konnte. Real gemessene Mittelwerte liegen bei ca. 12–13 Tagen; 14 ist der Lehrbuchwert.
+    static let standardLutealphase = 13
     /// Plausibler Bereich einer gemessenen Lutealphase.
     static let gueltigeLutealphase: ClosedRange<Int> = 8...18
 }

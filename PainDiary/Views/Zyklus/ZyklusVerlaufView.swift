@@ -39,9 +39,25 @@ struct ZyklusVerlaufView: View {
                 badge("\(analyse.gueltigeZyklen) Zyklen", farbe: .secondary)
                 Spacer(minLength: 0)
             }
+            Text(prognoseText)
+                .font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .zyklusGlas()
+    }
+
+    private var prognoseText: String {
+        var text = "Prognose-Methode: \(analyse.prognoseMethode)"
+        if let f = analyse.prognoseFehler {
+            text += " · typische Abweichung ± \(String(format: "%.1f", f)) Tage (an deinen letzten Zyklen gemessen)"
+        } else {
+            text += " · Genauigkeit wird ab 4 Zyklen gemessen"
+        }
+        if analyse.evidenzVerankert {
+            text += ". Periode neu berechnet aus Eisprung-Beleg im laufenden Zyklus"
+        }
+        return text
     }
 
     private var hinweiseKarte: some View {

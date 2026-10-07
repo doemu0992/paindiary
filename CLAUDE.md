@@ -1021,7 +1021,9 @@ Gilt nur für `Views/Zyklus/` — Kachel im Dashboard folgt weiterhin dem Kachel
   Lücken ≤ 7 Tage gehören zur selben Blutungsepisode; Episoden < 15 Tage nach dem letzten Start sind Zwischenblutungen.
 - Statistik nur mit gültigen Zyklen (15–90 Tage, MAD-Ausreißer ausgeschlossen). Median/gewichteter Median, Streuung als Stichproben-σ.
 - Eisprung-Priorität: BBT (3-über-6) > positiver LH-Test (+1 Tag) > Schleim-Peak > Kalender (nächste Periode − Lutealphase).
-  Lutealphase wird ab 2 Zyklen mit Evidenz persönlich gelernt, sonst Standard 14 (`ZyklusGrenzen`).
+  Lutealphase wird **nur aus Temperatur/LH-Belegen** gelernt (Schleim-Peak liegt oft vor dem Eisprung): Standard 13 (`ZyklusGrenzen`, real gemessene Mittel ~12–13) zählt wie 2 Beobachtungen, jeder belegte Zyklus verschiebt ihn.
+- **Dynamik:** Jede Eingabe berechnet alles neu. Beleg im laufenden Zyklus (Temperatur/LH) → nächste Periode wird aus Eisprung + Lutealphase neu verankert (Mittel mit „Start + Zykluslänge"). Periode überfällig (≤ 14 Tage) → Eisprung/Phasen des laufenden Zyklus rücken mit (Periode frühestens morgen). Periode früher → Zyklus schließt mit echter Länge, Fenster des Vorzyklus und alle Folgezyklen rücken.
+- **Selbstlernende Länge:** Die Engine misst per Backtest an den eigenen letzten Zyklen, welcher Prädiktor (`LaengenPraediktor`) am genauesten ist, und nutzt ihn; der gemessene Fehler (`prognoseFehler`) bestimmt die Unsicherheit (± Tage, Randtage `fruchtbarRandTageSet`). Kern-Fenster (`fruchtbareTageSet`) bleibt immer 6 Tage.
 - Fruchtbares Fenster = 6 Tage bis einschließlich Eisprungtag; bei Unsicherheit verbreitert, bei unregelmäßigem Zyklus Kalendermethode (kürzester − 18 … längster − 11).
 - Phasen **immer** über `ZyklusRechner.phase(for:analyse:)` — nie eigene Tag-Grenzen in Views. Korrelations-Auswertungen aggregieren pro Tag.
 - `ZyklusRechner.analyse(...)` ist gecacht (Fingerabdruck); in Views beliebig oft aufrufbar. Neue Felder, die die Analyse beeinflussen, in `signatur(_:)` aufnehmen.

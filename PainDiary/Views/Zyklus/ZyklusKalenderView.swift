@@ -95,6 +95,7 @@ struct ZyklusKalenderView: View {
         let folgeZustand = ZyklusRechner.tagZustand(datum: folgetag, analyse: analyse, kalender: kal)
 
         let fruchtbar = zeigePrognosen && zustand.fruchtbar
+        let fruchtbarRand = zeigePrognosen && zustand.fruchtbarRand
         let vorhergesagt = zeigePrognosen && zustand.vorhergesagtePeriode
         let eisprung = zeigePrognosen && zustand.ovulation
         let linksVerbunden = spalte != 0
@@ -108,6 +109,7 @@ struct ZyklusKalenderView: View {
             fruchtbar: fruchtbar,
             fruchtbarLinks: fruchtbar && vorZustand.fruchtbar && linksVerbunden,
             fruchtbarRechts: fruchtbar && folgeZustand.fruchtbar && rechtsVerbunden,
+            fruchtbarRand: fruchtbarRand,
             vorhergesagt: vorhergesagt,
             eisprung: eisprung,
             ausgewaehlt: ausgewaehlterTag.map { kal.isDate($0, inSameDayAs: datum) } ?? false,
@@ -128,6 +130,7 @@ private struct ZyklusTagZelle: View {
     let fruchtbar: Bool
     let fruchtbarLinks: Bool
     let fruchtbarRechts: Bool
+    let fruchtbarRand: Bool
     let vorhergesagt: Bool
     let eisprung: Bool
     let ausgewaehlt: Bool
@@ -181,6 +184,12 @@ private struct ZyklusTagZelle: View {
                         .frame(height: 34)
                         .padding(.leading, fruchtbarLinks ? 0 : 5)
                         .padding(.trailing, fruchtbarRechts ? 0 : 5)
+                } else if fruchtbarRand {
+                    // Unsichere Randtage: sehr heller Hauch, nur eine Andeutung
+                    bandForm(links: false, rechts: false)
+                        .fill(ZyklusFarbe.fruchtbar.opacity(0.08))
+                        .frame(height: 34)
+                        .padding(.horizontal, 5)
                 }
 
                 if eisprung {
@@ -245,6 +254,7 @@ private struct ZyklusTagZelle: View {
         if vorhergesagt { teile.append("Periode vorhergesagt") }
         if eisprung { teile.append("Eisprung") }
         if fruchtbar { teile.append("fruchtbar") }
+        if fruchtbarRand && !fruchtbar { teile.append("möglicherweise fruchtbar") }
         if let e = eintrag {
             if !e.symptome.isEmpty { teile.append("Symptome erfasst") }
             if e.schleim != .keine { teile.append("Zervixschleim \(e.schleim.titel)") }
