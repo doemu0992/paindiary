@@ -32,7 +32,7 @@ struct ZyklusPartnerTeilenSheet: View {
                         punkt("hand.raised", "Du kannst das Teilen jederzeit beenden. Dann hat die Person sofort keinen Zugriff mehr.")
                     }
                     .padding(16)
-                    .zyklusGlas()
+                    .glassCard(padding: 0)
 
                     if let fehler { Text(fehler).font(.caption).foregroundStyle(.red) }
 
@@ -61,7 +61,7 @@ struct ZyklusPartnerTeilenSheet: View {
                 }
                 .padding(16)
             }
-            .background { ZyklusHintergrund() }
+            .auroraScreen(.zyklus)
             .navigationTitle("Partner-Sharing")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fertig") { dismiss() } } }
@@ -154,12 +154,12 @@ struct ZyklusPartnerView: View {
                         Text("Wenn dich jemand zu seinem Zyklus einlädt, öffne die Einladung (Nachricht oder Link) – danach erscheint er hier.")
                             .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }
-                    .padding(24).frame(maxWidth: .infinity).zyklusGlas()
+                    .padding(24).frame(maxWidth: .infinity).glassCard(padding: 0)
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
         }
-        .background { ZyklusHintergrund() }
+        .auroraScreen(.zyklus)
         .environment(\.locale, ZyklusLocale.de)
         .navigationTitle("Geteilter Zyklus")
         .navigationBarTitleDisplayMode(.large)
@@ -198,7 +198,7 @@ struct ZyklusPartnerView: View {
             switch ansicht {
             case 0:
                 ZyklusRingView(analyse: analyse, untertitel: statusText(analyse), auswahl: $ringAuswahl)
-                    .padding(8).zyklusGlas()
+                    .padding(8).glassCard(padding: 0)
             case 1:
                 ZyklusKalenderView(
                     monat: monat, eintraegeProTag: proTag, analyse: analyse,
@@ -206,7 +206,7 @@ struct ZyklusPartnerView: View {
                     onVorheriger: { monat = kal.date(byAdding: .month, value: -1, to: monat) ?? monat },
                     onNaechster: { monat = kal.date(byAdding: .month, value: 1, to: monat) ?? monat },
                     onTap: { _ in })
-                .zyklusGlas()
+                .glassCard(padding: 0)
             default:
                 ZyklusVerlaufView(analyse: analyse, proTag: proTag)
             }
