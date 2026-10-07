@@ -1127,7 +1127,8 @@ class PDFExportService: @unchecked Sendable {
                 }
                 return n
             }()
-            let eisprung = kal.date(byAdding: .day, value: Int(analyse.zykluslaenge) - 14, to: start)
+            // Eisprung aus der Zyklus-Engine (bestätigt/LH/Schleim oder Schätzung), nicht pauschal Länge − 14
+            let eisprung = analyse.zyklen.first(where: { kal.isDate($0.start, inSameDayAs: start) })?.eisprung
             tabellenZeile(ctx: ctx, y: y, cols: cols,
                           werte: [fmt(start), laenge,
                                   periodDauer > 0 ? "\(periodDauer) Tage" : "–",
@@ -2152,19 +2153,13 @@ class PDFExportService: @unchecked Sendable {
     private func zyklusphase(fuer datum: Date, analyse: ZyklusAnalyse) -> String? {
         let kal = Calendar.current
         let tag = kal.startOfDay(for: datum)
-        guard let start = analyse.zyklusStarts
-            .map({ kal.startOfDay(for: $0) })
-            .filter({ $0 <= tag })
-            .max() else { return nil }
-
-        let zyklusTag = (kal.dateComponents([.day], from: start, to: tag).day ?? 0) + 1
-        let periodTage = max(1, Int(analyse.periodendauer))
-        let ovTag = max(periodTage + 4, Int(analyse.zykluslaenge) - 14)
-
-        if zyklusTag <= periodTage { return "Menstruation" }
-        if zyklusTag >= ovTag - 2 && zyklusTag <= ovTag + 1 { return "Eisprung" }
-        if zyklusTag > periodTage && zyklusTag < ovTag - 2 { return "Follikulär" }
-        return "Lutealphase"
+        guard let phase = ZyklusRechner.phase(for: tag, analyse: analyse, kalender: kal) else { return nil }
+        switch phase {
+        case .menstruation:                 return "Menstruation"
+        case .ovulation:                    return "Eisprung"
+        case .follikelphase:                return "Follikulär"
+        case .lutealphase, .praemenstruell: return "Lutealphase"
+        }
     }
 }
 #endif

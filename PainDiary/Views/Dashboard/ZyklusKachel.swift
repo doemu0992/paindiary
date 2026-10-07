@@ -7,7 +7,9 @@ struct ZyklusKachel: View {
     @State private var zeigeForm = false
     @State private var ausgewaehltDatum: Date? = nil
     @State private var versteckTask: Task<Void, Never>? = nil
+    @AppStorage("zyklusPrognosenPausiert") private var pausiert = false
 
+    // Cache-Treffer im Rechner: mehrfacher Zugriff pro Render kostet nur den Fingerabdruck.
     private var analyse: ZyklusAnalyse {
         ZyklusRechner.analyse(eintraege: eintraege)
     }
@@ -18,14 +20,17 @@ struct ZyklusKachel: View {
     }
 
     private var naechstePeriodeText: String {
+        if pausiert { return "–" }
+        if case .ueberfaellig = analyse.status { return "Überfällig" }
         guard let np = analyse.naechstePeriodeStart else { return "–" }
         let diff = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: np).day ?? 0
         return diff <= 0 ? "Heute" : "in \(diff)d"
     }
 
     private var zykluslaengeText: String {
-        guard !analyse.zyklusStarts.isEmpty else { return "–" }
-        return String(format: "%.0f T.", analyse.adaptierteZykluslaenge)
+        guard analyse.gueltigeZyklen > 0 else { return "–" }
+        // Gleicher Wert wie in der Zyklus-Hauptseite (Median aller gültigen Zyklen)
+        return "\(Int(analyse.medianZykluslaenge.rounded())) T."
     }
 
     // MARK: - Chart
@@ -46,16 +51,8 @@ struct ZyklusKachel: View {
         let heute = cal.startOfDay(for: Date())
         let a = analyse
 
-        // Predict future period days from next period start + duration
-        var vorhergesagteTage: Set<Date> = []
-        if let np = a.naechstePeriodeStart {
-            let dauer = max(Int(round(a.adaptiertePeriodendauer)), 1)
-            for i in 0..<dauer {
-                if let t = cal.date(byAdding: .day, value: i, to: np) {
-                    vorhergesagteTage.insert(cal.startOfDay(for: t))
-                }
-            }
-        }
+        let vorhergesagteTage = analyse.vorhergesagtePeriodeTageSet
+        let prognosenAn = !pausiert
 
         // -7 to +6 = 14 days (past week + today + next 6 days)
         return (-7..<7).map { offset in
@@ -67,10 +64,10 @@ struct ZyklusKachel: View {
             return ChartPunkt(
                 datum: start,
                 blutungsfluss: eintrag?.blutungsfluss ?? "",
-                istPeriode: eintrag?.istPeriode == true,
-                istOvulation: a.ovulationsTageSet.contains(start),
-                istFruchtbar: a.fruchtbareTageSet.contains(start),
-                istVorhergesagt: vorhergesagteTage.contains(start) && eintrag?.istPeriode != true,
+                istPeriode: eintrag?.hatBlutung == true,
+                istOvulation: prognosenAn && a.ovulationsTageSet.contains(start),
+                istFruchtbar: prognosenAn && a.fruchtbareTageSet.contains(start),
+                istVorhergesagt: prognosenAn && vorhergesagteTage.contains(start) && eintrag?.hatBlutung != true,
                 hatEintrag: eintrag != nil
             )
         }
@@ -94,6 +91,24 @@ struct ZyklusKachel: View {
     }
 
     private var hatDaten: Bool { !eintraege.isEmpty }
+
+    private func statusText(_ p: ChartPunkt) -> String {
+        if p.istPeriode {
+            let fluss = Blutungsfluss(roh: p.blutungsfluss)
+            return fluss == .keine ? "Periode" : "Periode · \(fluss.titel)"
+        }
+        if p.istOvulation { return "Eisprung" }
+        if p.istFruchtbar { return "Fruchtbar" }
+        if p.istVorhergesagt { return "Periode erwartet" }
+        return p.hatEintrag ? "Eintrag vorhanden" : "Kein Eintrag"
+    }
+
+    private func statusFarbe(_ p: ChartPunkt) -> Color {
+        if p.istPeriode || p.istVorhergesagt { return ZyklusFarbe.periode }
+        if p.istOvulation { return .orange }
+        if p.istFruchtbar { return ZyklusFarbe.fruchtbar }
+        return .secondary
+    }
 
     private var ausgewaehltPunkt: ChartPunkt? {
         guard let sel = ausgewaehltDatum else { return nil }
@@ -166,11 +181,16 @@ struct ZyklusKachel: View {
             }
 
             if let punkt = ausgewaehltPunkt {
-                Text(punkt.datum, format: .dateTime.weekday(.abbreviated).day().month())
-                    .font(.caption2.bold())
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .transition(.opacity)
+                HStack(spacing: 6) {
+                    Text(punkt.datum, format: .dateTime.weekday(.abbreviated).day().month())
+                        .font(.caption2.bold())
+                        .foregroundStyle(.secondary)
+                    Text(statusText(punkt))
+                        .font(.caption2)
+                        .foregroundStyle(statusFarbe(punkt))
+                    Spacer()
+                }
+                .transition(.opacity)
             }
 
             // Legende
@@ -204,7 +224,11 @@ struct ZyklusKachel: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .sheet(isPresented: $zeigeForm) {
-            ZyklusEintragSheet(datum: Calendar.current.startOfDay(for: Date()), bestehend: nil)
+            // Bestehenden Tageseintrag übergeben — sonst entsteht ein Duplikat für heute.
+            ZyklusEintragSheet(
+                datum: Calendar.current.startOfDay(for: Date()),
+                bestehend: eintraege.first { Calendar.current.isDateInToday($0.datum) }
+            )
         }
     }
 

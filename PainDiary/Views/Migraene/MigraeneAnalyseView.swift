@@ -626,6 +626,7 @@ struct MigraeneAnalyseView: View {
         case .follikelphase: return .yellow
         case .ovulation:     return .orange
         case .lutealphase:   return .purple
+        case .praemenstruell: return .pink
         }
     }
 

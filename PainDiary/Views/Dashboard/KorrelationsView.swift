@@ -986,16 +986,21 @@ struct KorrelationsView: View {
             "Menstruation": [], "Follikelphase": [], "Fruchtbar": [], "Lutealphase": []
         ]
 
-        for e in eintraege {
+        for e in eintraege where e.schmerzstaerke > 0 {
             let tag = kal.startOfDay(for: e.datum)
             let s   = Double(e.schmerzstaerke)
-            if let ze = zyklusEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: tag) }), ze.istPeriode {
+            if let ze = zyklusEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: tag) }), ze.istMenstruation {
                 phasen["Menstruation"]?.append(s)
             } else if fruchtbareSet.contains(tag) {
                 phasen["Fruchtbar"]?.append(s)
-            } else if let start = zyklusStarts.filter({ $0 <= tag }).last {
-                let tage = kal.dateComponents([.day], from: start, to: tag).day ?? 0
-                phasen[tage < 8 ? "Follikelphase" : "Lutealphase"]?.append(s)
+            } else if let phase = ZyklusRechner.phase(for: tag, analyse: analyse, kalender: kal) {
+                // Phase aus dem tatsächlichen Zyklusverlauf (statt fester Tag-8-Grenze)
+                switch phase {
+                case .menstruation:                 phasen["Menstruation"]?.append(s)
+                case .follikelphase:                phasen["Follikelphase"]?.append(s)
+                case .ovulation:                    phasen["Fruchtbar"]?.append(s)
+                case .lutealphase, .praemenstruell: phasen["Lutealphase"]?.append(s)
+                }
             }
         }
 

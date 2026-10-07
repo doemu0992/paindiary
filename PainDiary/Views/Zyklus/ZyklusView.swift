@@ -1,195 +1,417 @@
 import SwiftUI
 import SwiftData
 
+/// Zyklus-Tracker: Frosted-Glass-Karten über sanftem Rosé/Pfirsich/Lavendel-Verlauf.
+/// Drei Ansichten: Heute (Phasen-Ring + Prognose), Monat (Band-Kalender), Verlauf (Zyklenliste).
 struct ZyklusView: View {
     @Query(sort: \ZyklusEintrag.datum, order: .reverse) private var eintraege: [ZyklusEintrag]
     @Environment(\.modelContext) private var modelContext
+    @AppStorage("zyklusPrognosenPausiert") private var pausiert = false
 
+    enum Ansicht: String, CaseIterable, Identifiable {
+        case heute = "Heute"
+        case monat = "Monat"
+        case verlauf = "Verlauf"
+        var id: String { rawValue }
+    }
+
+    @State private var ansicht: Ansicht = .heute
     @State private var anzeigeMonat = Date()
     @State private var ausgewaehlterTag: ZyklusTagAuswahl? = nil
     @State private var zeigeAnalyse = false
+    @State private var ringAuswahl: Int? = nil
     @State private var notifManager = NotificationManager.shared
+    @State private var healthLaeuft = false
+    @State private var healthMeldung: String? = nil
 
-    private var analyse: ZyklusAnalyse { ZyklusRechner.analyse(eintraege: Array(eintraege)) }
+    private var kal: Calendar { Calendar.current }
+
+    private var eintraegeProTag: [Date: ZyklusEintrag] {
+        Dictionary(eintraege.map { (kal.startOfDay(for: $0.datum), $0) },
+                   uniquingKeysWith: { erster, _ in erster })
+    }
 
     var body: some View {
-        List {
-            Section {
-                statistikKopf
-            }
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            .listRowBackground(Color.clear)
+        let analyse = ZyklusRechner.analyse(eintraege: Array(eintraege))
+        let proTag = eintraegeProTag
 
-            Section {
-                kalenderMitLegende
-            }
-            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+        ScrollView {
+            VStack(spacing: 16) {
+                Picker("Ansicht", selection: $ansicht) {
+                    ForEach(Ansicht.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
 
-            zyklusNotifBanner
+                switch ansicht {
+                case .heute:   heuteInhalt(analyse, proTag)
+                case .monat:   monatsInhalt(analyse, proTag)
+                case .verlauf: verlaufInhalt(analyse)
+                }
+
+                erinnerungsBanner(analyse)
+
+                Text("Prognosen sind statistische Schätzungen aus deinen Einträgen. Sie ersetzen weder Verhütung noch ärztliche Beratung.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
+        .background { ZyklusHintergrund() }
         .navigationTitle("Zyklus")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { menue(analyse) }
             ToolbarItem(placement: .primaryAction) {
                 Button { oeffneHeuteSheet() } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Heute erfassen")
             }
         }
         .sheet(item: $ausgewaehlterTag) { auswahl in
             ZyklusEintragSheet(
                 datum: auswahl.datum,
-                bestehend: eintraege.first { Calendar.current.isDate($0.datum, inSameDayAs: auswahl.datum) }
+                bestehend: eintraege.first { kal.isDate($0.datum, inSameDayAs: auswahl.datum) }
             )
         }
         .sheet(isPresented: $zeigeAnalyse) { ZyklusAnalyseView() }
-        .onChange(of: eintraege) { _, _ in planeZyklusNotifs() }
+        .alert("Apple Health",
+               isPresented: Binding(get: { healthMeldung != nil },
+                                    set: { if !$0 { healthMeldung = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(healthMeldung ?? "")
+        }
+        // Signatur statt Array-Vergleich: erkennt auch Änderungen an bestehenden Einträgen.
+        .onChange(of: ZyklusRechner.signatur(Array(eintraege))) { _, _ in planeZyklusNotifs() }
         .onAppear { planeZyklusNotifs() }
     }
 
-    private func planeZyklusNotifs() {
-        NotificationManager.shared.planeZyklusErinnerungen(analyse: analyse)
-    }
+    // MARK: - Menü
 
-    // MARK: - Notification Banner
+    private func menue(_ analyse: ZyklusAnalyse) -> some View {
+        Menu {
+            Button {
+                Task { await healthAbgleich() }
+            } label: {
+                Label("Mit Apple Health abgleichen", systemImage: "heart.text.square")
+            }
+            .disabled(healthLaeuft || !ZyklusHealthKitService.shared.istVerfuegbar)
 
-    @ViewBuilder
-    private var zyklusNotifBanner: some View {
-        if !analyse.zyklusStarts.isEmpty {
-            if notifManager.status == .notDetermined {
-                Section {
-                    HStack(spacing: 12) {
-                        Image(systemName: "bell.badge.fill").font(.title3).foregroundStyle(.orange)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Zyklus-Erinnerungen").font(.subheadline.bold())
-                            Text("Erhalte Benachrichtigungen für Periode, fruchtbare Tage und Eisprung.")
-                                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }
-                        Spacer()
-                        Button("Aktivieren") {
-                            Task {
-                                let granted = await notifManager.berechtigungAnfordern()
-                                if granted { planeZyklusNotifs() }
-                            }
-                        }
-                        .buttonStyle(.borderedProminent).controlSize(.small)
-                    }
-                }
-                .listRowBackground(Color.orange.opacity(0.08))
-            } else if notifManager.status == .denied {
-                Section {
-                    HStack(spacing: 12) {
-                        Image(systemName: "bell.slash.fill").font(.title3).foregroundStyle(.secondary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Erinnerungen deaktiviert").font(.subheadline.bold())
-                            Text("Aktiviere Benachrichtigungen in den iOS-Einstellungen.")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-#if os(iOS)
-                        Button("Einstellungen") {
-                            if let url = URL(string: UIApplication.openSettingsURLString) {
-                                UIApplication.shared.open(url)
-                            }
-                        }
-                        .font(.caption).buttonStyle(.bordered).controlSize(.small)
-#endif
-                    }
+            Toggle(isOn: $pausiert) {
+                Label("Prognosen pausieren", systemImage: "pause.circle")
+            }
+
+            if !analyse.zyklusStarts.isEmpty {
+                Button { zeigeAnalyse = true } label: {
+                    Label("Zyklusanalyse", systemImage: "chart.bar.xaxis.ascending")
                 }
             }
+        } label: {
+            Image(systemName: "ellipsis.circle")
         }
+        .accessibilityLabel("Weitere Optionen")
+    }
+
+    private func healthAbgleich() async {
+        healthLaeuft = true
+        let ergebnis = await ZyklusHealthKitService.shared.abgleichen(
+            context: modelContext, eintraege: Array(eintraege))
+        healthLaeuft = false
+        var text = "\(ergebnis.importiert) Werte importiert, \(ergebnis.exportiert) Einträge nach Health geschrieben."
+        if let fehler = ergebnis.fehler { text += "\n" + fehler }
+        healthMeldung = text
+    }
+
+    private func planeZyklusNotifs() {
+        NotificationManager.shared.planeZyklusErinnerungen(eintraege: Array(eintraege))
+    }
+
+    private func oeffneHeuteSheet() {
+        ausgewaehlterTag = ZyklusTagAuswahl(datum: kal.startOfDay(for: Date()))
     }
 
     private func wechselMonat(_ richtung: Int) {
         withAnimation {
-            anzeigeMonat = Calendar.current.date(byAdding: .month, value: richtung, to: anzeigeMonat) ?? anzeigeMonat
+            anzeigeMonat = kal.date(byAdding: .month, value: richtung, to: anzeigeMonat) ?? anzeigeMonat
         }
     }
 
-    // MARK: - Stats Header
+    private func tageBis(_ datum: Date) -> Int {
+        kal.dateComponents([.day], from: kal.startOfDay(for: Date()), to: kal.startOfDay(for: datum)).day ?? 0
+    }
 
-    private var statistikKopf: some View {
-        let hatZyklus = analyse.aktuellerZyklustag != nil
-        let hatDaten = !analyse.zyklusStarts.isEmpty
-        let fenster = naechstesFruchtbaresF
+    // MARK: - Heute
 
-        return VStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Zyklus-Überblick", systemImage: "drop.fill")
-                    .font(.headline).foregroundStyle(.pink)
-                Divider()
-                HStack(spacing: 0) {
-                    statPill(zyklusTagText, label: "Zyklustag",
-                             farbe: hatZyklus ? .pink : .secondary)
-                    Divider().frame(height: 40)
-                    statPill(naechstePeriodeBadge, label: "Nächste Periode", farbe: .red)
-                    Divider().frame(height: 40)
-                    statPill(zyklusLaengeText, label: "Ø Zyklus", farbe: .pink)
-                }
-                if hatZyklus {
-                    Divider()
-                    fruchtbarkeitReihe(fenster)
-                }
-            }
-            .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    @ViewBuilder
+    private func heuteInhalt(_ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusEintrag]) -> some View {
+        if analyse.zyklusStarts.isEmpty {
+            leerKarte
+        } else if pausiert {
+            pausiertKarte
+        } else {
+            ringKarte(analyse)
+            if analyse.status != .normal { statusKarte(analyse) }
+            prognoseReihe(analyse)
+        }
 
-            if hatDaten {
-                Button { zeigeAnalyse = true } label: {
-                    Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-            }
+        erfassenKarte(proTag)
+
+        if !analyse.zyklusStarts.isEmpty {
+            statistikKarte(analyse)
+            analyseButton
         }
     }
 
-    private var zyklusTagText: String {
-        analyse.aktuellerZyklustag.map { "Tag \($0)" } ?? "–"
-    }
-
-    private var zyklusLaengeText: String {
-        analyse.zyklusStarts.count >= 2 ? String(format: "%.0f T", analyse.zykluslaenge) : "–"
-    }
-
-    private func fruchtbarkeitReihe(_ fenster: (Date, Date)?) -> some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 3) {
-                if let (start, end) = fenster {
-                    Text("\(kurzDatum(start)) – \(kurzDatum(end))")
-                        .font(.subheadline.bold()).foregroundStyle(.teal)
-                } else {
-                    Text("–").font(.subheadline.bold()).foregroundStyle(.teal)
-                }
-                HStack(spacing: 3) {
-                    Text("Fruchtbares Fenster").font(.caption2).foregroundStyle(.secondary)
-                    InfoButton(titel: "Fruchtbares Fenster",
-                               text: "Das nächste vorhergesagte Zeitfenster maximaler Fruchtbarkeit. Basiert auf dem erwarteten Eisprung ±5 Tage. Wässriger oder Eiweiss-Zervixschleim verschiebt das Fenster automatisch.")
-                }
+    private var leerKarte: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "drop.fill")
+                .font(.system(size: 40)).foregroundStyle(.pink)
+            Text("Noch keine Zyklusdaten").font(.headline)
+            Text("Trage den ersten Tag deiner Periode ein. Nach wenigen Zyklen lernt die App deinen persönlichen Rhythmus.")
+                .font(.subheadline).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button { oeffneHeuteSheet() } label: {
+                Label("Heute erfassen", systemImage: "plus")
+                    .font(.subheadline.bold()).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
             }
-            .frame(maxWidth: .infinity)
-
-            Divider().frame(height: 36)
-
-            VStack(spacing: 3) {
-                if let ov = analyse.vorhergesagteOvulation {
-                    Text(kurzDatum(ov)).font(.subheadline.bold()).foregroundStyle(.orange)
-                } else {
-                    Text("–").font(.subheadline.bold()).foregroundStyle(.orange)
-                }
-                HStack(spacing: 3) {
-                    Text("Eisprung erwartet").font(.caption2).foregroundStyle(.secondary)
-                    InfoButton(titel: "Eisprung erwartet",
-                               text: "Vorhergesagtes Datum des Eisprungs. Die App lernt aus deinen Zervixschleim-Einträgen und passt den Zeitpunkt anhand des persönlichen Musters an.")
-                }
-            }
-            .frame(maxWidth: .infinity)
+            .buttonStyle(.plain)
         }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .zyklusGlas()
+    }
+
+    private var pausiertKarte: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "pause.circle.fill")
+                .font(.system(size: 34)).foregroundStyle(.pink)
+            Text("Prognosen pausiert").font(.headline)
+            Text("Es werden keine Perioden-, Eisprung- oder Fruchtbarkeits-Prognosen angezeigt (z. B. bei Schwangerschaft, hormoneller Verhütung oder Stillzeit). Deine Einträge bleiben erhalten.")
+                .font(.footnote).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Prognosen fortsetzen") { pausiert = false }
+                .buttonStyle(.borderedProminent).tint(.pink)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .zyklusGlas()
+    }
+
+    private func ringKarte(_ analyse: ZyklusAnalyse) -> some View {
+        VStack(spacing: 12) {
+            ZyklusRingView(analyse: analyse, untertitel: ringUntertitel(analyse), auswahl: $ringAuswahl)
+                .frame(maxWidth: 300)
+                .padding(.top, 4)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 6)], alignment: .leading, spacing: 6) {
+                legendenPunkt(ZyklusFarbe.periode, "Periode")
+                legendenPunkt(ZyklusFarbe.follikel, "Follikel")
+                legendenPunkt(ZyklusFarbe.fruchtbar, "Fruchtbar")
+                legendenPunkt(ZyklusFarbe.eisprung, "Eisprung")
+                legendenPunkt(ZyklusFarbe.luteal, "Luteal")
+            }
+            .font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .zyklusGlas()
+    }
+
+    private func legendenPunkt(_ farbe: Color, _ text: String) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(farbe).frame(width: 8, height: 8)
+            Text(text)
+        }
+    }
+
+    private func ringUntertitel(_ a: ZyklusAnalyse) -> String {
+        switch a.status {
+        case .keineAktuellenDaten:
+            return "Keine aktuellen Daten"
+        case .ueberfaellig(let tage):
+            return tage == 1 ? "Periode 1 Tag überfällig" : "Periode \(tage) Tage überfällig"
+        case .normal:
+            if let ov = a.vorhergesagteOvulation {
+                let t = tageBis(ov)
+                if t <= 0 { return "Eisprung heute erwartet" }
+                if t == 1 { return "Eisprung morgen erwartet" }
+                return "Eisprung in ca. \(t) Tagen"
+            }
+            if let np = a.naechstePeriodeStart {
+                let t = tageBis(np)
+                if t <= 0 { return "Periode heute erwartet" }
+                return t == 1 ? "Periode morgen erwartet" : "Periode in \(t) Tagen"
+            }
+            return ""
+        }
+    }
+
+    private func statusKarte(_ a: ZyklusAnalyse) -> some View {
+        let text: String
+        switch a.status {
+        case .ueberfaellig(let tage):
+            text = tage >= 7
+                ? "Deine Periode ist seit \(tage) Tagen überfällig. Trage sie ein, sobald sie beginnt – die Prognose passt sich dann an."
+                : "Deine Periode ist etwas später als erwartet. Zyklen schwanken natürlicherweise um einige Tage."
+        case .keineAktuellenDaten:
+            text = "Dein letzter erfasster Zyklusstart liegt über 90 Tage zurück. Für neue Prognosen trage bitte die nächste Periode ein."
+        case .normal:
+            text = ""
+        }
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
+            Text(text).font(.footnote).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .zyklusGlas(radius: 18)
+    }
+
+    // MARK: Prognose-Karten
+
+    private func prognoseReihe(_ a: ZyklusAnalyse) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            periodeKarte(a)
+            fruchtbarKarte(a)
+        }
+    }
+
+    private func periodeKarte(_ a: ZyklusAnalyse) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("NÄCHSTE PERIODE")
+                .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+            if case .ueberfaellig(let tage) = a.status {
+                Text("Überfällig").font(.title3.bold()).foregroundStyle(.orange)
+                Text(tage == 1 ? "seit 1 Tag" : "seit \(tage) Tagen")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if let np = a.naechstePeriodeStart {
+                Text(np, format: .dateTime.weekday(.abbreviated).day().month(.abbreviated))
+                    .font(.title3.bold())
+                let t = tageBis(np)
+                Text(t <= 0 ? "heute" : "in \(t) \(t == 1 ? "Tag" : "Tagen") · ± \(a.unsicherheitTage) T.")
+                    .font(.caption).foregroundStyle(.secondary)
+                ZyklusUnsicherheitsBand(spanne: a.unsicherheitTage, farbe: ZyklusFarbe.periode)
+                    .padding(.top, 4)
+            } else {
+                Text("–").font(.title3.bold())
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+        .zyklusGlas(radius: 20)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func fruchtbarKarte(_ a: ZyklusAnalyse) -> some View {
+        let konf = konfidenz(a)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 2) {
+                Text("FRUCHTBARES FENSTER")
+                    .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                    .lineLimit(2)
+                InfoButton(titel: "Fruchtbares Fenster",
+                           text: "Die 6 Tage bis einschließlich Eisprungtag (Spermien überleben bis zu 5 Tage, die Eizelle 12–24 Stunden). Die Prognose nutzt – in dieser Reihenfolge – BBT-Anstieg, positiven LH-Test, Schleim-Peak und zuletzt den Kalender (nächste Periode minus Lutealphase). Bei unregelmäßigen Zyklen wird das Fenster nach der Kalendermethode verbreitert. Keine Verhütungsmethode.")
+            }
+            if let f = a.naechstesFruchtbaresFenster {
+                Text(fensterText(f))
+                    .font(.title3.bold())
+                    .minimumScaleFactor(0.8).lineLimit(1)
+            } else {
+                Text("–").font(.title3.bold())
+            }
+            Text(konf.text)
+                .font(.caption2.bold())
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(konf.farbe.opacity(0.18), in: Capsule())
+                .foregroundStyle(konf.farbe)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+        .zyklusGlas(radius: 20)
+    }
+
+    private func fensterText(_ f: ClosedRange<Date>) -> String {
+        let von = f.lowerBound, bis = f.upperBound
+        if kal.isDate(von, equalTo: bis, toGranularity: .month) {
+            let tagVon = von.formatted(.dateTime.day())
+            return "\(tagVon)–\(bis.formatted(.dateTime.day().month(.abbreviated)))"
+        }
+        return "\(von.formatted(.dateTime.day().month(.abbreviated))) – \(bis.formatted(.dateTime.day().month(.abbreviated)))"
+    }
+
+    private func konfidenz(_ a: ZyklusAnalyse) -> (text: String, farbe: Color) {
+        if a.datenQualitaet == .standardwert { return ("Schätzung", .secondary) }
+        if a.eisprungBestaetigt { return ("Bestätigt", .teal) }
+        if a.regelmaessigkeit == .unregelmaessig { return ("Konfidenz niedrig", .orange) }
+        if a.regelmaessigkeit == .regelmaessig && a.datenQualitaet >= .gut { return ("Konfidenz hoch", .teal) }
+        return ("Konfidenz mittel", .orange)
+    }
+
+    // MARK: Erfassen / Statistik
+
+    private func erfassenKarte(_ proTag: [Date: ZyklusEintrag]) -> some View {
+        let heute = proTag[kal.startOfDay(for: Date())]
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("HEUTE ERFASSEN")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Spacer()
+                Button("Alle Felder") { oeffneHeuteSheet() }
+                    .font(.caption.weight(.semibold)).foregroundStyle(.pink)
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], spacing: 8) {
+                chip("Blutung", "drop.fill", aktiv: heute?.hatBlutung ?? false)
+                chip("Schleim", "water.waves", aktiv: (heute?.schleim ?? .keine) != .keine)
+                chip("LH-Test", "testtube.2", aktiv: (heute?.lhTest ?? .keine) != .keine)
+                chip(heute.map { $0.basaltemperatur > 0 ? String(format: "%.2f°", $0.basaltemperatur) : "Temperatur" } ?? "Temperatur",
+                     "thermometer.medium", aktiv: (heute?.basaltemperatur ?? 0) > 0)
+                chip("Symptome", "heart.text.square", aktiv: !(heute?.symptome.isEmpty ?? true))
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .zyklusGlas(radius: 20)
+    }
+
+    private func chip(_ titel: String, _ symbol: String, aktiv: Bool) -> some View {
+        Button { oeffneHeuteSheet() } label: {
+            Label(titel, systemImage: symbol)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .foregroundStyle(aktiv ? Color.white : Color.primary)
+                .background(aktiv ? Color.pink : Color.white.opacity(0.35), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(aktiv ? "erfasst" : "offen")
+    }
+
+    private func statistikKarte(_ a: ZyklusAnalyse) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Zyklus-Überblick", systemImage: "drop.fill")
+                .font(.headline).foregroundStyle(.pink)
+            Divider()
+            HStack(spacing: 0) {
+                statPill(a.aktuellerZyklustag.map { "Tag \($0)" } ?? "–", label: "Zyklustag",
+                         farbe: a.aktuellerZyklustag != nil ? .pink : .secondary)
+                Divider().frame(height: 40)
+                statPill(a.gueltigeZyklen > 0 ? "\(Int(a.medianZykluslaenge.rounded())) T" : "–",
+                         label: "Ø Zyklus (Median)", farbe: .pink)
+                Divider().frame(height: 40)
+                statPill("\(Int(a.adaptiertePeriodendauer.rounded())) T",
+                         label: "Ø Periode", farbe: ZyklusFarbe.periode)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .zyklusGlas()
     }
 
     private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
@@ -200,111 +422,150 @@ struct ZyklusView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Calendar Section
-
-    private var kalenderMitLegende: some View {
-        VStack(spacing: 12) {
-            ZyklusKalender(
-                monat: anzeigeMonat,
-                eintraege: Array(eintraege),
-                analyse: analyse,
-                onVorheriger: { wechselMonat(-1) },
-                onNaechster: { wechselMonat(1) }
-            ) { tag in
-                ausgewaehlterTag = ZyklusTagAuswahl(datum: tag)
-            }
-            legende
+    private var analyseButton: some View {
+        Button { zeigeAnalyse = true } label: {
+            Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
         }
+        .buttonStyle(.plain)
     }
 
-    private var legende: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
-                  alignment: .leading, spacing: 8) {
+    // MARK: - Monat
+
+    @ViewBuilder
+    private func monatsInhalt(_ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusEintrag]) -> some View {
+        ZyklusKalenderView(
+            monat: anzeigeMonat,
+            eintraegeProTag: proTag,
+            analyse: analyse,
+            zeigePrognosen: !pausiert,
+            onVorheriger: { wechselMonat(-1) },
+            onNaechster: { wechselMonat(1) }
+        ) { tag in
+            ausgewaehlterTag = ZyklusTagAuswahl(datum: tag)
+        }
+        .zyklusGlas()
+
+        kalenderLegende
+    }
+
+    private var kalenderLegende: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
             HStack(spacing: 4) {
-                ForEach([0.25, 0.5, 0.8, 1.0] as [Double], id: \.self) { op in
-                    Circle().fill(Color.red.opacity(op)).frame(width: 7, height: 7)
+                ForEach([0.35, 0.6, 0.85, 1.0] as [Double], id: \.self) { op in
+                    Circle().fill(ZyklusFarbe.periode.opacity(op)).frame(width: 7, height: 7)
                 }
                 Text("Periode")
             }
-
-            legendeItem(farbe: .red, gefuellt: false, text: "Vorhergesagt",
+            legendeItem(ZyklusFarbe.periode, gestrichelt: true, text: "Vorhergesagt",
                         info: ("Vorhergesagte Periode",
-                               "Geschätzter Periodenbeginn basierend auf deinen bisherigen Zyklen. Wird mit jedem erfassten Zyklus genauer."))
-
-            legendeItem(farbe: .teal, gefuellt: true, text: "Fruchtbar",
+                               "Geschätzter Periodenbeginn aus deinen bisherigen Zyklen (gewichteter Median der letzten 6). Die Abweichung ± Tage steht im Heute-Tab."))
+            legendeItem(ZyklusFarbe.fruchtbar, gestrichelt: false, text: "Fruchtbar",
                         info: ("Fruchtbare Tage",
-                               "Die 5 Tage vor und 1 Tag nach dem Eisprung. In dieser Zeit ist eine Befruchtung möglich, da Spermien bis zu 5 Tage überleben können."))
-
-            legendeItem(farbe: .orange, gefuellt: true, text: "Eisprung",
+                               "Die 6 Tage bis einschließlich Eisprungtag. Bei unregelmäßigen Zyklen oder wenig Daten wird das Fenster breiter geschätzt. Fruchtbarer Zervixschleim und positive LH-Tests markieren den Tag zusätzlich."))
+            legendeItem(ZyklusFarbe.eisprung, gestrichelt: false, text: "Eisprung",
                         info: ("Eisprung (Ovulation)",
-                               "Der Moment, in dem ein Ei aus dem Eierstock freigesetzt wird. Tritt meist 12–16 Tage vor der nächsten Periode auf und ist der fruchtbarste Punkt im Zyklus."))
-
+                               "Festgelegt per BBT-Anstieg (bestätigt), LH-Test oder Zervixschleim-Peak; sonst geschätzt als nächste Periode minus Lutealphase (Standard 14 Tage, persönlich gelernt ab 2 Zyklen mit Evidenz)."))
             HStack(spacing: 4) {
-                Circle().fill(Color.purple.opacity(0.6)).frame(width: 7, height: 7)
+                Circle().fill(Color.purple.opacity(0.8)).frame(width: 7, height: 7)
                 Text("Symptome")
             }
-
             HStack(spacing: 4) {
-                Circle().fill(Color.blue.opacity(0.7)).frame(width: 7, height: 7)
+                Circle().fill(Color.blue.opacity(0.8)).frame(width: 7, height: 7)
                 Text("Zervixschleim")
-                InfoButton(titel: "Zervixschleim",
-                           text: "Blauer Punkt = Zervixschleim erfasst. Wässrige oder Eiweiss-Konsistenz gilt als Zeichen der Fruchtbarkeit (Symptothermalmethode) und beeinflusst die Eisprungvorhersage.")
             }
-
             HStack(spacing: 4) {
                 Circle().fill(Color.pink.opacity(0.8)).frame(width: 7, height: 7)
                 Text("Sex. Aktivität")
             }
-
             HStack(spacing: 4) {
-                Circle().fill(Color.gray.opacity(0.5)).frame(width: 7, height: 7)
+                Circle().fill(Color.gray.opacity(0.8)).frame(width: 7, height: 7)
                 Text("Andere Daten")
             }
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
+        .padding(14)
+        .zyklusGlas(radius: 18)
     }
 
-    private func legendeItem(farbe: Color, gefuellt: Bool, text: String, info: (String, String)? = nil) -> some View {
+    private func legendeItem(_ farbe: Color, gestrichelt: Bool, text: String, info: (String, String)) -> some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(gefuellt ? farbe : farbe.opacity(0.15))
-                .overlay(gefuellt ? nil : Circle().stroke(farbe, style: StrokeStyle(lineWidth: 1, dash: [2])))
+                .fill(gestrichelt ? farbe.opacity(0.15) : farbe)
+                .overlay {
+                    if gestrichelt {
+                        Circle().stroke(farbe, style: StrokeStyle(lineWidth: 1, dash: [2]))
+                    }
+                }
                 .frame(width: 9, height: 9)
             Text(text)
-            if let (titel, erklärung) = info {
-                InfoButton(titel: titel, text: erklärung)
+            InfoButton(titel: info.0, text: info.1)
+        }
+    }
+
+    // MARK: - Verlauf
+
+    @ViewBuilder
+    private func verlaufInhalt(_ analyse: ZyklusAnalyse) -> some View {
+        if analyse.zyklusStarts.isEmpty {
+            leerKarte
+        } else {
+            ZyklusVerlaufView(analyse: analyse)
+            analyseButton
+        }
+    }
+
+    // MARK: - Benachrichtigungen
+
+    @ViewBuilder
+    private func erinnerungsBanner(_ analyse: ZyklusAnalyse) -> some View {
+        if !analyse.zyklusStarts.isEmpty && !pausiert {
+            if notifManager.status == .notDetermined {
+                HStack(spacing: 12) {
+                    Image(systemName: "bell.badge.fill").font(.title3).foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Zyklus-Erinnerungen").font(.subheadline.bold())
+                        Text("Erhalte Benachrichtigungen für Periode, fruchtbare Tage und Eisprung.")
+                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Button("Aktivieren") {
+                        Task {
+                            let granted = await notifManager.berechtigungAnfordern()
+                            if granted { planeZyklusNotifs() }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent).controlSize(.small).tint(.pink)
+                }
+                .padding(14)
+                .zyklusGlas(radius: 18)
+            } else if notifManager.status == .denied {
+                HStack(spacing: 12) {
+                    Image(systemName: "bell.slash.fill").font(.title3).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Erinnerungen deaktiviert").font(.subheadline.bold())
+                        Text("Aktiviere Benachrichtigungen in den iOS-Einstellungen.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+#if os(iOS)
+                    Button("Einstellungen") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    .font(.caption).buttonStyle(.bordered).controlSize(.small)
+#endif
+                }
+                .padding(14)
+                .zyklusGlas(radius: 18)
             }
         }
-    }
-
-    private func oeffneHeuteSheet() {
-        ausgewaehlterTag = ZyklusTagAuswahl(datum: Calendar.current.startOfDay(for: Date()))
-    }
-
-    // MARK: - Helpers
-
-    private var naechstePeriodeBadge: String {
-        guard let n = analyse.naechstePeriodeStart else { return "–" }
-        let tage = Calendar.current.dateComponents([.day], from: Date(), to: n).day ?? 0
-        if tage <= 0 { return "Heute" }
-        return "in \(tage)d"
-    }
-
-    private var naechstesFruchtbaresF: (Date, Date)? {
-        let kal = Calendar.current
-        let heute = kal.startOfDay(for: Date())
-        let sorted = analyse.fruchtbareTageSet.filter { $0 >= heute }.sorted()
-        guard let first = sorted.first else { return nil }
-        var end = first
-        for tag in sorted.dropFirst() {
-            if (kal.dateComponents([.day], from: end, to: tag).day ?? 99) <= 1 { end = tag } else { break }
-        }
-        return (first, end)
-    }
-
-    private func kurzDatum(_ d: Date) -> String {
-        d.formatted(.dateTime.day().month(.abbreviated))
     }
 }
 
@@ -313,622 +574,4 @@ struct ZyklusView: View {
 private struct ZyklusTagAuswahl: Identifiable {
     let id = UUID()
     let datum: Date
-}
-
-// MARK: - Calendar
-
-private struct ZyklusKalender: View {
-    let monat: Date
-    let eintraege: [ZyklusEintrag]
-    let analyse: ZyklusAnalyse
-    var onVorheriger: () -> Void
-    var onNaechster: () -> Void
-    let onTap: (Date) -> Void
-
-    private let wochentage = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
-    private let kal = Calendar.current
-
-    private var monatsTitel: String {
-        monat.formatted(.dateTime.month(.wide).year())
-    }
-
-    private var tageImMonat: [Date?] {
-        guard let erster = kal.date(from: kal.dateComponents([.year, .month], from: monat)),
-              let anzahl = kal.range(of: .day, in: .month, for: monat)?.count else { return [] }
-        let wt = (kal.component(.weekday, from: erster) + 5) % 7
-        var tage: [Date?] = Array(repeating: nil, count: wt)
-        for d in 0..<anzahl {
-            tage.append(kal.date(byAdding: .day, value: d, to: erster))
-        }
-        while tage.count % 7 != 0 { tage.append(nil) }
-        return tage
-    }
-
-    var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Button(action: onVorheriger) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 36, height: 36)
-                }
-                .buttonStyle(.plain)
-                Spacer()
-                Text(monatsTitel).font(.title3.bold())
-                Spacer()
-                Button(action: onNaechster) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 36, height: 36)
-                }
-                .buttonStyle(.plain)
-            }
-
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
-                ForEach(wochentage, id: \.self) { tag in
-                    Text(tag)
-                        .font(.caption2.bold())
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.bottom, 6)
-                }
-
-                ForEach(Array(tageImMonat.enumerated()), id: \.offset) { _, datum in
-                    if let datum {
-                        let zustand = ZyklusRechner.tagZustand(datum: datum, analyse: analyse)
-                        let eintrag = eintraege.first { kal.isDate($0.datum, inSameDayAs: datum) }
-                        let hatSymptome = eintrag.map { !$0.symptome.isEmpty } ?? false
-                        let fluss = eintrag?.blutungsfluss ?? ""
-                        let sexAktiv = eintrag?.sexuelleAktivitaet ?? ""
-                        let schleim = eintrag?.zervixschleim ?? ""
-                        let hatSonstigeDaten = !(eintrag?.ovulationstest ?? "").isEmpty ||
-                                               (eintrag?.basaltemperatur ?? 0) > 0 ||
-                                               !(eintrag?.notizen ?? "").isEmpty
-                        TagZelle(datum: datum, zustand: zustand, hatSymptome: hatSymptome, blutungsfluss: fluss, sexuelleAktivitaet: sexAktiv, zervixschleim: schleim, hatSonstigeDaten: hatSonstigeDaten) {
-                            onTap(datum)
-                        }
-                    } else {
-                        Color.clear.frame(height: 38)
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-    }
-}
-
-// MARK: - Day Cell
-
-private struct TagZelle: View {
-    let datum: Date
-    let zustand: ZyklusTagZustand
-    let hatSymptome: Bool
-    let blutungsfluss: String
-    let sexuelleAktivitaet: String
-    let zervixschleim: String
-    let hatSonstigeDaten: Bool
-    let action: () -> Void
-
-    private var istHeute: Bool { Calendar.current.isDateInToday(datum) }
-    private var tagNummer: String { "\(Calendar.current.component(.day, from: datum))" }
-
-    private var periodeHintergrund: Color {
-        switch blutungsfluss {
-        case "schmierblutung": return Color.red.opacity(0.2)
-        case "leicht":         return Color.red.opacity(0.45)
-        case "stark":          return Color.red
-        default:               return Color.red.opacity(0.75)
-        }
-    }
-
-    private var streakOpacity: Double {
-        switch blutungsfluss {
-        case "schmierblutung": return 0.08
-        case "leicht":         return 0.14
-        case "stark":          return 0.30
-        default:               return 0.22
-        }
-    }
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                // Streak band
-                GeometryReader { geo in
-                    if zustand.periode {
-                        HStack(spacing: 0) {
-                            Rectangle()
-                                .fill(Color.red.opacity(zustand.verbundenLinks ? streakOpacity : 0))
-                                .frame(width: geo.size.width / 2)
-                            Rectangle()
-                                .fill(Color.red.opacity(zustand.verbundenRechts ? streakOpacity : 0))
-                                .frame(width: geo.size.width / 2)
-                        }
-                        .frame(height: 32)
-                        .frame(maxHeight: .infinity, alignment: .center)
-                    } else if zustand.fruchtbar {
-                        Rectangle()
-                            .fill(Color.teal.opacity(0.12))
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                }
-
-                VStack(spacing: 2) {
-                    ZStack {
-                        // Background circle
-                        if zustand.periode {
-                            Circle().fill(periodeHintergrund)
-                        } else if zustand.ovulation {
-                            Circle().fill(Color.orange)
-                        } else if zustand.vorhergesagtePeriode {
-                            Circle()
-                                .fill(Color.red.opacity(0.1))
-                                .overlay(Circle().stroke(Color.red.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
-                        } else if zustand.fruchtbar {
-                            Circle().fill(Color.teal.opacity(0.25))
-                        }
-
-                        // Today ring (when not period/ovulation)
-                        if istHeute && !zustand.periode && !zustand.ovulation {
-                            Circle().stroke(Color.primary, lineWidth: 1.5)
-                        }
-
-                        Text(tagNummer)
-                            .font(.system(size: 13, weight: zustand.periode || istHeute ? .semibold : .regular))
-                            .foregroundStyle(tagTextFarbe)
-                    }
-                    .frame(width: 30, height: 30)
-
-                    // Status dots — fixed height, no placeholder artifacts
-                    HStack(spacing: 2) {
-                        if hatSymptome {
-                            Circle().fill(Color.purple.opacity(0.6)).frame(width: 4, height: 4)
-                        }
-                        if !zervixschleim.isEmpty {
-                            Circle().fill(Color.blue.opacity(0.7)).frame(width: 4, height: 4)
-                        }
-                        if !sexuelleAktivitaet.isEmpty {
-                            Circle().fill(Color.pink.opacity(0.8)).frame(width: 4, height: 4)
-                        }
-                        if hatSonstigeDaten {
-                            Circle().fill(Color.gray.opacity(0.5)).frame(width: 4, height: 4)
-                        }
-                    }
-                    .frame(height: 6)
-                }
-            }
-            .frame(height: 38)
-        }
-        .buttonStyle(.plain)
-        .animation(.spring(response: 0.2), value: zustand.periode)
-    }
-
-    private var tagTextFarbe: Color {
-        if zustand.ovulation { return .white }
-        if zustand.periode {
-            switch blutungsfluss {
-            case "schmierblutung", "leicht": return .red.opacity(0.85)
-            default: return .white
-            }
-        }
-        if zustand.vorhergesagtePeriode { return .red.opacity(0.7) }
-        if zustand.fruchtbar { return .teal }
-        if istHeute { return .primary }
-        return .secondary
-    }
-}
-
-// MARK: - Entry Sheet
-
-struct ZyklusEintragSheet: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-
-    let datum: Date
-    let bestehend: ZyklusEintrag?
-
-    @AppStorage("zusatzSymptome") private var zusatzSymptomeRaw: String = ""
-    @State private var neuesSymptom = ""
-
-    // Data state
-    @State private var istPeriode: Bool
-    @State private var blutungsfluss: String
-    @State private var nurHalberTag: Bool
-    @State private var symptome: Set<String>
-    @State private var ovulationstest: String
-    @State private var zervixschleim: String
-    @State private var basaltemperatur: String
-    @State private var sexuelleAktivitaet: String
-    @State private var notizen: String
-
-    // Wizard state
-    @State private var schritt = 0
-    private let maxSchritt = 2
-    private let pflichtSchritte: Set<Int> = [0]
-
-    private var kannWeiter: Bool { true }
-
-    init(datum: Date, bestehend: ZyklusEintrag?) {
-        self.datum = datum
-        self.bestehend = bestehend
-        if let e = bestehend {
-            _istPeriode = State(initialValue: e.istPeriode)
-            _blutungsfluss = State(initialValue: e.blutungsfluss.isEmpty ? "mittel" : e.blutungsfluss)
-            _nurHalberTag = State(initialValue: e.nurHalberTag)
-            _symptome = State(initialValue: Set(e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty }))
-            _ovulationstest = State(initialValue: e.ovulationstest)
-            _zervixschleim = State(initialValue: e.zervixschleim)
-            _basaltemperatur = State(initialValue: e.basaltemperatur > 0 ? String(format: "%.1f", e.basaltemperatur) : "")
-            _sexuelleAktivitaet = State(initialValue: e.sexuelleAktivitaet)
-            _notizen = State(initialValue: e.notizen)
-        } else {
-            _istPeriode = State(initialValue: false)
-            _blutungsfluss = State(initialValue: "mittel")
-            _nurHalberTag = State(initialValue: false)
-            _symptome = State(initialValue: [])
-            _ovulationstest = State(initialValue: "")
-            _zervixschleim = State(initialValue: "")
-            _basaltemperatur = State(initialValue: "")
-            _sexuelleAktivitaet = State(initialValue: "")
-            _notizen = State(initialValue: "")
-        }
-    }
-
-    private let basisSymptome = [
-        "Krämpfe", "Kopfschmerzen", "Rückenschmerzen", "Brustspannen",
-        "Völlegefühl", "Blähungen", "Übelkeit", "Müdigkeit",
-        "Reizbarkeit", "Stimmungsschwankungen", "Akne", "Schlafprobleme",
-        "Hitzewallungen", "Appetitsteigerung"
-    ]
-
-    private var alleSymptome: [String] {
-        let custom = zusatzSymptomeRaw.isEmpty ? [] : zusatzSymptomeRaw.components(separatedBy: "|")
-        return basisSymptome + custom.filter { !basisSymptome.contains($0) }
-    }
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.pink.opacity(0.15)).frame(height: 3)
-                        Capsule().fill(Color.pink)
-                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
-                            .animation(.easeInOut(duration: 0.3), value: schritt)
-                    }
-                }
-                .frame(height: 3).padding(.horizontal).padding(.top, 10)
-
-                Group {
-                    switch schritt {
-                    case 0: schritt0
-                    case 1: schritt1
-                    default: schritt2
-                    }
-                }
-                .frame(maxHeight: .infinity)
-
-                navigationsLeiste
-            }
-            .navigationTitle(datum.formatted(.dateTime.day().month(.wide).year()))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { abbrechen() }
-                }
-                if bestehend != nil {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button(role: .destructive) { loeschen() } label: {
-                            Image(systemName: "trash").foregroundStyle(.red)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Step 0: Periode
-
-    private var schritt0: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                schrittHeader(symbol: "drop.fill", titel: "Periode", untertitel: "Hast du heute eine Blutung?")
-
-                VStack(spacing: 0) {
-                    Toggle("Blutung", isOn: $istPeriode)
-                        .font(.subheadline).padding(16)
-
-                    if istPeriode {
-                        Divider().padding(.leading, 16)
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Stärke").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
-                                ForEach([("schmierblutung", "Schmierblutung"), ("leicht", "Leicht"),
-                                          ("mittel", "Mittel"), ("stark", "Stark")], id: \.0) { wert, label in
-                                    let sel = blutungsfluss == wert
-                                    Button { blutungsfluss = wert } label: {
-                                        Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
-                                            .padding(.vertical, 10)
-                                            .background(sel ? Color.red : Color(.secondarySystemGroupedBackground))
-                                            .foregroundStyle(sel ? .white : .primary)
-                                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                                            .animation(.easeInOut(duration: 0.15), value: sel)
-                                    }.buttonStyle(.plain)
-                                }
-                            }
-                        }.padding(16)
-
-                        Divider().padding(.leading, 16)
-                        Toggle("Nur halber Tag", isOn: $nurHalberTag)
-                            .font(.subheadline).padding(16)
-                    }
-                }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                .animation(.easeInOut(duration: 0.2), value: istPeriode)
-            }
-            .padding(.horizontal).padding(.vertical, 24)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
-    }
-
-    // MARK: - Step 1: Symptome
-
-    private var schritt1: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                schrittHeader(symbol: "heart.text.square.fill", titel: "Symptome", untertitel: "Wie geht es dir heute?")
-
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    ForEach(alleSymptome, id: \.self) { s in
-                        let sel = symptome.contains(s)
-                        Button {
-                            if sel { symptome.remove(s) } else { symptome.insert(s) }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: sel ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(sel ? .pink : .secondary).font(.caption)
-                                Text(s).font(.caption).lineLimit(1)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 10).padding(.vertical, 8)
-                            .background(
-                                sel ? Color.pink.opacity(0.12) : Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 10)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .animation(.easeInOut(duration: 0.15), value: sel)
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    TextField("Eigenes Symptom", text: $neuesSymptom)
-                        .font(.subheadline).padding(14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                        .submitLabel(.done).onSubmit { symptomHinzufuegen() }
-                    Button(action: symptomHinzufuegen) {
-                        Image(systemName: "plus.circle.fill").foregroundStyle(.pink).font(.title2)
-                    }
-                    .disabled(neuesSymptom.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-            .padding(.horizontal).padding(.vertical, 24)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
-    }
-
-    // MARK: - Step 2: Weitere Daten
-
-    private var schritt2: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                schrittHeader(symbol: "waveform.path.ecg", titel: "Weitere Daten", untertitel: "Eisprung, Schleim & Temperatur")
-
-                // Ovulationstest
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 4) {
-                        Text("Ovulationstest (LH-Test)").font(.caption).foregroundStyle(.secondary)
-                        InfoButton(titel: "Ovulationstest (LH-Test)",
-                                   text: "Ein LH-Test aus der Apotheke zeigt den Anstieg des luteinisierenden Hormons, der 24–36 Stunden vor dem Eisprung auftritt. Positiv = Eisprung steht bevor.")
-                    }.padding(.horizontal, 4)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
-                        ForEach([("", "Kein Test"), ("positiv", "Positiv"),
-                                  ("negativ", "Negativ"), ("unklar", "Unklar")], id: \.0) { wert, label in
-                            let sel = ovulationstest == wert
-                            Button { ovulationstest = wert } label: {
-                                Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(sel ? Color.orange : Color(.secondarySystemGroupedBackground))
-                                    .foregroundStyle(sel ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                }
-
-                // Zervixschleim
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 4) {
-                        Text("Zervixschleim").font(.caption).foregroundStyle(.secondary)
-                        InfoButton(titel: "Zervixschleim-Typen",
-                                   text: "Trocken: kein Schleim, eher unfruchtbar.\nKlebrig: zäh, trüb.\nCremig: weiß, cremig – Übergang.\nWässrig: klar, fließend – fruchtbar.\nEiweiss: dehnbar wie rohes Ei – höchste Fruchtbarkeit, typisch beim Eisprung.")
-                    }.padding(.horizontal, 4)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
-                        ForEach([("", "Nicht erfasst"), ("trocken", "Trocken"), ("klebrig", "Klebrig"),
-                                  ("cremig", "Cremig"), ("wässrig", "Wässrig"), ("Eiweiss", "Eiweiss")], id: \.0) { wert, label in
-                            let sel = zervixschleim == wert
-                            Button { zervixschleim = wert } label: {
-                                Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(sel ? Color.blue : Color(.secondarySystemGroupedBackground))
-                                    .foregroundStyle(sel ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                }
-
-                // Basaltemperatur
-                VStack(spacing: 0) {
-                    HStack {
-                        HStack(spacing: 4) {
-                            Text("Basaltemperatur").font(.subheadline)
-                            InfoButton(titel: "Basaltemperatur",
-                                       text: "Morgentemperatur direkt nach dem Aufwachen, vor jeder Aktivität. Nach dem Eisprung steigt sie um ca. 0,2–0,5 °C an und bleibt bis zur nächsten Periode erhöht.")
-                        }
-                        Spacer()
-                        HStack(spacing: 4) {
-                            TextField("36.4", text: $basaltemperatur)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 60)
-                            Text("°C").foregroundStyle(.secondary)
-                        }
-                    }.padding(16)
-                }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-
-                // Sexuelle Aktivität
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Sexuelle Aktivität").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
-                        ForEach([("", "Keine Angabe"), ("geschützt", "Geschützt"),
-                                  ("ungeschützt", "Ungeschützt")], id: \.0) { wert, label in
-                            let sel = sexuelleAktivitaet == wert
-                            Button { sexuelleAktivitaet = wert } label: {
-                                Text(label).font(.caption.bold()).frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(sel ? Color.pink : Color(.secondarySystemGroupedBackground))
-                                    .foregroundStyle(sel ? .white : .primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                }
-
-                // Notizen
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Notizen").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
-                    TextEditor(text: $notizen)
-                        .font(.subheadline).frame(minHeight: 80)
-                        .padding(12)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                }
-            }
-            .padding(.horizontal).padding(.vertical, 24)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
-    }
-
-    // MARK: - Navigation
-
-    private var navigationsLeiste: some View {
-        HStack(spacing: 12) {
-            if schritt > 0 {
-                Button { withAnimation { schritt -= 1 } } label: {
-                    Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                }.buttonStyle(.plain)
-            }
-            if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
-                Button { withAnimation { schritt += 1 } } label: {
-                    Text("Überspringen").font(.subheadline).foregroundStyle(.secondary)
-                }
-            }
-            if schritt < maxSchritt {
-                Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
-                    Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(kannWeiter ? Color.pink : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
-                }.buttonStyle(.plain).disabled(!kannWeiter)
-            } else {
-                Button { speichern() } label: {
-                    Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color.pink, in: RoundedRectangle(cornerRadius: 12))
-                }.buttonStyle(.plain)
-            }
-        }
-        .padding()
-        .background(.ultraThinMaterial)
-    }
-
-    private func schrittHeader(symbol: String, titel: String, untertitel: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: symbol).font(.system(size: 32)).foregroundStyle(.pink)
-            Text(titel).font(.title3.bold())
-            Text(untertitel).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity).padding(.bottom, 4)
-    }
-
-    // MARK: - Actions
-
-    private func symptomHinzufuegen() {
-        let s = neuesSymptom.trimmingCharacters(in: .whitespaces)
-        guard !s.isEmpty, !alleSymptome.contains(s) else { neuesSymptom = ""; return }
-        var custom = zusatzSymptomeRaw.isEmpty ? [] : zusatzSymptomeRaw.components(separatedBy: "|")
-        custom.append(s)
-        zusatzSymptomeRaw = custom.joined(separator: "|")
-        symptome.insert(s)
-        neuesSymptom = ""
-    }
-
-    private var istLeer: Bool {
-        !istPeriode &&
-        symptome.isEmpty &&
-        ovulationstest.isEmpty &&
-        zervixschleim.isEmpty &&
-        (Double(basaltemperatur.replacingOccurrences(of: ",", with: ".")) ?? 0) == 0 &&
-        sexuelleAktivitaet.isEmpty &&
-        notizen.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
-    private func speichern() {
-        if let alt = bestehend, istLeer {
-            NotificationManager.shared.loescheZyklusErinnerungen()
-            modelContext.delete(alt)
-            dismiss()
-            return
-        }
-        guard !istLeer else { dismiss(); return }
-
-        let eintrag: ZyklusEintrag
-        if let alt = bestehend {
-            eintrag = alt
-        } else {
-            eintrag = ZyklusEintrag(datum: Calendar.current.startOfDay(for: datum))
-            modelContext.insert(eintrag)
-        }
-        eintrag.istPeriode = istPeriode
-        eintrag.blutungsfluss = istPeriode ? blutungsfluss : ""
-        eintrag.nurHalberTag = istPeriode ? nurHalberTag : false
-        eintrag.symptome = symptome.sorted().joined(separator: ", ")
-        eintrag.ovulationstest = ovulationstest
-        eintrag.zervixschleim = zervixschleim
-        eintrag.basaltemperatur = Double(basaltemperatur.replacingOccurrences(of: ",", with: ".")) ?? 0
-        eintrag.sexuelleAktivitaet = sexuelleAktivitaet
-        eintrag.notizen = notizen
-        dismiss()
-    }
-
-    private func abbrechen() {
-        if let alt = bestehend, istLeer {
-            NotificationManager.shared.loescheZyklusErinnerungen()
-            modelContext.delete(alt)
-        }
-        dismiss()
-    }
-
-    private func loeschen() {
-        if let alt = bestehend {
-            NotificationManager.shared.loescheZyklusErinnerungen()
-            modelContext.delete(alt)
-        }
-        dismiss()
-    }
 }

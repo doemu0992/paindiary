@@ -15,6 +15,7 @@ Every new screen, module, and edit must follow these rules.
 | Haut | `.orange` | `.orange` |
 | Diabetes | `.blue` | `.blue` |
 | Wellness | `.mint` (Charts/Daten: Multi-Color) | `.mint` |
+| Zyklus | `.pink` (Phasenfarben semantisch: Periode `ZyklusFarbe.periode`, Eisprung `.orange`, fruchtbar teal) | `.pink` |
 
 **Neues Modul:** einfach nächste freie Farbe aus SwiftUI-Palette wählen (z.B. `.indigo`, `.cyan`, `.pink`). Farbe in diese Tabelle eintragen. Niemals eine bereits vergebene Farbe wiederverwenden.
 
@@ -929,6 +930,41 @@ Enthält `SubRegionen.map["Unterschenkel links"]` und `SubRegionen.map["Untersch
 - [ ] Beide Seiten der Map aktualisiert (map **und** hautMap falls vorhanden)?
 - [ ] Node-Namen in `BodySceneBuilder.addParts()` geprüft — dort sind die exakten Schlüssel-Namen der Map?
 
+
+---
+
+## Zyklus-Modul (Glas-Design, bindend)
+
+**Ausnahme vom Card-/Wizard-Standard:** Das Zyklus-Modul nutzt ein eigenes Frosted-Glass-Design (vom Nutzer freigegeben).
+Gilt nur für `Views/Zyklus/` — Kachel im Dashboard folgt weiterhin dem Kachel-Template.
+
+| Element | Standard |
+|---|---|
+| Hintergrund | `ZyklusHintergrund()` (Rosé/Pfirsich/Lavendel-Verlauf) via `.background { }` |
+| Karten | `.zyklusGlas()` (`.ultraThinMaterial`, Radius 24/20/18, weiße 1-pt-Kontur) — nicht `secondarySystemGroupedBackground` |
+| Hauptseite | `ScrollView` mit Segment-Picker Heute / Monat / Verlauf (statt `List`) |
+| Eintrags-Sheet | Ein Bildschirm mit Glas-Karten (`ZyklusEintragSheet`), Toolbar „Abbrechen" / „Sichern" |
+| Farben/Phasen | `ZyklusFarbe` — nie Farbliterale in Zyklus-Views |
+
+**Engine (`Services/ZyklusRechner.swift`) — Konventionen:**
+- **Zyklustag** ist 1-basiert (Tag 1 = erster Tag der Blutung); **Eisprung** ist ein Datum.
+  `Lutealphase = nächsterStart − Eisprung − 1` (28-Tage-Zyklus, Lutealphase 14 → Eisprung = Zyklustag 14).
+- Zyklusstart = erster Tag echter Blutung. **Schmierblutung (Spotting) ist nie ein Zyklusstart.**
+  Lücken ≤ 7 Tage gehören zur selben Blutungsepisode; Episoden < 15 Tage nach dem letzten Start sind Zwischenblutungen.
+- Statistik nur mit gültigen Zyklen (15–90 Tage, MAD-Ausreißer ausgeschlossen). Median/gewichteter Median, Streuung als Stichproben-σ.
+- Eisprung-Priorität: BBT (3-über-6) > positiver LH-Test (+1 Tag) > Schleim-Peak > Kalender (nächste Periode − Lutealphase).
+  Lutealphase wird ab 2 Zyklen mit Evidenz persönlich gelernt, sonst Standard 14 (`ZyklusGrenzen`).
+- Fruchtbares Fenster = 6 Tage bis einschließlich Eisprungtag; bei Unsicherheit verbreitert, bei unregelmäßigem Zyklus Kalendermethode (kürzester − 18 … längster − 11).
+- Phasen **immer** über `ZyklusRechner.phase(for:analyse:)` — nie eigene Tag-Grenzen in Views. Korrelations-Auswertungen aggregieren pro Tag.
+- `ZyklusRechner.analyse(...)` ist gecacht (Fingerabdruck); in Views beliebig oft aufrufbar. Neue Felder, die die Analyse beeinflussen, in `signatur(_:)` aufnehmen.
+- Enums statt Strings: `Blutungsfluss`, `Zervixschleim`, `LHTest`, `SexAktivitaet` (`ZyklusTypen.swift`); gespeichert werden weiter die Rohwerte.
+- Pro Kalendertag **ein** `ZyklusEintrag`. Sheets immer mit dem bestehenden Tageseintrag öffnen (`bestehend:`).
+- Prognosen sind Schätzungen: Disclaimer („keine Verhütung") und „Prognosen pausieren" (`zyklusPrognosenPausiert`) bleiben erhalten.
+
+**Apple Health (`Services/ZyklusHealthKitService.swift`):** Mapping 1:1 auf `menstrualFlow` / `intermenstrualBleeding` / `cervicalMucusQuality` / `ovulationTestResult` / `basalBodyTemperature` / `sexualActivity`. Import füllt nur leere Felder, Export per Sync-Identifier (kein Duplizieren), eigene Samples werden nicht reimportiert.
+
+---
+
 ---
 
 ## Neue Features / Module – Checkliste
@@ -1042,7 +1078,7 @@ modelContext.delete(eintrag)
 | `MigraeneEintrag` | `"migraene-wirkung-\(ts)"`, `"migraene-postdrom-\(ts)"` | `loescheMigraeneErinnerungen(fuer: datum)` |
 | `BiologikaInjektion` | `"biologika-\(ts)"` | `loescheBiologikaErinnerung(injektion:)` |
 | `EinnahmeLog` | `"wirkung-\(ts)"` | `loescheWirkungsAbfrage(fuer: log)` |
-| `ZyklusEintrag` | `"zyklus-periode"` etc. | Wird via `onChange` automatisch neu geplant |
+| `ZyklusEintrag` | `"zyklus-periode"`, `"zyklus-fruchtbar"`, `"zyklus-eisprung"` (global, nicht pro Eintrag) | Nach **jeder** Änderung (speichern/bearbeiten/löschen) `NotificationManager.shared.planeZyklusErinnerungen(eintraege:)` aufrufen — nie nur `loescheZyklusErinnerungen()` |
 
 ### Neues Modell mit Notifications — Checkliste
 

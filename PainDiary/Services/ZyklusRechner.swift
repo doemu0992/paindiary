@@ -1,9 +1,82 @@
 import Foundation
 
+// MARK: - Öffentliche Typen
+
+enum Regelmaessigkeit {
+    case unbekannt
+    case regelmaessig
+    case unregelmaessig
+
+    var titel: String {
+        switch self {
+        case .unbekannt:      return "Noch unbekannt"
+        case .regelmaessig:   return "Regelmäßig"
+        case .unregelmaessig: return "Unregelmäßig"
+        }
+    }
+}
+
+enum DatenQualitaet: Int, Comparable {
+    case standardwert = 0   // keine abgeschlossenen Zyklen: Lehrbuchwerte
+    case wenigDaten         // 1–2 gültige Zyklen
+    case gut                // 3–5 gültige Zyklen
+    case sehrGut            // ≥ 6 gültige Zyklen
+
+    static func < (a: DatenQualitaet, b: DatenQualitaet) -> Bool { a.rawValue < b.rawValue }
+
+    var titel: String {
+        switch self {
+        case .standardwert: return "Schätzung (Standardwerte)"
+        case .wenigDaten:   return "Wenig Daten"
+        case .gut:          return "Gute Datenbasis"
+        case .sehrGut:      return "Sehr gute Datenbasis"
+        }
+    }
+}
+
+/// Womit der Eisprung festgelegt wurde — in Prioritätsreihenfolge.
+enum EisprungQuelle {
+    case temperatur   // BBT-Anstieg (3-über-6-Regel) – rückblickend bestätigt
+    case lhTest       // positiver LH-Test, Eisprung ≈ 1 Tag danach
+    case schleim      // Peak-Tag des fruchtbaren Zervixschleims
+    case kalender     // Schätzung: nächste Periode − Lutealphase
+
+    var titel: String {
+        switch self {
+        case .temperatur: return "Temperatur bestätigt"
+        case .lhTest:     return "LH-Test"
+        case .schleim:    return "Zervixschleim"
+        case .kalender:   return "Kalender-Schätzung"
+        }
+    }
+
+    var istBestaetigt: Bool { self == .temperatur }
+}
+
+enum ZyklusStatus: Equatable {
+    case normal
+    case ueberfaellig(tage: Int)
+    case keineAktuellenDaten   // letzter Zyklusstart > 90 Tage her
+}
+
+struct ZyklusInfo: Identifiable {
+    var id: Date { start }
+    let start: Date
+    let naechsterStart: Date?
+    let laenge: Int?
+    let periodenTage: Int
+    let eisprung: Date?
+    let eisprungQuelle: EisprungQuelle
+    let lutealLaenge: Int?
+    let abgeschlossen: Bool
+    let fuerStatistikGueltig: Bool
+}
+
 struct ZyklusAnalyse {
-    let zykluslaenge: Double        // all-time average (Anzeige)
-    let periodendauer: Double       // all-time average (Anzeige)
-    let variation: Double
+    // Bestehende API (von Dashboard, PDF, Korrelationen genutzt)
+    let zykluslaenge: Double        // Ø aller gültigen Zyklen (Anzeige)
+    let periodendauer: Double       // Ø der abgeschlossenen Perioden (Anzeige)
+    let variation: Double           // Standardabweichung (Stichprobe, n−1)
     let aktuellerZyklustag: Int?
     let naechstePeriodeStart: Date?
     let vorhergesagteOvulation: Date?
@@ -11,21 +84,50 @@ struct ZyklusAnalyse {
     let periodeTageSet: Set<Date>
     let fruchtbareTageSet: Set<Date>
     let ovulationsTageSet: Set<Date>
-    // Personalized ovulation offset learned from mucus peak days. nil = <2 cycles with data.
+    /// Persönlicher Eisprung-Zyklustag (1-basiert), nil solange < 2 Zyklen mit Evidenz.
     let gelernterOvulationsOffset: Int?
-    // Recent-weighted averages used for predictions (last 3 cycles, 50/30/20 %).
-    // Equal to zykluslaenge/periodendauer when fewer than 2 completed cycles exist.
     let adaptierteZykluslaenge: Double
     let adaptiertePeriodendauer: Double
 
-    static let leer = ZyklusAnalyse(
-        zykluslaenge: 28, periodendauer: 5, variation: 0,
-        aktuellerZyklustag: nil, naechstePeriodeStart: nil,
-        vorhergesagteOvulation: nil, zyklusStarts: [],
-        periodeTageSet: [], fruchtbareTageSet: [], ovulationsTageSet: [],
-        gelernterOvulationsOffset: nil,
-        adaptierteZykluslaenge: 28, adaptiertePeriodendauer: 5
-    )
+    // Neu
+    let medianZykluslaenge: Double
+    let spanne: Int                 // längster − kürzester Zyklus (letzte 12)
+    let gueltigeZyklen: Int
+    let regelmaessigkeit: Regelmaessigkeit
+    let datenQualitaet: DatenQualitaet
+    let unsicherheitTage: Int       // ± Tage um die nächste Periode
+    let naechstePeriodeFruehestens: Date?
+    let naechstePeriodeSpaetestens: Date?
+    let lutealphase: Int
+    let lutealphaseGelernt: Bool
+    let eisprungQuelle: EisprungQuelle?
+    let eisprungBestaetigt: Bool
+    let status: ZyklusStatus
+    let hinweise: [String]
+    let zyklen: [ZyklusInfo]
+    let vorhergesagtePeriodeTageSet: Set<Date>
+    let naechstesFruchtbaresFenster: ClosedRange<Date>?
+
+    static func leerMitPeriodeTagen(_ periodeTage: Set<Date>) -> ZyklusAnalyse {
+        ZyklusAnalyse(
+            zykluslaenge: 28, periodendauer: 5, variation: 0,
+            aktuellerZyklustag: nil, naechstePeriodeStart: nil,
+            vorhergesagteOvulation: nil, zyklusStarts: [],
+            periodeTageSet: periodeTage, fruchtbareTageSet: [], ovulationsTageSet: [],
+            gelernterOvulationsOffset: nil,
+            adaptierteZykluslaenge: 28, adaptiertePeriodendauer: 5,
+            medianZykluslaenge: 28, spanne: 0, gueltigeZyklen: 0,
+            regelmaessigkeit: .unbekannt, datenQualitaet: .standardwert,
+            unsicherheitTage: 4,
+            naechstePeriodeFruehestens: nil, naechstePeriodeSpaetestens: nil,
+            lutealphase: ZyklusGrenzen.standardLutealphase, lutealphaseGelernt: false,
+            eisprungQuelle: nil, eisprungBestaetigt: false,
+            status: .normal, hinweise: [], zyklen: [],
+            vorhergesagtePeriodeTageSet: [], naechstesFruchtbaresFenster: nil
+        )
+    }
+
+    static let leer = ZyklusAnalyse.leerMitPeriodeTagen([])
 }
 
 struct ZyklusTagZustand {
@@ -37,304 +139,581 @@ struct ZyklusTagZustand {
     var verbundenRechts: Bool = false
 }
 
+// MARK: - Rechner
+
+/// Zyklus-Engine.
+///
+/// Konventionen (einheitlich im gesamten Modul):
+/// - Ein „Tag" ist ein Kalendertag (Ordinalzahl in der Ära); intern wird nur mit Int-Tagesnummern gerechnet.
+/// - **Zyklustag** ist 1-basiert: Tag 1 = erster Tag der Menstruationsblutung.
+/// - **Eisprungtag** ist ein Datum. Die Lutealphase umfasst die Tage *nach* dem Eisprung bis zum Tag
+///   vor der nächsten Periode: `Lutealphase = nächsterStart − Eisprung − 1`.
+///   Beispiel 28-Tage-Zyklus, Lutealphase 14: Eisprung = Zyklustag 14, Lutealphase = Tag 15–28.
+/// - Fruchtbares Fenster = 6 Tage bis einschließlich Eisprungtag (Wilcox et al., NEJM 1995).
 struct ZyklusRechner {
+
+    // MARK: - Cache
+
+    private static var cache: (schluessel: Int, wert: ZyklusAnalyse)? = nil
+
+    /// Fingerabdruck aller für die Analyse relevanten Felder. Auch für `onChange` nutzbar,
+    /// weil Änderungen an bestehenden Einträgen das Array selbst nicht verändern.
+    static func signatur(_ eintraege: [ZyklusEintrag]) -> Int {
+        var h = Hasher()
+        h.combine(eintraege.count)
+        for e in eintraege {
+            h.combine(e.datum)
+            h.combine(e.istPeriode)
+            h.combine(e.typ)
+            h.combine(e.blutungsfluss)
+            h.combine(e.zervixschleim)
+            h.combine(e.ovulationstest)
+            h.combine(e.basaltemperatur)
+        }
+        return h.finalize()
+    }
+
+    private struct Kontext {
+        let kal: Calendar
+        let heute: Date
+        let heuteNr: Int
+
+        init(kal: Calendar, heute: Date) {
+            self.kal = kal
+            self.heute = kal.startOfDay(for: heute)
+            self.heuteNr = kal.ordinality(of: .day, in: .era, for: self.heute) ?? 0
+        }
+
+        func nr(_ datum: Date) -> Int {
+            kal.ordinality(of: .day, in: .era, for: datum) ?? 0
+        }
+
+        func datum(_ nr: Int) -> Date {
+            kal.date(byAdding: .day, value: nr - heuteNr, to: heute) ?? heute
+        }
+    }
+
+    private struct TagesDaten {
+        var nr: Int
+        var blutung = false
+        var menstruation = false
+        var spotting = false
+        var schleim: Zervixschleim = .keine
+        var lh: LHTest = .keine
+        var bbt: Double = 0
+    }
 
     // MARK: - Main analysis
 
-    static func analyse(eintraege: [ZyklusEintrag]) -> ZyklusAnalyse {
-        let kal = Calendar.current
+    static func analyse(eintraege: [ZyklusEintrag],
+                        heute: Date = Date(),
+                        kalender: Calendar = .current) -> ZyklusAnalyse {
+        let ctx = Kontext(kal: kalender, heute: heute)
+        var h = Hasher()
+        h.combine(signatur(eintraege))
+        h.combine(ctx.heute)
+        h.combine(kalender.identifier)
+        h.combine(kalender.timeZone.identifier)
+        let schluessel = h.finalize()
 
-        let periodeTage = eintraege
-            .filter { $0.istPeriode || $0.typ == "Periode" }
-            .map { kal.startOfDay(for: $0.datum) }
-            .sorted()
+        if let c = cache, c.schluessel == schluessel { return c.wert }
+        let wert = berechne(tage: tagesDaten(aus: eintraege, ctx: ctx), ctx: ctx)
+        cache = (schluessel, wert)
+        return wert
+    }
 
-        guard !periodeTage.isEmpty else { return .leer }
-
-        let periodeTageSet = Set(periodeTage)
-        let starts = findeZyklusStarts(aus: periodeTage)
-
-        var zyklusLaengen: [Double] = []
-        for i in 1..<starts.count {
-            let diff = kal.dateComponents([.day], from: starts[i-1], to: starts[i]).day ?? 28
-            zyklusLaengen.append(Double(diff))
-        }
-        let avgZyklus = zyklusLaengen.isEmpty ? 28.0 : zyklusLaengen.reduce(0, +) / Double(zyklusLaengen.count)
-        let variation: Double = {
-            guard zyklusLaengen.count >= 2 else { return 0 }
-            let mean = zyklusLaengen.reduce(0, +) / Double(zyklusLaengen.count)
-            let variance = zyklusLaengen.map { pow($0 - mean, 2) }.reduce(0, +) / Double(zyklusLaengen.count)
-            return sqrt(variance)
-        }()
-
-        var periodDauern: [Double] = []
-        for start in starts {
-            var len = 0; var check = start
-            while periodeTageSet.contains(check) {
-                len += 1
-                check = kal.date(byAdding: .day, value: 1, to: check) ?? check
+    private static func tagesDaten(aus eintraege: [ZyklusEintrag], ctx: Kontext) -> [Int: TagesDaten] {
+        var map: [Int: TagesDaten] = [:]
+        for e in eintraege.sorted(by: { $0.datum < $1.datum }) {
+            let nr = ctx.nr(e.datum)
+            var t = map[nr] ?? TagesDaten(nr: nr)
+            if e.hatBlutung {
+                t.blutung = true
+                if e.fluss.istSpotting { t.spotting = true } else { t.menstruation = true }
             }
-            if len > 0 { periodDauern.append(Double(len)) }
+            let s = e.schleim
+            if s != .keine { t.schleim = s }
+            let l = e.lhTest
+            if l == .positiv || t.lh != .positiv { t.lh = l == .keine ? t.lh : l }
+            if ZyklusGrenzen.bbtBereich.contains(e.basaltemperatur) { t.bbt = e.basaltemperatur }
+            map[nr] = t
+        }
+        return map
+    }
+
+    // MARK: Statistik-Helfer
+
+    private static func median(_ werte: [Double]) -> Double {
+        guard !werte.isEmpty else { return 0 }
+        let s = werte.sorted()
+        let m = s.count / 2
+        return s.count % 2 == 0 ? (s[m - 1] + s[m]) / 2 : s[m]
+    }
+
+    /// Gewichteter Median; jüngere Werte (hinten im Array) zählen stärker (Gewicht = Position + 1).
+    private static func gewichteterMedian(_ werte: [Double]) -> Double {
+        let paare = werte.enumerated()
+            .map { (wert: $0.element, gewicht: Double($0.offset + 1)) }
+            .sorted { $0.wert < $1.wert }
+        let gesamt = paare.reduce(0.0) { $0 + $1.gewicht }
+        var kumuliert = 0.0
+        for (i, p) in paare.enumerated() {
+            kumuliert += p.gewicht
+            if kumuliert > gesamt / 2 { return p.wert }
+            if kumuliert == gesamt / 2 {
+                return (p.wert + paare[min(i + 1, paare.count - 1)].wert) / 2
+            }
+        }
+        return paare.last?.wert ?? 28
+    }
+
+    // MARK: Eisprung-Evidenz
+
+    /// BBT-Verschiebung nach der 3-über-6-Regel: drei aufeinanderfolgende Tage über der höchsten der
+    /// sechs vorhergehenden Messungen, der dritte ≥ 0,2 °C darüber. Eisprung ≈ Tag vor dem ersten hohen Wert.
+    private static func bbtEisprung(_ tage: [TagesDaten]) -> Int? {
+        let m = tage.filter { $0.bbt > 0 }
+        guard m.count >= 9 else { return nil }
+        for j in 6..<(m.count - 2) {
+            let d1 = m[j], d2 = m[j + 1], d3 = m[j + 2]
+            guard d2.nr - d1.nr == 1, d3.nr - d2.nr == 1 else { continue }
+            guard d1.nr - m[j - 6].nr <= 9 else { continue }
+            let abdeckung = m[(j - 6)..<j].map { $0.bbt }.max() ?? 0
+            if d1.bbt > abdeckung, d2.bbt > abdeckung, d3.bbt >= abdeckung + 0.2 {
+                return d1.nr - 1
+            }
+        }
+        return nil
+    }
+
+    private static func berechne(tage: [Int: TagesDaten], ctx: Kontext) -> ZyklusAnalyse {
+        let heuteNr = ctx.heuteNr
+        let alleNrs = tage.keys.sorted()
+        let blutungsNrs = alleNrs.filter { tage[$0]?.blutung == true }
+        let periodeSet = Set(blutungsNrs.map { ctx.datum($0) })
+        let flussNrs = alleNrs.filter { tage[$0]?.menstruation == true }
+        guard !flussNrs.isEmpty else { return .leerMitPeriodeTagen(periodeSet) }
+
+        // 1) Zyklusstarts: erster Tag einer Blutungsepisode (nur echte Blutung, kein Spotting).
+        //    Lücken ≤ 7 Tage gehören zur selben Episode (vergessene Tage erzeugen keinen Fake-Zyklus);
+        //    Episoden < 15 Tage nach dem letzten Start sind Zwischenblutungen.
+        var starts: [Int] = []
+        var vorherigerFluss: Int? = nil
+        for n in flussNrs {
+            if let v = vorherigerFluss, n - v <= 7 {
+                // gleiche Episode
+            } else if let s = starts.last, n - s < 15 {
+                // Zwischenblutung — kein neuer Zyklus
+            } else {
+                starts.append(n)
+            }
+            vorherigerFluss = n
+        }
+        guard let letzterStart = starts.last else { return .leerMitPeriodeTagen(periodeSet) }
+
+        /// Periodendauer: Spanne vom Start bis zum letzten Blutungstag der Kette (Lücken ≤ 2 Tage).
+        func periodenSpanne(ab start: Int) -> Int {
+            var letzter = start
+            for n in flussNrs where n > start {
+                if n - letzter <= 3 { letzter = n } else { break }
+            }
+            return min(letzter - start + 1, 14)
+        }
+
+        // 2) Zykluslängen: Plausibilitätsfilter + Ausreißer (MAD) ausschließen.
+        var rohLaengen: [Int?] = []
+        for i in starts.indices {
+            rohLaengen.append(i + 1 < starts.count ? starts[i + 1] - starts[i] : nil)
+        }
+        let gueltigIdx = starts.indices.filter { i in
+            rohLaengen[i].map { ZyklusGrenzen.gueltigeZyklusLaenge.contains($0) } ?? false
+        }
+        var bereinigtIdx = gueltigIdx
+        if gueltigIdx.count >= 4 {
+            let werte = gueltigIdx.compactMap { rohLaengen[$0] }.map { Double($0) }
+            let medianRoh = median(werte)
+            let mad = median(werte.map { abs($0 - medianRoh) })
+            let grenze = max(10.0, 3 * 1.4826 * mad)
+            bereinigtIdx = gueltigIdx.filter { i in
+                guard let l = rohLaengen[i] else { return false }
+                return abs(Double(l) - medianRoh) <= grenze
+            }
+        }
+        let laengen: [Double] = bereinigtIdx.compactMap { rohLaengen[$0] }.map { Double($0) }
+        let n = laengen.count
+        let mittel = n == 0 ? 28.0 : laengen.reduce(0, +) / Double(n)
+        let sd: Double = n >= 2
+            ? sqrt(laengen.map { pow($0 - mittel, 2) }.reduce(0, +) / Double(n - 1))
+            : 0
+        let med = n == 0 ? 28.0 : median(laengen)
+        let letzteLaengen = Array(laengen.suffix(12))
+        let spanneWert = n >= 2 ? Int((letzteLaengen.max() ?? 0) - (letzteLaengen.min() ?? 0)) : 0
+        // FIGO 2018: Variation ≤ 7–9 Tage = regelmäßig
+        let regel: Regelmaessigkeit = n < 3 ? .unbekannt : (spanneWert <= 9 ? .regelmaessig : .unregelmaessig)
+        let qualitaet: DatenQualitaet = n == 0 ? .standardwert : (n < 3 ? .wenigDaten : (n < 6 ? .gut : .sehrGut))
+
+        let adaptZyklus: Double = {
+            let r = Array(laengen.suffix(6))
+            switch r.count {
+            case 0:  return 28
+            case 1:  return r[0]
+            case 2:  return r[0] * 0.4 + r[1] * 0.6
+            default: return gewichteterMedian(r)
+            }
+        }()
+        let zyklusLenInt = max(Int(adaptZyklus.rounded()), ZyklusGrenzen.gueltigeZyklusLaenge.lowerBound)
+
+        // 3) Periodendauer: laufende (unvollständige) Periode zählt nicht in die Statistik.
+        let periodeLaeuft = (flussNrs.last ?? 0) >= heuteNr - 1
+        var periodDauern: [Double] = []
+        for (i, s) in starts.enumerated() where !(i == starts.count - 1 && periodeLaeuft) {
+            periodDauern.append(Double(periodenSpanne(ab: s)))
         }
         let avgPeriod = periodDauern.isEmpty ? 5.0 : periodDauern.reduce(0, +) / Double(periodDauern.count)
-
-        // Recent-weighted averages: last 3 cycles get 50 / 30 / 20 % weight.
-        // With fewer cycles falls back gracefully to available data or overall avg.
-        let adaptZyklus: Double = {
-            let r = Array(zyklusLaengen.suffix(3))
-            switch r.count {
-            case 0:       return avgZyklus
-            case 1:       return r[0]
-            case 2:       return r[0] * 0.4 + r[1] * 0.6
-            default:      return r[0] * 0.2 + r[1] * 0.3 + r[2] * 0.5
-            }
-        }()
         let adaptPeriod: Double = {
             let r = Array(periodDauern.suffix(3))
             switch r.count {
-            case 0:       return avgPeriod
-            case 1:       return r[0]
-            case 2:       return r[0] * 0.4 + r[1] * 0.6
-            default:      return r[0] * 0.2 + r[1] * 0.3 + r[2] * 0.5
+            case 0:  return avgPeriod
+            case 1:  return r[0]
+            case 2:  return r[0] * 0.4 + r[1] * 0.6
+            default: return r[0] * 0.2 + r[1] * 0.3 + r[2] * 0.5
             }
         }()
 
-        // Personalized ovulation offset from mucus peak days.
-        // Requires mucus at least 4 days after period end to exclude post-period discharge.
-        let mucusOffsets: [Int] = (0..<starts.count).compactMap { i in
-            guard i + 1 < starts.count else { return nil }
-            let zyklusStart = starts[i]; let zyklusEnde = starts[i + 1]
-            let zyklusPeriodEnd = periodeTage.last(where: { $0 >= zyklusStart && $0 < zyklusEnde })
-            let fruehesteMucus: Date = zyklusPeriodEnd.map {
-                kal.date(byAdding: .day, value: 4, to: $0)!
-            } ?? zyklusStart
-            let spitzenTage = eintraege
-                .filter {
-                    let tag = kal.startOfDay(for: $0.datum)
-                    let s = $0.zervixschleim.lowercased()
-                    return (s == "wässrig" || s == "eiweiss") && tag >= fruehesteMucus && tag < zyklusEnde
+        // 4) Eisprung-Evidenz pro Zyklus: BBT > LH-Test > Schleim-Peak.
+        func evidenz(start: Int, bisExklusiv: Int, periodenEnde: Int, naechsterStart: Int?)
+            -> (nr: Int, quelle: EisprungQuelle)? {
+            let imZyklus = alleNrs.filter { $0 >= start && $0 < bisExklusiv }.compactMap { tage[$0] }
+            if let bbt = bbtEisprung(imZyklus) { return (bbt, .temperatur) }
+            if let lh = imZyklus.first(where: { $0.lh == .positiv && $0.nr >= start + 3 }) {
+                return (lh.nr + 1, .lhTest)
+            }
+            // Schleim: nur Tage ≥ 4 Tage nach Periodenende (Ausschluss von Restblutung/Ausfluss)
+            let feucht = imZyklus.filter { $0.schleim.istFruchtbar && $0.nr > periodenEnde + 3 }.map { $0.nr }
+            if let peak = feucht.max() {
+                if let ns = naechsterStart {
+                    if peak <= ns - 8 { return (peak, .schleim) }
+                } else if heuteNr - peak >= 2 {
+                    return (peak, .schleim)   // Peak abgeschlossen (≥ 2 Tage kein fertiler Schleim mehr)
                 }
-                .map { kal.startOfDay(for: $0.datum) }.sorted()
-            guard let peak = spitzenTage.last else { return nil }
-            return (kal.dateComponents([.day], from: zyklusStart, to: peak).day ?? 0) + 1
+            }
+            return nil
         }
-        let persOvulationsOffset: Int = mucusOffsets.count >= 2
-            ? mucusOffsets.reduce(0, +) / mucusOffsets.count
-            : Int(round(adaptZyklus)) - 14
 
-        // Current cycle: use this cycle's own observed mucus peak to position ovulation.
-        // Only counts mucus at least 4 days after the period ends to exclude post-period discharge.
-        let aktuellerZyklusOvOffset: Int = {
-            guard let currentStart = starts.last else { return persOvulationsOffset }
-            let currentPeriodEnd = periodeTage.last(where: { $0 >= currentStart })
-            let fruehesteMucusTag: Date = currentPeriodEnd.map {
-                kal.date(byAdding: .day, value: 4, to: $0)!
-            } ?? currentStart
-            let peakTage = eintraege
-                .filter {
-                    let tag = kal.startOfDay(for: $0.datum)
-                    let s = $0.zervixschleim.lowercased()
-                    return (s == "wässrig" || s == "eiweiss") && tag >= fruehesteMucusTag
-                }
-                .map { kal.startOfDay(for: $0.datum) }
-                .sorted()
-            guard let peak = peakTage.last else { return persOvulationsOffset }
-            let observedOffset = (kal.dateComponents([.day], from: currentStart, to: peak).day ?? 0) + 1
-            // Only shift ovulation later — never earlier — to avoid treating the first
-            // day of fertile mucus as the peak (peak = last day; cycle is still ongoing).
-            return max(observedOffset, persOvulationsOffset)
-        }()
-
-        // Predictions use adaptive cycle length and personalized ovulation offset.
-        let heute = kal.startOfDay(for: Date())
-        let aktuellerTag: Int? = starts.last.map {
-            (kal.dateComponents([.day], from: $0, to: heute).day ?? 0) + 1
+        var evid: [Int: (nr: Int, quelle: EisprungQuelle)] = [:]
+        var lutealWerte: [Int] = []
+        for i in starts.indices {
+            let naechster: Int? = i + 1 < starts.count ? starts[i + 1] : nil
+            let ende = naechster ?? (heuteNr + 1)
+            let pEnde = starts[i] + periodenSpanne(ab: starts[i]) - 1
+            guard let e = evidenz(start: starts[i], bisExklusiv: ende, periodenEnde: pEnde, naechsterStart: naechster) else { continue }
+            if let ns = naechster {
+                let l = ns - e.nr - 1
+                guard ZyklusGrenzen.gueltigeLutealphase.contains(l) else { continue }
+                lutealWerte.append(l)
+            }
+            evid[i] = e
         }
-        let naechstePeriode: Date? = starts.last.map {
-            kal.date(byAdding: .day, value: Int(round(adaptZyklus)), to: $0)
-        } ?? nil
+        let lutealGelernt = lutealWerte.count >= 2
+        let luteal = lutealGelernt
+            ? Int(median(lutealWerte.map { Double($0) }).rounded())
+            : ZyklusGrenzen.standardLutealphase
 
-        let aktuellerZyklusOv: Date? = starts.last.map {
-            kal.date(byAdding: .day, value: aktuellerZyklusOvOffset, to: $0)!
-        }
-        let naechsteOvulation: Date?
-        if let ov = aktuellerZyklusOv, kal.startOfDay(for: ov) >= heute {
-            naechsteOvulation = ov
-        } else if let np = naechstePeriode {
-            naechsteOvulation = kal.date(byAdding: .day, value: persOvulationsOffset, to: np)
+        // 5) Status
+        let naechstePeriodeNr = letzterStart + zyklusLenInt
+        let zyklustagHeute = heuteNr - letzterStart + 1
+        let status: ZyklusStatus
+        if zyklustagHeute > 91 {
+            status = .keineAktuellenDaten
+        } else if heuteNr > naechstePeriodeNr {
+            status = .ueberfaellig(tage: heuteNr - naechstePeriodeNr)
         } else {
-            naechsteOvulation = nil
+            status = .normal
+        }
+        let hatPrognose = status != .keineAktuellenDaten && zyklustagHeute >= 1
+
+        let unsicherheit: Int = n >= 3
+            ? min(max(Int(sd.rounded(.up)), 1), 7)
+            : (n == 0 ? 4 : 3)
+
+        // Kalendermethode (nur bei unregelmäßigem Zyklus): frühester fertiler Tag = kürzester − 18,
+        // spätester = längster − 11 (Zyklustage, 1-basiert).
+        let kalenderFenster: (kurz: Int, lang: Int)?
+        if regel == .unregelmaessig, let k = letzteLaengen.min(), let l = letzteLaengen.max() {
+            kalenderFenster = (Int(k), Int(l))
+        } else {
+            kalenderFenster = nil
         }
 
-        var fruchtbarSet: Set<Date> = []
-        var ovulationsSet: Set<Date> = []
+        func fenster(start: Int, ov: Int, eng: Bool) -> ClosedRange<Int> {
+            if eng { return (ov - 5)...ov }
+            if let k = kalenderFenster {
+                let von = min(start + k.kurz - 18 - 1, ov - 5)
+                let bis = max(start + k.lang - 11 - 1, ov)
+                return von...bis
+            }
+            let d = (regel == .regelmaessig && qualitaet >= .gut) ? 1 : 2
+            return (ov - 5 - d)...(ov + d)
+        }
 
-        func fuegeZyklusHinzu(start: Date, ovulationsOffset: Int) {
-            let ovNorm = kal.startOfDay(for: kal.date(byAdding: .day, value: ovulationsOffset, to: start)!)
-            ovulationsSet.insert(ovNorm)
-            for d in -5...1 {
-                if let ft = kal.date(byAdding: .day, value: d, to: ovNorm) {
-                    fruchtbarSet.insert(ft)
+        // 6) Zyklen aufbauen
+        var infos: [ZyklusInfo] = []
+        var fruchtbarNrs = Set<Int>()
+        var ovNrs = Set<Int>()
+        var aktuellerEisprungNr: Int? = nil
+        var aktuelleQuelle: EisprungQuelle? = nil
+
+        for i in starts.indices {
+            let s = starts[i]
+            let naechster: Int? = i + 1 < starts.count ? starts[i + 1] : nil
+            let pT = periodenSpanne(ab: s)
+            let pEnde = s + pT - 1
+            var ov: Int
+            var quelle: EisprungQuelle
+            var eng = true
+
+            if let e = evid[i] {
+                ov = e.nr
+                quelle = e.quelle
+                eng = e.quelle == .temperatur || e.quelle == .lhTest || naechster != nil
+            } else if let ns = naechster {
+                ov = ns - (luteal + 1)
+                quelle = .kalender
+            } else {
+                ov = naechstePeriodeNr - (luteal + 1)
+                quelle = .kalender
+                eng = false
+                // Fertiler Schleim kurz vor/um den prognostizierten Eisprung: Eisprung nicht vor dem letzten feuchten Tag.
+                let feucht = alleNrs
+                    .filter { $0 >= s && $0 > pEnde + 3 && tage[$0]?.schleim.istFruchtbar == true }
+                if let w = feucht.max(), w > ov {
+                    ov = w
+                    quelle = .schleim
                 }
             }
+            ov = max(ov, s + 5)
+
+            let istAktuell = naechster == nil
+            if istAktuell {
+                aktuellerEisprungNr = ov
+                aktuelleQuelle = quelle
+            }
+            let ueberspringen = istAktuell && !hatPrognose
+            if !ueberspringen {
+                ovNrs.insert(ov)
+                for t in fenster(start: s, ov: ov, eng: eng) { fruchtbarNrs.insert(t) }
+            }
+
+            infos.append(ZyklusInfo(
+                start: ctx.datum(s),
+                naechsterStart: naechster.map { ctx.datum($0) },
+                laenge: naechster.map { $0 - s },
+                periodenTage: pT,
+                eisprung: ueberspringen ? nil : ctx.datum(ov),
+                eisprungQuelle: quelle,
+                lutealLaenge: naechster.map { $0 - ov - 1 },
+                abgeschlossen: naechster != nil,
+                fuerStatistikGueltig: bereinigtIdx.contains(i)
+            ))
         }
 
-        for i in 0..<starts.count {
-            if i < zyklusLaengen.count {
-                // Completed cycle: use actual cycle length to back-calculate ovulation
-                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: Int(zyklusLaengen[i]) - 14)
-            } else {
-                // Current (incomplete) cycle: use this cycle's own mucus peak if available
-                fuegeZyklusHinzu(start: starts[i], ovulationsOffset: aktuellerZyklusOvOffset)
-            }
-        }
-        if let np = naechstePeriode {
-            fuegeZyklusHinzu(start: np, ovulationsOffset: persOvulationsOffset)
-            if let np2 = kal.date(byAdding: .day, value: Int(round(adaptZyklus)), to: np) {
-                fuegeZyklusHinzu(start: np2, ovulationsOffset: persOvulationsOffset)
+        // 7) Zukünftige Zyklen (nur mit aktueller Datenlage). Überfällige Periode: frühestens heute.
+        var vorhergesagtePeriodeNrs = Set<Int>()
+        var naechsteOvNr: Int? = nil
+        if hatPrognose {
+            let anker = max(naechstePeriodeNr, heuteNr)
+            let periodLen = max(Int(adaptPeriod.rounded()), 3)
+            for k in 0..<2 {
+                let start = anker + k * zyklusLenInt
+                let ov = start + zyklusLenInt - (luteal + 1)
+                ovNrs.insert(ov)
+                for t in fenster(start: start, ov: ov, eng: false) { fruchtbarNrs.insert(t) }
+                for d in 0..<periodLen { vorhergesagtePeriodeNrs.insert(start + d) }
+                if k == 0 { naechsteOvNr = ov }
             }
         }
 
-        // Symptothermalmethode: wässrig/Eiweiss confirms fertile day.
-        // Exclude post-period discharge: skip days within 3 days of the last period day.
-        for eintrag in eintraege {
-            let s = eintrag.zervixschleim.lowercased()
-            if s == "wässrig" || s == "eiweiss" {
-                let tag = kal.startOfDay(for: eintrag.datum)
-                let d1 = kal.date(byAdding: .day, value: -1, to: tag)!
-                let d2 = kal.date(byAdding: .day, value: -2, to: tag)!
-                let d3 = kal.date(byAdding: .day, value: -3, to: tag)!
-                let naheAnPeriode = periodeTageSet.contains(tag) ||
-                                   periodeTageSet.contains(d1) ||
-                                   periodeTageSet.contains(d2) ||
-                                   periodeTageSet.contains(d3)
-                if !naheAnPeriode { fruchtbarSet.insert(tag) }
+        // 8) Beobachtungen: fertiler Schleim und LH-Test machen den Tag selbst fertil.
+        let blutungsSet = Set(blutungsNrs)
+        for nr in alleNrs {
+            guard let t = tage[nr] else { continue }
+            if t.schleim.istFruchtbar {
+                let nahePeriode = adaptZyklus >= 24 && (0...3).contains { blutungsSet.contains(nr - $0) }
+                if !nahePeriode { fruchtbarNrs.insert(nr) }
+            }
+            if t.lh == .positiv {
+                fruchtbarNrs.insert(nr)
+                fruchtbarNrs.insert(nr + 1)
             }
         }
+
+        // 9) Anzeige-Größen
+        let vorhergesagteOv: Date? = {
+            guard hatPrognose else { return nil }
+            if let cur = aktuellerEisprungNr, cur >= heuteNr { return ctx.datum(cur) }
+            return naechsteOvNr.map { ctx.datum($0) }
+        }()
+
+        var naechstesFenster: ClosedRange<Date>? = nil
+        let zukunft = fruchtbarNrs.filter { $0 >= heuteNr }.sorted()
+        if hatPrognose, let erster = zukunft.first {
+            var ende = erster
+            for t in zukunft.dropFirst() {
+                if t - ende <= 1 { ende = t } else { break }
+            }
+            naechstesFenster = ctx.datum(erster)...ctx.datum(ende)
+        }
+
+        var hinweise: [String] = []
+        if n >= 3 {
+            if adaptZyklus < 24 {
+                hinweise.append("Deine Zyklen sind kurz (unter 24 Tage). Halten sie an oder treten Beschwerden auf, lass das ärztlich abklären.")
+            } else if adaptZyklus > 38 {
+                hinweise.append("Deine Zyklen sind lang (über 38 Tage). Halten sie an oder treten Beschwerden auf, lass das ärztlich abklären.")
+            }
+            if regel == .unregelmaessig {
+                hinweise.append("Deine Zykluslänge schwankt um mehr als 9 Tage. Prognosen sind dadurch ungenauer; das fruchtbare Fenster wird breiter angezeigt.")
+            }
+        }
+        if periodDauern.count >= 2 && avgPeriod > 8 {
+            hinweise.append("Deine Periode dauert im Schnitt länger als 8 Tage. Bei starken Blutungen oder Beschwerden bitte ärztlich abklären.")
+        }
+        if case .ueberfaellig(let t) = status, t >= 7 {
+            hinweise.append("Deine Periode ist seit \(t) Tagen überfällig. Mögliche Ursachen sind u. a. Stress, Zyklusschwankungen oder eine Schwangerschaft.")
+        }
+
+        let aktuellerTag: Int? = (zyklustagHeute >= 1 && zyklustagHeute <= 91) ? zyklustagHeute : nil
 
         return ZyklusAnalyse(
-            zykluslaenge: avgZyklus,
+            zykluslaenge: mittel,
             periodendauer: avgPeriod,
-            variation: variation,
+            variation: sd,
             aktuellerZyklustag: aktuellerTag,
-            naechstePeriodeStart: naechstePeriode,
-            vorhergesagteOvulation: naechsteOvulation,
-            zyklusStarts: starts,
-            periodeTageSet: periodeTageSet,
-            fruchtbareTageSet: fruchtbarSet,
-            ovulationsTageSet: ovulationsSet,
-            gelernterOvulationsOffset: mucusOffsets.count >= 2 ? persOvulationsOffset : nil,
+            naechstePeriodeStart: hatPrognose ? ctx.datum(naechstePeriodeNr) : nil,
+            vorhergesagteOvulation: vorhergesagteOv,
+            zyklusStarts: starts.map { ctx.datum($0) },
+            periodeTageSet: periodeSet,
+            fruchtbareTageSet: Set(fruchtbarNrs.map { ctx.datum($0) }),
+            ovulationsTageSet: Set(ovNrs.map { ctx.datum($0) }),
+            gelernterOvulationsOffset: lutealGelernt ? max(zyklusLenInt - luteal, 1) : nil,
             adaptierteZykluslaenge: adaptZyklus,
-            adaptiertePeriodendauer: adaptPeriod
+            adaptiertePeriodendauer: adaptPeriod,
+            medianZykluslaenge: med,
+            spanne: spanneWert,
+            gueltigeZyklen: n,
+            regelmaessigkeit: regel,
+            datenQualitaet: qualitaet,
+            unsicherheitTage: unsicherheit,
+            naechstePeriodeFruehestens: hatPrognose ? ctx.datum(naechstePeriodeNr - unsicherheit) : nil,
+            naechstePeriodeSpaetestens: hatPrognose ? ctx.datum(naechstePeriodeNr + unsicherheit) : nil,
+            lutealphase: luteal,
+            lutealphaseGelernt: lutealGelernt,
+            eisprungQuelle: aktuelleQuelle,
+            eisprungBestaetigt: aktuelleQuelle?.istBestaetigt ?? false,
+            status: status,
+            hinweise: hinweise,
+            zyklen: infos,
+            vorhergesagtePeriodeTageSet: Set(vorhergesagtePeriodeNrs.map { ctx.datum($0) }),
+            naechstesFruchtbaresFenster: naechstesFenster
         )
     }
 
     // MARK: - Tag state
 
-    static func tagZustand(datum: Date, analyse: ZyklusAnalyse) -> ZyklusTagZustand {
-        let kal = Calendar.current
+    static func tagZustand(datum: Date, analyse: ZyklusAnalyse, kalender: Calendar = .current) -> ZyklusTagZustand {
+        let kal = kalender
         let tag = kal.startOfDay(for: datum)
         var z = ZyklusTagZustand()
 
         if analyse.periodeTageSet.contains(tag) {
             z.periode = true
-            let vortag = kal.date(byAdding: .day, value: -1, to: tag)!
-            let morgen = kal.date(byAdding: .day, value: 1, to: tag)!
-            z.verbundenLinks = analyse.periodeTageSet.contains(vortag)
-            z.verbundenRechts = analyse.periodeTageSet.contains(morgen)
-        }
-
-        // Predicted period: use adaptive cycle length and period duration.
-        if !z.periode, let start = analyse.naechstePeriodeStart {
-            let zyklusLen = Int(round(analyse.adaptierteZykluslaenge))
-            let periodLen = max(Int(round(analyse.adaptiertePeriodendauer)), 3)
-            for offset in [0, 1] {
-                if let pStart = kal.date(byAdding: .day, value: offset * zyklusLen, to: start) {
-                    for d in 0..<periodLen {
-                        if let pDay = kal.date(byAdding: .day, value: d, to: pStart),
-                           kal.startOfDay(for: pDay) == tag {
-                            z.vorhergesagtePeriode = true
-                        }
-                    }
-                }
+            if let vortag = kal.date(byAdding: .day, value: -1, to: tag),
+               let morgen = kal.date(byAdding: .day, value: 1, to: tag) {
+                z.verbundenLinks = analyse.periodeTageSet.contains(vortag)
+                z.verbundenRechts = analyse.periodeTageSet.contains(morgen)
             }
         }
 
+        if !z.periode && analyse.vorhergesagtePeriodeTageSet.contains(tag) { z.vorhergesagtePeriode = true }
         if !z.periode && analyse.fruchtbareTageSet.contains(tag) { z.fruchtbar = true }
         if analyse.ovulationsTageSet.contains(tag) { z.ovulation = true }
 
         return z
     }
 
-    // MARK: - Cycle start detection
-
-    private static func findeZyklusStarts(aus tage: [Date]) -> [Date] {
-        guard !tage.isEmpty else { return [] }
-        let kal = Calendar.current
-        var starts = [tage[0]]
-        for i in 1..<tage.count {
-            let diff = kal.dateComponents([.day], from: tage[i-1], to: tage[i]).day ?? 0
-            if diff > 1 { starts.append(tage[i]) }
-        }
-        return starts
-    }
-
-    // MARK: - Pain–cycle correlation
+    // MARK: - Phasen
 
     enum Zyklusphase: String, CaseIterable {
         case menstruation = "Menstruation"
         case follikelphase = "Follikelphase"
         case ovulation = "Ovulation"
         case lutealphase = "Lutealphase"
+        case praemenstruell = "Prämenstruell"
     }
 
+    /// Phase eines Tages anhand des *tatsächlichen* Verlaufs des jeweiligen Zyklus
+    /// (echte Periodendauer, bestätigter/geschätzter Eisprung, echte Zykluslänge).
+    /// nil: vor dem ersten Zyklus oder weit jenseits des plausiblen Zyklusendes.
+    static func phase(for date: Date, analyse: ZyklusAnalyse, kalender: Calendar = .current) -> Zyklusphase? {
+        let kal = kalender
+        let tag = kal.startOfDay(for: date)
+        guard let info = analyse.zyklen.last(where: { $0.start <= tag }) else { return nil }
+        let zt = (kal.dateComponents([.day], from: info.start, to: tag).day ?? 0) + 1
+        let laenge = info.laenge ?? max(Int(analyse.adaptierteZykluslaenge.rounded()), 15)
+
+        if info.naechsterStart == nil && (zt > laenge + 14 || zt > 90) { return nil }
+        if zt <= info.periodenTage { return .menstruation }
+
+        let ovZt: Int
+        if let ov = info.eisprung {
+            ovZt = (kal.dateComponents([.day], from: info.start, to: ov).day ?? 0) + 1
+        } else {
+            ovZt = laenge - analyse.lutealphase
+        }
+        if zt < ovZt - 1 { return .follikelphase }
+        if zt <= ovZt + 1 { return .ovulation }
+        if zt > laenge - 3 { return .praemenstruell }
+        return .lutealphase
+    }
+
+    /// Perimenstruelles Fenster nach ICHD-3 (Menstruationsmigräne): Tag −2 bis +3 um den Blutungsbeginn.
+    static func istPerimenstruell(_ date: Date, analyse: ZyklusAnalyse, kalender: Calendar = .current) -> Bool {
+        let tag = kalender.startOfDay(for: date)
+        return analyse.zyklusStarts.contains { start in
+            let d = kalender.dateComponents([.day], from: start, to: tag).day ?? 99
+            return (-2...3).contains(d)
+        }
+    }
+
+    static func perimenstruelleAnfaelle(anfaelle: [MigraeneEintrag], analyse: ZyklusAnalyse) -> (imFenster: Int, gesamt: Int) {
+        guard !analyse.zyklusStarts.isEmpty else { return (0, 0) }
+        let treffer = anfaelle.filter { istPerimenstruell($0.datum, analyse: analyse) }.count
+        return (treffer, anfaelle.count)
+    }
+
+    // MARK: - Pain–cycle correlation
+
+    /// Durchschnittlicher Schmerz je Phase. Aggregiert pro Tag (kein Mehrfachgewicht bei mehreren
+    /// Einträgen) und ignoriert Einträge ohne Schmerzwert (z. B. Haut).
     static func schmerzJePhase(
         painEntries: [PainEntry],
         analyse: ZyklusAnalyse
     ) -> [(phase: Zyklusphase, avgSchmerz: Double, anzahl: Int)] {
         guard !analyse.zyklusStarts.isEmpty else { return [] }
         let kal = Calendar.current
-        let ovuOffset = analyse.gelernterOvulationsOffset ?? (Int(round(analyse.adaptierteZykluslaenge)) - 14)
-        var map: [Zyklusphase: [Int]] = Dictionary(uniqueKeysWithValues: Zyklusphase.allCases.map { ($0, []) })
-
-        for entry in painEntries {
-            let entryTag = kal.startOfDay(for: entry.datum)
-            guard let zyklusStart = analyse.zyklusStarts.last(where: { $0 <= entryTag }) else { continue }
-            let zyklustag = (kal.dateComponents([.day], from: zyklusStart, to: entryTag).day ?? 0) + 1
-            let periodLen = Int(round(analyse.adaptiertePeriodendauer))
-
-            let phase: Zyklusphase
-            if zyklustag <= periodLen {
-                phase = .menstruation
-            } else if zyklustag < ovuOffset - 2 {
-                phase = .follikelphase
-            } else if zyklustag <= ovuOffset + 2 {
-                phase = .ovulation
-            } else {
-                phase = .lutealphase
-            }
-            map[phase, default: []].append(entry.schmerzstaerke)
+        var proTag: [Date: [Int]] = [:]
+        for e in painEntries where e.schmerzstaerke > 0 {
+            proTag[kal.startOfDay(for: e.datum), default: []].append(e.schmerzstaerke)
         }
-
-        return Zyklusphase.allCases.compactMap { phase in
-            let werte = map[phase] ?? []
-            guard !werte.isEmpty else { return nil }
-            return (phase: phase, avgSchmerz: Double(werte.reduce(0, +)) / Double(werte.count), anzahl: werte.count)
+        var map: [Zyklusphase: [Double]] = [:]
+        for (tag, werte) in proTag {
+            guard let p = phase(for: tag, analyse: analyse, kalender: kal) else { continue }
+            map[p, default: []].append(Double(werte.reduce(0, +)) / Double(werte.count))
         }
-    }
-
-    static func phase(for date: Date, analyse: ZyklusAnalyse) -> Zyklusphase? {
-        guard !analyse.zyklusStarts.isEmpty else { return nil }
-        let kal = Calendar.current
-        let tag = kal.startOfDay(for: date)
-        guard let start = analyse.zyklusStarts.last(where: { $0 <= tag }) else { return nil }
-        let zt = (kal.dateComponents([.day], from: start, to: tag).day ?? 0) + 1
-        let periodLen = Int(round(analyse.adaptiertePeriodendauer))
-        let ovuOffset = analyse.gelernterOvulationsOffset ?? (Int(round(analyse.adaptierteZykluslaenge)) - 14)
-        if zt <= periodLen          { return .menstruation }
-        else if zt < ovuOffset - 2  { return .follikelphase }
-        else if zt <= ovuOffset + 2 { return .ovulation }
-        else                        { return .lutealphase }
+        return Zyklusphase.allCases.compactMap { p in
+            guard let w = map[p], !w.isEmpty else { return nil }
+            return (phase: p, avgSchmerz: w.reduce(0, +) / Double(w.count), anzahl: w.count)
+        }
     }
 
     static func migraeneJePhase(
@@ -343,26 +722,14 @@ struct ZyklusRechner {
     ) -> [(phase: Zyklusphase, anzahl: Int, avgStaerke: Double)] {
         guard !analyse.zyklusStarts.isEmpty else { return [] }
         let kal = Calendar.current
-        let ovuOffset = analyse.gelernterOvulationsOffset ?? (Int(round(analyse.adaptierteZykluslaenge)) - 14)
-        let periodLen = Int(round(analyse.adaptiertePeriodendauer))
-        var map: [Zyklusphase: [Int]] = Dictionary(uniqueKeysWithValues: Zyklusphase.allCases.map { ($0, []) })
-
+        var map: [Zyklusphase: [Int]] = [:]
         for anfall in anfaelle {
-            let tag = kal.startOfDay(for: anfall.datum)
-            guard let start = analyse.zyklusStarts.last(where: { $0 <= tag }) else { continue }
-            let zt = (kal.dateComponents([.day], from: start, to: tag).day ?? 0) + 1
-            let phase: Zyklusphase
-            if zt <= periodLen         { phase = .menstruation }
-            else if zt < ovuOffset - 2 { phase = .follikelphase }
-            else if zt <= ovuOffset + 2 { phase = .ovulation }
-            else                        { phase = .lutealphase }
-            map[phase, default: []].append(anfall.staerke)
+            guard let p = phase(for: anfall.datum, analyse: analyse, kalender: kal) else { continue }
+            map[p, default: []].append(anfall.staerke)
         }
-
         return Zyklusphase.allCases.compactMap { p in
-            let w = map[p] ?? []
-            guard !w.isEmpty else { return nil }
-            return (p, w.count, Double(w.reduce(0, +)) / Double(w.count))
+            guard let w = map[p], !w.isEmpty else { return nil }
+            return (phase: p, anzahl: w.count, avgStaerke: Double(w.reduce(0, +)) / Double(w.count))
         }
     }
 }

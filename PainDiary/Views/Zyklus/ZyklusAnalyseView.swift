@@ -269,6 +269,12 @@ struct ZyklusAnalyseView: View {
             zeilen.append("- Migräne: \(s)")
         }
 
+        // Perimenstruelles Fenster (ICHD-3: Tag −2 bis +3 um den Blutungsbeginn)
+        let peri = ZyklusRechner.perimenstruelleAnfaelle(anfaelle: Array(migraeneAnfaelle), analyse: analyse)
+        if peri.gesamt > 0 {
+            zeilen.append("- Migräne im perimenstruellen Fenster (Tag −2 bis +3): \(peri.imFenster) von \(peri.gesamt) Anfällen")
+        }
+
         // HAQ (Gelenkfunktion)
         let haq = phasenAggregat(Array(haqEintraege), datum: \.datum) { $0.haqScore }
         if !haq.isEmpty { zeilen.append("- Gelenkfunktion HAQ (0=gut, 3=schlecht): \(fmt(haq, "%.2f", "/3"))") }
@@ -323,7 +329,7 @@ struct ZyklusAnalyseView: View {
         let hatLerndaten = analyse.zyklusStarts.count >= 3
 
         karte(titel: "Adaptive Vorhersage", symbol: "brain.head.profile", farbe: .pink,
-              info: "Die App gewichtet die letzten 3 Zyklen stärker als ältere (50 % / 30 % / 20 %). So werden aktuelle Veränderungen deines Rhythmus schneller erkannt als bei einem einfachen Durchschnitt.") {
+              info: "Die App nutzt den gewichteten Median der letzten 6 Zyklen (jüngere zählen stärker) – robust gegen Ausreißer wie vergessene Einträge. Die Lutealphase wird aus bestätigten Eisprüngen (Temperatur, LH-Test, Schleim) persönlich gelernt.") {
             HStack {
                 if hatLerndaten {
                     Label("Aktiv", systemImage: "checkmark.circle.fill")
@@ -346,7 +352,7 @@ struct ZyklusAnalyseView: View {
                 }
             }
 
-            Text("Letzte 3 Zyklen gewichtet (50/30/20 %). Ø-Werte bleiben für Statistik unverändert.")
+            Text("Gewichteter Median der letzten 6 Zyklen. Ø-Werte bleiben für die Statistik unverändert.")
                 .font(.caption2).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -652,6 +658,12 @@ struct ZyklusAnalyseView: View {
                 .chartYScale(domain: 0...maxAnzahl)
                 .frame(height: 150)
 
+                let peri = ZyklusRechner.perimenstruelleAnfaelle(anfaelle: Array(migraeneAnfaelle), analyse: analyse)
+                if peri.gesamt > 0 {
+                    Text("Perimenstruell (Tag −2 bis +3 um den Blutungsbeginn): \(peri.imFenster) von \(peri.gesamt) Anfällen")
+                        .font(.caption).foregroundStyle(.purple)
+                }
+
                 VStack(spacing: 4) {
                     ForEach(daten, id: \.phase.rawValue) { d in
                         HStack {
@@ -675,6 +687,7 @@ struct ZyklusAnalyseView: View {
         case .follikelphase: return .yellow
         case .ovulation:     return .orange
         case .lutealphase:   return .purple
+        case .praemenstruell: return .pink
         }
     }
 
@@ -720,13 +733,14 @@ struct ZyklusAnalyseView: View {
     }
 
     private func schleimVerteilung() -> [SchleimItem] {
-        var zähler: [String: Int] = [:]
-        for e in gefilterteEintraege where !e.zervixschleim.isEmpty {
-            zähler[e.zervixschleim, default: 0] += 1
+        // Über das Enum normalisiert: Altdaten ("Eiweiss") und neue Werte ("eiweiss") zählen zusammen.
+        var zähler: [Zervixschleim: Int] = [:]
+        for e in gefilterteEintraege where e.schleim != .keine {
+            zähler[e.schleim, default: 0] += 1
         }
-        return ["trocken", "klebrig", "cremig", "wässrig", "Eiweiss"].compactMap { typ in
+        return [Zervixschleim.trocken, .klebrig, .cremig, .waessrig, .eiweiss].compactMap { typ in
             guard let count = zähler[typ], count > 0 else { return nil }
-            return SchleimItem(typ: typ, anzahl: count)
+            return SchleimItem(typ: typ.rawValue, anzahl: count)
         }
     }
 
