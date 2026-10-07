@@ -19,6 +19,7 @@ struct AllergienView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 ForEach(allergien) { a in
                     AllergieZeile(allergie: a)
@@ -42,6 +43,7 @@ struct AllergienView: View {
                 }
             }
         }
+        .glassList()
         .navigationTitle("Allergien & Unverträglichkeiten")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -145,8 +147,7 @@ struct AllergieForm: View {
                     TextField("Substanz / Allergen", text: $substanz)
                         .font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground),
-                            in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
 
                 // Typ button grid
                 VStack(alignment: .leading, spacing: 10) {
@@ -156,7 +157,7 @@ struct AllergieForm: View {
                             let sel = typ == opt
                             Button { typ = opt } label: {
                                 Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
-                                    .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                    .background(sel ? TINT : Color.glassFill)
                                     .foregroundStyle(sel ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                                     .animation(.easeInOut(duration: 0.15), value: sel)
@@ -173,7 +174,7 @@ struct AllergieForm: View {
                             let sel = schwere == grad
                             Button { schwere = grad } label: {
                                 Text(grad).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
-                                    .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                    .background(sel ? TINT : Color.glassFill)
                                     .foregroundStyle(sel ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                                     .animation(.easeInOut(duration: 0.15), value: sel)
@@ -193,14 +194,13 @@ struct AllergieForm: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 12)
                 }
-                .background(Color(.secondarySystemGroupedBackground),
-                            in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal)
             .padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var speichernLeiste: some View {

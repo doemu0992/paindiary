@@ -28,30 +28,10 @@ struct IntensitaetStepView: View {
                     Spacer()
                     Text("10 – Unerträglich").font(.caption).foregroundStyle(.secondary)
                 }
-                Slider(value: Binding(
-                    get: { Double(schmerzstaerke) },
-                    set: { schmerzstaerke = Int($0) }
-                ), in: 0...10, step: 1)
-                .tint(SchmerzBadge.farbe(fuer: schmerzstaerke))
-                .onChange(of: schmerzstaerke) { _, _ in
-#if os(iOS)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-#endif
-                }
-
-                HStack {
-                    ForEach(0...10, id: \.self) { i in
-                        Text("\(i)")
-                            .font(.system(size: 10))
-                            .foregroundStyle(i == schmerzstaerke
-                                ? SchmerzBadge.farbe(fuer: i) : .secondary.opacity(0.5))
-                            .fontWeight(i == schmerzstaerke ? .bold : .regular)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
+                SchmerzSlider(wert: $schmerzstaerke)
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             // Schub / Flare toggle
             toggleZeile(
@@ -112,7 +92,7 @@ struct IntensitaetStepView: View {
             }
             .padding()
             .background(
-                aktiv ? farbe.opacity(0.1) : Color(.secondarySystemGroupedBackground),
+                aktiv ? farbe.opacity(0.1) : Color.glassFill,
                 in: RoundedRectangle(cornerRadius: 16)
             )
             .overlay(
@@ -196,7 +176,7 @@ private struct VerlaufSektionView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private var zeitAbstand: String {

@@ -2,17 +2,17 @@ import Foundation
 import SwiftData
 
 @Model final class MigraeneEintrag {
-    var datum: Date
-    var dauer: Int          // in Minuten
-    var staerke: Int        // 1–10
-    var seite: String       // "Einseitig links", "Einseitig rechts", "Beidseitig"
-    var charakter: String   // kommagetrennt
-    var begleitsymptome: String  // kommagetrennt
-    var hatAura: Bool
-    var ausloeser: String   // kommagetrennt
-    var akutmedikament: String
-    var medikamentWirksam: String  // "Ja", "Teilweise", "Nein"
-    var notizen: String
+    var datum: Date = Date()
+    var dauer: Int = 0          // in Minuten
+    var staerke: Int = 6        // 1–10
+    var seite: String = "Einseitig links"       // "Einseitig links", "Einseitig rechts", "Beidseitig"
+    var charakter: String = ""   // kommagetrennt
+    var begleitsymptome: String = ""  // kommagetrennt
+    var hatAura: Bool = false
+    var ausloeser: String = ""   // kommagetrennt
+    var akutmedikament: String = ""
+    var medikamentWirksam: String = ""  // "Ja", "Teilweise", "Nein"
+    var notizen: String = ""
     var wetterTemperatur: Double?
     var wetterCode: Int?
     var wetterWind: Double?
@@ -24,8 +24,9 @@ import SwiftData
     var endZeit: Date? = nil            // optionaler Endzeitpunkt
     var zyklusPhase: String = ""        // "Menstruation", "Fruchtbar", "Eisprung", ""
     var schlafStunden: Double = 0
-    var stimmung: Int = 3
-    var stressLevel: Int = 3
+    var stimmung: Int = 0               // 1–5, 0 = nicht erfasst
+    var stressLevel: Int = 0            // 1–5, 0 = nicht erfasst
+    var timeZoneID: String = ""         // IANA-Zeitzone bei Erfassung
     var fatigue: Int = 0
     var energielevel: Int = 0
 
@@ -50,6 +51,7 @@ import SwiftData
         self.wetterTemperatur = wetterTemperatur
         self.wetterCode = wetterCode
         self.wetterWind = wetterWind
+        self.timeZoneID = TimeZone.current.identifier
     }
 
     var dauerText: String {
@@ -59,9 +61,12 @@ import SwiftData
         return m == 0 ? "\(h) Std." : "\(h) Std. \(m) Min."
     }
 
-    var charakterListe: [String]       { charakter.components(separatedBy: ", ").filter { !$0.isEmpty } }
-    var begleitsymptomeListe: [String] { begleitsymptome.components(separatedBy: ", ").filter { !$0.isEmpty } }
-    var ausloeserListe: [String]       { ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty } }
-    var prodromListe: [String]         { prodromsymptome.components(separatedBy: ", ").filter { !$0.isEmpty } }
-    var postdromListe: [String]        { postdrom.components(separatedBy: ", ").filter { !$0.isEmpty } }
+    var charakterListe: [String]       { ListenFeld.parse(charakter) }
+    var begleitsymptomeListe: [String] { ListenFeld.parse(begleitsymptome) }
+    var ausloeserListe: [String]       { ListenFeld.parse(ausloeser) }
+    var prodromListe: [String]         { ListenFeld.parse(prodromsymptome) }
+    var postdromListe: [String]        { ListenFeld.parse(postdrom) }
+
+    var zeitzone: TimeZone { TimeZone(identifier: timeZoneID) ?? .current }
+    var tag: DayKey { DayKey(datum, zeitzone: zeitzone) }
 }

@@ -13,7 +13,7 @@ struct KoerperPickerView: View {
     @State private var pendingRegion: RegionItem? = nil
 
     private var ausgewaehltSet: Set<String> {
-        Set(auswahl.components(separatedBy: ", ").filter { !$0.isEmpty })
+        Set(ListenFeld.parse(auswahl))
     }
 
     var body: some View {
@@ -25,6 +25,14 @@ struct KoerperPickerView: View {
         )
         .frame(height: frameHeight)
         .frame(maxHeight: frameHeight == nil ? .infinity : nil)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.05)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 1)
+        )
         .sheet(item: $pendingRegion) { item in
             SubRegionenSheet(
                 region: item.id,
@@ -131,7 +139,7 @@ struct SubRegionenSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Übernehmen") {
                         var result = lokalAusgewaehlt
-                        let t = freitext.trimmingCharacters(in: .whitespaces)
+                        let t = ListenFeld.bereinige(freitext)
                         if !t.isEmpty { result.insert(t) }
                         onConfirm(result.isEmpty ? [region] : result)
                         dismiss()

@@ -155,7 +155,7 @@ struct PDFZyklusEintrag {
             datum: e.datum,
             istPeriode: e.istPeriode || e.typ == "Periode",
             blutungsfluss: e.blutungsfluss,
-            symptome: e.symptome.components(separatedBy: ", ").filter { !$0.isEmpty },
+            symptome: ListenFeld.parse(e.symptome),
             ovulationstest: e.ovulationstest,
             basaltemperatur: e.basaltemperatur,
             zervixschleim: e.zervixschleim,
@@ -255,7 +255,7 @@ struct PDFErnaehrungsTag {
         let ud = UserDefaults.standard
         let kal = Calendar.current
         let ende = kal.startOfDay(for: Date())
-        var von = start.map { kal.startOfDay(for: $0) } ?? kal.date(byAdding: .year, value: -1, to: ende)!
+        var von = start.map { kal.startOfDay(for: $0) } ?? kal.date(byAdding: .year, value: -1, to: ende) ?? ende
         var ergebnis: [PDFErnaehrungsTag] = []
         while von <= ende {
             let k = df.string(from: von)
@@ -270,7 +270,8 @@ struct PDFErnaehrungsTag {
                     alkoholGlaeser: alkohol, wasserMl: wasser,
                     hatFruehstueck: frueh, hatMittag: mittag, hatAbend: abend))
             }
-            von = kal.date(byAdding: .day, value: 1, to: von)!
+            guard let naechster = kal.date(byAdding: .day, value: 1, to: von), naechster > von else { break }
+            von = naechster
         }
         return ergebnis
     }
@@ -567,7 +568,7 @@ class PDFExportService: @unchecked Sendable {
         seitenKopf(ctx: ctx, titel: "Zusammenfassung", seite: 2)
         var y: CGFloat = rand + 52
 
-        let avg = eintraege.map { Double($0.schmerzstaerke) }.reduce(0, +) / Double(eintraege.count)
+        let avg = eintraege.isEmpty ? 0 : eintraege.map { Double($0.schmerzstaerke) }.reduce(0, +) / Double(eintraege.count)
         let maxVal = eintraege.map(\.schmerzstaerke).max() ?? 0
         let tage = Set(eintraege.map { Calendar.current.startOfDay(for: $0.datum) }).count
         let schube = eintraege.filter(\.istSchub).count
@@ -877,7 +878,7 @@ class PDFExportService: @unchecked Sendable {
                                  headers: ["Medikament", "Dosierung", "Hinweis", "Treue", "Einnahmen"])
                     y += 26
                 }
-                let fensterStart = kal.date(byAdding: .day, value: -30, to: heute)!
+                let fensterStart = kal.date(byAdding: .day, value: -30, to: heute) ?? heute
                 let tageSeitStart = max(1, kal.dateComponents([.day],
                     from: kal.startOfDay(for: med.startDatum), to: heute).day ?? 1)
                 let fensterTage = min(30, tageSeitStart)
@@ -1084,11 +1085,8 @@ class PDFExportService: @unchecked Sendable {
         let predRows: [(String, String)] = [
             analyse.naechstePeriodeStart.map { ("Nächste Periode (erwartet)", fmt($0)) },
             analyse.vorhergesagteOvulation.map { ("Nächster Eisprung (erwartet)", fmt($0)) },
-            analyse.vorhergesagteOvulation.flatMap { ov -> (String, String)? in
-                let kal = Calendar.current
-                guard let start = kal.date(byAdding: .day, value: -5, to: ov),
-                      let end   = kal.date(byAdding: .day, value: 1, to: ov) else { return nil }
-                return ("Fruchtbares Fenster", "\(fmt(start)) – \(fmt(end))")
+            analyse.naechstesFruchtbaresFenster.map {
+                ("Fruchtbares Fenster", "\(fmt($0.lowerBound)) – \(fmt($0.upperBound))")
             }
         ].compactMap { $0 }
 
@@ -1105,7 +1103,7 @@ class PDFExportService: @unchecked Sendable {
         y += 20
 
         let cols: [CGFloat] = [rand, rand + 140, rand + 240, rand + 340]
-        tabellenKopf(ctx: ctx, y: y, cols: cols, headers: ["Zyklusbeginn", "Länge", "Periodendauer", "Eis. Vorhersage"])
+        tabellenKopf(ctx: ctx, y: y, cols: cols, headers: ["Zyklusbeginn", "Länge", "Periodendauer", "Eisprung (Beleg)"])
         y += 26
 
         let kal = Calendar.current
@@ -1127,11 +1125,13 @@ class PDFExportService: @unchecked Sendable {
                 }
                 return n
             }()
-            let eisprung = kal.date(byAdding: .day, value: Int(analyse.zykluslaenge) - 14, to: start)
+            // Eisprung aus der Zyklus-Engine (bestätigt/LH/Schleim oder Schätzung), nicht pauschal Länge − 14
+            let zInfo = analyse.zyklen.first(where: { kal.isDate($0.start, inSameDayAs: start) })
+            let eisprung = zInfo?.eisprung
             tabellenZeile(ctx: ctx, y: y, cols: cols,
                           werte: [fmt(start), laenge,
                                   periodDauer > 0 ? "\(periodDauer) Tage" : "–",
-                                  eisprung.map { fmt($0) } ?? "–"],
+                                  eisprung.map { "\(fmt($0)) (\(zInfo?.eisprungQuelle.istBestaetigt == true ? "bestätigt" : "geschätzt"))" } ?? "–"],
                           fett: [true, false, false, false])
             y += 20
             trennlinie(ctx: ctx, y: y - 1, alpha: 0.1)
@@ -1464,7 +1464,7 @@ class PDFExportService: @unchecked Sendable {
                 farbe: .systemBlue)
         y += 88
 
-        let ausloeserMap = anfaelle.flatMap { $0.ausloeser.components(separatedBy: ", ").filter { !$0.isEmpty } }
+        let ausloeserMap = anfaelle.flatMap { ListenFeld.parse($0.ausloeser) }
             .reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
         let topAusloeser = ausloeserMap.sorted { $0.value > $1.value }.prefix(5)
 
@@ -1639,7 +1639,7 @@ class PDFExportService: @unchecked Sendable {
 
         for eintrag in eintraege {
             let quelleStellen = eintrag.istHautEintrag ? eintrag.hautStellen : eintrag.koerperstelle
-            let koerperstellen = quelleStellen.components(separatedBy: ", ").filter { !$0.isEmpty }
+            let koerperstellen = ListenFeld.parse(quelleStellen)
             let mehrereStellen = koerperstellen.count > 1
 
             // Build sub-rows
@@ -2152,19 +2152,13 @@ class PDFExportService: @unchecked Sendable {
     private func zyklusphase(fuer datum: Date, analyse: ZyklusAnalyse) -> String? {
         let kal = Calendar.current
         let tag = kal.startOfDay(for: datum)
-        guard let start = analyse.zyklusStarts
-            .map({ kal.startOfDay(for: $0) })
-            .filter({ $0 <= tag })
-            .max() else { return nil }
-
-        let zyklusTag = (kal.dateComponents([.day], from: start, to: tag).day ?? 0) + 1
-        let periodTage = max(1, Int(analyse.periodendauer))
-        let ovTag = max(periodTage + 4, Int(analyse.zykluslaenge) - 14)
-
-        if zyklusTag <= periodTage { return "Menstruation" }
-        if zyklusTag >= ovTag - 2 && zyklusTag <= ovTag + 1 { return "Eisprung" }
-        if zyklusTag > periodTage && zyklusTag < ovTag - 2 { return "Follikulär" }
-        return "Lutealphase"
+        guard let phase = ZyklusRechner.phase(for: tag, analyse: analyse, kalender: kal) else { return nil }
+        switch phase {
+        case .menstruation:                 return "Menstruation"
+        case .ovulation:                    return "Eisprung"
+        case .follikelphase:                return "Follikulär"
+        case .lutealphase, .praemenstruell: return "Lutealphase"
+        }
     }
 }
 #endif

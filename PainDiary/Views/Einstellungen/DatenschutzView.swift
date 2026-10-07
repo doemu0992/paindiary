@@ -46,6 +46,9 @@ Falls iCloud-Sync aktiviert ist, gelten zusätzlich die Datenschutzbestimmungen 
 Falls du die HealthKit-Integration aktivierst, liest PainDiary mit deiner Erlaubnis folgende Daten aus der Gesundheits-App:
 • Schlafdaten (Schlafstunden)
 • Schritte (tägliche Aktivität)
+• Zyklusdaten (Periode, Zervixschleim, Ovulationstest, Basaltemperatur, sexuelle Aktivität) – nur wenn du im Zyklus-Tracker «Mit Apple Health abgleichen» wählst
+
+Beim Abgleich schreibt PainDiary deine Zyklus-Einträge zusätzlich in die Gesundheits-App. Importierte Werte überschreiben nie deine eigenen Eingaben.
 
 Diese Daten werden nur lokal verwendet und nie an Dritte weitergegeben. Du kannst den Zugriff jederzeit in Einstellungen → Datenschutz → Gesundheit widerrufen.
 """)
@@ -106,6 +109,6 @@ E-Mail: doemugerber@gmail.com
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .glassBackground(radius: 12)
     }
 }

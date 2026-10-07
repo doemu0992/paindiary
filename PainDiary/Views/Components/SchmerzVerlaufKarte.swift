@@ -148,7 +148,7 @@ struct SchmerzVerlaufKarte: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         .onAppear { resetScroll() }
         .onChange(of: zeitBereich) { ausgewaehlt = nil; resetScroll() }
@@ -459,7 +459,7 @@ struct SchmerzVerlaufKarte: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(Color(.secondarySystemGroupedBackground))
+        .glassFill()
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .shadow(color: .black.opacity(0.10), radius: 6, x: 0, y: 2)
     }

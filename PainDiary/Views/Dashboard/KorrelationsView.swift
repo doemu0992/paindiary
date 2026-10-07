@@ -165,8 +165,8 @@ struct KorrelationsView: View {
         let kal = Calendar.current
         let grenze30 = kal.date(byAdding: .day, value: -30, to: Date()) ?? Date()
 
-        let schmerzEintraege = alleEintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" && $0.datum >= grenze30 }
-        let rheumaEintraege  = alleEintraege.filter { $0.koerperstelle == "Rheuma" && $0.datum >= grenze30 }
+        let schmerzEintraege = alleEintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma && $0.datum >= grenze30 }
+        let rheumaEintraege  = alleEintraege.filter { $0.eintragsArt == .rheuma && $0.datum >= grenze30 }
         let alleLetzte30     = alleEintraege.filter { $0.datum >= grenze30 }
         let migraeneLetzte30 = migraeneEintraege.filter { $0.datum >= grenze30 }
 
@@ -218,7 +218,7 @@ struct KorrelationsView: View {
             summaryPill("\(tage)",           label: "Tage erfasst", symbol: "calendar",                    farbe: .teal)
         }
         .padding(.vertical, 10)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -986,16 +986,21 @@ struct KorrelationsView: View {
             "Menstruation": [], "Follikelphase": [], "Fruchtbar": [], "Lutealphase": []
         ]
 
-        for e in eintraege {
+        for e in eintraege where e.schmerzstaerke > 0 {
             let tag = kal.startOfDay(for: e.datum)
             let s   = Double(e.schmerzstaerke)
-            if let ze = zyklusEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: tag) }), ze.istPeriode {
+            if let ze = zyklusEintraege.first(where: { kal.isDate($0.datum, inSameDayAs: tag) }), ze.istMenstruation {
                 phasen["Menstruation"]?.append(s)
             } else if fruchtbareSet.contains(tag) {
                 phasen["Fruchtbar"]?.append(s)
-            } else if let start = zyklusStarts.filter({ $0 <= tag }).last {
-                let tage = kal.dateComponents([.day], from: start, to: tag).day ?? 0
-                phasen[tage < 8 ? "Follikelphase" : "Lutealphase"]?.append(s)
+            } else if let phase = ZyklusRechner.phase(for: tag, analyse: analyse, kalender: kal) {
+                // Phase aus dem tatsächlichen Zyklusverlauf (statt fester Tag-8-Grenze)
+                switch phase {
+                case .menstruation:                 phasen["Menstruation"]?.append(s)
+                case .follikelphase:                phasen["Follikelphase"]?.append(s)
+                case .ovulation:                    phasen["Fruchtbar"]?.append(s)
+                case .lutealphase, .praemenstruell: phasen["Lutealphase"]?.append(s)
+                }
             }
         }
 
@@ -1367,7 +1372,7 @@ struct KorrelationsView: View {
                 let treue = Double(geloggteTage.count) / Double(fensterTage)
 
                 let logTage = Set(einnahmeLogs
-                    .filter { $0.medikamentName == med.name && $0.dosierung == med.dosierung && $0.eingenommen }
+                    .filter { $0.gehoertZu(med) && $0.eingenommen }
                     .map { kal.startOfDay(for: $0.datum) })
                 var mitMed: [Double] = []; var ohneMed: [Double] = []
                 for e in alleEintraege where e.schmerzstaerke > 0 {
@@ -1693,7 +1698,7 @@ struct KorrelationsView: View {
             content()
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 

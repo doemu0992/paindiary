@@ -43,6 +43,7 @@ struct HautView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
                     Section {
@@ -52,8 +53,7 @@ struct HautView: View {
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    FotoManager.loeschen(dateiname: eintrag.fotoDateiname)
-                                    modelContext.delete(eintrag)
+                                    EintragLoeschService(context: modelContext).loesche(eintrag)
                                 } label: { Label("Löschen", systemImage: "trash") }
                             }
                         }
@@ -61,9 +61,11 @@ struct HautView: View {
                         Text(tagLabel(gruppe.tag))
                             .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
         }
+        .glassList()
         .navigationTitle("Hautveränderungen")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -107,7 +109,7 @@ struct HautView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 Button { zeigeAnalyse = true } label: {
@@ -116,7 +118,7 @@ struct HautView: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.orange, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(Color.orange, radius: 12)
                 }
                 .buttonStyle(.plain)
             }
@@ -135,12 +137,12 @@ struct HautView: View {
     }
 
     private func topArt(in liste: [PainEntry]) -> String? {
-        let alle = liste.flatMap { $0.hautArt.components(separatedBy: ", ").filter { !$0.isEmpty } }
+        let alle = liste.flatMap { ListenFeld.parse($0.hautArt) }
         return Dictionary(grouping: alle, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key
     }
 
     private func topStelle(in liste: [PainEntry]) -> String? {
-        let alle = liste.flatMap { $0.hautStellen.components(separatedBy: ", ").filter { !$0.isEmpty } }
+        let alle = liste.flatMap { ListenFeld.parse($0.hautStellen) }
         return Dictionary(grouping: alle, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key
     }
 }

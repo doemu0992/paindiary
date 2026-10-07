@@ -69,7 +69,7 @@ struct CharakterAusloeserStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !charFreitext.isEmpty {
                         Button {
-                            let term = charFreitext.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(charFreitext)
                             guard !term.isEmpty else { return }
                             charAusgewaehlt.insert(term)
                             charFreitext = ""
@@ -86,7 +86,7 @@ struct CharakterAusloeserStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             // Card 2: Dauer
             VStack(alignment: .leading, spacing: 12) {
@@ -109,7 +109,7 @@ struct CharakterAusloeserStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             // Card 3: Auslöser
             VStack(alignment: .leading, spacing: 12) {
@@ -127,7 +127,7 @@ struct CharakterAusloeserStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !ausloeserFreitext.isEmpty {
                         Button {
-                            let term = ausloeserFreitext.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(ausloeserFreitext)
                             guard !term.isEmpty else { return }
                             ausloeserAusgewaehlt.insert(term)
                             ausloeserFreitext = ""
@@ -144,7 +144,7 @@ struct CharakterAusloeserStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
         }
         .padding(.horizontal)
         .onAppear { ladeWerte() }

@@ -130,9 +130,10 @@ struct ZyklusAnalyseView: View {
                             .padding(.bottom, 24)
                         }
                     }
-                    .background(Color(.systemGroupedBackground))
+                    .background { ZyklusHintergrund() }
                 }
             }
+            .environment(\.locale, ZyklusLocale.de)
             .navigationTitle("Zyklus-Analyse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -215,7 +216,7 @@ struct ZyklusAnalyseView: View {
     // MARK: - KI Prompt
 
     private var kiPrompt: String {
-        let zyklen = max(analyse.zyklusStarts.count - 1, 0)
+        let zyklen = analyse.gueltigeZyklen
         var zeilen: [String] = [
             "Zyklus-Analyse (\(zeitraum.rawValue)):",
             "- \(zyklen) vollständige Zyklen erfasst",
@@ -269,6 +270,12 @@ struct ZyklusAnalyseView: View {
             zeilen.append("- Migräne: \(s)")
         }
 
+        // Perimenstruelles Fenster (ICHD-3: Tag −2 bis +3 um den Blutungsbeginn)
+        let peri = ZyklusRechner.perimenstruelleAnfaelle(anfaelle: Array(migraeneAnfaelle), analyse: analyse)
+        if peri.gesamt > 0 {
+            zeilen.append("- Migräne im perimenstruellen Fenster (Tag −2 bis +3): \(peri.imFenster) von \(peri.gesamt) Anfällen")
+        }
+
         // HAQ (Gelenkfunktion)
         let haq = phasenAggregat(Array(haqEintraege), datum: \.datum) { $0.haqScore }
         if !haq.isEmpty { zeilen.append("- Gelenkfunktion HAQ (0=gut, 3=schlecht): \(fmt(haq, "%.2f", "/3"))") }
@@ -300,10 +307,10 @@ struct ZyklusAnalyseView: View {
         karte(titel: "Übersicht", symbol: "drop.fill", farbe: .pink,
       info: "Überblick über deine Zyklusdaten im gewählten Zeitraum. Zeigt durchschnittliche Zykluslänge, Periodendauer und Periodenfluss. Ein normaler Zyklus dauert 21–35 Tage, eine Periode 3–7 Tage.") {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                statCell("Ø Zykluslänge", String(format: "%.0f Tage", analyse.zykluslaenge), .pink)
+                statCell("Zykluslänge (Median)", analyse.gueltigeZyklen > 0 ? "\(Int(analyse.medianZykluslaenge.rounded())) Tage" : "–", .pink)
                 statCell("Ø Periode", String(format: "%.0f Tage", analyse.periodendauer), .red)
                 statCell("Variation", String(format: "±%.1f Tage", analyse.variation), .orange)
-                statCell("Zyklen erfasst", "\(max(analyse.zyklusStarts.count - 1, 0))", .purple)
+                statCell("Gültige Zyklen", "\(analyse.gueltigeZyklen)", .purple)
             }
         }
     }
@@ -323,7 +330,7 @@ struct ZyklusAnalyseView: View {
         let hatLerndaten = analyse.zyklusStarts.count >= 3
 
         karte(titel: "Adaptive Vorhersage", symbol: "brain.head.profile", farbe: .pink,
-              info: "Die App gewichtet die letzten 3 Zyklen stärker als ältere (50 % / 30 % / 20 %). So werden aktuelle Veränderungen deines Rhythmus schneller erkannt als bei einem einfachen Durchschnitt.") {
+              info: "Die App nutzt den gewichteten Median der letzten 6 Zyklen (jüngere zählen stärker) – robust gegen Ausreißer wie vergessene Einträge. Die Lutealphase wird aus bestätigten Eisprüngen (Temperatur, LH-Test, Schleim) persönlich gelernt.") {
             HStack {
                 if hatLerndaten {
                     Label("Aktiv", systemImage: "checkmark.circle.fill")
@@ -346,7 +353,7 @@ struct ZyklusAnalyseView: View {
                 }
             }
 
-            Text("Letzte 3 Zyklen gewichtet (50/30/20 %). Ø-Werte bleiben für Statistik unverändert.")
+            Text("Gewichteter Median der letzten 6 Zyklen. Ø-Werte bleiben für die Statistik unverändert.")
                 .font(.caption2).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -566,7 +573,7 @@ struct ZyklusAnalyseView: View {
                     ForEach(Array(tests.suffix(10).enumerated()), id: \.offset) { _, test in
                         HStack(spacing: 12) {
                             Circle().fill(ovuFarbe(test.ergebnis)).frame(width: 12, height: 12)
-                            Text(test.datum.formatted(.dateTime.day().month(.abbreviated).year()))
+                            Text(test.datum.formatted(.dateTime.day().month(.abbreviated).year().locale(ZyklusLocale.de)))
                                 .font(.caption).foregroundStyle(.secondary)
                                 .frame(width: 80, alignment: .leading)
                             Text(test.ergebnis.capitalized).font(.subheadline)
@@ -652,6 +659,12 @@ struct ZyklusAnalyseView: View {
                 .chartYScale(domain: 0...maxAnzahl)
                 .frame(height: 150)
 
+                let peri = ZyklusRechner.perimenstruelleAnfaelle(anfaelle: Array(migraeneAnfaelle), analyse: analyse)
+                if peri.gesamt > 0 {
+                    Text("Perimenstruell (Tag −2 bis +3 um den Blutungsbeginn): \(peri.imFenster) von \(peri.gesamt) Anfällen")
+                        .font(.caption).foregroundStyle(.purple)
+                }
+
                 VStack(spacing: 4) {
                     ForEach(daten, id: \.phase.rawValue) { d in
                         HStack {
@@ -675,6 +688,7 @@ struct ZyklusAnalyseView: View {
         case .follikelphase: return .yellow
         case .ovulation:     return .orange
         case .lutealphase:   return .purple
+        case .praemenstruell: return .pink
         }
     }
 
@@ -690,26 +704,15 @@ struct ZyklusAnalyseView: View {
         guard laengen.count >= 2 else { return [] }
         return (1..<laengen.count).map { i in
             let vorherige = Array(laengen[0..<i])
-            return FehlerPunkt(zyklusNr: i + 1, fehler: laengen[i] - rollingAdaptiv(vorherige))
+            return FehlerPunkt(zyklusNr: i + 1, fehler: laengen[i] - ZyklusRechner.prognoseLaenge(aus: vorherige))
         }
     }
 
-    private func rollingAdaptiv(_ laengen: [Double]) -> Double {
-        let r = Array(laengen.suffix(3))
-        switch r.count {
-        case 0:    return 28.0
-        case 1:    return r[0]
-        case 2:    return r[0] * 0.4 + r[1] * 0.6
-        default:   return r[0] * 0.2 + r[1] * 0.3 + r[2] * 0.5
-        }
-    }
 
+    /// Nur gültige Zyklen der Engine (15–90 Tage, ohne Ausreißer) — identisch zur Statistik im Verlauf-Tab.
     private func berechneLaengen() -> [Double] {
-        let kal    = Calendar.current
-        let starts = analyse.zyklusStarts
-        guard starts.count >= 2 else { return [] }
-        return (1..<starts.count).map { i in
-            Double(kal.dateComponents([.day], from: starts[i - 1], to: starts[i]).day ?? 28)
+        analyse.zyklen.compactMap { info in
+            info.fuerStatistikGueltig ? info.laenge.map { Double($0) } : nil
         }
     }
 
@@ -720,13 +723,14 @@ struct ZyklusAnalyseView: View {
     }
 
     private func schleimVerteilung() -> [SchleimItem] {
-        var zähler: [String: Int] = [:]
-        for e in gefilterteEintraege where !e.zervixschleim.isEmpty {
-            zähler[e.zervixschleim, default: 0] += 1
+        // Über das Enum normalisiert: Altdaten ("Eiweiss") und neue Werte ("eiweiss") zählen zusammen.
+        var zähler: [Zervixschleim: Int] = [:]
+        for e in gefilterteEintraege where e.schleim != .keine {
+            zähler[e.schleim, default: 0] += 1
         }
-        return ["trocken", "klebrig", "cremig", "wässrig", "Eiweiss"].compactMap { typ in
+        return [Zervixschleim.trocken, .klebrig, .cremig, .waessrig, .eiweiss].compactMap { typ in
             guard let count = zähler[typ], count > 0 else { return nil }
-            return SchleimItem(typ: typ, anzahl: count)
+            return SchleimItem(typ: typ.rawValue, anzahl: count)
         }
     }
 
@@ -810,9 +814,9 @@ struct ZyklusAnalyseView: View {
             Divider()
             content()
         }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .zyklusGlas(radius: 20)
     }
 
     private func statCell(_ titel: String, _ wert: String, _ farbe: Color) -> some View {
@@ -861,6 +865,8 @@ private struct ZyklusAnalyseAnpassenView: View {
                     zyklusSektionenSpeichern(sektionen)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { ZyklusHintergrund() }
             .environment(\.editMode, $editMode)
             .navigationTitle("Reihenfolge anpassen")
             .navigationBarTitleDisplayMode(.inline)

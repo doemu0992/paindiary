@@ -44,6 +44,7 @@ struct FACITView: View {
                     .frame(height: 140)
                     .padding(.vertical, 4)
                 }
+                .listRowBackground(Color.glassFill)
             }
 
             Section {
@@ -73,7 +74,9 @@ struct FACITView: View {
                     }
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("FACIT-Erschöpfung")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -115,7 +118,7 @@ struct FACITView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func scoreFarbe(_ score: Int) -> Color {
@@ -144,7 +147,7 @@ struct FACITView: View {
                 .font(.subheadline).foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func infoPill(_ wert: String, label: String, farbe: Color) -> some View {
@@ -231,7 +234,7 @@ struct FACITFormView: View {
                             DatePicker("Datum", selection: $datum, displayedComponents: [.date])
                                 .font(.subheadline).padding(16)
                         }
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
 
                         // Live Score Card
                         HStack {
@@ -244,7 +247,7 @@ struct FACITFormView: View {
                                 .animation(.easeInOut, value: liveScore)
                         }
                         .padding(16)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
 
                         // Questions
                         VStack(alignment: .leading, spacing: 10) {
@@ -266,13 +269,13 @@ struct FACITFormView: View {
                                     .font(.subheadline).padding(16)
                                     .lineLimit(3...6)
                             }
-                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                            .glassBackground(radius: 12)
                         }
                     }
                     .padding(.horizontal).padding(.vertical, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .background(Color(.systemGroupedBackground))
+                .auroraScreen()
 
                 // Save button
                 HStack {
@@ -280,7 +283,7 @@ struct FACITFormView: View {
                         Label("Speichern", systemImage: "checkmark")
                             .font(.subheadline.bold()).foregroundStyle(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                            .glassTintBackground(Color.teal, radius: 12)
                     }
                     .buttonStyle(.plain)
                 }
@@ -332,7 +335,7 @@ struct FACITFormView: View {
                         .background(
                             binding.wrappedValue == stufe
                                 ? farbe.opacity(0.18)
-                                : Color(.secondarySystemGroupedBackground),
+                                : Color.glassFill,
                             in: RoundedRectangle(cornerRadius: 8)
                         )
                         .overlay(
@@ -347,7 +350,7 @@ struct FACITFormView: View {
             }
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .glassBackground(radius: 12)
     }
 
     private func stufenFarbe(_ i: Int) -> Color {

@@ -143,12 +143,12 @@ struct ContentView: View {
 
     private var hauptApp: some View {
         TabView(selection: $ausgewaehlterTab) {
-            NavigationStack { DashboardView() }
-                .tabItem { Label("Übersicht", systemImage: "chart.line.uptrend.xyaxis") }
+            NavigationStack { HeuteView() }
+                .tabItem { Label("Heute", systemImage: "house.fill") }
                 .tag(0)
 
-            NavigationStack { PainEntryListView() }
-                .tabItem { Label("Tagebuch", systemImage: "book.pages") }
+            NavigationStack { VerlaufContainerView() }
+                .tabItem { Label("Verlauf", systemImage: "book.pages") }
                 .tag(1)
 
             Color.clear
@@ -167,15 +167,26 @@ struct ContentView: View {
             Button { neuerEintragAnzeigen = true } label: {
                 ZStack {
                     Circle()
-                        .fill(akzentFarbe.alsAkzentFarbe)
-                        .frame(width: 54, height: 54)
+                        .fill(akzentFarbe.alsAkzentFarbe.gradient)
+                        .frame(width: 58, height: 58)
+                        .overlay(
+                            Circle().strokeBorder(
+                                LinearGradient(colors: [.white.opacity(0.7), .white.opacity(0.05)], startPoint: .top, endPoint: .bottom),
+                                lineWidth: 1
+                            )
+                        )
+                        .shadow(color: akzentFarbe.alsAkzentFarbe.opacity(0.4), radius: 12, y: 6)
                     Image(systemName: "plus")
-                        .font(.system(size: 24, weight: .bold))
+                        .font(.system(size: 26, weight: .bold))
                         .foregroundStyle(.white)
                 }
+                .frame(minWidth: 64, minHeight: 64)
+                .contentShape(Circle())
             }
-            .padding(.bottom, 4)
+            .accessibilityLabel("Neuer Eintrag")
+            .padding(.bottom, 2)
         }
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .onChange(of: ausgewaehlterTab) { _, neu in
             if neu == 2 {
                 neuerEintragAnzeigen = true
@@ -186,7 +197,7 @@ struct ContentView: View {
             if migraeneModulAktiv || rheumaModulAktiv || diabetesModulAktiv || hautModulAktiv {
                 EintragAuswahlView()
             } else {
-                AddEntryView()
+                QuickCaptureSheet()
             }
         }
     }

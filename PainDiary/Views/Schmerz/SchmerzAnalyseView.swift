@@ -32,7 +32,7 @@ enum SchmerzAnalyseSektion: String, CaseIterable, Codable, Identifiable {
 
 struct SchmerzAnalyseView: View {
     @Query(sort: \PainEntry.datum, order: .reverse) private var alleEintraege: [PainEntry]
-    private var eintraege: [PainEntry] { alleEintraege.filter { !$0.istHautEintrag && $0.koerperstelle != "Rheuma" } }
+    private var eintraege: [PainEntry] { alleEintraege.filter { !$0.istHautEintrag && $0.eintragsArt != .rheuma } }
 
     @StateObject private var scanService = BodyScanService.shared
     @State private var sektionen: [SchmerzAnalyseSektion] = SchmerzAnalyseView.sektionenLaden()
@@ -308,7 +308,7 @@ struct SchmerzAnalyseView: View {
             content()
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
         .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
@@ -608,6 +608,7 @@ struct SchmerzAnalyseAnpassenView: View {
                 }
                 .onMove { sektionen.move(fromOffsets: $0, toOffset: $1) }
             }
+            .glassList()
             .environment(\.editMode, .constant(.active))
             .navigationTitle("Sektionen anpassen")
             .navigationBarTitleDisplayMode(.inline)

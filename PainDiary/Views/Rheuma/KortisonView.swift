@@ -24,6 +24,7 @@ struct KortisonView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 statistikSektion
 
@@ -63,6 +64,7 @@ struct KortisonView: View {
                         .frame(height: 140)
                         .padding(.vertical, 4)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
 
                 // Einträge
@@ -85,8 +87,10 @@ struct KortisonView: View {
                             }
                     }
                 }
+                .listRowBackground(Color.glassFill)
             }
         }
+        .glassList()
         .navigationTitle("Kortison-Tagebuch")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -128,7 +132,7 @@ struct KortisonView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
             }
             .padding(.vertical, 4)
@@ -283,19 +287,19 @@ struct KortisonForm: View {
                     TextField("Hinweise, Nebenwirkungen…", text: $notizen, axis: .vertical)
                         .lineLimit(2...4).font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var speichernLeiste: some View {
         Button { speichern() } label: {
             Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                 .frame(maxWidth: .infinity).padding(.vertical, 14)
-                .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                .glassTintBackground(Color.teal, radius: 12)
         }
         .buttonStyle(.plain)
         .padding()

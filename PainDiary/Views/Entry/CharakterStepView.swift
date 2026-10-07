@@ -44,7 +44,7 @@ struct CharakterStepView: View {
                         .textFieldStyle(.roundedBorder)
                     if !eigenerText.isEmpty {
                         Button {
-                            let term = eigenerText.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(eigenerText)
                             guard !term.isEmpty else { return }
                             ausgewaehlt.insert(term)
                             eigenerText = ""
@@ -60,7 +60,7 @@ struct CharakterStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
 
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
@@ -82,7 +82,7 @@ struct CharakterStepView: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .glassBackground(radius: 16)
         }
         .padding(.horizontal)
         .onAppear { ladeAuswahlAusBinding() }

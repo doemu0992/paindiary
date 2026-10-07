@@ -60,6 +60,7 @@ struct PushManagerView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                .listRowBackground(Color.glassFill)
             } else if !notif.timeSensitiveAktiv {
                 Section {
                     Button {
@@ -88,6 +89,7 @@ struct PushManagerView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                .listRowBackground(Color.glassFill)
             }
 
             // MARK: - Tägliche Erinnerung
@@ -121,6 +123,7 @@ struct PushManagerView: View {
             } footer: {
                 Text("Erinnert dich täglich daran, deinen Schmerzstatus zu erfassen.")
             }
+            .listRowBackground(Color.glassFill)
 
             // MARK: - Wasser-Erinnerung
             Section {
@@ -153,6 +156,7 @@ struct PushManagerView: View {
             } footer: {
                 Text("Erinnert dich daran, genug Wasser zu trinken.")
             }
+            .listRowBackground(Color.glassFill)
 
             // MARK: - Medikament-Erinnerungen
             Section {
@@ -213,6 +217,7 @@ struct PushManagerView: View {
             } footer: {
                 Text("Tippe auf ein Medikament um Erinnerungszeiten zu bearbeiten.")
             }
+            .listRowBackground(Color.glassFill)
 
             // MARK: - Zyklus
             Section {
@@ -238,6 +243,7 @@ struct PushManagerView: View {
             } footer: {
                 Text("Periode, fruchtbare Tage und Eisprung werden automatisch berechnet.")
             }
+            .listRowBackground(Color.glassFill)
 
             // MARK: - Test
             Section {
@@ -260,7 +266,9 @@ struct PushManagerView: View {
             } footer: {
                 Text("Verlasse die App nach dem Senden um den Banner zu sehen.")
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("Benachrichtigungen")
         .navigationBarTitleDisplayMode(.large)
         .sheet(item: $bearbeitetMedikament) { med in

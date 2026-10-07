@@ -28,6 +28,7 @@ struct TagesDetailSheet: View {
                     List(tagesEintraege) { eintrag in
                         eintragZeile(eintrag)
                     }
+                    .glassList()
                     .listStyle(.insetGrouped)
                 }
             }

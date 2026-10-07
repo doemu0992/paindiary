@@ -38,7 +38,9 @@ struct PhysioView: View {
                     }
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("Physiotherapie")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -72,7 +74,7 @@ struct PhysioView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .glassBackground(radius: 16)
     }
 
     private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
@@ -138,14 +140,7 @@ struct PhysioFormView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.teal.opacity(0.15)).frame(height: 3)
-                        Capsule().fill(Color.teal)
-                            .frame(width: geo.size.width * CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), height: 3)
-                            .animation(.easeInOut(duration: 0.3), value: schritt)
-                    }
-                }
+                GlassProgressBar(tint: Color.teal, fortschritt: CGFloat(schritt + 1) / CGFloat(maxSchritt + 1), schritt: schritt)
                 .frame(height: 3).padding(.horizontal).padding(.top, 10)
 
                 Group {
@@ -199,7 +194,7 @@ struct PhysioFormView: View {
                                         Text(t.rawValue).font(.caption2).multilineTextAlignment(.center)
                                     }
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
-                                    .background(sel ? Color.teal : Color(.tertiarySystemGroupedBackground),
+                                    .background(sel ? Color.teal : Color.glassFill,
                                                 in: RoundedRectangle(cornerRadius: 10))
                                     .foregroundStyle(sel ? .white : .primary)
                                     .animation(.easeInOut(duration: 0.15), value: sel)
@@ -210,12 +205,12 @@ struct PhysioFormView: View {
                         .padding(.horizontal, 16).padding(.bottom, 12)
                     }
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var schritt1: some View {
@@ -251,12 +246,12 @@ struct PhysioFormView: View {
                     TextField("Optionale Notizen", text: $notizen, axis: .vertical)
                         .lineLimit(3...6).font(.subheadline).padding(16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                .glassBackground(radius: 12)
             }
             .padding(.horizontal).padding(.vertical, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .auroraScreen()
     }
 
     private var navigationsLeiste: some View {
@@ -264,7 +259,7 @@ struct PhysioFormView: View {
             if schritt > 0 {
                 Button { withAnimation { schritt -= 1 } } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
@@ -276,13 +271,13 @@ struct PhysioFormView: View {
                 Button { withAnimation { schritt += 1 } } label: {
                     Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(Color.teal, radius: 12)
                 }.buttonStyle(.plain)
             } else {
                 Button { speichern() } label: {
                     Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color.teal, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(Color.teal, radius: 12)
                 }.buttonStyle(.plain)
             }
         }

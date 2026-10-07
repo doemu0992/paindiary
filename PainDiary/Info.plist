@@ -28,9 +28,9 @@
 	<key>NSFaceIDUsageDescription</key>
 	<string>PainDiary verwendet Face ID, um deine Gesundheitsdaten zu schützen.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>PainDiary liest deine Schlafdaten und Schritte aus der Gesundheits-App, um dein Wohlbefinden besser zu verstehen.</string>
+	<string>PainDiary liest deine Schlafdaten und Schritte sowie – auf deinen Wunsch – Zyklusdaten (Periode, Zervixschleim, Ovulationstest, Basaltemperatur) aus der Gesundheits-App, um dein Wohlbefinden und deine Zyklusprognosen besser zu verstehen.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>PainDiary schreibt keine Daten in die Gesundheits-App.</string>
+	<string>PainDiary schreibt deine im Zyklus-Tracker erfassten Daten (Periode, Zervixschleim, Ovulationstest, Basaltemperatur, sexuelle Aktivität) nur nach deiner Bestätigung in die Gesundheits-App.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Wird benötigt, um deinen Körper einmalig für den Körper-Picker zu scannen.</string>
 	<key>NSContactsUsageDescription</key>

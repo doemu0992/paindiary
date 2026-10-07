@@ -51,6 +51,7 @@ struct KontaktPickerView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    .glassList()
                     .listStyle(.plain)
                 }
             }

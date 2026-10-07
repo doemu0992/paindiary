@@ -332,9 +332,17 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: - Zyklus-Erinnerungen
 
+    /// Plant die Zyklus-Erinnerungen anhand der aktuellen Einträge neu.
+    /// Die Zyklus-Notification-IDs sind global (nicht pro Eintrag): nach *jeder* Änderung
+    /// (speichern, bearbeiten, löschen) einmal neu planen statt nur zu löschen.
+    func planeZyklusErinnerungen(eintraege: [ZyklusEintrag]) {
+        planeZyklusErinnerungen(analyse: ZyklusRechner.analyse(eintraege: eintraege))
+    }
+
     func planeZyklusErinnerungen(analyse: ZyklusAnalyse) {
         loescheZyklusErinnerungen()
-        guard status == .authorized, !analyse.zyklusStarts.isEmpty else { return }
+        guard status == .authorized, !analyse.zyklusStarts.isEmpty,
+              !UserDefaults.standard.bool(forKey: "zyklusPrognosenPausiert") else { return }
         let kal = Calendar.current
         let heute = kal.startOfDay(for: Date())
 
@@ -347,16 +355,13 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             scheduleEinmalig(
                 id: "zyklus-periode",
                 titel: "Periode erwartet",
-                body: "Deine Periode könnte in 2 Tagen beginnen.",
+                body: "Deine Periode könnte in etwa 2 Tagen beginnen (Schätzung ± \(analyse.unsicherheitTage) Tage).",
                 components: dc
             )
         }
 
         // Fruchtbares Fenster: erster zukünftiger fruchtbarer Tag um 08:00
-        let naechsterFruchtbar = analyse.fruchtbareTageSet
-            .filter { $0 >= heute }
-            .sorted().first
-        if let fTag = naechsterFruchtbar {
+        if let fTag = analyse.naechstesFruchtbaresFenster?.lowerBound, fTag > heute {
             var dc = kal.dateComponents([.year, .month, .day], from: fTag)
             dc.hour = 8; dc.minute = 0
             scheduleEinmalig(
@@ -441,6 +446,19 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func loescheZyklusErinnerungen() {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: ["zyklus-periode", "zyklus-fruchtbar", "zyklus-eisprung"])
+    }
+
+    /// iOS erlaubt höchstens 64 gleichzeitig geplante lokale Benachrichtigungen; weitere werden verworfen.
+    static let systemLimit = 64
+
+    /// Anzahl aktuell geplanter Benachrichtigungen.
+    func geplanteAnzahl() async -> Int {
+        await UNUserNotificationCenter.current().pendingNotificationRequests().count
+    }
+
+    /// `true`, wenn das System-Limit (fast) erreicht ist → neue Erinnerungen könnten verloren gehen.
+    func budgetKnapp(reserve: Int = 4) async -> Bool {
+        await geplanteAnzahl() >= Self.systemLimit - reserve
     }
 
     func loescheAlleGesundheitsDatenErinnerungen() {

@@ -24,6 +24,7 @@ struct AerzteView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 Section {
                     ForEach(aerzte) { a in
@@ -46,6 +47,7 @@ struct AerzteView: View {
                         indexSet.map { aerzte[$0] }.forEach { modelContext.delete($0) }
                     }
                 }
+                .listRowBackground(Color.glassFill)
             }
             Section {
 #if os(iOS)
@@ -60,7 +62,9 @@ struct AerzteView: View {
                     Label("Manuell hinzufügen", systemImage: "plus")
                 }
             }
+            .listRowBackground(Color.glassFill)
         }
+        .glassList()
         .navigationTitle("Ärzte")
         .navigationBarTitleDisplayMode(.large)
         .sheet(item: $bearbeitet) { arzt in
@@ -218,8 +222,7 @@ struct ArztFormView: View {
                         TextField("Praxis / Klinik", text: $praxis)
                             .font(.subheadline).padding(16)
                     }
-                    .background(Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
 
                     // Fachrichtung grid
                     VStack(alignment: .leading, spacing: 10) {
@@ -229,7 +232,7 @@ struct ArztFormView: View {
                                 let sel = fachgebiet == opt
                                 Button { fachgebiet = opt } label: {
                                     Text(opt).font(.caption.bold()).frame(maxWidth: .infinity).padding(.vertical, 10)
-                                        .background(sel ? TINT : Color(.secondarySystemGroupedBackground))
+                                        .background(sel ? TINT : Color.glassFill)
                                         .foregroundStyle(sel ? .white : .primary)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                         .animation(.easeInOut(duration: 0.15), value: sel)
@@ -239,15 +242,14 @@ struct ArztFormView: View {
                         // Custom fachgebiet field if none of the grid options match
                         TextField("Oder eigene Fachrichtung", text: $fachgebiet)
                             .font(.subheadline).padding(16)
-                            .background(Color(.secondarySystemGroupedBackground),
-                                        in: RoundedRectangle(cornerRadius: 12))
+                            .glassBackground(radius: 12)
                     }
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
 
         default:
@@ -269,16 +271,14 @@ struct ArztFormView: View {
                             .keyboardType(.emailAddress)
                             .font(.subheadline).padding(16)
                     }
-                    .background(Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
 
                     // Hausarzt toggle
                     VStack(spacing: 0) {
                         Toggle("Hausarzt", isOn: $istHausarzt)
                             .font(.subheadline).padding(16)
                     }
-                    .background(Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
 
                     // Notizen card
                     VStack(alignment: .leading, spacing: 0) {
@@ -291,14 +291,13 @@ struct ArztFormView: View {
                             .padding(.horizontal, 12)
                             .padding(.bottom, 12)
                     }
-                    .background(Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(radius: 12)
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
             .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
         }
     }
@@ -308,7 +307,7 @@ struct ArztFormView: View {
             if schritt > 0 {
                 Button { withAnimation { schritt -= 1 } } label: {
                     Text("Zurück").font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }.buttonStyle(.plain)
             }
             if !pflichtSchritte.contains(schritt) && schritt < maxSchritt {
@@ -320,7 +319,7 @@ struct ArztFormView: View {
                 Button { guard kannWeiter else { return }; withAnimation { schritt += 1 } } label: {
                     Text("Weiter ›").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(kannWeiter ? TINT : Color.secondary, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(kannWeiter ? TINT : Color.secondary, radius: 12)
                 }.buttonStyle(.plain).disabled(!kannWeiter)
             } else {
                 Button {
@@ -329,7 +328,7 @@ struct ArztFormView: View {
                 } label: {
                     Label("Speichern", systemImage: "checkmark").font(.subheadline.bold()).foregroundStyle(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(TINT, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(TINT, radius: 12)
                 }.buttonStyle(.plain)
             }
         }

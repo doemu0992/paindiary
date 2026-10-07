@@ -58,6 +58,7 @@ struct MigraeneView: View {
                     }
                 }
             }
+            .listRowBackground(Color.glassFill)
 
             if anfaelle.isEmpty {
                 Section {
@@ -68,6 +69,7 @@ struct MigraeneView: View {
                     )
                     .listRowSeparator(.hidden)
                 }
+                .listRowBackground(Color.glassFill)
             } else {
                 zyklusKorrelationSektion
 
@@ -79,8 +81,7 @@ struct MigraeneView: View {
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    NotificationManager.shared.loescheMigraeneErinnerungen(fuer: anfall.datum)
-                                    modelContext.delete(anfall)
+                                    EintragLoeschService(context: modelContext).loesche(anfall)
                                 } label: { Label("Löschen", systemImage: "trash") }
                                 Button { bearbeitet = anfall } label: { Label("Bearbeiten", systemImage: "pencil") }
                                     .tint(.blue)
@@ -90,9 +91,11 @@ struct MigraeneView: View {
                         Text(tagLabel(gruppe.tag))
                             .font(.subheadline.bold()).foregroundStyle(.primary).textCase(nil)
                     }
+                    .listRowBackground(Color.glassFill)
                 }
             }
         }
+        .glassList()
         .navigationTitle("Migräne")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -141,7 +144,7 @@ struct MigraeneView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .glassBackground(radius: 16)
                 .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
 
                 if !anfaelle.isEmpty {
@@ -151,7 +154,7 @@ struct MigraeneView: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.purple, in: RoundedRectangle(cornerRadius: 12))
+                            .glassTintBackground(Color.purple, radius: 12)
                     }
                     .buttonStyle(.plain)
                 }
@@ -245,6 +248,7 @@ struct MigraeneView: View {
         case .follikelphase: return .yellow
         case .ovulation: return .orange
         case .lutealphase: return .purple
+        case .praemenstruell: return .pink
         }
     }
 }
@@ -426,31 +430,31 @@ struct MigraeneAnfallForm: View {
                 intensitaetSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 1:
             ScrollView {
                 prodromSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 2:
             ScrollView {
                 charakterSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 3:
             ScrollView {
                 symptomeSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         case 4:
             ScrollView {
                 medikamentSchritt.padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         default:
             ScrollView {
                 WohlbefindenStepView(
@@ -463,7 +467,7 @@ struct MigraeneAnfallForm: View {
                 .padding(.vertical, 24)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .auroraScreen()
         }
     }
 
@@ -483,7 +487,7 @@ struct MigraeneAnfallForm: View {
                                     .font(.subheadline)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 8)
-                                    .background(kopfschmerzTyp == typ ? Color.purple : Color(.secondarySystemGroupedBackground))
+                                    .background(kopfschmerzTyp == typ ? Color.purple : Color.glassFill)
                                     .foregroundStyle(kopfschmerzTyp == typ ? .white : .primary)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
@@ -730,11 +734,11 @@ struct MigraeneAnfallForm: View {
                         TextField(aktiveMeds.isEmpty ? "z.B. Sumatriptan 50 mg" : "Anderes Medikament…", text: $freiTextMedikament)
                             .font(.subheadline)
                             .padding(14)
-                            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                            .glassBackground(radius: 12)
                             .submitLabel(.done)
                         if !freiTextMedikament.isEmpty {
                             Button {
-                                let term = freiTextMedikament.trimmingCharacters(in: .whitespaces)
+                                let term = ListenFeld.bereinige(freiTextMedikament)
                                 guard !term.isEmpty else { return }
                                 ausgewaehltesMedikamenteNamen.insert(term)
                                 freiTextMedikament = ""
@@ -825,7 +829,7 @@ struct MigraeneAnfallForm: View {
                         .font(.subheadline.bold())
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                 }
                 .buttonStyle(.plain)
             }
@@ -849,7 +853,7 @@ struct MigraeneAnfallForm: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(progressTint, radius: 12)
                 }
                 .buttonStyle(.plain)
             } else {
@@ -859,7 +863,7 @@ struct MigraeneAnfallForm: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(progressTint, in: RoundedRectangle(cornerRadius: 12))
+                        .glassTintBackground(progressTint, radius: 12)
                 }
                 .buttonStyle(.plain)
             }
@@ -875,7 +879,7 @@ struct MigraeneAnfallForm: View {
         content()
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground))
+            .glassFill()
             .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -907,7 +911,7 @@ struct MigraeneAnfallForm: View {
                         }
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(
-                            sel ? farbe.opacity(0.12) : Color(.secondarySystemGroupedBackground),
+                            sel ? farbe.opacity(0.12) : Color.glassFill,
                             in: RoundedRectangle(cornerRadius: 10)
                         )
                     }
@@ -920,10 +924,10 @@ struct MigraeneAnfallForm: View {
                     TextField(ph, text: ft)
                         .font(.subheadline)
                         .padding(14)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(radius: 12)
                     if !ft.wrappedValue.isEmpty {
                         Button {
-                            let term = ft.wrappedValue.trimmingCharacters(in: .whitespaces)
+                            let term = ListenFeld.bereinige(ft.wrappedValue)
                             guard !term.isEmpty else { return }
                             var s = ausgewaehlt.wrappedValue
                             s.insert(term)
@@ -998,7 +1002,7 @@ struct MigraeneAnfallForm: View {
             staerke = a.staerke
             hatAura = a.hatAura
             kopfschmerzTyp = a.kopfschmerzTyp.isEmpty ? "Migräne" : a.kopfschmerzTyp
-            ausgewaehlteSeiten = Set(a.seite.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehlteSeiten = Set(ListenFeld.parse(a.seite))
             ausgewaehlterCharakter = Set(a.charakterListe)
             ausgewaehlteProdrom = Set(a.prodromListe)
             ausgewaehlteBegleitsymptome = Set(a.begleitsymptomeListe)
@@ -1007,7 +1011,7 @@ struct MigraeneAnfallForm: View {
             hatEndZeit = a.endZeit != nil
             endZeit = a.endZeit ?? Date()
             medikamentWirksam = a.medikamentWirksam
-            ausgewaehltesMedikamenteNamen = Set(a.akutmedikament.components(separatedBy: ", ").filter { !$0.isEmpty })
+            ausgewaehltesMedikamenteNamen = Set(ListenFeld.parse(a.akutmedikament))
             notizen = a.notizen
             wetterTemperatur = a.wetterTemperatur
             wetterCode = a.wetterCode
@@ -1100,7 +1104,7 @@ struct MigraeneAnfallForm: View {
             neu.stressLevel = stressLevel
             neu.fatigue = fatigue
             neu.energielevel = energielevel
-            modelContext.insert(neu)
+            modelContext.einfuegenValidiert(neu)
 
             let wirkungMap = ["Ja": "gut", "Teilweise": "teilweise", "Nein": "nicht"]
             var ersterMedName: String? = nil
@@ -1112,7 +1116,8 @@ struct MigraeneAnfallForm: View {
                     medikamentName: med.name,
                     dosierung: med.dosierung,
                     eingenommen: true,
-                    notizen: "Migräne-Anfall"
+                    notizen: "Migräne-Anfall",
+                    medikamentID: med.notifID
                 )
                 log.wirkung = wirkungMap[medikamentWirksam] ?? ""
                 modelContext.insert(log)

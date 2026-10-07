@@ -52,6 +52,7 @@ struct EintragAuswahlView: View {
     @AppStorage("hautModulAktiv")     private var hautAktiv     = false
 
     @State private var auswahl: Set<AuswahlTyp> = []
+    @State private var zeigeSchnell = false
 
     // Sheet-Flags (in Ablauf-Reihenfolge)
     @State private var zeigeMigraene = false
@@ -85,6 +86,17 @@ struct EintragAuswahlView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 12) {
+                    Button { zeigeSchnell = true } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "bolt.fill").font(.title3)
+                            Text("Schnell erfassen")
+                        }
+                    }
+                    .buttonStyle(.glassPrimary(tint: .accentColor, hoehe: 64))
+                    .padding(.bottom, 8)
+
+                    GlassSectionLabel("Oder gezielt erfassen")
+
                     ForEach(verfuegbareTypen, id: \.self) { typ in
                         auswahlZeile(typ)
                     }
@@ -105,6 +117,7 @@ struct EintragAuswahlView: View {
                     .transition(.opacity)
                 }
             }
+            .auroraScreen()
             .navigationTitle("Was erfassen?")
             .navigationBarTitleDisplayMode(.inline)
             .animation(.easeInOut(duration: 0.15), value: auswahl)
@@ -118,6 +131,10 @@ struct EintragAuswahlView: View {
                         .disabled(auswahl.isEmpty)
                 }
             }
+        }
+        .presentationBackground(.ultraThinMaterial)
+        .sheet(isPresented: $zeigeSchnell, onDismiss: { dismiss() }) {
+            QuickCaptureSheet()
         }
         .sheet(isPresented: $zeigeMigraene, onDismiss: {
             fertigHandler(typ: .migraene, fertig: &migraeneFertig)
@@ -186,8 +203,8 @@ struct EintragAuswahlView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 18)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .frame(minHeight: 72)
+            .glassBackground(radius: 22, tint: gewaehlt ? typ.farbe : nil)
         }
         .buttonStyle(.plain)
     }
