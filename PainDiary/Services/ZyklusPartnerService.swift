@@ -88,15 +88,39 @@ final class ZyklusPartnerService {
             return share
         }
 
-        let share = CKShare(rootRecord: record)
+        // Schritt 1: Snapshot allein speichern (so zeigt ein Fehler die echte Ursache, nicht „Atomic failure“).
+        let gespeichert = try await speichern([record])
+        let wurzel = gespeichert.first ?? record
+
+        // Schritt 2: Freigabe zusammen mit dem Wurzel-Record speichern.
+        let share = CKShare(rootRecord: wurzel)
         share[CKShare.SystemFieldKey.title] = "Mein Zyklus" as CKRecordValue
         share.publicPermission = .none
-        let ergebnis = try await privat.modifyRecords(saving: [record, share], deleting: [])
-        for (_, r) in ergebnis.saveResults {
-            if case .failure(let fehler) = r { throw fehler }
-        }
+        _ = try await speichern([wurzel, share])
         teiltAktiv = true
         return share
+    }
+
+    /// Speichert Records und wirft den *aussagekräftigsten* Fehler (nicht den Folgefehler „Atomic failure“ / batchRequestFailed).
+    @discardableResult
+    private func speichern(_ records: [CKRecord]) async throws -> [CKRecord] {
+        let ergebnis = try await privat.modifyRecords(saving: records, deleting: [])
+        var erfolgreich: [CKRecord] = []
+        var fehler: [Error] = []
+        for (_, r) in ergebnis.saveResults {
+            switch r {
+            case .success(let rec): erfolgreich.append(rec)
+            case .failure(let e): fehler.append(e)
+            }
+        }
+        if !fehler.isEmpty {
+            let ursache = fehler.first { ($0 as? CKError)?.code != .batchRequestFailed } ?? fehler[0]
+            let ck = ursache as? CKError
+            throw NSError(domain: "ZyklusPartner", code: ck?.errorCode ?? -1, userInfo: [
+                NSLocalizedDescriptionKey: "\(ck.map { "\($0.code)" } ?? "Fehler"): \(ursache.localizedDescription)"
+            ])
+        }
+        return erfolgreich
     }
 
     /// Nach jeder Änderung: Snapshot aktualisieren (entprellt). Ohne aktive Freigabe passiert nichts.
