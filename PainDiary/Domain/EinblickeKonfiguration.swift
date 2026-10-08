@@ -82,7 +82,12 @@ nonisolated struct EinblickeKonfiguration: Codable, Equatable, Sendable {
     /// Verschiebt Bausteine innerhalb einer Gruppe (Indizes beziehen sich auf `alle(in:)`).
     mutating func verschiebe(in gruppe: EinblickeGruppe, von: IndexSet, nach: Int) {
         var teil = alle(in: gruppe)
-        teil.move(fromOffsets: von, toOffset: nach)
+        // Entspricht `Array.move(fromOffsets:toOffset:)` (SwiftUI), ohne UI-Import in der Domain.
+        let indizes = von.sorted()
+        let verschoben = indizes.map { teil[$0] }
+        for i in indizes.reversed() { teil.remove(at: i) }
+        let davor = indizes.filter { $0 < nach }.count
+        teil.insert(contentsOf: verschoben, at: max(0, min(nach - davor, teil.count)))
         var iterator = teil.makeIterator()
         reihenfolge = normalisiert.reihenfolge.map { $0.gruppe == gruppe ? (iterator.next() ?? $0) : $0 }
     }
