@@ -131,12 +131,20 @@ private struct CloudSharingView: UIViewControllerRepresentable {
 
 // MARK: - Partnerseite: Ansehen
 
-/// Schreibgeschützte Ansicht des geteilten Zyklus.
+private struct PartnerTagAuswahl: Identifiable {
+    let id = UUID()
+    let datum: Date
+}
+
+/// Schreibgeschützte Ansicht des geteilten Zyklus. Nutzt dieselben Anzeige-Bausteine wie `ZyklusView`
+/// (`ZyklusAnzeigeKarten.swift`) – ohne Erfassen-/Bearbeiten-Aktionen und ohne ModelContext.
 struct ZyklusPartnerView: View {
     @State private var service = ZyklusPartnerService.shared
     @State private var ringAuswahl: Int? = nil
     @State private var monat = Date()
     @State private var ansicht = 0
+    @State private var tagAuswahl: PartnerTagAuswahl? = nil
+    @State private var zeigeAnalyse = false
 
     private var kal: Calendar { Calendar.current }
 
@@ -170,19 +178,32 @@ struct ZyklusPartnerView: View {
         }
         .task { await service.laden() }
         .refreshable { await service.laden() }
+        .sheet(item: $tagAuswahl) { auswahl in tagesSheet(auswahl.datum) }
+        .sheet(isPresented: $zeigeAnalyse) {
+            if let p = service.empfangen {
+                ZyklusAnalyseView(partnerEintraege: p.eintraege.map { $0.modell() })
+            }
+        }
         .alert("Partner-Sharing", isPresented: Binding(get: { service.meldung != nil },
                                                       set: { if !$0 { service.meldung = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(service.meldung ?? "") }
     }
 
-    @ViewBuilder
-    private func inhalt(_ p: ZyklusPartnerPayload) -> some View {
-        // Transiente Modellobjekte (werden nicht in einen ModelContext eingefügt)
+    // Transiente Modellobjekte (werden nicht in einen ModelContext eingefügt)
+    private func daten(_ p: ZyklusPartnerPayload) -> (analyse: ZyklusAnalyse, proTag: [Date: ZyklusTagesSicht]) {
         let eintraege = p.eintraege.map { $0.modell() }
         let analyse = ZyklusRechner.analyse(eintraege: eintraege)
         let proTag = Dictionary(grouping: eintraege) { $0.tag.beginn(in: kal.timeZone) }
             .mapValues { ZyklusTagesSicht($0) }
+        return (analyse, proTag)
+    }
+
+    @ViewBuilder
+    private func inhalt(_ p: ZyklusPartnerPayload) -> some View {
+        let d = daten(p)
+        let analyse = d.analyse
+        let proTag = d.proTag
 
         Text("Nur ansehen · Stand \(p.stand.formatted(.dateTime.day().month().hour().minute().locale(ZyklusLocale.de)))")
             .font(.caption).foregroundStyle(.secondary)
@@ -196,26 +217,101 @@ struct ZyklusPartnerView: View {
             Text("Noch keine Zyklusdaten.").font(.footnote).foregroundStyle(.secondary)
         } else {
             switch ansicht {
-            case 0:
-                ZyklusRingView(analyse: analyse, untertitel: statusText(analyse), auswahl: $ringAuswahl)
-                    .padding(8).glassCard(padding: 0)
-            case 1:
-                ZyklusKalenderView(
-                    monat: monat, eintraegeProTag: proTag, analyse: analyse,
-                    zeigePrognosen: !p.pausiert, ausgewaehlterTag: nil,
-                    onVorheriger: { monat = kal.date(byAdding: .month, value: -1, to: monat) ?? monat },
-                    onNaechster: { monat = kal.date(byAdding: .month, value: 1, to: monat) ?? monat },
-                    onTap: { _ in })
-                .glassCard(padding: 0)
+            case 0:  heute(p, analyse, proTag)
+            case 1:  monatsAnsicht(p, analyse, proTag)
             default:
                 ZyklusVerlaufView(analyse: analyse, proTag: proTag)
+                analyseButton
             }
         }
+
+        Text("Prognosen sind statistische Schätzungen. Sie ersetzen weder Verhütung noch ärztliche Beratung.")
+            .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            .padding(.horizontal, 8)
     }
 
-    private func statusText(_ a: ZyklusAnalyse) -> String {
-        guard let np = a.naechstePeriodeStart else { return "" }
-        let tage = kal.dateComponents([.day], from: kal.startOfDay(for: Date()), to: kal.startOfDay(for: np)).day ?? 0
-        return tage < 0 ? "Periode \(-tage) Tage überfällig" : (tage == 0 ? "Periode heute erwartet" : "Periode in \(tage) Tagen")
+    // MARK: Heute
+
+    @ViewBuilder
+    private func heute(_ p: ZyklusPartnerPayload, _ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusTagesSicht]) -> some View {
+        if p.pausiert {
+            VStack(spacing: 8) {
+                Image(systemName: "pause.circle.fill").font(.system(size: 30)).foregroundStyle(.pink)
+                Text("Prognosen pausiert").font(.headline)
+                Text("Es werden keine Perioden-, Eisprung- oder Fruchtbarkeits-Prognosen angezeigt.")
+                    .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+            .padding(20).frame(maxWidth: .infinity).glassCard(padding: 0)
+        } else {
+            ZyklusRingKarte(analyse: analyse, auswahl: $ringAuswahl)
+            if analyse.status != .normal { ZyklusStatusKarte(analyse: analyse) }
+            ZyklusPrognoseReihe(analyse: analyse)
+        }
+
+        ZyklusErfasstKarte(sicht: proTag[kal.startOfDay(for: Date())])
+        ZyklusUeberblickKarte(analyse: analyse)
+        analyseButton
     }
+
+    private var analyseButton: some View {
+        Button { zeigeAnalyse = true } label: {
+            Label("Zyklusanalyse öffnen", systemImage: "chart.bar.xaxis.ascending")
+                .font(.subheadline.bold())
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .glassTintButton(.pink, radius: 20)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: Monat
+
+    @ViewBuilder
+    private func monatsAnsicht(_ p: ZyklusPartnerPayload, _ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusTagesSicht]) -> some View {
+        ZyklusKalenderView(
+            monat: monat, eintraegeProTag: proTag, analyse: analyse,
+            zeigePrognosen: !p.pausiert, ausgewaehlterTag: nil,
+            onVorheriger: { monat = kal.date(byAdding: .month, value: -1, to: monat) ?? monat },
+            onNaechster: { monat = kal.date(byAdding: .month, value: 1, to: monat) ?? monat },
+            onTap: { tag in tagAuswahl = PartnerTagAuswahl(datum: kal.startOfDay(for: tag)) })
+        .glassCard(padding: 0)
+
+        Text("Tippe auf einen Tag, um alle Details zu sehen.")
+            .font(.caption).foregroundStyle(.secondary)
+
+        ZyklusKalenderLegende()
+    }
+
+    /// Bottom Sheet mit allen Werten des Tages – nur Anzeige.
+    @ViewBuilder
+    private func tagesSheet(_ tag: Date) -> some View {
+        if let p = service.empfangen {
+            let d = daten(p)
+            NavigationStack {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ZyklusTagesKarte(tag: tag, analyse: d.analyse, proTag: d.proTag, prognosen: !p.pausiert)
+                        if d.proTag[tag] != nil {
+                            ZyklusErfasstKarte(titel: "ERFASSTE WERTE", sicht: d.proTag[tag])
+                        }
+                    }
+                    .padding(16)
+                }
+                .auroraScreen(.zyklus)
+                .environment(\.locale, ZyklusLocale.de)
+                .navigationTitle(tag.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(ZyklusLocale.de)))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) { TagesSheetFertig() }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationBackground(.ultraThinMaterial)
+        }
+    }
+}
+
+private struct TagesSheetFertig: View {
+    @Environment(\.dismiss) private var dismiss
+    var body: some View { Button("Fertig") { dismiss() } }
 }

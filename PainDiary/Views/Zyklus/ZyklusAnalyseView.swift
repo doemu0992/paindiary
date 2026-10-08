@@ -56,13 +56,32 @@ private func zyklusSektionenSpeichern(_ sektionen: [ZyklusAnalyseSektion]) {
 // MARK: - View
 
 struct ZyklusAnalyseView: View {
-    @Query(sort: \ZyklusEintrag.datum, order: .forward) private var eintraege: [ZyklusEintrag]
-    @Query(sort: \PainEntry.datum, order: .reverse) private var painEntries: [PainEntry]
-    @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var migraeneAnfaelle: [MigraeneEintrag]
-    @Query(sort: \HAQEintrag.datum, order: .reverse) private var haqEintraege: [HAQEintrag]
-    @Query(sort: \FACITEintrag.datum, order: .reverse) private var facitEintraege: [FACITEintrag]
-    @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var blutzuckerEintraege: [BlutzuckerEintrag]
-    @Query(sort: \KortisonEintrag.datum, order: .reverse) private var kortisonEintraege: [KortisonEintrag]
+    /// Gesetzt = Partner-Ansicht: schreibgeschützt auf dem geteilten Snapshot. Eigene Schmerz-/Migräne-/Gesundheitsdaten
+    /// des Betrachters fließen dann weder in Karten noch in den KI-Prompt ein.
+    var partnerEintraege: [ZyklusEintrag]? = nil
+
+    @Query(sort: \ZyklusEintrag.datum, order: .forward) private var eigeneEintraege: [ZyklusEintrag]
+    @Query(sort: \PainEntry.datum, order: .reverse) private var eigenePainEntries: [PainEntry]
+    @Query(sort: \MigraeneEintrag.datum, order: .reverse) private var eigeneMigraeneAnfaelle: [MigraeneEintrag]
+    @Query(sort: \HAQEintrag.datum, order: .reverse) private var eigeneHaqEintraege: [HAQEintrag]
+    @Query(sort: \FACITEintrag.datum, order: .reverse) private var eigeneFacitEintraege: [FACITEintrag]
+    @Query(sort: \BlutzuckerEintrag.datum, order: .reverse) private var eigeneBlutzuckerEintraege: [BlutzuckerEintrag]
+    @Query(sort: \KortisonEintrag.datum, order: .reverse) private var eigeneKortisonEintraege: [KortisonEintrag]
+
+    private var istPartner: Bool { partnerEintraege != nil }
+    private var eintraege: [ZyklusEintrag] { partnerEintraege?.sorted { $0.datum < $1.datum } ?? eigeneEintraege }
+    private var painEntries: [PainEntry] { istPartner ? [] : eigenePainEntries }
+    private var migraeneAnfaelle: [MigraeneEintrag] { istPartner ? [] : eigeneMigraeneAnfaelle }
+    private var haqEintraege: [HAQEintrag] { istPartner ? [] : eigeneHaqEintraege }
+    private var facitEintraege: [FACITEintrag] { istPartner ? [] : eigeneFacitEintraege }
+    private var blutzuckerEintraege: [BlutzuckerEintrag] { istPartner ? [] : eigeneBlutzuckerEintraege }
+    private var kortisonEintraege: [KortisonEintrag] { istPartner ? [] : eigeneKortisonEintraege }
+
+    /// Beim Partner ohne die Korrelationen mit Daten, die nicht geteilt werden.
+    private var sichtbareSektionen: [ZyklusAnalyseSektion] {
+        istPartner ? sektionen.filter { $0 != .schmerzKorrelation && $0 != .migraeneKorrelation } : sektionen
+    }
+
     @Environment(\.dismiss) private var dismiss
 
     @State private var zeitraum: Zeitraum = .woche
@@ -122,7 +141,7 @@ struct ZyklusAnalyseView: View {
                             .padding(.bottom, 16)
 
                             VStack(spacing: 16) {
-                                ForEach(sektionen) { sektion in
+                                ForEach(sichtbareSektionen) { sektion in
                                     sektionView(sektion)
                                 }
                             }
@@ -138,8 +157,10 @@ struct ZyklusAnalyseView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button { zeigeAnpassen = true } label: {
-                        Label("Reihenfolge", systemImage: "slider.horizontal.3")
+                    if !istPartner {
+                        Button { zeigeAnpassen = true } label: {
+                            Label("Reihenfolge", systemImage: "slider.horizontal.3")
+                        }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {

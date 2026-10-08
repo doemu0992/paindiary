@@ -191,10 +191,6 @@ struct ZyklusView: View {
         }
     }
 
-    private func tageBis(_ datum: Date) -> Int {
-        kal.dateComponents([.day], from: kal.startOfDay(for: Date()), to: kal.startOfDay(for: datum)).day ?? 0
-    }
-
     // MARK: - Heute
 
     @ViewBuilder
@@ -204,15 +200,15 @@ struct ZyklusView: View {
         } else if pausiert {
             pausiertKarte
         } else {
-            ringKarte(analyse)
-            if analyse.status != .normal { statusKarte(analyse) }
-            prognoseReihe(analyse)
+            ZyklusRingKarte(analyse: analyse, auswahl: $ringAuswahl)
+            if analyse.status != .normal { ZyklusStatusKarte(analyse: analyse) }
+            ZyklusPrognoseReihe(analyse: analyse)
         }
 
         erfassenKarte(proTag)
 
         if !analyse.zyklusStarts.isEmpty {
-            statistikKarte(analyse)
+            ZyklusUeberblickKarte(analyse: analyse)
             analyseButton
         }
     }
@@ -254,157 +250,7 @@ struct ZyklusView: View {
         .glassCard(padding: 0)
     }
 
-    private func ringKarte(_ analyse: ZyklusAnalyse) -> some View {
-        VStack(spacing: 12) {
-            ZyklusRingView(analyse: analyse, untertitel: ringUntertitel(analyse), auswahl: $ringAuswahl)
-                .frame(maxWidth: 300)
-                .padding(.top, 4)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 6)], alignment: .leading, spacing: 6) {
-                legendenPunkt(ZyklusFarbe.periode, "Periode")
-                legendenPunkt(ZyklusFarbe.follikel, "Follikel")
-                legendenPunkt(ZyklusFarbe.fruchtbar, "Fruchtbar")
-                legendenPunkt(ZyklusFarbe.eisprung, "Eisprung")
-                legendenPunkt(ZyklusFarbe.luteal, "Luteal")
-            }
-            .font(.caption2).foregroundStyle(.secondary)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity)
-        .glassCard(padding: 0)
-    }
-
-    private func legendenPunkt(_ farbe: Color, _ text: String) -> some View {
-        HStack(spacing: 4) {
-            Circle().fill(farbe).frame(width: 8, height: 8)
-            Text(text)
-        }
-    }
-
-    private func ringUntertitel(_ a: ZyklusAnalyse) -> String {
-        switch a.status {
-        case .keineAktuellenDaten:
-            return "Keine aktuellen Daten"
-        case .ueberfaellig(let tage):
-            return tage == 1 ? "Periode 1 Tag überfällig" : "Periode \(tage) Tage überfällig"
-        case .normal:
-            if let ov = a.vorhergesagteOvulation, a.naechstePeriodeStart.map({ ov < $0 }) ?? true {
-                let t = tageBis(ov)
-                if t <= 0 { return "Eisprung heute erwartet" }
-                if t == 1 { return "Eisprung morgen erwartet" }
-                return "Eisprung in ca. \(t) Tagen"
-            }
-            if let np = a.naechstePeriodeStart {
-                let t = tageBis(np)
-                if t <= 0 { return "Periode heute erwartet" }
-                return t == 1 ? "Periode morgen erwartet" : "Periode in \(t) Tagen"
-            }
-            return ""
-        }
-    }
-
-    private func statusKarte(_ a: ZyklusAnalyse) -> some View {
-        let text: String
-        switch a.status {
-        case .ueberfaellig(let tage):
-            text = tage >= 7
-                ? "Deine Periode ist seit \(tage) Tagen überfällig. Trage sie ein, sobald sie beginnt – die Prognose passt sich dann an."
-                : "Deine Periode ist etwas später als erwartet. Zyklen schwanken natürlicherweise um einige Tage."
-        case .keineAktuellenDaten:
-            text = "Dein letzter erfasster Zyklusstart liegt über 90 Tage zurück. Für neue Prognosen trage bitte die nächste Periode ein."
-        case .normal:
-            text = ""
-        }
-        return HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
-            Text(text).font(.footnote).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard(radius: 18, padding: 0)
-    }
-
     // MARK: Prognose-Karten
-
-    private func prognoseReihe(_ a: ZyklusAnalyse) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            periodeKarte(a)
-            fruchtbarKarte(a)
-        }
-    }
-
-    private func periodeKarte(_ a: ZyklusAnalyse) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("NÄCHSTE PERIODE")
-                .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-            if case .ueberfaellig(let tage) = a.status {
-                Text("Überfällig").font(.title3.bold()).foregroundStyle(.orange)
-                Text(tage == 1 ? "seit 1 Tag" : "seit \(tage) Tagen")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else if let np = a.naechstePeriodeStart {
-                Text(np, format: .dateTime.weekday(.abbreviated).day().month(.abbreviated))
-                    .font(.title3.bold())
-                let t = tageBis(np)
-                Text(t <= 0 ? "heute" : "in \(t) \(t == 1 ? "Tag" : "Tagen") · ± \(a.unsicherheitTage) T.")
-                    .font(.caption).foregroundStyle(.secondary)
-                ZyklusUnsicherheitsBand(spanne: a.unsicherheitTage, farbe: ZyklusFarbe.periode)
-                    .padding(.top, 4)
-            } else {
-                Text("–").font(.title3.bold())
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
-        .glassCard(radius: 20, padding: 0)
-        .accessibilityElement(children: .combine)
-    }
-
-    private func fruchtbarKarte(_ a: ZyklusAnalyse) -> some View {
-        let konf = konfidenz(a)
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 2) {
-                Text("FRUCHTBARES FENSTER")
-                    .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-                    .lineLimit(2)
-                InfoButton(titel: "Fruchtbares Fenster",
-                           text: "Die 6 Tage bis einschließlich Eisprungtag (Spermien überleben bis zu 5 Tage, die Eizelle 12–24 Stunden). Die Prognose nutzt – in dieser Reihenfolge – BBT-Anstieg, positiven LH-Test, Schleim-Peak und zuletzt den Kalender (nächste Periode minus persönliche Lutealphase). Kommt die Periode früher oder später, verschiebt sich alles automatisch. Ohne Belege sind hellere Randtage um das Fenster möglich; so breit wie dein typischer Prognosefehler. Keine Verhütungsmethode.")
-            }
-            if let f = a.naechstesFruchtbaresFenster {
-                Text(fensterText(f))
-                    .font(.title3.bold())
-                    .minimumScaleFactor(0.8).lineLimit(1)
-            } else {
-                Text("–").font(.title3.bold())
-            }
-            Text(konf.text)
-                .font(.caption2.bold())
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(konf.farbe.opacity(0.18), in: Capsule())
-                .foregroundStyle(konf.farbe)
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
-        .glassCard(radius: 20, padding: 0)
-    }
-
-    private func fensterText(_ f: ClosedRange<Date>) -> String {
-        let von = f.lowerBound, bis = f.upperBound
-        if kal.isDate(von, equalTo: bis, toGranularity: .month) {
-            let tagVon = von.formatted(.dateTime.day().locale(ZyklusLocale.de))
-            return "\(tagVon)–\(bis.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de)))"
-        }
-        return "\(von.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de))) – \(bis.formatted(.dateTime.day().month(.abbreviated).locale(ZyklusLocale.de)))"
-    }
-
-    private func konfidenz(_ a: ZyklusAnalyse) -> (text: String, farbe: Color) {
-        if a.datenQualitaet == .standardwert { return ("Schätzung", .secondary) }
-        if a.eisprungBestaetigt { return ("Bestätigt", .teal) }
-        if a.regelmaessigkeit == .unregelmaessig { return ("Konfidenz niedrig", .orange) }
-        if a.regelmaessigkeit == .regelmaessig && a.datenQualitaet >= .gut { return ("Konfidenz hoch", .teal) }
-        return ("Konfidenz mittel", .orange)
-    }
 
     // MARK: Erfassen / Statistik
 
@@ -444,35 +290,6 @@ struct ZyklusView: View {
         }
         .buttonStyle(.plain)
         .accessibilityValue(aktiv ? "erfasst" : "offen")
-    }
-
-    private func statistikKarte(_ a: ZyklusAnalyse) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Zyklus-Überblick", systemImage: "drop.fill")
-                .font(.headline).foregroundStyle(.pink)
-            Divider()
-            HStack(spacing: 0) {
-                statPill(a.aktuellerZyklustag.map { "Tag \($0)" } ?? "–", label: "Zyklustag",
-                         farbe: a.aktuellerZyklustag != nil ? .pink : .secondary)
-                Divider().frame(height: 40)
-                statPill(a.gueltigeZyklen > 0 ? "\(Int(a.medianZykluslaenge.rounded())) T" : "–",
-                         label: "Ø Zyklus (Median)", farbe: .pink)
-                Divider().frame(height: 40)
-                statPill("\(Int(a.adaptiertePeriodendauer.rounded())) T",
-                         label: "Ø Periode", farbe: ZyklusFarbe.periode)
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard(padding: 0)
-    }
-
-    private func statPill(_ wert: String, label: String, farbe: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(wert).font(.title2.bold()).foregroundStyle(farbe)
-            Text(label).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
     }
 
     private var analyseButton: some View {
@@ -523,108 +340,14 @@ struct ZyklusView: View {
         .glassCard(padding: 0)
 
         if let tag = monatsAuswahl {
-            tagesKarte(tag, analyse, proTag)
+            ZyklusTagesKarte(
+                tag: tag, analyse: analyse, proTag: proTag, prognosen: !pausiert,
+                onBearbeiten: { ausgewaehlterTag = ZyklusTagAuswahl(datum: $0) },
+                onEisprung: { eisprungUmschalten(an: $0) })
                 .transition(.opacity)
         }
 
-        kalenderLegende
-    }
-
-    /// Detailkarte zum angetippten Kalendertag: Zyklustag, Phase, Status und erfasste Werte.
-    private func tagesKarte(_ tag: Date, _ analyse: ZyklusAnalyse, _ proTag: [Date: ZyklusTagesSicht]) -> some View {
-        let start = kal.startOfDay(for: tag)
-        let heute = kal.startOfDay(for: Date())
-        let eintrag = proTag[start]
-        let zustand = ZyklusRechner.tagZustand(datum: start, analyse: analyse, kalender: kal)
-        let prognosenAn = !pausiert
-
-        // Phase nur innerhalb des bekannten Zyklus — für Tage nach der erwarteten nächsten Periode wäre sie falsch.
-        let imBekanntenZyklus = start <= heute || (analyse.naechstePeriodeStart.map { start < $0 } ?? false)
-        let phase: ZyklusRechner.Zyklusphase? = imBekanntenZyklus
-            ? ZyklusRechner.phase(for: start, analyse: analyse, kalender: kal) : nil
-        let zyklusTag: Int? = phase == nil ? nil : analyse.zyklusStarts.last(where: { $0 <= start })
-            .map { (kal.dateComponents([.day], from: $0, to: start).day ?? 0) + 1 }
-
-        var badges: [(String, Color)] = []
-        if zustand.periode {
-            let fluss = eintrag?.fluss ?? .keine
-            badges.append((fluss == .keine ? "Periode" : "Periode · \(fluss.titel)", ZyklusFarbe.periode))
-        }
-        if prognosenAn && zustand.vorhergesagtePeriode { badges.append(("Periode erwartet", ZyklusFarbe.periode)) }
-        if prognosenAn && zustand.ovulation {
-            let q = analyse.zyklen.first(where: { $0.eisprung.map { kal.isDate($0, inSameDayAs: start) } ?? false })?.eisprungQuelle
-            let zusatz = q.map { $0.istBestaetigt ? " · bestätigt" : ($0 == .kalender ? " · geschätzt" : " · \($0.titel)") } ?? ""
-            badges.append(("Eisprung\(zusatz)", ZyklusFarbe.eisprung))
-        }
-        if prognosenAn && zustand.fruchtbar { badges.append(("Fruchtbar", ZyklusFarbe.fruchtbar)) }
-
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(start, format: .dateTime.weekday(.wide).day().month(.wide))
-                        .font(.subheadline.bold())
-                    if let n = zyklusTag, let p = phase {
-                        Text("Zyklustag \(n) · \(p.rawValue)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(ZyklusFarbe.farbe(p))
-                    } else {
-                        Text(start > heute ? "Prognose" : "Außerhalb eines Zyklus")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                Spacer()
-                Button { ausgewaehlterTag = ZyklusTagAuswahl(datum: start) } label: {
-                    Text(eintrag == nil ? "Erfassen" : "Bearbeiten")
-                        .font(.caption.bold()).foregroundStyle(.white)
-                        .padding(.horizontal, 14).padding(.vertical, 8)
-                        .background(Color.pink, in: Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-
-            if start <= heute && (zustand.ovulation || zustand.fruchtbar) {
-                let bestaetigt = eintrag?.eisprungBestaetigt ?? false
-                Button { eisprungUmschalten(an: start) } label: {
-                    Label(bestaetigt ? "Eisprung-Bestätigung entfernen" : "Eisprung an diesem Tag bestätigen",
-                          systemImage: bestaetigt ? "xmark.circle" : "checkmark.seal.fill")
-                        .font(.caption.bold())
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(ZyklusFarbe.eisprung.opacity(0.18), in: Capsule())
-                        .foregroundStyle(ZyklusFarbe.eisprung)
-                }
-                .buttonStyle(.plain)
-            }
-
-            if !badges.isEmpty {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 6)], alignment: .leading, spacing: 6) {
-                    ForEach(Array(badges.enumerated()), id: \.offset) { _, b in
-                        Text(b.0)
-                            .font(.caption2.bold())
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(b.1.opacity(0.18), in: Capsule())
-                            .foregroundStyle(b.1)
-                    }
-                }
-            }
-
-            if let e = eintrag {
-                VStack(alignment: .leading, spacing: 3) {
-                    if e.schleim != .keine { Text("Zervixschleim: \(e.schleim.titel)") }
-                    if e.lhTest != .keine { Text("Ovulationstest: \(e.lhTest.titel)") }
-                    if e.basaltemperatur > 0 { Text("Basaltemperatur: \(String(format: "%.2f", e.basaltemperatur)) °C") }
-                    if !e.symptome.isEmpty { Text("Symptome: \(ListenFeld.parse(e.symptome).joined(separator: ", "))") }
-                    if e.sexAktivitaet != .keine { Text("Sexuelle Aktivität: \(e.sexAktivitaet.titel)") }
-                    if !e.notizen.isEmpty { Text(e.notizen).lineLimit(2) }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            } else if badges.isEmpty {
-                Text("Kein Eintrag").font(.caption).foregroundStyle(.secondary)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard(radius: 20, padding: 0)
+        ZyklusKalenderLegende()
     }
 
     /// Setzt/entfernt die manuelle Eisprung-Bestätigung am Tag; der Eisprung ist ein Datum je Zyklus,
@@ -652,65 +375,6 @@ struct ZyklusView: View {
             }
         }
         planeZyklusNotifs()
-    }
-
-    private var kalenderLegende: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
-            HStack(spacing: 4) {
-                ForEach([0.35, 0.6, 0.85, 1.0] as [Double], id: \.self) { op in
-                    Circle().fill(ZyklusFarbe.periode.opacity(op)).frame(width: 7, height: 7)
-                }
-                Text("Periode")
-            }
-            legendeItem(ZyklusFarbe.periode, gestrichelt: true, text: "Vorhergesagt",
-                        info: ("Vorhergesagte Periode",
-                               "Geschätzter Periodenbeginn aus deinen bisherigen Zyklen (gewichteter Median der letzten 6). Die Abweichung ± Tage steht im Heute-Tab."))
-            legendeItem(ZyklusFarbe.fruchtbar, gestrichelt: false, text: "Fruchtbar",
-                        info: ("Fruchtbare Tage",
-                               "Die 6 Tage bis einschließlich Eisprungtag (kräftig). Hellere Randtage zeigen die Unsicherheit der Prognose und sind bei bestätigtem Eisprung (Temperatur, LH-Test) verschwunden. Fruchtbarer Zervixschleim und positive LH-Tests markieren den Tag zusätzlich."))
-            legendeItem(ZyklusFarbe.eisprung, gestrichelt: false, text: "Eisprung",
-                        info: ("Eisprung (Ovulation)",
-                               "Festgelegt per BBT-Anstieg (bestätigt), LH-Test oder Zervixschleim-Peak; sonst geschätzt als nächste Periode minus Lutealphase (Standard 14 Tage, persönlich gelernt ab 2 Zyklen mit Evidenz)."))
-            HStack(spacing: 4) {
-                Circle().fill(Color.purple.opacity(0.8)).frame(width: 7, height: 7)
-                Text("Symptome")
-            }
-            HStack(spacing: 4) {
-                Circle().fill(Color.blue.opacity(0.8)).frame(width: 7, height: 7)
-                Text("Zervixschleim")
-            }
-            HStack(spacing: 4) {
-                Circle().fill(Color.pink.opacity(0.8)).frame(width: 7, height: 7)
-                Text("Sex. Aktivität")
-            }
-            HStack(spacing: 4) {
-                Image(systemName: "star.fill").font(.system(size: 8)).foregroundStyle(ZyklusFarbe.eisprung)
-                Text("LH-Test positiv")
-            }
-            HStack(spacing: 4) {
-                Circle().fill(Color.gray.opacity(0.8)).frame(width: 7, height: 7)
-                Text("Test / Temperatur / Notiz")
-            }
-        }
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-        .padding(14)
-        .glassCard(radius: 18, padding: 0)
-    }
-
-    private func legendeItem(_ farbe: Color, gestrichelt: Bool, text: String, info: (String, String)) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(gestrichelt ? farbe.opacity(0.15) : farbe)
-                .overlay {
-                    if gestrichelt {
-                        Circle().stroke(farbe, style: StrokeStyle(lineWidth: 1, dash: [2]))
-                    }
-                }
-                .frame(width: 9, height: 9)
-            Text(text)
-            InfoButton(titel: info.0, text: info.1)
-        }
     }
 
     // MARK: - Verlauf
