@@ -17,6 +17,29 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
+    WhatsNewVersion(version: "2.0", build: "41", aenderungen: [
+        WhatsNewAenderung(icon: "square.stack.3d.up.fill", farbe: .indigo,
+                          titel: "Ein Glas-Design für die ganze App",
+                          beschreibung: "Das Glas-Design des Zyklus-Moduls gilt jetzt überall: echtes Milchglas bei Karten, Listen, Buttons und Leisten – und Reduce Transparency sowie Reduce Motion werden berücksichtigt."),
+        WhatsNewAenderung(icon: "paintpalette.fill", farbe: .teal,
+                          titel: "Eigene Hintergrundfarben je Modul",
+                          beschreibung: "Jedes Modul hat seinen eigenen, satten Farbverlauf: Schmerz Blau/Mint, Medikamente Pfirsich/Butter, Verlauf Indigo/Violett, Migräne gedämpft, dazu Rheuma, Haut, Diabetes, Wellness und Zyklus."),
+        WhatsNewAenderung(icon: "square.grid.2x2.fill", farbe: .red,
+                          titel: "Neue Modul-Übersichten im Bento-Stil",
+                          beschreibung: "Schmerz, Haut, Rheuma, Diabetes, Migräne, Medikamente, Schlaf und Wellness haben jetzt einen Hero-Ring bzw. eine Hero-Karte, quadratische Kennzahl-Kacheln und kompakte Eintrags-Chips statt langer Listen."),
+        WhatsNewAenderung(icon: "pills.fill", farbe: .blue,
+                          titel: "Medikamente: Tagesring und Heute-Plan",
+                          beschreibung: "Der Tagesring zeigt die heute genommenen Dosen, dazu Adherenz, Serie und Vorrat. Der Heute-Plan besteht aus Glas-Karten mit Einnahme-Buttons."),
+        WhatsNewAenderung(icon: "chart.line.uptrend.xyaxis", farbe: .indigo,
+                          titel: "Verlauf & Einblicke neu",
+                          beschreibung: "Einblicke zeigen die letzten 7 Tage als Hero mit Trend, Kennzahl-Kacheln, ein Modul-Carousel und eine kompakte Analyse-Karte. «Anpassen» arbeitet mit Gruppen (Wochenübersicht, Kennzahlen, Module, Analyse); deine bisherige Auswahl wird übernommen."),
+        WhatsNewAenderung(icon: "list.bullet.rectangle.fill", farbe: .indigo,
+                          titel: "Verlauf-Liste mit angehefteter Leiste",
+                          beschreibung: "Wochenstreifen, Suche und Filter bleiben beim Scrollen oben stehen. Einträge stehen in Tageskarten; Löschen per Gedrückthalten (Kontextmenü)."),
+        WhatsNewAenderung(icon: "checkmark.shield.fill", farbe: .green,
+                          titel: "Konsistentere Kennzahlen",
+                          beschreibung: "Durchschnitte, Trends und Adherenz kommen aus einer gemeinsamen Berechnung mit Tests; Tage werden in der Erfassungs-Zeitzone zugeordnet."),
+    ]),
     WhatsNewVersion(version: "2.0", build: "31", aenderungen: [
         WhatsNewAenderung(icon: "drop.fill", farbe: .pink,
                           titel: "Zyklus als vollständiges Modul",
