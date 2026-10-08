@@ -17,7 +17,7 @@ struct WhatsNewVersion {
 /// Pflege hier vor jedem TestFlight-Upload die Neuerungen ein.
 /// build muss exakt mit CFBundleVersion (Build-Nummer in Xcode) übereinstimmen.
 let appChangelog: [WhatsNewVersion] = [
-    WhatsNewVersion(version: "2.0", build: "41", aenderungen: [
+    WhatsNewVersion(version: "2.0", build: "42", aenderungen: [
         WhatsNewAenderung(icon: "square.stack.3d.up.fill", farbe: .indigo,
                           titel: "Ein Glas-Design für die ganze App",
                           beschreibung: "Das Glas-Design des Zyklus-Moduls gilt jetzt überall: echtes Milchglas bei Karten, Listen, Buttons und Leisten – und Reduce Transparency sowie Reduce Motion werden berücksichtigt."),
