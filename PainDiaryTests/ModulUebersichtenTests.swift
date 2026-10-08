@@ -237,3 +237,96 @@ struct SchlafUndWellnessTests {
         #expect(WellnessTagesfortschritt.erledigt(stimmung: 0, stress: 0, energie: 0, wasserMl: 100, wasserZielMl: 0, mahlzeiten: 0) == 0)
     }
 }
+
+struct VerlaufUebersichtTests {
+    let heute = tag(2026, 10, 7)
+
+    private func p(_ t: DayKey, _ s: Int, schub: Bool = false, ausloeser: [String] = [], stimmung: Int = 0, stress: Int = 0, schlaf: Double = 0) -> VerlaufMesspunkt {
+        VerlaufMesspunkt(datum: datum(t), tag: t, staerke: s, istSchub: schub, ausloeser: ausloeser, stimmung: stimmung, stress: stress, schlafStunden: schlaf)
+    }
+
+    @Test func leer() {
+        let u = VerlaufUebersicht.berechne(punkte: [], heute: heute)
+        #expect(u.schnitt7 == nil)
+        #expect(u.haeufigsterAusloeser == nil)
+        #expect(u.trendText == nil)
+    }
+
+    @Test func siebenTageSchnittTageUndAusloeser() {
+        let u = VerlaufUebersicht.berechne(punkte: [
+            p(heute, 6, ausloeser: ["Stress", "Wetter"], stimmung: 4, stress: 2, schlaf: 7),
+            p(heute, 4, ausloeser: ["Stress"]),
+            p(tag(2026, 10, 3), 2, schub: true, stimmung: 2, stress: 4, schlaf: 5),
+            p(tag(2026, 9, 20), 9, schub: true, ausloeser: ["Alkohol"])   // außerhalb 7 Tage
+        ], heute: heute)
+        #expect(u.anzahl7 == 3)
+        #expect(u.tage7 == 2)
+        #expect(u.schnitt7 == 4.0)
+        #expect(u.schuebe7 == 1)
+        #expect(u.haeufigsterAusloeser == "Stress")
+        #expect(u.haeufigsterAusloeserAnzahl == 2)
+        #expect(u.stimmungSchnitt7 == 3.0)
+        #expect(u.stressSchnitt7 == 3.0)
+        #expect(u.schlafSchnitt7 == 6.0)
+        #expect(u.letzterSchubVorTagen == 4)   // 3.10. liegt jünger als der Schub vom 20.9.
+    }
+
+    @Test func trendGegenVorwoche() {
+        let u = VerlaufUebersicht.berechne(punkte: [
+            p(heute, 4), p(tag(2026, 10, 6), 4),
+            p(tag(2026, 9, 30), 6), p(tag(2026, 9, 29), 6)
+        ], heute: heute)
+        #expect(u.trend?.aktuell == 4)
+        #expect(u.trend?.vorher == 6)
+        #expect(u.trendText == "↓ 2.0 zur Vorwoche")
+    }
+}
+
+struct EinblickeKonfigurationTests {
+    @Test func standardEnthaeltJedenBausteinEinmal() {
+        let k = EinblickeKonfiguration.standard
+        #expect(Set(k.reihenfolge).count == EinblickeBlock.allCases.count)
+        #expect(k.reihenfolge.count == EinblickeBlock.allCases.count)
+        #expect(k.ausgeblendet.isEmpty)
+    }
+
+    @Test func normalisierungErgaenztFehlendeUndEntferntDuplikate() {
+        let k = EinblickeKonfiguration(reihenfolge: [.hero, .hero, .schuebe], ausgeblendet: []).normalisiert
+        #expect(k.reihenfolge.count == EinblickeBlock.allCases.count)
+        #expect(Array(k.reihenfolge.prefix(2)) == [.hero, .schuebe])
+    }
+
+    @Test func verschiebenNurInnerhalbDerGruppe() {
+        var k = EinblickeKonfiguration.standard
+        let vorher = k.alle(in: .kennzahlen)
+        k.verschiebe(in: .kennzahlen, von: IndexSet(integer: 0), nach: 3)
+        let nachher = k.alle(in: .kennzahlen)
+        #expect(nachher.count == vorher.count)
+        #expect(nachher[2] == vorher[0])
+        #expect(k.alle(in: .module) == EinblickeKonfiguration.standard.alle(in: .module))
+        #expect(k.alle(in: .wochenuebersicht) == [.hero])
+    }
+
+    @Test func umschaltenBlendetAusUndEin() {
+        var k = EinblickeKonfiguration.standard
+        k.umschalten(.schuebe)
+        #expect(!k.istSichtbar(.schuebe))
+        #expect(!k.sichtbar(in: .kennzahlen).contains(.schuebe))
+        k.umschalten(.schuebe)
+        #expect(k.istSichtbar(.schuebe))
+    }
+
+    @Test func migrationUebernimmtAusgeblendeteKacheln() {
+        let k = EinblickeKonfiguration.ausAlterKonfiguration(sichtbarkeit: [
+            "schmerzUebersicht": false, "schmerzverlauf": false,
+            "migraeneKachel": false,
+            "wetterSchmerz": false, "stressSchmerz": true,
+            "wellnessKachel": true, "schlafKachel": false
+        ])
+        #expect(!k.istSichtbar(.hero))
+        #expect(!k.istSichtbar(.modulMigraene))
+        #expect(k.istSichtbar(.analyse))        // mindestens eine Analyse-Kachel war sichtbar
+        #expect(k.istSichtbar(.modulWellness))  // Wellness ODER Schlaf sichtbar
+        #expect(k.istSichtbar(.modulSchmerz))   // unbekannt = sichtbar
+    }
+}

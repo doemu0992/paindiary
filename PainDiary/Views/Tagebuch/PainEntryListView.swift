@@ -191,116 +191,36 @@ struct PainEntryListView: View {
 
     // MARK: - Body
 
+    private var hatKeineEintraege: Bool {
+        eintraege.isEmpty && migraeneAnfaelle.isEmpty && zyklusEintraege.isEmpty && blutzuckerMessungen.isEmpty
+    }
+
     var body: some View {
-        List {
-            // 0. Segment: Liste | Einblicke
-            if let segment {
-                Section {
+        ScrollView {
+            LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
+                if let segment {
                     VerlaufSegmentPicker(auswahl: segment)
+                        .padding(.horizontal, 16)
                 }
-                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            }
 
-            // 1. Sparkline-Header (letzte 7 Tage)
-            Section {
-                sparklineHeader
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-
-            // 2. Filter-Chips
-            Section {
-                filterChips
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-
-            // 3. Gruppierte Einträge
-            if gefilterte.isEmpty {
                 Section {
-                    if eintraege.isEmpty && migraeneAnfaelle.isEmpty && zyklusEintraege.isEmpty && blutzuckerMessungen.isEmpty {
-                        ContentUnavailableView(
-                            "Noch keine Einträge",
-                            systemImage: "heart.text.clipboard",
-                            description: Text("Tippe auf + um deinen ersten Schmerzeintrag zu erfassen.")
-                        )
-                        .listRowSeparator(.hidden)
+                    if gefilterte.isEmpty {
+                        leerZustand
                     } else {
-                        ContentUnavailableView.search(text: suchtext)
-                            .listRowSeparator(.hidden)
-                    }
-                }
-                .listRowBackground(Color.clear)
-            } else {
-                ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
-                    Section {
-                        ForEach(gruppe.items) { item in
-                            switch item {
-                            case .schmerz(let eintrag):
-                                NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
-                                    SchmerzZeile(eintrag: eintrag)
-                                }
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        EintragLoeschService(context: modelContext).loesche(eintrag)
-                                    } label: {
-                                        Label("Löschen", systemImage: "trash")
-                                    }
-                                }
-                            case .migraene(let anfall):
-                                NavigationLink(destination: MigraeneAnfallDetailView(anfall: anfall)) {
-                                    MigraeneZeile(anfall: anfall)
-                                }
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        EintragLoeschService(context: modelContext).loesche(anfall)
-                                    } label: {
-                                        Label("Löschen", systemImage: "trash")
-                                    }
-                                }
-                            case .zyklus(let eintrag):
-                                ZyklusTagesbuchZeile(eintrag: eintrag)
-                                    .swipeActions(edge: .trailing) {
-                                        Button(role: .destructive) {
-                                            // Zyklus-Erinnerungen sind global → nach dem Löschen neu planen
-                                            NotificationManager.shared.planeZyklusErinnerungen(
-                                                eintraege: zyklusEintraege.filter { $0 !== eintrag })
-                                            modelContext.delete(eintrag)
-                                        } label: {
-                                            Label("Löschen", systemImage: "trash")
-                                        }
-                                    }
-                            case .diabetes(let messung):
-                                DiabetesTagesbuchZeile(messung: messung)
-                                    .swipeActions(edge: .trailing) {
-                                        Button(role: .destructive) {
-                                            modelContext.delete(messung)
-                                        } label: {
-                                            Label("Löschen", systemImage: "trash")
-                                        }
-                                    }
-                            }
+                        ForEach(gruppiertNachDatum, id: \.tag) { gruppe in
+                            tagesKarte(gruppe.tag, gruppe.items)
                         }
-                        .listRowBackground(GlassRowBackground())
-                    } header: {
-                        Text(tagLabel(gruppe.tag))
-                            .font(.footnote.weight(.semibold))
-                            .tracking(0.6)
-                            .foregroundStyle(.secondary)
-                            .textCase(.uppercase)
                     }
+                } header: {
+                    angehefteterKopf
                 }
             }
+            .padding(.bottom, 24)
         }
-        .glassList(.statistik)
+        .auroraScreen(.statistik)
         .glassBars()
         .navigationTitle("Verlauf")
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $suchtext, prompt: "Körperstelle, Schmerzart, Auslöser…")
         .toolbar {
 #if os(iOS)
             ToolbarItem(placement: .navigationBarLeading) {
@@ -320,6 +240,109 @@ struct PainEntryListView: View {
         }
         .sheet(isPresented: $wizardAnzeigen) { AddEntryView() }
         .sheet(isPresented: $filterAnzeigen) { filterSheet }
+    }
+
+    // MARK: - Angehefteter Kopf (Wochenleiste, Suche, Filter)
+
+    private var angehefteterKopf: some View {
+        VStack(spacing: 8) {
+            sparklineHeader
+            suchfeld
+            filterChips
+        }
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial)
+    }
+
+    private var suchfeld: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("Körperstelle, Schmerzart, Auslöser…", text: $suchtext)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            if !suchtext.isEmpty {
+                Button { suchtext = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Suche löschen")
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 44)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.white.opacity(0.4), lineWidth: 1))
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private var leerZustand: some View {
+        Group {
+            if hatKeineEintraege {
+                ContentUnavailableView(
+                    "Noch keine Einträge",
+                    systemImage: "heart.text.clipboard",
+                    description: Text("Tippe auf + um deinen ersten Schmerzeintrag zu erfassen.")
+                )
+            } else {
+                ContentUnavailableView.search(text: suchtext)
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Tageskarten
+
+    private func tagesKarte(_ tag: Date, _ items: [TagesbuchItem]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            GlassSectionLabel(tagLabel(tag)).padding(.horizontal, 4)
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 { Divider().padding(.leading, 52) }
+                    zeile(item)
+                }
+            }
+            .glassCard(radius: 22, padding: 12)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private func zeile(_ item: TagesbuchItem) -> some View {
+        switch item {
+        case .schmerz(let eintrag):
+            NavigationLink(destination: PainEntryDetailView(eintrag: eintrag)) {
+                SchmerzZeile(eintrag: eintrag)
+            }
+            .buttonStyle(.plain)
+            .contextMenu { loeschenButton { EintragLoeschService(context: modelContext).loesche(eintrag) } }
+        case .migraene(let anfall):
+            NavigationLink(destination: MigraeneAnfallDetailView(anfall: anfall)) {
+                MigraeneZeile(anfall: anfall)
+            }
+            .buttonStyle(.plain)
+            .contextMenu { loeschenButton { EintragLoeschService(context: modelContext).loesche(anfall) } }
+        case .zyklus(let eintrag):
+            ZyklusTagesbuchZeile(eintrag: eintrag)
+                .contextMenu {
+                    loeschenButton {
+                        // Zyklus-Erinnerungen sind global → nach dem Löschen neu planen
+                        NotificationManager.shared.planeZyklusErinnerungen(
+                            eintraege: zyklusEintraege.filter { $0 !== eintrag })
+                        modelContext.delete(eintrag)
+                    }
+                }
+        case .diabetes(let messung):
+            DiabetesTagesbuchZeile(messung: messung)
+                .contextMenu { loeschenButton { modelContext.delete(messung) } }
+        }
+    }
+
+    private func loeschenButton(_ aktion: @escaping () -> Void) -> some View {
+        Button(role: .destructive, action: aktion) {
+            Label("Löschen", systemImage: "trash")
+        }
     }
 
     // MARK: - Sparkline Header
@@ -384,7 +407,6 @@ struct PainEntryListView: View {
         .padding(8)
         .glassBackground(radius: 22)
         .padding(.horizontal, 16)
-        .padding(.vertical, 4)
     }
 
     private func uniqueModulFarben(aus items: [TagesbuchItem]) -> [Color] {
@@ -425,11 +447,11 @@ struct PainEntryListView: View {
                             Text(tag.formatted(.dateTime.weekday(.abbreviated).day().month()))
                                 .font(.caption.bold())
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(Capsule())
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(Capsule().fill(Color.accentColor.opacity(0.55)))
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.5), lineWidth: 1))
+                        .foregroundStyle(.primary)
                     }
                     .buttonStyle(.plain)
                     .transition(.scale.combined(with: .opacity))
@@ -441,17 +463,19 @@ struct PainEntryListView: View {
                     } label: {
                         Text(filter.rawValue)
                             .font(.caption.bold())
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(aktiv ? filter.farbe : Color.secondary.opacity(0.12))
-                            .foregroundStyle(aktiv ? .white : .primary)
-                            .clipShape(Capsule())
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 44)
+                            .background {
+                                Capsule().fill(.ultraThinMaterial)
+                                if aktiv { Capsule().fill(filter.farbe.opacity(0.45)) }
+                            }
+                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.4), lineWidth: 1))
+                            .foregroundStyle(.primary)
                     }
                     .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 6)
         }
     }
 

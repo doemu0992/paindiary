@@ -271,3 +271,71 @@ struct GlassRing: View {
         .accessibilityLabel(beschreibung)
     }
 }
+
+// MARK: - Modul-Mini-Kachel (Carousel)
+
+/// Kompakte Glas-Kachel (~138 pt) für Modul-Carousels: Icon, ein Kennwert, optionale Sparkline.
+struct ModulMiniKachel: View {
+    let symbol: String
+    let titel: String
+    let wert: String
+    var einheit: String? = nil
+    var verlauf: [Double] = []
+    var tint: Color = .accentColor
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(tint.opacity(0.18)))
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.45), lineWidth: 1))
+                Text(titel).font(.caption.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Text(wert)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            if let einheit {
+                Text(einheit).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Group {
+                if verlauf.count > 1 {
+                    MiniSparkline(werte: verlauf, tint: tint)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(height: 18)
+        }
+        .frame(width: 138, height: 138, alignment: .topLeading)
+        .glassCard(radius: 22, padding: 12)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Minimale Linien-Sparkline ohne Achsen.
+struct MiniSparkline: View {
+    let werte: [Double]
+    var tint: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            let maxWert = max(werte.max() ?? 1, 0.0001)
+            let minWert = min(werte.min() ?? 0, maxWert)
+            let spanne = max(maxWert - minWert, 0.0001)
+            Path { p in
+                for (i, w) in werte.enumerated() {
+                    let x = geo.size.width * CGFloat(i) / CGFloat(max(werte.count - 1, 1))
+                    let y = geo.size.height * (1 - CGFloat((w - minWert) / spanne))
+                    if i == 0 { p.move(to: CGPoint(x: x, y: y)) } else { p.addLine(to: CGPoint(x: x, y: y)) }
+                }
+            }
+            .stroke(tint, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+        }
+        .accessibilityHidden(true)
+    }
+}
