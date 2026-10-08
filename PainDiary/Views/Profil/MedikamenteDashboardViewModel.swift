@@ -7,7 +7,8 @@ import Observation
 final class MedikamenteDashboardViewModel {
     private(set) var uebersicht = MedikationsUebersicht()
 
-    func aktualisiere(medikamente: [Dauermedikation], logs: [EinnahmeLog], notif: NotificationManager = .shared, jetzt: Date = Date()) {
+    func aktualisiere(medikamente: [Dauermedikation], logs: [EinnahmeLog], notif: NotificationManager? = nil, jetzt: Date = Date()) {
+        let notif = notif ?? NotificationManager.shared
         let aktive = medikamente.filter(\.aktiv)
         let plan = aktive.map { MedikationsPlanEintrag(id: $0.notifID, dosenProTag: notif.anzahlDosen($0.frequenz)) }
         let einnahmen = logs.filter(\.eingenommen).map { log in
